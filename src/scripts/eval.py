@@ -409,7 +409,6 @@ def run(csv_path, out_of_scope=False, custom_query=None):
         # User requested to test rewriter with conversational queries instead of standard ones
         queries = QUERY_INTENT      # you can swap this out with TEST_QUERIES instead
         ground_truths = [gt_fn(df) for gt_fn in GROUND_TRUTH_FNS]
-        print("\n📊 Evaluating CONVERSATIONAL queries (testing rewriter)...")
 
     # Pair queries with ground truths and shuffle (skip shuffle for single custom query)
     if len(queries) > 1:

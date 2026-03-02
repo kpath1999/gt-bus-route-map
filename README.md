@@ -6,7 +6,7 @@
 
 ## General flow with prompts
 
-The system answers conversational natural language queries over tabular IoT data using a 4-stage pipeline designed to prevent hallucinations and ensure schema-grounded pandas code generation. The pipeline is implemented via LangChain and the Groq (Llama 3) API.
+The system answers conversational natural language queries over tabular IoT data using a 4-stage pipeline designed to prevent hallucinations and ensure schema-grounded pandas code generation. The pipeline is implemented via LangChain and the Groq (Llama 3) API. Check [the evaluation script](src/scripts/eval.py) for how we got this done.
 
 ### 1. Schema-Aware Query Rewriter
 Before touching the dataframe, an LLM rewrites the user's conversational query into a strict, column-grounded version. It is fed pre-computed metadata (data types, min/max bounds, sample values) for every column.
