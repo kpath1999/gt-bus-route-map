@@ -1,7 +1,7 @@
 """
 eval.py
 -------
-Single script: runs each test query through the Llama 3.1 8B pandas dataframe
+Single script: runs each test query through the Llama 4 Scout 17B pandas dataframe
 agent, computes the pandas ground-truth answer, and prints a side-by-side
 comparison.
 
@@ -17,6 +17,9 @@ Usage:
 
     # when the queries are beyond the scope..
     python eval.py --out_of_scope
+
+    # Run a single custom query:
+    python eval.py --query "Where did the bus have the highest acceleration variance?"
 
 
 DESCRIPTION:
@@ -45,6 +48,7 @@ or statistics.
 import os
 import sys
 import time
+import random
 import argparse
 import warnings
 import pandas as pd
@@ -111,17 +115,19 @@ You are given:
 Your task is to transform the user query into a schema-aligned, unambiguous version.
 
 Step-by-step instructions:
-1. Identify every distinct semantic concept in the user query. Concepts include entities (e.g., device, room, sensor),
-measurements (e.g., temperature, humidity), time references (e.g., yesterday, last 24 hours), conditions (e.g, above,
-below, between), aggregations (e.g., average, max, count), filters and groupings.
-2. Map each concept to the closest semantically matching column. Use column descriptions and statistics to guide mapping.
+1. Identify every distinct semantic concept in the user query. Concepts fall into two categories:
+   - DATA concepts: entities, measurements, or attributes that must map to a column (e.g., "temperature", "device ID", "latitude").
+   - OPERATION concepts: mathematical or statistical functions applied to columns (e.g., standard deviation, mean, variance,
+     sum, count, max, min, percentile, correlation). Operations are NEVER column names and must NEVER be added to UNMAPPABLE.
+2. Map each DATA concept to the closest semantically matching column. Use column descriptions and statistics to guide mapping.
 Prefer exact semantic matches, standardized naming conventions, and units consistency (e.g., °C vs °F). If multiple columns
 are similar, choose the most specific and least ambiguous match.
 3. In terms of disambiguation, replace all vague or generic terms with exact column names. Preserve logical structure
 (filters, aggregations, time constraints). Do NOT invent new columns. Do NOT assume mappings without reasonable semantic
 similarity.
-4. If a concept has no plausible mapping to any available column, do NOT remove it silently. Add it the UNMAPPABLE list.
-Only include concepts that truly lack reasonable schema alignment.
+4. If a DATA concept has no plausible mapping to any available column, do NOT remove it silently. Add it to the UNMAPPABLE
+list. OPERATION concepts (e.g., standard deviation, mean, variance, count) must NEVER appear in UNMAPPABLE — they are
+always valid as long as the column they operate on is present.
 
 Output rules:
 REWRITTEN: <new precise query using exact column names>
@@ -144,7 +150,7 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         self.steps.append(f"Action Input: {action.tool_input}")
 
     def on_tool_end(self, output: str, **kwargs) -> None:
-        self.steps.append(f"Observation: {output.strip()}")
+        self.steps.append(f"Observation: {str(output).strip()}")
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs) -> None:
         self.steps.append(f"Final Answer: {finish.return_values.get('output', '').strip()}")
@@ -170,7 +176,7 @@ def init_llm_components(df):
 
     llm = ChatGroq(
         groq_api_key=GROQ_API_KEY,
-        model_name="llama-3.1-8b-instant",
+        model_name="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=0.0,
     )
 
@@ -243,17 +249,20 @@ def init_llm_components(df):
 
     schema = build_schema_summary(df)
     guardrail_context = f"""
-You are a schema gatekeeper for a tabular dataset.
+You are a schema gatekeeper for a tabular dataset that will be queried by a Python Pandas agent.
 
 Dataset columns (and dtypes/examples):
 {schema}
 
 Decision policy:
-1. Return PROCEED only if the query can be answered using ONLY these dataset columns.
-2. Return REJECT if the query needs:
-   - missing columns,
-   - external data sources,
-   - speculative modeling/derivation not directly supported by available columns.
+1. Return PROCEED if the query can be answered using the provided columns. The Pandas agent CAN perform operations like:
+   - Filtering by exact values, thresholds, or text matches.
+   - Mathematical and statistical calculations (e.g., standard deviation, variance, mean, max).
+   - Grouping, counting, and sorting (e.g., finding the top 5 most frequent items).
+2. Return REJECT ONLY if the query strictly requires:
+   - Entirely missing base metrics/columns (e.g., asking for temperature when only acceleration exists).
+   - External data sources or internet access.
+   - Predictive forecasting or machine learning models.
 
 Output contract (MUST follow exactly, single line):
 - If answerable: PROCEED
@@ -345,7 +354,6 @@ Output contract (MUST follow exactly, single line):
             latency = time.time() - t0
             return f"[ERROR] {e}", handler.get_trace(), latency
 
-    # TODO [IGNORE] - q: why does the llm take so long; latency is high; reducing it could be flash-fusion's contribution
     # think about it...this is our naive baseline (RAG, SQL, VocalDB)
     # IDEA: based on the query, the data is organized in a specific manner and then fed to the pandas agent
     return ask_agent
@@ -379,20 +387,21 @@ def log_results(results, csv_path):
 # Main
 # ====================================================
 
-def run(csv_path, out_of_scope=False):
+def run(csv_path, out_of_scope=False, custom_query=None):
     print(f"\nLoading: {csv_path}")
     df = pd.read_csv(csv_path)
     print(f"Rows: {len(df):,}  Columns: {len(df.columns)}")
-    
-    # Store out_of_scope flag for use in the evaluation loop
-    run.out_of_scope = out_of_scope
 
     ask_agent = init_llm_components(df)
 
     results = []
 
-    # Select queries and ground truth based on evaluation mode
-    if run.out_of_scope:
+    # Single custom query mode — skip predefined lists entirely
+    if custom_query:
+        queries = [custom_query]
+        ground_truths = ["N/A (custom query)"]
+        print(f"\n🔎 Running custom query...")
+    elif out_of_scope:
         queries = OUT_OF_SCOPE
         ground_truths = GT_OUT_OF_SCOPE
         print("\n🔍 Evaluating OUT-OF-SCOPE queries (should be rejected)...")
@@ -401,6 +410,12 @@ def run(csv_path, out_of_scope=False):
         queries = QUERY_INTENT      # you can swap this out with TEST_QUERIES instead
         ground_truths = [gt_fn(df) for gt_fn in GROUND_TRUTH_FNS]
         print("\n📊 Evaluating CONVERSATIONAL queries (testing rewriter)...")
+
+    # Pair queries with ground truths and shuffle (skip shuffle for single custom query)
+    if len(queries) > 1:
+        combined = list(zip(queries, ground_truths))
+        random.shuffle(combined)
+        queries, ground_truths = zip(*combined)
 
     for i, (query, gt_answer) in enumerate(zip(queries, ground_truths), 1):
         print(f"\n{'─' * 60}")
@@ -414,6 +429,10 @@ def run(csv_path, out_of_scope=False):
         print(f"  LATENCY      : {latency:.2f}s")
 
         results.append((query, gt_answer, llm_answer, thinking, latency))
+
+        # Add a delay between queries to avoid Groq rate limits (HTTP 429)
+        if i < len(queries):
+            time.sleep(2.0)
 
     log_results(results, csv_path)
     return results
@@ -429,7 +448,10 @@ if __name__ == "__main__":
     
     group.add_argument("--out_of_scope", action="store_true",
                        help="Evaluate out-of-scope queries that should be rejected.")
-    
+
+    parser.add_argument("--query", type=str, default=None,
+                        help="Run a single custom natural language query against the dataset.")
+
     args = parser.parse_args()
 
     if args.csv:
@@ -439,4 +461,4 @@ if __name__ == "__main__":
     else:
         csv_path = CSV_DEFAULT
 
-    run(csv_path, out_of_scope=getattr(args, 'out_of_scope', False))
+    run(csv_path, out_of_scope=getattr(args, 'out_of_scope', False), custom_query=args.query)
