@@ -1,11 +1,9 @@
 {
   "functions": {
     "api/chat.py": {
-      "runtime": "python@3.12",
       "maxDuration": 60
     },
     "api/health.py": {
-      "runtime": "python@3.12",
       "maxDuration": 10
     }
   },
