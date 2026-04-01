@@ -258,9 +258,14 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     },
 ]
 
-# (NOTE)KAUSAR -- can you make this run zero-shot, where you can classify it as one of the domains
-# without the hardcoding??
-# (NOTE)KAUSAR -- once you ask the chatbot to proceed, use the previous answer's context to answer
+# (RESOLVED) Zero-shot domain classification: _llm_classify_domain() below
+# handles this — passes recent conversation history to the LLM so ambiguous
+# follow-ups resolve correctly without sticky state.  Called as fallback when
+# keyword detection returns nothing.
+#
+# (RESOLVED) Previous-answer context: the /api/chat endpoint passes the full
+# conversation history (conversations[conv_id]) to both _llm_classify_domain()
+# and _chat_completion(), so every turn has access to prior context.
 # ── Domain detection & B4 pipeline integration ─────────────
 
 DOMAIN_KEYWORDS: dict[str, list[str]] = {
