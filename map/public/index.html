@@ -335,6 +335,45 @@
     var map = L.map('map').setView([33.776, -84.389], 15);
     var allData = []; // Store all data points for analysis
 
+    // Cache derived analytics used by cluster-mode summaries.
+    const derivedSummaryCache = {
+        datasetKey: null,
+        sortedData: null,
+        timeRange: null,
+        behaviorDistribution: null,
+        aggressiveHotspots: null,
+        dwellTopK: null,
+        routeEfficiency: null
+    };
+
+    function buildDatasetKey(features) {
+        if (!features || features.length === 0) {
+            return 'empty';
+        }
+        const first = features[0]?.properties?.timestamp || 'none';
+        const last = features[features.length - 1]?.properties?.timestamp || 'none';
+        return `${features.length}:${first}:${last}`;
+    }
+
+    function resetDerivedSummaryCache(reason = 'unknown') {
+        derivedSummaryCache.datasetKey = null;
+        derivedSummaryCache.sortedData = null;
+        derivedSummaryCache.timeRange = null;
+        derivedSummaryCache.behaviorDistribution = null;
+        derivedSummaryCache.aggressiveHotspots = null;
+        derivedSummaryCache.dwellTopK = null;
+        derivedSummaryCache.routeEfficiency = null;
+        console.log(`♻️ Derived summary cache reset (${reason})`);
+    }
+
+    function ensureDerivedSummaryCacheCurrent() {
+        const currentKey = buildDatasetKey(allData);
+        if (derivedSummaryCache.datasetKey !== currentKey) {
+            resetDerivedSummaryCache('dataset-changed');
+            derivedSummaryCache.datasetKey = currentKey;
+        }
+    }
+
     const promptTemplates = {
     aggressivePatterns: `You are a transportation safety analyst. Given the following summary of aggressive driving evidence, explain the underlying patterns in plain language, cite the campus locations, and recommend one follow-up analysis. Reply in plain text with no markdown, bullets, headings, or special characters, and keep it under 180 words.\n\nDATA SUMMARY:\n{{data}}\n\nUSER QUESTION: {{userQuery}}`,
     raw: `You are a transportation analyst. You will receive the entire bus telemetry dataset as raw JSON without any preprocessing. Use it to answer the user's question directly, pointing to concrete observations. Respond in plain text only—do not use markdown formatting, bullet points, or special characters—and keep your reply under 200 words.\n\nRAW DATASET (JSON):\n{{data}}\n\nUSER QUESTION: {{userQuery}}`,
@@ -799,31 +838,48 @@
             return { status: 'empty', message: 'No route data is loaded yet.' };
         }
 
-        const sortedData = [...allData].sort((a, b) => new Date(a.properties.timestamp) - new Date(b.properties.timestamp));
-        const timeRange = getTimeRangeSummary();
-        const behaviorDistribution = getBehaviorDistribution();
+        ensureDerivedSummaryCacheCurrent();
+
+        if (!derivedSummaryCache.sortedData) {
+            derivedSummaryCache.sortedData = [...allData].sort((a, b) => new Date(a.properties.timestamp) - new Date(b.properties.timestamp));
+        }
+        if (!derivedSummaryCache.timeRange) {
+            derivedSummaryCache.timeRange = getTimeRangeSummary();
+        }
+        if (!derivedSummaryCache.behaviorDistribution) {
+            derivedSummaryCache.behaviorDistribution = getBehaviorDistribution();
+        }
 
         const base = {
             totalEvents: allData.length,
-            timeRange,
-            behaviorDistribution
+            timeRange: derivedSummaryCache.timeRange,
+            behaviorDistribution: derivedSummaryCache.behaviorDistribution
         };
 
         switch (category) {
             case 'aggressivePatterns':
+                if (!derivedSummaryCache.aggressiveHotspots) {
+                    derivedSummaryCache.aggressiveHotspots = computeAggressiveHotspots();
+                }
                 return {
                     base,
-                    aggressiveHotspots: computeAggressiveHotspots()
+                    aggressiveHotspots: derivedSummaryCache.aggressiveHotspots
                 };
             case 'dwellTime':
+                if (!derivedSummaryCache.dwellTopK) {
+                    derivedSummaryCache.dwellTopK = computeDwellIndicators(derivedSummaryCache.sortedData);
+                }
                 return {
                     base,
-                    dwellIndicators: computeDwellIndicators(sortedData)
+                    dwellIndicators: derivedSummaryCache.dwellTopK
                 };
             case 'routeEfficiency':
+                if (!derivedSummaryCache.routeEfficiency) {
+                    derivedSummaryCache.routeEfficiency = computeRouteEfficiency(derivedSummaryCache.sortedData);
+                }
                 return {
                     base,
-                    routeEfficiency: computeRouteEfficiency(sortedData)
+                    routeEfficiency: derivedSummaryCache.routeEfficiency
                 };
             default:
                 return { base };
@@ -1332,6 +1388,15 @@ ${partialNotes}`;
         .then(data => {
             // Store all data points for analysis
             allData = data.features;
+            resetDerivedSummaryCache('geojson-loaded');
+
+            // Warm the core stats used by the three demo query types.
+            ensureDerivedSummaryCacheCurrent();
+            derivedSummaryCache.sortedData = [...allData].sort((a, b) => new Date(a.properties.timestamp) - new Date(b.properties.timestamp));
+            derivedSummaryCache.timeRange = getTimeRangeSummary();
+            derivedSummaryCache.behaviorDistribution = getBehaviorDistribution();
+            derivedSummaryCache.aggressiveHotspots = computeAggressiveHotspots();
+            derivedSummaryCache.dwellTopK = computeDwellIndicators(derivedSummaryCache.sortedData);
 
             // Process each feature and add it to the correct layer group
             data.features.forEach((feature, index) => {

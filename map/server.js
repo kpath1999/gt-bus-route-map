@@ -69,8 +69,8 @@ app.post('/api/generate-summary', validateRequest, async (req, res) => {
                     role: "user",
                     content: prompt
                 }],
-                temperature: 0.7,
-                max_tokens: 500  // Reduced from 1000 to stay under 6K TPM limit (4K input + 500 output = 4.5K total)
+                temperature: 0.3,
+                max_tokens: 160  // Reduced from 1000 to stay under 6K TPM limit (4K input + 500 output = 4.5K total)
             })
         });
 
