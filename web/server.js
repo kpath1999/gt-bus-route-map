@@ -11,11 +11,6 @@ app.use(express.json());
 // Add this line after your existing middleware
 app.use(express.static('public'));
 
-// Add a catch-all route for your main page
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // Simple in-memory cache for responses
 const responseCache = new Map();
 
@@ -156,6 +151,11 @@ app.post('/api/generate-insight', validateRequest, async (req, res) => {
         console.error('Error in generate-insight endpoint:', error);
         res.status(500).json({ error: 'Service temporarily unavailable' });
     }
+});
+
+// Catch-all: serve index.html for any unmatched routes (must be after all API routes)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Error handling middleware

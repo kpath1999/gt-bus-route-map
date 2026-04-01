@@ -1,2 +1,6 @@
 data/
 archive/
+.venv/
+analysis/playground/__pycache__
+analysis/playground/.env
+analysis/playground/run_query_analysis.py

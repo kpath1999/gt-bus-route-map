@@ -16,6 +16,100 @@ Usage:
     export GROQ_API_KEY="..."
     export TAVILY_API_KEY="..."          # optional — enables Stage 1.5
     python src/playground/playground.py  # runs full eval matrix
+
+──────────────────────────────────────────────────────────────────────────
+TODOs — Critical issues surfaced by ECG B4 eval (2026-03-12)
+──────────────────────────────────────────────────────────────────────────
+
+TODO(P0-loop-1): Agent parse-loop — "Missing 'Action:' after 'Thought:'"
+    Models like groq/compound produce essay-style answers instead of the
+    Thought/Action/Action Input ReAct format.  handle_parsing_errors=True
+    feeds back a format reminder, but the model repeats the same essay for
+    all max_iterations.
+    FIX: Detect repeated identical parsing failures inside _try_execute()
+    (or via a custom OutputParser subclass).  After 2 consecutive identical
+    parse errors, extract the textual answer from the malformed output and
+    return it directly as the agent result, skipping further iterations.
+    Also consider adding an output_parser that falls back to "treat entire
+    LLM output as final answer" after N consecutive parse failures.
+
+TODO(P0-loop-2): Agent parse-loop — "both a final answer and a parse-able action"
+    llama-4-scout produces Thought + Action + Final Answer in a single turn.
+    LangChain's ReActSingleInputOutputParser rejects this as ambiguous,
+    logging OUTPUT_PARSING_FAILURE.  The model then repeats the same
+    combined output every retry.
+    FIX: Subclass ReActSingleInputOutputParser — when both an Action and a
+    Final Answer are detected, prefer the Action (let the code run).  If
+    the action has already been tried and produced the same parse error,
+    fall back to extracting the Final Answer text.
+
+TODO(P0-loop-3): Agent syntax-error loop — multi-line Action Input
+    llama-3.3-70b appends a second "Thought:" block after the Action Input
+    code.  The parser concatenates the code with the stray text, producing
+    a SyntaxError on execution.  The model retries identically 6 times.
+    FIX: In the custom output parser or in a pre-processing step on the
+    parsed Action Input, strip everything after the first blank line or
+    after a line starting with "Thought:".  This sanitizes the code block
+    before it reaches python_repl_ast.
+
+TODO(P1-codebook-context): Inject categorical codebook/legend metadata
+    Some datasets use compact symbolic labels whose semantics are not
+    recoverable from raw values alone.  Without a codebook, the model may
+    misinterpret labels and produce incorrect conclusions.
+    FIX: Add an optional metadata-enrichment hook that injects label
+    definitions into schema context when available.  Keep this as a
+    pluggable adapter so the core pipeline remains domain-agnostic.
+
+TODO(P1-derived-features): Support derived features through adapters
+    Some user questions target quantities that are not raw columns but are
+    computable from existing columns via deterministic transformations.
+    Without a derivation layer, the agent may answer with invalid proxies.
+    FIX: Add an optional derived-feature adapter stage (post-load and
+    pre-prompt) that can materialize canonical computed fields, expose them
+    in metadata, and mark provenance of each derived field.
+
+TODO(P2-s1-groq-compound): Stage 1 returns empty concepts for groq/compound
+    groq/compound returns {"DATA": [], "REASONING": []} for 3 of 4 queries,
+    causing S2 to bypass structured grounding and produce essays.
+    FIX: Add a validation step after S1 parsing:  if both DATA and
+    REASONING are empty for a non-trivial query (len(query) > 20), retry
+    S1 once with a more explicit prompt, or force a minimal concept set
+    derived from keyword extraction on the query text.
+
+TODO(P2-s2-structured): Enforce structured output in Stage 2 grounding
+    Models emit free-form essays instead of the MAPPINGS:/UNMAPPABLE:
+    format.  Downstream parsing silently returns no mappings.
+    FIX: Add post-parse validation: if no MAPPINGS lines are found in S2
+    output, retry with a shorter, stricter prompt that includes a concrete
+    example.  Consider using structured output / JSON mode if the model
+    supports it.
+
+TODO(P2-synthesis-lossy): Synthesizer drops sub-answer details
+    In some runs, the agent trace contains richer quantitative detail than
+    the final synthesis, which can collapse nuanced findings into a single
+    headline metric.
+    FIX: Pass the raw compact sub-answer text verbatim into the synthesis
+    prompt (already done via _compact_answer_text, but the synthesizer
+    ignores multi-line data).  Add an explicit instruction in
+    SYNTHESIS_PROMPT: "Include ALL quantitative findings from sub-answers;
+    do not omit or summarize away numeric results."
+
+TODO(P3-outlier-context): Contextualize statistical outlier counts
+    Threshold-based anomaly counts can be misleading if presented without a
+    baseline prevalence expectation.  This can overstate severity.
+    FIX: In the prefix prompt or grounding context, add a note: "When using
+    threshold rules, report expected baseline prevalence and compare observed
+    counts against that baseline so users can judge significance."
+
+TODO(P3-retry-dedup): Avoid wasting iterations on identical failures
+    All three looping failures repeat the exact same LLM output 6 times.
+    The retry mechanism in execute_single() only retries once externally,
+    but the inner agent loop (max_iterations=6) has no dedup.
+    FIX: Track the last N LLM raw outputs in ThinkingCaptureHandler or a
+    wrapper.  If two consecutive outputs are identical (or near-identical),
+    break the loop early and synthesize from whatever partial result
+    is available.
+──────────────────────────────────────────────────────────────────────────
 """
 
 import os
@@ -33,9 +127,15 @@ import pandas as pd
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.agents import AgentAction, AgentFinish
+from langchain_core.exceptions import OutputParserException
+from langchain_classic.agents import create_react_agent, AgentExecutor
+from langchain_classic.agents.agent import RunnableAgent
+from langchain_classic.agents.output_parsers import ReActSingleInputOutputParser
+from langchain_experimental.tools import PythonAstREPLTool
+from langchain_experimental.agents.agent_toolkits.pandas.base import _get_prompt
+from pydantic import PrivateAttr
 
 try:
     from langchain_tavily import TavilySearch
@@ -561,6 +661,137 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         return "\n".join(self.steps) if self.steps else "(no steps captured)"
 
 
+# ── 1e. ResilientReActOutputParser ───────────────────────────
+
+class ResilientReActOutputParser(ReActSingleInputOutputParser):
+    """Drop-in ReAct parser hardened against three common LLM failure modes.
+
+    P0-loop-1: Essay-style output with no Action/Final Answer.
+               After MAX_PARSE_FAILURES consecutive parse errors the raw text
+               is returned as a Final Answer to break the loop.
+    P0-loop-2: Output contains *both* an Action block and a Final Answer.
+               The standard parser raises; this subclass prefers the Action
+               (lets the code run) and falls back to Final Answer on error.
+    P0-loop-3: Stray "Thought:" line appended after Action Input code block.
+               Sanitises the Action Input before returning the AgentAction.
+    P3-retry-dedup: Consecutive identical LLM outputs are detected and the
+                    loop is broken early by synthesising a Final Answer.
+    """
+
+    _last_output: str = PrivateAttr(default="")
+    _identical_count: int = PrivateAttr(default=0)
+    _consecutive_parse_failures: int = PrivateAttr(default=0)
+    MAX_IDENTICAL: int = 2
+    MAX_PARSE_FAILURES: int = 2
+
+    def parse(self, text: str) -> AgentAction | AgentFinish:
+        cleaned = text.strip()
+
+        # ── P3-retry-dedup ──────────────────────────────────
+        if cleaned == self._last_output:
+            self._identical_count += 1
+        else:
+            self._identical_count = 1
+        self._last_output = cleaned
+
+        if self._identical_count >= self.MAX_IDENTICAL:
+            return self._extract_best_answer(cleaned)
+
+        # ── P0-loop-2: both Action and Final Answer ─────────
+        includes_answer = "Final Answer:" in text
+        action_re = r"Action\s*\d*\s*:[\s]*(.*?)[\s]*Action\s*\d*\s*Input\s*\d*\s*:[\s]*(.*)"
+        action_match = re.search(action_re, text, re.DOTALL)
+
+        if action_match and includes_answer:
+            # Prefer the Action — let the code execute.
+            action = action_match.group(1).strip()
+            action_input = self._sanitize_action_input(action_match.group(2))
+            self._consecutive_parse_failures = 0
+            return AgentAction(action, action_input.strip(' "'), text)
+
+        # ── Standard path: Action without Final Answer ──────
+        if action_match:
+            action = action_match.group(1).strip()
+            action_input = self._sanitize_action_input(action_match.group(2))
+            self._consecutive_parse_failures = 0
+            return AgentAction(action, action_input.strip(' "'), text)
+
+        # ── Standard path: Final Answer only ────────────────
+        if includes_answer:
+            self._consecutive_parse_failures = 0
+            return AgentFinish(
+                {"output": text.split("Final Answer:")[-1].strip()}, text
+            )
+
+        # ── P0-loop-1: no recognisable format ──────────────
+        self._consecutive_parse_failures += 1
+        if self._consecutive_parse_failures >= self.MAX_PARSE_FAILURES:
+            return self._extract_best_answer(cleaned)
+
+        # First failure — raise normally so handle_parsing_errors can
+        # feed format instructions back to the LLM.
+        if not re.search(r"Action\s*\d*\s*:", text, re.DOTALL):
+            raise OutputParserException(
+                f"Could not parse LLM output: `{text}`",
+                observation="Invalid Format: Missing 'Action:' after 'Thought:'",
+                llm_output=text,
+                send_to_llm=True,
+            )
+        raise OutputParserException(f"Could not parse LLM output: `{text}`")
+
+    # ── helpers ────────────────────────────────────────────
+    @staticmethod
+    def _sanitize_action_input(raw_input: str) -> str:
+        """P0-loop-3: strip stray Thought:/Action: lines appended after code."""
+        lines = raw_input.split("\n")
+        sanitized: list[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("Thought:") or stripped.startswith("Action:"):
+                break
+            sanitized.append(line)
+        return "\n".join(sanitized)
+
+    @staticmethod
+    def _extract_best_answer(text: str) -> AgentFinish:
+        """Pull the most useful content from a malformed LLM response."""
+        if "Final Answer:" in text:
+            answer = text.split("Final Answer:")[-1].strip()
+        else:
+            answer = text.strip()
+        return AgentFinish(return_values={"output": answer}, log=text)
+
+
+# ── 1f. DatasetAdapter — pluggable domain-specific enrichment ─
+
+class DatasetAdapter:
+    """Protocol for optional dataset-specific metadata enrichment.
+
+    Subclass to provide codebook labels (P1-codebook-context) and derived
+    features (P1-derived-features) without modifying the core pipeline.
+    The base implementation is a no-op so the pipeline stays domain-agnostic.
+    """
+
+    def get_codebook(self, df: pd.DataFrame) -> dict[str, dict[str, str]]:
+        """Return ``{column: {raw_value: human_label}}`` for categorical columns.
+
+        Example return (not embedded in core)::
+
+            {"activity": {"1": "Walking", "2": "Running"}}
+        """
+        return {}
+
+    def get_derived_features(
+        self, df: pd.DataFrame
+    ) -> tuple[pd.DataFrame, dict[str, str]]:
+        """Materialise computed columns and return (enriched_df, provenance_map).
+
+        *provenance_map* is ``{new_col_name: derivation_description}``.
+        The enriched DataFrame may contain additional columns.
+        """
+        return df, {}
+
+
 # ════════════════════════════════════════════════════════════
 # 2. PROMPT TEMPLATES — one canonical copy, shared across all
 #    baselines that use that stage
@@ -583,19 +814,7 @@ DATA: <comma-separated data concepts, or NONE>
 REASONING: <comma-separated reasoning concepts, or NONE>
 """
 
-# Stage 1.5: Novelty classifier (gates Tavily)
-NOVELTY_CLASSIFIER_PROMPT = """
-You are a concept novelty classifier for IoT sensor and medical data analysis.
 
-For each REASONING concept below, decide whether it is:
-  COMMON — everyday language any LLM reliably understands (e.g., "bumpy", "smooth")
-  JARGON — technical standard / clinical term requiring external definition
-           (e.g., "ISO 2631 discomfort weighting", "ST depression", "RMS jerk")
-
-Output one line per concept, exactly:
-<concept>: COMMON
-<concept>: JARGON
-"""
 
 # Stage 2: Schema Grounding
 SCHEMA_GROUNDING_PROMPT = """
@@ -638,7 +857,19 @@ Each sub-question must:
   - Reference exact column names from the dataset.
   - Specify a single analytical operation: one of FILTER, AGGREGATE, GROUPBY,
     CORRELATE, WINDOW, or RANK.
-  - Be independently answerable by a Pandas DataFrame agent.
+    - Be independently answerable by a Pandas DataFrame agent.
+    - Request compact summary outputs only (scalar values or short metric lists),
+        never raw full Series/DataFrame dumps.
+
+For WINDOW operations, always ask for summary metrics over windows, for example:
+    - min/max/mean/std of the windowed metric
+    - top 3 highest or lowest windows with their time ranges
+    - trend direction over time
+
+For FILTER/GROUPBY/RANK operations, ask for compact aggregates such as counts,
+rates, percentages, top-k categories, or min/max examples with timestamps.
+
+Avoid ambiguous instructions like "show", "print", or "list all rows".
 
 Output format (strict):
 SUB_Q1: [OPERATION] <concrete sub-question>
@@ -678,18 +909,16 @@ You are a data analyst assistant. The user asked an open-ended question about
 sensor data. You have sub-answers to concrete analytical sub-questions.
 
 Synthesize them into a single, coherent, natural-language response.
-Be qualitative and conversational. Include specific numbers only when they
-help illustrate the point. Do NOT mention sub-questions, column names, or
-technical implementation details.
+Prioritize evidence over style:
+- Lead with the direct answer in the first sentence.
+- Include ALL quantitative findings from sub-answers — do not omit or
+  summarize away numeric results (counts, ranges, correlations, trends).
+- If evidence is weak/incomplete, state that explicitly and explain why.
+- Keep it concise (about 4-8 sentences) and avoid filler language.
+- Do NOT mention sub-question IDs or implementation details.
+- When reporting threshold-based counts or anomalies, note the expected
+  baseline prevalence so users can judge significance.
 """
-
-# Contextualizer (single-shot NL conversion)
-CONTEXTUALIZER_PROMPT = """
-You are a data analyst assistant. Given the user's original question and the
-raw analytical result, produce a clear, concise natural language response that
-directly answers the question. No code or technical details — just the answer.
-"""
-
 
 # ════════════════════════════════════════════════════════════
 # 3. PIPELINE STAGES — composable building blocks
@@ -711,7 +940,46 @@ class Stage1_ConceptExtraction:
 
     def run(self, query: str) -> dict:
         raw = self._client.invoke_chain(self._chain, {"query": query}, stage="S1-concepts")
-        return self._parse(raw)
+        concepts = self._parse(raw)
+
+        # P2-s1: retry once when both concept lists are empty for a real query.
+        if (
+            not concepts["DATA"]
+            and not concepts["REASONING"]
+            and len(query.strip()) > 20
+        ):
+            retry_prompt = (
+                "The previous attempt returned no concepts.  Please re-read the "
+                "query carefully and extract at least one DATA or REASONING concept.\n\n"
+                f"Query: {query}"
+            )
+            retry_chain = (
+                ChatPromptTemplate.from_messages([
+                    ("system", CONCEPT_EXTRACTION_PROMPT),
+                    ("human", retry_prompt),
+                ])
+                | self._client.llm
+                | StrOutputParser()
+            )
+            raw2 = self._client.invoke_chain(
+                retry_chain, {"query": query}, stage="S1-concepts-retry"
+            )
+            retried = self._parse(raw2)
+            if retried["DATA"] or retried["REASONING"]:
+                return retried
+
+            # Last resort: extract keywords from the query text.
+            keywords = [w for w in re.findall(r'\b[a-zA-Z]{3,}\b', query)
+                        if w.lower() not in {
+                            "the", "and", "for", "are", "was", "were", "this",
+                            "that", "how", "what", "when", "where", "which",
+                            "does", "did", "any", "give", "there", "have",
+                            "has", "been", "with", "from", "about",
+                        }]
+            if keywords:
+                concepts["DATA"] = keywords[:3]
+
+        return concepts
 
     @staticmethod
     def _parse(response: str) -> dict:
@@ -727,67 +995,6 @@ class Stage1_ConceptExtraction:
                 if val.upper() != "NONE":
                     concepts["REASONING"] = [c.strip() for c in val.split(",")]
         return concepts
-
-
-class Stage1_5_TavilyEnrichment:
-    """reasoning_concepts → {concept: definition_snippet} (empty if all COMMON)"""
-
-    def __init__(self, client: LLMClient):
-        self._client = client
-        self._classifier_chain = (
-            ChatPromptTemplate.from_messages([
-                ("system", NOVELTY_CLASSIFIER_PROMPT),
-                ("human", "Concepts to classify:\n{concepts}"),
-            ])
-            | client.llm
-            | StrOutputParser()
-        )
-
-        t_key = os.getenv("TAVILY_API_KEY")
-        if _TAVILY_AVAILABLE and t_key:
-            os.environ.setdefault("TAVILY_API_KEY", t_key)
-            self._tavily = TavilySearch(max_results=2)
-            self.enabled = True
-        else:
-            self._tavily = None
-            self.enabled = False
-
-    def run(self, reasoning_concepts: list[str]) -> dict[str, str]:
-        if not self.enabled or not reasoning_concepts:
-            return {}
-
-        # classify
-        concept_list = "\n".join(f"- {c}" for c in reasoning_concepts)
-        raw = self._client.invoke_chain(
-            self._classifier_chain, {"concepts": concept_list}, stage="S1.5-classify"
-        )
-
-        jargon = []
-        for line in raw.splitlines():
-            if line.strip().endswith(": JARGON"):
-                term = line.strip()[: -len(": JARGON")].lstrip("- ").strip()
-                jargon.append(term)
-
-        if not jargon:
-            return {}
-
-        # search each JARGON concept
-        definitions: dict[str, str] = {}
-        for concept in jargon:
-            search_query = f"{concept} definition IoT sensor engineering standards"
-            try:
-                results = self._tavily.invoke({"query": search_query})
-                parts = []
-                items = results.get("results", []) if isinstance(results, dict) else results
-                for r in (items or [])[:2]:
-                    if isinstance(r, dict) and r.get("content", "").strip():
-                        parts.append(r["content"][:300].replace("\n", " "))
-                if parts:
-                    definitions[concept] = " | ".join(parts)
-            except Exception as e:
-                print(f"[Tavily] search failed for '{concept}': {e}")
-
-        return definitions
 
 
 class Stage2_SchemaGrounding:
@@ -832,6 +1039,34 @@ class Stage2_SchemaGrounding:
         }, stage="S2-grounding")
 
         mappings, unmappable = self._parse(raw)
+
+        # P2-s2: retry once if no structured MAPPINGS lines were found.
+        if not mappings and (concepts["DATA"] or concepts["REASONING"]):
+            retry_prompt = (
+                "Your previous response did not contain the required MAPPINGS: "
+                "section.  Respond using EXACTLY this format:\n\n"
+                "MAPPINGS:\n"
+                "  <concept> → <column(s) and operation>\n"
+                "UNMAPPABLE: <concept list, or NONE>\n\n"
+                f"Concepts:\n{concept_summary}\n\nQuery context: {query}"
+            )
+            retry_chain = (
+                ChatPromptTemplate.from_messages([
+                    ("system", SCHEMA_GROUNDING_PROMPT),
+                    ("human", retry_prompt),
+                ])
+                | self._client.llm
+                | StrOutputParser()
+            )
+            raw2 = self._client.invoke_chain(retry_chain, {
+                "concepts": concept_summary,
+                "query": query,
+                "column_metadata": meta_str,
+                "enriched_definitions": defs_block,
+            }, stage="S2-grounding-retry")
+            mappings2, unmappable2 = self._parse(raw2)
+            if mappings2:
+                mappings, unmappable, raw = mappings2, unmappable2, raw2
 
         # Post-parse validation: flag hallucinated column names
         invalid_refs = validate_column_refs(mappings, df)
@@ -920,7 +1155,7 @@ class Stage3_SubqueryGeneration:
 # ════════════════════════════════════════════════════════════
 
 class ExecutionLayer:
-    """Wraps the Pandas DataFrame agent, guardrail, contextualizer, and synthesizer."""
+    """Wraps the Pandas DataFrame agent, guardrail, and synthesizer."""
 
     def __init__(self, client: LLMClient, df: pd.DataFrame, source_path: str | None = None):
         self._client = client
@@ -935,15 +1170,6 @@ class ExecutionLayer:
             ChatPromptTemplate.from_messages([
                 ("system", GUARDRAIL_PROMPT.replace("{schema}", schema)),
                 ("human", "Query: {query}"),
-            ])
-            | client.llm
-            | StrOutputParser()
-        )
-
-        self._contextualizer_chain = (
-            ChatPromptTemplate.from_messages([
-                ("system", CONTEXTUALIZER_PROMPT),
-                ("human", "Question: {question}\n\nRaw result: {raw_answer}"),
             ])
             | client.llm
             | StrOutputParser()
@@ -993,20 +1219,62 @@ class ExecutionLayer:
             "1. Think about what calculation is needed\n"
             "2. Execute ONE python_repl_ast action\n"
             "3. Return Final Answer: <result>\n"
+            "\n"
+            "OUTPUT STYLE:\n"
+            "- Return compact summaries only (scalars or short metric lists).\n"
+            "- Do not print full DataFrames/Series unless explicitly asked.\n"
+            "- For window questions, report summary stats (min/max/mean/std, top windows, trend).\n"
+            "\n"
+            "STATISTICAL REPORTING:\n"
+            "- When using threshold rules to flag outliers or anomalies, report the\n"
+            "  expected baseline prevalence and compare the observed count against\n"
+            "  that baseline so users can judge significance.\n"
         )
         return prefix
 
+    @staticmethod
+    def _compact_answer_text(text: str, max_lines: int = 6) -> str:
+        """Keep sub-answer payload compact before synthesis.
+
+        This guards synthesis from huge raw dumps (full Series/DataFrames) and
+        keeps only the most informative leading lines.
+        """
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return cleaned
+
+        lines = [ln.rstrip() for ln in cleaned.splitlines() if ln.strip()]
+        if len(lines) <= max_lines:
+            return "\n".join(lines)
+
+        head = lines[:max_lines]
+        omitted = len(lines) - max_lines
+        head.append(f"... ({omitted} more lines omitted)")
+        return "\n".join(head)
+
     def _create_agent(self, df: pd.DataFrame):
-        return create_pandas_dataframe_agent(
+        # Build the agent manually so we can inject ResilientReActOutputParser
+        # (create_pandas_dataframe_agent does not expose output_parser).
+        tools = [PythonAstREPLTool(locals={"df": df})]
+        prompt = _get_prompt(df, prefix=self._prefix_prompt)
+        react_runnable = create_react_agent(
             self._client.llm,
-            df,
+            tools,
+            prompt,
+            output_parser=ResilientReActOutputParser(),
+        )
+        agent = RunnableAgent(
+            runnable=react_runnable,
+            input_keys_arg=["input"],
+            return_keys_arg=["output"],
+        )
+        return AgentExecutor(
+            agent=agent,
+            tools=tools,
             verbose=False,
-            allow_dangerous_code=True,
-            agent_type="zero-shot-react-description",
-            prefix=self._prefix_prompt,
             max_iterations=6,
             early_stopping_method="generate",
-            agent_executor_kwargs={"handle_parsing_errors": True},
+            handle_parsing_errors=True,
         )
 
     def reset_agent(self):
@@ -1097,13 +1365,6 @@ class ExecutionLayer:
             self._client.record_estimated_usage("agent-exec", query, err)
             return err, handler.get_trace()
 
-    def contextualize(self, question: str, raw_answer: str) -> str:
-        return self._client.invoke_chain(
-            self._contextualizer_chain,
-            {"question": question, "raw_answer": raw_answer},
-            stage="contextualize",
-        )
-
     def synthesize(self, question: str, sub_answers: str, synthesis_hint: str) -> str:
         return self._client.invoke_chain(
             self._synthesizer_chain,
@@ -1145,8 +1406,8 @@ class BaselineRunner:
     B1 — column metadata + question → LLM (no agent, no stages)
     B2 — B1 + Stage 1 concept extraction → LLM
     B3 — B2 + Stage 2 schema grounding → single LLM call (no sub-queries)
-    B4 — B3 + Stage 3 sub-queries + Tavily enrichment → agent per sub-query → synthesize
-    B4a — B4 but Tavily disabled
+    B4 — B3 + Stage 3 sub-queries → agent per sub-query → synthesize (complex queries only)
+    B4a — B4 alias (Tavily stage removed)
     """
 
     def __init__(
@@ -1155,23 +1416,91 @@ class BaselineRunner:
         mode: str = "B4",
         model: str = DEFAULT_MODEL_POOL[0],
         source_path: str | None = None,
+        adapter: DatasetAdapter | None = None,
     ):
         if mode not in BASELINE_MODES:
             raise ValueError(f"Unknown mode '{mode}'. Choose from {BASELINE_MODES}")
         self.mode = mode
         self.model = model
-        self.df = df
         self.source_path = source_path or ""
+        self.adapter = adapter
+
+        # P1-derived-features: materialise computed columns if an adapter
+        # is provided, then expose their provenance in metadata.
+        self._derived_provenance: dict[str, str] = {}
+        if adapter:
+            df, self._derived_provenance = adapter.get_derived_features(df)
+
+        self.df = df
         self.client = LLMClient(model=model)
         self.col_meta = build_column_metadata(df)
-        self._meta_str = meta_to_str(self.col_meta)
+
+        # P1-codebook-context: inject label definitions into the metadata
+        # string so the LLM can interpret categorical values correctly.
+        codebook = adapter.get_codebook(df) if adapter else {}
+        self._codebook_block = ""
+        if codebook:
+            lines = []
+            for col, labels in codebook.items():
+                pairs = ", ".join(f"'{k}'={v}" for k, v in labels.items())
+                lines.append(f"  {col}: {pairs}")
+            self._codebook_block = "\nCategorical codebook:\n" + "\n".join(lines)
+
+        provenance_block = ""
+        if self._derived_provenance:
+            provenance_block = "\nDerived columns:\n" + "\n".join(
+                f"  {col}: {desc}" for col, desc in self._derived_provenance.items()
+            )
+
+        self._meta_str = meta_to_str(self.col_meta) + self._codebook_block + provenance_block
 
         # Build all stages — short-circuiting happens in run()
         self.stage1 = Stage1_ConceptExtraction(self.client)
-        self.stage1_5 = Stage1_5_TavilyEnrichment(self.client)
         self.stage2 = Stage2_SchemaGrounding(self.client)
         self.stage3 = Stage3_SubqueryGeneration(self.client)
         self.executor = ExecutionLayer(self.client, df, source_path=self.source_path)
+
+    @staticmethod
+    def _is_complex_query(query: str, concepts: dict | None = None) -> bool:
+        """Domain-agnostic gate for deciding whether S3 decomposition is needed.
+
+        Complexity is inferred from query structure, not topic vocabulary:
+        - Multi-intent conjunctions/comparisons
+        - Temporal segmentation and ranking language
+        - Explicit requests for multiple metrics
+        - Number of extracted concepts from Stage 1
+        """
+        q = query.strip().lower()
+        score = 0
+
+        # Structural conjunctions usually imply multi-step reasoning.
+        if re.search(r"\b(and|or|while|whereas|versus|vs|compared to|compare)\b", q):
+            score += 1
+
+        # Time/ranking/distribution language often needs decomposition.
+        if re.search(r"\b(over time|during|trend|window|top\s*\d+|most|least|distribution)\b", q):
+            score += 1
+
+        # Multiple quantitative asks in one question (count, mean, std, etc.).
+        metric_hits = re.findall(
+            r"\b(count|mean|average|median|std|variance|min|max|range|correlation|rate|ratio|percent(?:age)?)\b",
+            q,
+        )
+        if len(set(metric_hits)) >= 2:
+            score += 1
+
+        # Stage-1 concept breadth is a strong topic-agnostic proxy for complexity.
+        if concepts:
+            n_data = len(concepts.get("DATA", []))
+            n_reason = len(concepts.get("REASONING", []))
+            if (n_data + n_reason) >= 3 or (n_data >= 2 and n_reason >= 1):
+                score += 1
+
+        # Questions that ask for a single direct fact stay on the cheap path.
+        if re.search(r"\b(how many|what is|which is|give me)\b", q) and score == 0:
+            return False
+
+        return score >= 2
 
     def run(self, query: str) -> RunResult:
         t0 = time.time()
@@ -1261,7 +1590,12 @@ class BaselineRunner:
 
         if "[ERROR]" not in raw_answer:
             r.executed = True
-            best_effort_answer = self.executor.contextualize(query, raw_answer)
+            compact = self.executor._compact_answer_text(raw_answer)
+            best_effort_answer = self.executor.synthesize(
+                query,
+                f"best-effort result: {compact}",
+                "Answer directly and include only key quantitative findings.",
+            )
             r.answer = f"{direct_answer_note}\n\n{best_effort_answer}"
         else:
             r.executed = False
@@ -1369,29 +1703,26 @@ class BaselineRunner:
         raw_answer, trace = self.executor.execute_single(grounded_prompt)
         r.trace = trace
         r.executed = "[ERROR]" not in raw_answer
-        r.answer = self.executor.contextualize(query, raw_answer)
+        compact = self.executor._compact_answer_text(raw_answer)
+        r.stages_run.append("synthesize")
+        r.answer = self.executor.synthesize(
+            query,
+            f"single-pass result: {compact}",
+            "Answer directly and include key numeric evidence.",
+        )
         return r
 
     # ── B4 / B4a: full Flash-Fusion ──────────────────────────
 
     def _run_b4(self, query: str, r: RunResult) -> RunResult:
-        """Full pipeline: S1 → S1.5 → S2 → guardrail → S3 → execute sub-queries → synthesize."""
+        """Hybrid pipeline: cheap single-pass for simple queries, S3 decomposition for complex ones."""
 
         # Stage 1
         r.stages_run.append("S1-concepts")
         concepts = self.stage1.run(query)
         r.artifacts["S1-concepts"] = json.dumps(concepts, ensure_ascii=True)
 
-        # Stage 1.5 (skipped for B4a)
         enriched_defs: dict[str, str] = {}
-        if self.mode == "B4" and self.stage1_5.enabled:
-            r.stages_run.append("S1.5-tavily")
-            enriched_defs = self.stage1_5.run(concepts["REASONING"])
-        elif self.mode == "B4a":
-            r.stages_run.append("S1.5-skipped(B4a)")
-            # Log jargon concepts that *would* have been enriched
-            if concepts["REASONING"]:
-                r.trace += f"[B4a] Tavily skipped for {len(concepts['REASONING'])} REASONING concepts\n"
 
         # Stage 2
         r.stages_run.append("S2-grounding")
@@ -1418,6 +1749,26 @@ class BaselineRunner:
                 grounding_raw=grounding.get("raw_grounding", ""),
             )
 
+        # Skip S3 for non-complex prompts: execute once with grounding context.
+        if not self._is_complex_query(query, concepts):
+            r.stages_run.append("direct-exec")
+            grounded_prompt = (
+                f"Grounding context:\n{grounding['raw_grounding']}\n\n"
+                f"Question: {query}\n"
+                "Return a compact quantitative answer."
+            )
+            raw_answer, trace = self.executor.execute_single(grounded_prompt)
+            r.trace += trace
+            r.executed = "[ERROR]" not in raw_answer
+            compact = self.executor._compact_answer_text(raw_answer)
+            r.stages_run.append("synthesize")
+            r.answer = self.executor.synthesize(
+                query,
+                f"single-pass result: {compact}",
+                "Answer directly with the strongest numeric evidence.",
+            )
+            return r
+
         # Stage 3
         r.stages_run.append("S3-subqueries")
         decomposition = self.stage3.run(query, grounding["raw_grounding"], self._meta_str)
@@ -1431,7 +1782,13 @@ class BaselineRunner:
             raw_answer, trace = self.executor.execute_single(query)
             r.trace += trace
             r.executed = "[ERROR]" not in raw_answer
-            r.answer = self.executor.contextualize(query, raw_answer)
+            compact = self.executor._compact_answer_text(raw_answer)
+            r.stages_run.append("synthesize")
+            r.answer = self.executor.synthesize(
+                query,
+                f"single-pass result: {compact}",
+                "Answer directly with key numeric evidence.",
+            )
             return r
 
         # Execute each sub-query
@@ -1441,9 +1798,15 @@ class BaselineRunner:
             # Reset agent with a fresh DataFrame copy to prevent in-place
             # mutations from one sub-query corrupting the next.
             self.executor.reset_agent()
-            raw_answer, trace = self.executor.execute_single(sq["question"])
+            sq_query = (
+                f"{sq['question']}\n"
+                "Return only a compact summary with key numeric results. "
+                "Do not print full tables or full series."
+            )
+            raw_answer, trace = self.executor.execute_single(sq_query)
             r.trace += f"\n--- SQ{i} [{sq['operation']}] ---\n{trace}\n"
-            sub_answers.append(f"SQ{i} ({sq['question']}): {raw_answer}")
+            compact = self.executor._compact_answer_text(raw_answer)
+            sub_answers.append(f"SQ{i} [{sq['operation']}] {sq['question']}: {compact}")
             r.executed = r.executed and "[ERROR]" not in raw_answer
 
             if i < len(sub_queries):
@@ -1494,9 +1857,13 @@ def run_baseline(
     dataset: str = "unknown",
     query_num: int = 0,
     source_path: str | None = None,
+    adapter: DatasetAdapter | None = None,
 ) -> EvalRow:
     """Uniform entry point: any baseline × any query → EvalRow."""
-    runner = BaselineRunner(df, mode=baseline_mode, model=model, source_path=source_path)
+    runner = BaselineRunner(
+        df, mode=baseline_mode, model=model,
+        source_path=source_path, adapter=adapter,
+    )
     result = runner.run(query)
     return EvalRow(
         dataset=dataset,
@@ -1534,6 +1901,7 @@ def run_eval_matrix(
     model_pool: list[str] | None = None,
     dataset_type: str = "unknown",
     source_path: str | None = None,
+    adapter: DatasetAdapter | None = None,
 ) -> list[EvalRow]:
     """Run every baseline against every query.  Returns flat list of EvalRows."""
     baselines = baselines or BASELINE_MODES
@@ -1562,6 +1930,7 @@ def run_eval_matrix(
                 dataset=dataset_type,
                 query_num=i,
                 source_path=source_path,
+                adapter=adapter,
             )
             rows.append(row)
             print(
@@ -1577,11 +1946,18 @@ def run_eval_matrix(
 
 
 def _log_eval_row_markdown(row: EvalRow):
-    """Write one markdown file per row using dataset_baseline_querynum naming."""
+    """Write one markdown file per row using dataset_baseline_querynum naming.
+    Stored in a sub-folder named after the dataset type.
+    """
     dataset = (row.dataset or "unknown").lower()
     baseline = (row.baseline or "unknown").lower()
     qnum = row.query_num if row.query_num > 0 else 0
-    per_row_path = os.path.join(OUTPUT_DIR, f"{dataset}_{baseline}_{qnum:02d}.md")
+
+    # P3-subfolder: Store .md files based on dataset type (imu, bus, ecg)
+    dataset_sub_dir = os.path.join(OUTPUT_DIR, dataset)
+    os.makedirs(dataset_sub_dir, exist_ok=True)
+
+    per_row_path = os.path.join(dataset_sub_dir, f"{dataset}_{baseline}_{qnum:02d}.md")
 
     with open(per_row_path, "w", encoding="utf-8") as f:
         f.write(f"# Eval Result: {dataset}/{row.baseline}/Q{qnum:02d}\n\n")
