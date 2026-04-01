@@ -249,6 +249,36 @@
             padding: 0;
         }
 
+        .message-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .message-action-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .message-action-btn:hover {
+            border-color: var(--accent);
+        }
+
+        .suggestions-title {
+            margin-top: 12px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 600;
+        }
+
         /* Thinking indicator */
         .thinking {
             display: flex;
@@ -429,6 +459,7 @@
     // Client-side conversation history (sent with each request for stateless backend)
     let history = [];
     let isLoading = false;
+    let pendingScopeQuery = null;
 
     // Auto-resize textarea
     inputEl.addEventListener('input', () => {
@@ -454,6 +485,7 @@
 
     function newChat() {
         history = [];
+        pendingScopeQuery = null;
         messagesEl.innerHTML = '';
         messagesEl.appendChild(welcomeEl);
         welcomeEl.style.display = 'flex';
@@ -462,7 +494,7 @@
         inputEl.focus();
     }
 
-    function appendMessage(role, content, domain) {
+    function appendMessage(role, content, domain, meta = null) {
         welcomeEl.style.display = 'none';
 
         const div = document.createElement('div');
@@ -489,6 +521,55 @@
 
         body.appendChild(roleLabel);
         body.appendChild(contentDiv);
+
+        if (role === 'assistant' && meta) {
+            if (meta.needs_scope_confirmation && meta.pending_query) {
+                pendingScopeQuery = {
+                    query: meta.pending_query,
+                    domain: domain || null,
+                };
+            }
+
+            if (meta.needs_scope_confirmation) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'message-actions';
+
+                const endBtn = document.createElement('button');
+                endBtn.className = 'message-action-btn';
+                endBtn.textContent = 'End session';
+                endBtn.onclick = () => submitScopeDecision('end_session');
+
+                const proceedBtn = document.createElement('button');
+                proceedBtn.className = 'message-action-btn';
+                proceedBtn.textContent = 'Proceed';
+                proceedBtn.onclick = () => submitScopeDecision('proceed');
+
+                actionsDiv.appendChild(endBtn);
+                actionsDiv.appendChild(proceedBtn);
+                body.appendChild(actionsDiv);
+            }
+
+            if (Array.isArray(meta.suggested_queries) && meta.suggested_queries.length > 0) {
+                const title = document.createElement('div');
+                title.className = 'suggestions-title';
+                title.textContent = 'Suggested next queries';
+                body.appendChild(title);
+
+                const suggestionsDiv = document.createElement('div');
+                suggestionsDiv.className = 'quick-actions';
+                for (const suggestion of meta.suggested_queries) {
+                    const chip = document.createElement('div');
+                    chip.className = 'quick-action';
+                    chip.textContent = suggestion;
+                    chip.onclick = () => {
+                        inputEl.value = suggestion;
+                        sendMessage();
+                    };
+                    suggestionsDiv.appendChild(chip);
+                }
+                body.appendChild(suggestionsDiv);
+            }
+        }
 
         div.appendChild(avatar);
         div.appendChild(body);
@@ -573,11 +654,64 @@
             }
 
             const data = await res.json();
-            appendMessage('assistant', data.reply, data.domain);
+            appendMessage('assistant', data.reply, data.domain, data);
 
             // Add assistant reply to local history
             history.push({ role: 'assistant', content: data.reply });
 
+        } catch (err) {
+            hideThinking();
+            appendMessage('assistant', `Connection error: ${err.message}`);
+            statusDot.style.background = 'var(--error)';
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = false;
+            inputEl.focus();
+        }
+    }
+
+    async function submitScopeDecision(decision) {
+        if (isLoading) return;
+
+        if (!pendingScopeQuery && decision === 'proceed') {
+            appendMessage('assistant', 'No pending query found to proceed with.');
+            return;
+        }
+
+        isLoading = true;
+        sendBtn.disabled = true;
+        showThinking();
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: decision === 'end_session' ? 'end session' : '',
+                    model: modelSelect.value,
+                    history,
+                    domain: pendingScopeQuery ? pendingScopeQuery.domain : null,
+                    scope_decision: decision,
+                    pending_query: pendingScopeQuery ? pendingScopeQuery.query : null,
+                }),
+            });
+
+            hideThinking();
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                const errMsg = err.error || err.detail || res.statusText;
+                appendMessage('assistant', `Error: ${errMsg}`);
+                return;
+            }
+
+            const data = await res.json();
+            appendMessage('assistant', data.reply, data.domain, data);
+            history.push({ role: 'assistant', content: data.reply });
+
+            if (!data.needs_scope_confirmation) {
+                pendingScopeQuery = null;
+            }
         } catch (err) {
             hideThinking();
             appendMessage('assistant', `Connection error: ${err.message}`);

@@ -13,6 +13,7 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+from typing import Any
 
 from groq import Groq
 
@@ -78,6 +79,29 @@ DOMAIN_DESCRIPTIONS: dict[str, str] = {
     ),
 }
 
+DOMAIN_QUERY_SUGGESTIONS: dict[str, list[str]] = {
+    "ecg": [
+        "How many abnormal beat annotations are present in this ECG record?",
+        "What is the average heart rate and RR-interval variability?",
+        "Which time windows show the highest irregular heartbeat activity?",
+    ],
+    "imu": [
+        "What activities are present and how many samples belong to each?",
+        "Which activity has the highest acceleration variance?",
+        "How do acceleration patterns differ between walking and jogging?",
+    ],
+    "bus": [
+        "Which route segments have the highest instability scores?",
+        "How many records are labeled aggressive vs calm driving?",
+        "Where are pothole-like acceleration spikes most frequent?",
+    ],
+    "unknown": [
+        "Summarize the key columns available in the ECG dataset.",
+        "What questions can I ask about the IMU activity dataset?",
+        "What driving-behavior analyses are available for the bus dataset?",
+    ],
+}
+
 
 def _detect_domain_keywords(query: str) -> str | None:
     q = query.lower()
@@ -119,6 +143,66 @@ def _classify_domain_llm(
         return result if result in ("ecg", "imu", "bus") else None
     except Exception:
         return None
+
+
+def _assess_scope_llm(
+    query: str,
+    domain: str | None,
+    client: Groq,
+    model: str,
+    history: list[dict] | None = None,
+) -> dict[str, Any]:
+    """Return a strict JSON scope assessment for the current query."""
+    system = (
+        "You are a scope gate for Flash-Fusion dataset analytics. "
+        "Decide if a user query is answerable from ECG, IMU, or bus telemetry datasets. "
+        "Respond with strict JSON only."
+    )
+    domain_hint = domain or "unknown"
+    schema_hint = (
+        "Datasets cover ECG waveform/annotations, IMU accelerometer activity labels, "
+        "and bus telemetry (GPS + acceleration + behavior labels)."
+    )
+    user_prompt = (
+        "Assess whether the query is in scope for dataset-backed analysis.\n"
+        f"Detected domain: {domain_hint}\n"
+        f"Dataset capabilities: {schema_hint}\n"
+        "Output JSON with keys: in_scope (bool), reason (string), confidence (0-1 float).\n"
+        "Query:\n"
+        f"{query}"
+    )
+    messages: list[dict[str, str]] = [{"role": "system", "content": system}]
+    if history:
+        for msg in history[-4:]:
+            role = msg.get("role")
+            content = str(msg.get("content", ""))
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content[:400]})
+    messages.append({"role": "user", "content": user_prompt})
+
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0,
+            max_tokens=180,
+            response_format={"type": "json_object"},
+        )
+        raw = (resp.choices[0].message.content or "{}").strip()
+        parsed = json.loads(raw)
+        return {
+            "in_scope": bool(parsed.get("in_scope", True)),
+            "reason": str(parsed.get("reason", ""))[:240],
+            "confidence": float(parsed.get("confidence", 0.5)),
+        }
+    except Exception:
+        # Fail open so chat remains available.
+        return {"in_scope": True, "reason": "", "confidence": 0.5}
+
+
+def _suggest_queries_for_domain(domain: str | None) -> list[str]:
+    key = domain if domain in DOMAIN_QUERY_SUGGESTIONS else "unknown"
+    return DOMAIN_QUERY_SUGGESTIONS[key]
 
 
 # ── System prompt ───────────────────────────────────────────
@@ -171,6 +255,21 @@ class handler(BaseHTTPRequestHandler):
             return
 
         message = (req.get("message") or "").strip()
+        pending_query = (req.get("pending_query") or "").strip()
+        scope_decision = str(req.get("scope_decision") or "").strip().lower()
+
+        if scope_decision == "end_session":
+            self._json_response(200, {
+                "reply": "Session ended. Start a new query whenever you're ready.",
+                "domain": req.get("domain"),
+                "ended_session": True,
+                "needs_scope_confirmation": False,
+            })
+            return
+
+        if scope_decision == "proceed" and pending_query:
+            message = pending_query
+
         if not message:
             self._json_response(400, {"error": "Empty message"})
             return
@@ -193,6 +292,29 @@ class handler(BaseHTTPRequestHandler):
         if not domain:
             domain = _classify_domain_llm(message, client, model, history)
 
+        # Scope gate: when out of scope, ask for explicit proceed/end decision.
+        if scope_decision != "proceed":
+            scope_eval = _assess_scope_llm(message, domain, client, model, history)
+            if not scope_eval["in_scope"]:
+                reason = scope_eval["reason"] or "It does not map cleanly to available dataset fields."
+                suggestions = _suggest_queries_for_domain(domain)
+                self._json_response(200, {
+                    "reply": (
+                        "This question appears beyond the current dataset scope. "
+                        f"Reason: {reason}\n\n"
+                        "Choose one option:\n"
+                        "- end session\n"
+                        "- proceed (best-effort answer)"
+                    ),
+                    "domain": domain,
+                    "needs_scope_confirmation": True,
+                    "scope_options": ["end_session", "proceed"],
+                    "suggested_queries": suggestions,
+                    "pending_query": message,
+                    "usage": None,
+                })
+                return
+
         # Build messages for Groq
         messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -202,6 +324,16 @@ class handler(BaseHTTPRequestHandler):
                 "role": "system",
                 "content": f"The user's question is about the {domain.upper()} domain. "
                            f"{DOMAIN_DESCRIPTIONS[domain]}",
+            })
+
+        if scope_decision == "proceed":
+            messages.append({
+                "role": "system",
+                "content": (
+                    "The user explicitly chose PROCEED on a potentially out-of-scope query. "
+                    "Provide a best-effort response anchored to available datasets, "
+                    "state limitations clearly, and avoid fabricated facts."
+                ),
             })
 
         # Append conversation history (capped to avoid token overflow)
@@ -225,6 +357,8 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(200, {
                 "reply": reply,
                 "domain": domain,
+                "needs_scope_confirmation": False,
+                "suggested_queries": None,
                 "usage": {
                     "prompt_tokens": usage.prompt_tokens if usage else 0,
                     "completion_tokens": usage.completion_tokens if usage else 0,
