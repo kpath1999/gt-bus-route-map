@@ -1,4 +1,4 @@
-data/
+/data/
 archive/
 .venv/
 analysis/playground/__pycache__
