@@ -1,0 +1,9 @@
+[project]
+name = "flash-fusion-chat"
+version = "0.1.0"
+description = "Vercel chat frontend and Groq-backed API for Flash-Fusion"
+requires-python = ">=3.12"
+dependencies = [
+  "groq>=0.9.0",
+  "python-dotenv>=1.0.1",
+]
