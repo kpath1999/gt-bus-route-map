@@ -50,6 +50,9 @@ from playground import (  # noqa: E402
     meta_to_str,
     BaselineRunner,
     RunResult,
+    LLMClient,
+    Stage1_ConceptExtraction,
+    Stage2_SchemaGrounding,
 )
 
 # ── Dataset registry ────────────────────────────────────────
@@ -143,6 +146,62 @@ def _schema_summary(df: pd.DataFrame) -> str:
     return meta_to_str(meta)
 
 
+def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, str]:
+    """Run Stage 1 + Stage 2 to determine if the query is answerable.
+
+    Returns (status, message) where status is one of:
+      'DIRECT'     — all concepts map; proceed normally
+      'PROXY'      — needs proxy columns; surface explanation
+      'UNMAPPABLE' — cannot be answered from this dataset
+    Falls back to 'DIRECT' on any internal error.
+    """
+    try:
+        llm_client = LLMClient(model=model)
+        s1 = Stage1_ConceptExtraction(llm_client)
+        concepts = s1.run(query)
+
+        meta = build_column_metadata(df)
+        meta_str = meta_to_str(meta)
+        s2 = Stage2_SchemaGrounding(llm_client)
+        grounding = s2.run(concepts, query, meta_str, {}, df)
+
+        mappings: list[str] = grounding["mappings"]
+        unmappable: list[str] = [
+            u for u in grounding["unmappable"] if not u.startswith("INVALID:")
+        ]
+        reasoning_concepts: list[str] = concepts.get("REASONING", [])
+
+        if not mappings and unmappable:
+            return (
+                "UNMAPPABLE",
+                f"I don't have data that can answer that question "
+                f"(unmappable concepts: {', '.join(unmappable)}).",
+            )
+
+        if reasoning_concepts and mappings:
+            reasoning_lower = {r.lower() for r in reasoning_concepts}
+            proxy_lines = [
+                m for m in mappings
+                if any(r in m.lower() for r in reasoning_lower)
+            ]
+            if proxy_lines:
+                proxy_desc = "; ".join(
+                    m.split("→", 1)[1].strip() if "→" in m else m
+                    for m in proxy_lines[:2]
+                )
+                concept_str = ", ".join(reasoning_concepts[:2])
+                return (
+                    "PROXY",
+                    f"I don't have direct data for '{concept_str}', "
+                    f"but I can proxy it using {proxy_desc}. "
+                    "Would you like me to proceed?",
+                )
+
+        return "DIRECT", ""
+    except Exception:
+        return "DIRECT", ""
+
+
 # ── Vercel handler ──────────────────────────────────────────
 
 class handler(BaseHTTPRequestHandler):
@@ -169,6 +228,7 @@ class handler(BaseHTTPRequestHandler):
         model = req.get("model", "llama-3.3-70b-versatile")
         explicit_domain: str | None = req.get("domain")
         ecg_record: str | None = req.get("ecg_record")
+        confirmed: bool = req.get("confirmed", False)
 
         api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
@@ -200,6 +260,30 @@ class handler(BaseHTTPRequestHandler):
                 "error": f"Failed to load {domain} dataset: {exc}",
             })
             return
+
+        # ── Mappability gate ("idk" feature) ──────────────
+        if not confirmed:
+            map_status, map_message = _check_mappability(message, df, model)
+
+            if map_status == "UNMAPPABLE":
+                self._json_response(200, {
+                    "reply": map_message or "I don't have data that can answer that question.",
+                    "domain": domain,
+                    "grounded": False,
+                    "idk": True,
+                    "usage": None,
+                })
+                return
+
+            if map_status == "PROXY":
+                self._json_response(200, {
+                    "reply": map_message,
+                    "domain": domain,
+                    "grounded": False,
+                    "needs_confirmation": True,
+                    "usage": None,
+                })
+                return
 
         # ── Run Flash-Fusion B4 pipeline ────────────────────
         try:

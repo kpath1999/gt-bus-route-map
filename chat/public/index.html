@@ -116,6 +116,7 @@
         .domain-badge.ecg  { background: var(--ecg);  color: #fff; }
         .domain-badge.imu  { background: var(--imu);  color: #000; }
         .domain-badge.bus  { background: var(--bus);  color: #000; }
+        .domain-badge.idk  { background: #64748b; color: #fff; }
 
         /* Messages area */
         .messages {
@@ -273,6 +274,29 @@
         .message-action-btn:hover {
             border-color: var(--accent);
         }
+
+        .confirm-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .confirm-btn {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .confirm-btn:hover { background: var(--accent-hover); }
+        .confirm-btn.secondary {
+            background: var(--surface2);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .confirm-btn.secondary:hover { color: var(--text); border-color: var(--accent); }
 
         .suggestions-title {
             margin-top: 12px;
@@ -527,7 +551,9 @@
         if (role === 'assistant' && domain) {
             roleLabelHTML += ` <span class="domain-badge ${domain}">${domain}</span>`;
         }
-        if (role === 'assistant' && meta && meta.grounded === true) {
+        if (role === 'assistant' && meta && meta.idk) {
+            roleLabelHTML += ' <span class="domain-badge idk">idk</span>';
+        } else if (role === 'assistant' && meta && meta.grounded === true) {
             roleLabelHTML += ' <span style="font-size:10px;color:var(--success)">&#x2713; grounded</span>';
         }
         roleLabel.innerHTML = roleLabelHTML;
@@ -599,6 +625,64 @@
         return s;
     }
 
+    function appendConfirmBar(originalQuery) {
+        const bar = document.createElement('div');
+        bar.className = 'confirm-bar';
+        bar.id = 'confirmBar';
+        const yesBtn = document.createElement('button');
+        yesBtn.className = 'confirm-btn';
+        yesBtn.textContent = 'Yes, proceed with proxy';
+        yesBtn.onclick = () => { bar.remove(); sendConfirmed(originalQuery); };
+        const noBtn = document.createElement('button');
+        noBtn.className = 'confirm-btn secondary';
+        noBtn.textContent = 'No thanks';
+        noBtn.onclick = () => { bar.remove(); };
+        bar.appendChild(yesBtn);
+        bar.appendChild(noBtn);
+        // Append to the last assistant message
+        const msgs = messagesEl.querySelectorAll('.message.assistant');
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg) lastMsg.querySelector('.message-body').appendChild(bar);
+    }
+
+    async function sendConfirmed(originalQuery) {
+        isLoading = true;
+        sendBtn.disabled = true;
+        showThinking();
+        try {
+            const payload = {
+                message: originalQuery,
+                model: modelSelect.value,
+                confirmed: true,
+            };
+            const domain = datasetSelect.value;
+            if (domain) payload.domain = domain;
+            if (domain === 'ecg' && ecgRecordInput.value.trim()) {
+                payload.ecg_record = ecgRecordInput.value.trim();
+            }
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            hideThinking();
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                appendMessage('assistant', `Error: ${err.error || err.detail || res.statusText}`);
+                return;
+            }
+            const data = await res.json();
+            appendMessage('assistant', data.reply, data.domain, data);
+        } catch (err) {
+            hideThinking();
+            appendMessage('assistant', `Connection error: ${err.message}`);
+        } finally {
+            isLoading = false;
+            sendBtn.disabled = false;
+            inputEl.focus();
+        }
+    }
+
     async function sendMessage() {
         const text = inputEl.value.trim();
         if (!text || isLoading) return;
@@ -639,6 +723,11 @@
 
             const data = await res.json();
             appendMessage('assistant', data.reply, data.domain, data);
+
+            // Handle proxy confirmation flow
+            if (data.needs_confirmation) {
+                appendConfirmBar(text);
+            }
 
         } catch (err) {
             hideThinking();
