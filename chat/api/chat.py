@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -46,6 +47,7 @@ _PROJECT_ROOT = _CHAT_ROOT.parent
 sys.path.insert(0, str(_CHAT_ROOT / "playground"))
 
 import pandas as pd  # noqa: E402
+from groq import Groq  # noqa: E402
 from playground import (  # noqa: E402
     load_data,
     export_ecg_record_to_csv,
@@ -71,6 +73,10 @@ DATASET_REGISTRY: dict[str, str] = {
 }
 
 DEFAULT_ECG_RECORD = "100"
+
+DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "llama-3.1-8b-instant")
+DOMAIN_ROUTER_MIN_CONF = float(os.environ.get("DOMAIN_ROUTER_MIN_CONF", "0.42"))
+DOMAIN_ROUTER_MIN_MARGIN = float(os.environ.get("DOMAIN_ROUTER_MIN_MARGIN", "0.06"))
 
 # ── Module-level DataFrame cache (survives warm invocations) ─
 _df_cache: dict[str, pd.DataFrame] = {}
@@ -115,43 +121,162 @@ def _get_cached_path(domain: str, ecg_record: str | None = None) -> str:
         return _path_cache[cache_key]
     return _resolve_data_path(domain, ecg_record)
 
-# NOTE(Kausar): this part feels like cheating; workaround?
-# NOTE(Kausar)
-"""
-Existing self-correction loops treat syntactic (e.g., AutoIOT) or 
-structural (e.g., TaskSense) success as correctness. Code can compile, 
-pass checks, and still compute the wrong metric or answer the wrong 
-question. No system verifies alignment with user intent before returning 
-results. When data is insufficient or degraded, systems still produce 
-confident answers instead of abstaining.
-"""
-# ── Lightweight keyword-based domain routing ────────────────
-# Deliberately minimal — the pipeline itself is fully schema-driven.
-_DOMAIN_HINTS: dict[str, list[str]] = {
-    "ecg": [
-        "ecg", "heart", "cardiac", "arrhythmia", "beat", "rhythm",
-        "pulse", "qrs", "annotation", "st segment", "r-peak",
-    ],
-    "imu": [
-        "imu", "accelerometer", "activity", "walking", "jogging",
-        "motion", "wisdm", "har", "human activity",
-    ],
-    "bus": [
-        "bus", "ride", "pothole", "bump", "road", "driving",
-        "route", "aggressive", "passenger", "comfort",
-    ],
+# ── Probabilistic domain routing ────────────────────────────
+# Uses a small Groq model to score domain likelihoods and falls back to
+# deterministic token-profile similarity when the router cannot be used.
+_DOMAIN_PROFILES: dict[str, str] = {
+    "imu": (
+        "WISDM human activity recognition from smartphone accelerometer and time-series motion. "
+        "Activities include walking, jogging, upstairs, downstairs, sitting, standing. "
+        "Questions often mention activity, movement intensity, transitions, variance, users."
+    ),
+    "ecg": (
+        "AutoIOT ECG data derived from MIT-BIH arrhythmia recordings. "
+        "Cardiac waveform and annotations: heart rate, beat types, arrhythmia, PVC, QRS, ST segment, rhythm."
+    ),
+    "bus": (
+        "Bus ride quality and road condition sensing. "
+        "Questions about bumps, potholes, route roughness, passenger comfort, aggressive driving, acceleration patterns."
+    ),
 }
 
 
-def _detect_domain(query: str, explicit: str | None = None) -> str | None:
-    """Return domain from explicit parameter or keyword match."""
+def _normalize_probabilities(raw: dict[str, Any]) -> dict[str, float]:
+    probs: dict[str, float] = {d: 0.0 for d in DATASET_REGISTRY}
+    for domain in probs:
+        try:
+            val = float(raw.get(domain, 0.0))
+        except (TypeError, ValueError):
+            val = 0.0
+        probs[domain] = max(0.0, val)
+
+    total = sum(probs.values())
+    if total <= 0.0:
+        uniform = 1.0 / max(len(probs), 1)
+        return {k: uniform for k in probs}
+    return {k: round(v / total, 6) for k, v in probs.items()}
+
+
+def _tokenize(text: str) -> set[str]:
+    return {tok for tok in re.findall(r"[a-z0-9]+", text.lower()) if len(tok) >= 3}
+
+
+def _fallback_domain_probabilities(query: str) -> dict[str, float]:
+    q_tokens = _tokenize(query)
+    if not q_tokens:
+        uniform = 1.0 / max(len(DATASET_REGISTRY), 1)
+        return {d: uniform for d in DATASET_REGISTRY}
+
+    scores: dict[str, float] = {}
+    for domain, profile in _DOMAIN_PROFILES.items():
+        d_tokens = _tokenize(profile)
+        overlap = len(q_tokens & d_tokens)
+        denom = (len(q_tokens) * len(d_tokens)) ** 0.5
+        scores[domain] = (overlap / denom) if denom > 0 else 0.0
+
+    return _normalize_probabilities(scores)
+
+
+def _extract_json_object(raw: str) -> dict[str, Any]:
+    text = (raw or "").strip()
+    if not text:
+        return {}
+    if text.startswith("```"):
+        lines = [ln for ln in text.splitlines() if not ln.strip().startswith("```")]
+        text = "\n".join(lines).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return {}
+    try:
+        parsed = json.loads(text[start : end + 1])
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _domain_probabilities_llm(query: str, model: str) -> dict[str, float]:
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not configured")
+
+    domains_json = json.dumps(_DOMAIN_PROFILES, ensure_ascii=True)
+    client = Groq(api_key=api_key)
+    completion = client.chat.completions.create(
+        model=model,
+        temperature=0,
+        max_tokens=180,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a domain intent classifier. "
+                    "Return strict JSON with probabilities for exactly these keys: ecg, imu, bus. "
+                    "Values must be floats in [0,1] and sum to 1."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Domain profiles: {domains_json}\n\n"
+                    f"Query: {query}\n\n"
+                    "Output JSON only, no explanation. "
+                    "Preferred format: {\"ecg\": 0.10, \"imu\": 0.20, \"bus\": 0.70}"
+                ),
+            },
+        ],
+    )
+    content = completion.choices[0].message.content if completion.choices else ""
+    parsed = _extract_json_object(content or "")
+    if "probabilities" in parsed and isinstance(parsed["probabilities"], dict):
+        parsed = parsed["probabilities"]
+    return _normalize_probabilities(parsed)
+
+
+def _detect_domain(
+    query: str,
+    explicit: str | None = None,
+) -> tuple[str | None, dict[str, Any]]:
+    """Return (domain, routing diagnostics) using probabilistic scoring."""
     if explicit and explicit in DATASET_REGISTRY:
-        return explicit
-    q = query.lower()
-    # NOTE(Kausar): check it out, we're using domain hints here; feels like a hack
-    scores = {d: sum(1 for kw in kws if kw in q) for d, kws in _DOMAIN_HINTS.items()}
-    best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else None
+        explicit_probs = {d: (1.0 if d == explicit else 0.0) for d in DATASET_REGISTRY}
+        return explicit, {
+            "method": "explicit",
+            "probabilities": explicit_probs,
+            "confidence": 1.0,
+            "margin": 1.0,
+            "model": None,
+        }
+
+    method = "llm"
+    model_used = DOMAIN_ROUTER_MODEL
+    try:
+        probs = _domain_probabilities_llm(query, DOMAIN_ROUTER_MODEL)
+    except Exception as exc:
+        LOGGER.warning("Domain LLM router failed; using fallback: %s", exc)
+        probs = _fallback_domain_probabilities(query)
+        method = "fallback"
+        model_used = None
+
+    ranked = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
+    best_domain, best_score = ranked[0]
+    second_score = ranked[1][1] if len(ranked) > 1 else 0.0
+    margin = max(0.0, best_score - second_score)
+    ambiguous = best_score < DOMAIN_ROUTER_MIN_CONF or margin < DOMAIN_ROUTER_MIN_MARGIN
+
+    diagnostics: dict[str, Any] = {
+        "method": method,
+        "model": model_used,
+        "probabilities": probs,
+        "confidence": round(best_score, 6),
+        "margin": round(margin, 6),
+        "ambiguous": ambiguous,
+        "thresholds": {
+            "min_confidence": DOMAIN_ROUTER_MIN_CONF,
+            "min_margin": DOMAIN_ROUTER_MIN_MARGIN,
+        },
+    }
+    return (None if ambiguous else best_domain), diagnostics
 
 
 def _schema_summary(df: pd.DataFrame) -> str:
@@ -269,18 +394,25 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(500, {"error": "GROQ_API_KEY not configured"})
             return
 
-        # ── Domain detection: explicit > keyword match ──────
-        domain = _detect_domain(message, explicit_domain)
+        # ── Domain detection: explicit > probabilistic routing ──────
+        domain, routing = _detect_domain(message, explicit_domain)
         if not domain:
             available = ", ".join(sorted(DATASET_REGISTRY.keys()))
+            probs = routing.get("probabilities", {})
+            probs_str = ", ".join(
+                f"{d}: {round(float(probs.get(d, 0.0)) * 100.0, 1)}%"
+                for d in sorted(DATASET_REGISTRY)
+            )
             self._json_response(200, {
                 "reply": (
-                    "I couldn't determine which dataset your question targets. "
+                    "I couldn't determine the target dataset with high confidence. "
+                    f"Current routing probabilities: {probs_str}. "
                     f"Available domains: **{available}**. "
                     "Please select one from the dropdown or mention it in your question."
                 ),
                 "domain": None,
                 "grounded": False,
+                "domain_routing": routing,
                 "usage": None,
             })
             return
@@ -312,6 +444,7 @@ class handler(BaseHTTPRequestHandler):
                     "domain": domain,
                     "grounded": False,
                     "idk": True,
+                    "domain_routing": routing,
                     "intent_diagnostics": map_details,
                     "usage": None,
                 })
@@ -323,6 +456,7 @@ class handler(BaseHTTPRequestHandler):
                     "domain": domain,
                     "grounded": False,
                     "needs_confirmation": True,
+                    "domain_routing": routing,
                     "intent_diagnostics": map_details,
                     "usage": None,
                 })
@@ -359,6 +493,7 @@ class handler(BaseHTTPRequestHandler):
                 "reply": result.answer,
                 "domain": domain,
                 "grounded": result.executed,
+                "domain_routing": routing,
                 "stages": result.stages_run,
                 "execution": execution,
                 "intent_diagnostics": map_details,

@@ -985,15 +985,18 @@ You are a data analyst assistant. The user asked an open-ended question about
 sensor data. You have sub-answers to concrete analytical sub-questions.
 
 Synthesize them into a single, coherent, natural-language response.
-Prioritize evidence over style:
+Prioritize evidence over style and keep output as short as possible:
 - Lead with the direct answer in the first sentence.
-- Include ALL quantitative findings from sub-answers — do not omit or
-  summarize away numeric results (counts, ranges, correlations, trends).
-- If evidence is weak/incomplete, state that explicitly and explain why.
-- Keep it concise (about 4-8 sentences) and avoid filler language.
+- Use adaptive length:
+    - If the question is single-fact (dominant/most frequent/how many/which),
+        answer in exactly 1 sentence (max 20 words).
+    - Otherwise use 2-4 short sentences.
+- Do not restate the same claim in multiple ways.
+- Avoid filler, meta-commentary, and boilerplate caveats.
+- Include quantitative details only when they add new information.
+- If evidence is weak/incomplete, state that briefly in one short clause.
 - Do NOT mention sub-question IDs or implementation details.
-- When reporting threshold-based counts or anomalies, note the expected
-  baseline prevalence so users can judge significance.
+- Mention baseline prevalence only for threshold/outlier claims.
 """
 
 # ════════════════════════════════════════════════════════════
@@ -1636,6 +1639,20 @@ class BaselineRunner:
 
         return score >= 2
 
+    @staticmethod
+    def _is_single_fact_query(query: str) -> bool:
+        """Return True when the user asks for one direct fact.
+
+        These queries should not go through an extra synthesis LLM call.
+        """
+        q = query.strip().lower()
+        return bool(
+            re.search(
+                r"\b(dominant|most frequent|how many|what is|which|highest|lowest|max|min|count)\b",
+                q,
+            )
+        )
+
     def run(self, query: str) -> RunResult:
         t0 = time.time()
         result = RunResult(baseline=self.mode, model=self.model, query=query)
@@ -1840,6 +1857,9 @@ class BaselineRunner:
         r.trace = trace
         r.executed = "[ERROR]" not in raw_answer
         compact = self.executor._compact_answer_text(raw_answer)
+        if self._is_single_fact_query(query):
+            r.answer = compact
+            return r
         r.stages_run.append("synthesize")
         r.answer = self.executor.synthesize(
             query,
@@ -1898,6 +1918,9 @@ class BaselineRunner:
             r.trace += trace
             r.executed = "[ERROR]" not in raw_answer
             compact = self.executor._compact_answer_text(raw_answer)
+            if self._is_single_fact_query(query):
+                r.answer = compact
+                return r
             r.stages_run.append("synthesize")
             r.answer = self.executor.synthesize(
                 query,
@@ -1931,6 +1954,7 @@ class BaselineRunner:
 
         # Execute each sub-query
         sub_answers = []
+        compact_sub_answers: list[str] = []
         for i, sq in enumerate(sub_queries, 1):
             r.stages_run.append(f"exec-SQ{i}")
             # Reset agent with a fresh DataFrame copy to prevent in-place
@@ -1945,11 +1969,18 @@ class BaselineRunner:
             self._record_exec_details(r, exec_details)
             r.trace += f"\n--- SQ{i} [{sq['operation']}] ---\n{trace}\n"
             compact = self.executor._compact_answer_text(raw_answer)
+            compact_sub_answers.append(compact)
             sub_answers.append(f"SQ{i} [{sq['operation']}] {sq['question']}: {compact}")
             r.executed = r.executed and "[ERROR]" not in raw_answer
 
             if i < len(sub_queries):
                 time.sleep(1.5)  # rate-limit
+
+        # For single-fact asks, skip synthesis to avoid extra tokens and verbosity.
+        if self._is_single_fact_query(query):
+            best_compact = next((ans for ans in compact_sub_answers if ans and "[ERROR]" not in ans), "")
+            r.answer = best_compact or (compact_sub_answers[0] if compact_sub_answers else "")
+            return r
 
         # Synthesize
         r.stages_run.append("synthesize")
@@ -2250,53 +2281,95 @@ def log_eval_matrix(rows: list[EvalRow], path: str | None = None):
 
 # ── Bus / ride-quality queries ────────────────────────────────────────────────
 BUS_EVAL_QUERIES: list[tuple[str, str]] = [
+    # ── Simple / Broad ──
+    ("Give me a quick summary of this trip.",                              "qualitative-summary"),
+    ("What's the overall vibe of this ride?",                              "qualitative-vibe"),
+    ("How comfortable was this trip for passengers?",                      "qualitative-comfort"),
+    ("How's the driving quality on this route?",                           "qualitative-quality"),
+    ("Was it a bumpy ride?",                                               "qualitative-bumpy"),
+
+    # ── Moderate / Aggregation ──
+    ("Did the bus hit any big bumps or potholes?",                         "qualitative-bumps"),
+    ("What can you tell me about the acceleration patterns on this route?", "qualitative-accel-patterns"),
+    ("When during the trip was it most uncomfortable?",                    "qualitative-timing"),
+    ("Was anything unusual about this trip?",                              "qualitative-anomaly"),
+
+    # ── Complex ──
     ("Where are the roughest stretches of road?",                          "qualitative-rough-location"),
     ("Were there any dangerous driving moments?",                          "qualitative-danger"),
     ("Which parts of the route need road maintenance?",                    "qualitative-maintenance"),
-    ("Was it a bumpy ride?",                                               "qualitative-bumpy"),
-    ("What's the overall vibe of this ride?",                              "qualitative-vibe"),
-    ("When during the trip was it most uncomfortable?",                    "qualitative-timing"),
     ("Was this a particularly rough route compared to what's normal?",     "qualitative-comparison"),
-    ("Was anything unusual about this trip?",                              "qualitative-anomaly"),
-    ("Give me a quick summary of this trip.",                              "qualitative-summary"),
     ("Did the ride get worse over time?",                                  "qualitative-trend"),
-    ("How comfortable was this trip for passengers?",                      "qualitative-comfort"),
-    ("How's the driving quality on this route?",                           "qualitative-quality"),
-    ("Did the bus hit any big bumps or potholes?",                         "qualitative-bumps"),
     ("Is the driver driving aggressively?",                                "qualitative-aggression"),
-    ("What can you tell me about the acceleration patterns on this route?", "qualitative-accel-patterns"),
+
+    # ── High Complexity / Chain-of-Thought ──
+    # CoT Steps: 1. Calculate rate of change of acceleration. 2. Isolate extreme positive values (rapid accel).
+    # 3. Isolate extreme negative values (hard braking). 4. Find temporal windows where these occur within seconds of each other.
+    ("Are there specific intersections or stops where aggressive braking consistently immediately follows high acceleration?", "cot-braking-accel"),
+    
+    # CoT Steps: 1. Estimate speed / identify high-speed vs. low-speed windows. 2. Isolate the lateral (sway) axis.
+    # 3. Calculate variance for lateral movement isolated to those split speed windows. 4. Compare metrics.
+    ("How does the variance of lateral movement (swaying) change when the vehicle is moving fast compared to when it's in slow traffic?", "cot-lateral-variance"),
 ]
 
 # ── IMU / activity-recognition queries ───────────────────────────────────────
 IMU_EVAL_QUERIES: list[tuple[str, str]] = [
+    # ── Simple / Broad ──
     ("What activities did this person perform?",                           "factual-activities"),
+    ("What is the dominant activity in this dataset?",                     "factual-dominant"),
+    ("Give me a summary of the activity distribution.",                    "qualitative-summary"),
+    ("How active was this person overall during the session?",             "qualitative-activity-level"),
+
+    # ── Moderate / Aggregation ──
     ("How much time was spent jogging versus walking?",                    "factual-activity-split"),
     ("Which activity shows the highest acceleration intensity?",           "factual-intensity"),
+    ("Which users show the most energetic movement?",                      "qualitative-users"),
+    ("What can you tell me about the acceleration patterns for each activity?", "qualitative-accel-patterns"),
+
+    # ── Complex ──
     ("Were there any sudden or abrupt changes in movement?",               "qualitative-transitions"),
-    ("How active was this person overall during the session?",             "qualitative-activity-level"),
-    ("What is the dominant activity in this dataset?",                     "factual-dominant"),
+    ("Were there any periods of unusually high movement intensity?",       "qualitative-peaks"),
     ("Are there any unusual movement patterns worth flagging?",            "qualitative-anomaly"),
     ("How does walking compare to jogging in terms of variability?",       "qualitative-comparison"),
-    ("What can you tell me about the acceleration patterns for each activity?", "qualitative-accel-patterns"),
-    ("Which users show the most energetic movement?",                      "qualitative-users"),
-    ("Give me a summary of the activity distribution.",                    "qualitative-summary"),
-    ("Were there any periods of unusually high movement intensity?",       "qualitative-peaks"),
+
+    # ── High Complexity / Chain-of-Thought ──
+    # CoT Steps: 1. Filter for "jogging". 2. Identify continuous blocks and pick the longest one.
+    # 3. Split block into "early" and "late" phases. 4. Compare acceleration intensity between the two phases.
+    ("Does the user show signs of physical fatigue towards the end of their longest jogging session?", "cot-fatigue-analysis"),
+    
+    # CoT Steps: 1. Find transition boundaries from walking to jogging. 2. Create small time windows (e.g., +/- 2s) around boundaries.
+    # 3. Calculate peak acceleration specifically within these isolated windows.
+    ("Identify transitional periods where the user switches from walking to jogging, and describe the magnitude of the acceleration spike specifically during those transitions.", "cot-transition-spikes"),
 ]
 
 # ── ECG / cardiac-signal queries ──────────────────────────────────────────────
 ECG_EVAL_QUERIES: list[tuple[str, str]] = [
-    ("Are there any irregular heartbeat patterns in this recording?",      "qualitative-arrhythmia"),
+    # ── Simple / Broad ──
     ("What is the average heart rate across this recording?",              "factual-heart-rate"),
-    ("Were there any periods of abnormal cardiac activity?",               "qualitative-abnormal"),
-    ("How does the cardiac signal vary over time?",                        "qualitative-hr-variability"),
+    ("How many beats were annotated as abnormal?",                         "factual-abnormal-count"),
+    ("What beat types appear most frequently in this recording?",          "factual-beat-types"),
     ("Were there any significant annotation events in this recording?",    "factual-annotations"),
+    ("Give me a summary of this ECG recording.",                           "qualitative-summary"),
+
+    # ── Moderate / Assessment ──
     ("What is the overall quality of the ECG signal?",                     "qualitative-signal-quality"),
     ("Are there any concerning patterns in the cardiac data?",             "qualitative-concern"),
+    ("Were there any periods of abnormal cardiac activity?",               "qualitative-abnormal"),
+
+    # ── Complex ──
+    ("Are there any irregular heartbeat patterns in this recording?",      "qualitative-arrhythmia"),
+    ("How does the cardiac signal vary over time?",                        "qualitative-hr-variability"),
     ("When during the recording was cardiac activity most irregular?",     "qualitative-timing"),
-    ("How many beats were annotated as abnormal?",                         "factual-abnormal-count"),
-    ("Give me a summary of this ECG recording.",                           "qualitative-summary"),
-    ("What beat types appear most frequently in this recording?",          "factual-beat-types"),
     ("Is there any evidence of ST-segment changes in the signal?",         "qualitative-st-changes"),
+
+    # ── High Complexity / Chain-of-Thought ──
+    # CoT Steps: 1. Filter for abnormal annotations. 2. Find contiguous blocks of abnormal beats.
+    # 3. Identify the longest block. 4. Use timestamps of that block to calculate local HR.
+    ("Identify the longest episode of consecutive abnormal beats, and calculate the average heart rate strictly within that specific episode.", "cot-abnormal-episode-hr"),
+    
+    # CoT Steps: 1. Calculate rolling average HR. 2. Identify elevated HR windows (>1 std dev above mean).
+    # 3. Check a trailing window (e.g., 30s) after elevated periods. 4. Compare density of abnormal annotations in these windows vs baseline.
+    ("Do premature ventricular contractions (PVCs) or abnormal annotations tend to occur more frequently after periods of elevated heart rate?", "cot-pvc-post-elevation"),
 ]
 
 # ── ViSig / sports-related queries ──────────────────────────────────────────────
