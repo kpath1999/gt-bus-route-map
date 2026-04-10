@@ -254,6 +254,30 @@
             background: none;
             padding: 0;
         }
+        .exec-details {
+            margin-top: 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface2);
+            overflow: hidden;
+        }
+        .exec-details summary {
+            cursor: pointer;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: var(--text-muted);
+            user-select: none;
+        }
+        .exec-details pre {
+            margin: 0;
+            border: 0;
+            border-top: 1px solid var(--border);
+            border-radius: 0;
+            background: #0b0f19;
+            padding: 10px;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
 
         .message-actions {
             display: flex;
@@ -576,6 +600,24 @@
             if (meta.usage.cost_usd) parts.push('$' + meta.usage.cost_usd.toFixed(4));
             usageDiv.textContent = parts.join(' · ');
             body.appendChild(usageDiv);
+        }
+
+        if (role === 'assistant' && meta && meta.execution && meta.execution.code) {
+            const details = document.createElement('details');
+            details.className = 'exec-details';
+
+            const summary = document.createElement('summary');
+            const tries = Number.isFinite(meta.execution.tries) ? meta.execution.tries : 1;
+            summary.textContent = `Executed code (${tries} tries)`;
+
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.textContent = meta.execution.code;
+            pre.appendChild(code);
+
+            details.appendChild(summary);
+            details.appendChild(pre);
+            body.appendChild(details);
         }
 
         div.appendChild(avatar);

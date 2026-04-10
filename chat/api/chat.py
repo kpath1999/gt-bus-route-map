@@ -111,7 +111,7 @@ def _get_cached_path(domain: str, ecg_record: str | None = None) -> str:
         return _path_cache[cache_key]
     return _resolve_data_path(domain, ecg_record)
 
-
+# NOTE(Kausar): this part feels like cheating; workaround?
 # ── Lightweight keyword-based domain routing ────────────────
 # Deliberately minimal — the pipeline itself is fully schema-driven.
 _DOMAIN_HINTS: dict[str, list[str]] = {
@@ -135,6 +135,7 @@ def _detect_domain(query: str, explicit: str | None = None) -> str | None:
     if explicit and explicit in DATASET_REGISTRY:
         return explicit
     q = query.lower()
+    # NOTE(Kausar): check it out, we're using domain hints here; feels like a hack
     scores = {d: sum(1 for kw in kws if kw in q) for d, kws in _DOMAIN_HINTS.items()}
     best = max(scores, key=scores.get)
     return best if scores[best] > 0 else None
@@ -295,11 +296,19 @@ class handler(BaseHTTPRequestHandler):
             )
             result: RunResult = runner.run(message)
 
+            execution: dict | None = None
+            if result.final_executed_code:
+                execution = {
+                    "code": result.final_executed_code,
+                    "tries": result.agent_tries,
+                }
+
             self._json_response(200, {
                 "reply": result.answer,
                 "domain": domain,
                 "grounded": result.executed,
                 "stages": result.stages_run,
+                "execution": execution,
                 "usage": {
                     "input_tokens": result.input_tokens,
                     "output_tokens": result.output_tokens,

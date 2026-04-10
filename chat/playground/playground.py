@@ -647,18 +647,52 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
 
     def __init__(self):
         self.steps: list[str] = []
+        self.action_inputs: list[str] = []
+        self.last_successful_action_input: str = ""
 
     def on_agent_action(self, action: AgentAction, **kwargs):
         self.steps.append(f"Thought + Action: {action.log.strip()}")
+        tool_input = str(action.tool_input).strip()
+        if tool_input:
+            self.action_inputs.append(tool_input)
 
     def on_tool_end(self, output: str, **kwargs):
-        self.steps.append(f"Observation: {str(output).strip()}")
+        out = str(output).strip()
+        self.steps.append(f"Observation: {out}")
+        if not self._looks_like_tool_error(out) and self.action_inputs:
+            self.last_successful_action_input = self.action_inputs[-1]
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs):
         self.steps.append(f"Final Answer: {finish.return_values.get('output', '').strip()}")
 
     def get_trace(self) -> str:
         return "\n".join(self.steps) if self.steps else "(no steps captured)"
+
+    def get_execution_details(self) -> tuple[str, int]:
+        """Return (final_successful_code, tries) for this agent run."""
+        final_code = self.last_successful_action_input
+        if not final_code and self.action_inputs:
+            final_code = self.action_inputs[-1]
+        return final_code, len(self.action_inputs)
+
+    @staticmethod
+    def _looks_like_tool_error(output: str) -> bool:
+        lowered = output.lower()
+        return (
+            "traceback" in lowered
+            or "exception" in lowered
+            or "syntaxerror" in lowered
+            or "nameerror" in lowered
+            or "keyerror" in lowered
+            or "valueerror" in lowered
+            or "indexerror" in lowered
+        )
+
+
+@dataclass
+class ExecutionDetails:
+    final_code: str = ""
+    tries: int = 0
 
 
 # ── 1e. ResilientReActOutputParser ───────────────────────────
@@ -1312,11 +1346,11 @@ class ExecutionLayer:
 
         return True, ""
 
-    def execute_single(self, query: str) -> tuple[str, str]:
+    def execute_single(self, query: str) -> tuple[str, str, ExecutionDetails]:
         """Run a single query through the Pandas agent.
         Returns (raw_answer, trace).
         Retries once with explicit format hints if the first attempt fails."""
-        raw_answer, trace = self._try_execute(query)
+        raw_answer, trace, details = self._try_execute(query)
 
         # Detect agent parse failures: empty trace or error output.
         is_failure = (
@@ -1338,32 +1372,41 @@ class ExecutionLayer:
                 f"Question: {query}"
             )
             self.reset_agent()
-            raw_answer_retry, trace_retry = self._try_execute(retry_query)
+            raw_answer_retry, trace_retry, details_retry = self._try_execute(retry_query)
             # Use retry result if it's better.
             retry_failed = (
                 trace_retry == "(no steps captured)"
                 or "is not a valid tool" in trace_retry
                 or "Invalid Format" in trace_retry
             )
+            total_tries = details.tries + details_retry.tries
             if not retry_failed:
-                return raw_answer_retry, trace_retry
+                return raw_answer_retry, trace_retry, ExecutionDetails(
+                    final_code=details_retry.final_code,
+                    tries=total_tries,
+                )
             # Both attempts failed — return the original.
-            return raw_answer, trace
+            return raw_answer, trace, ExecutionDetails(
+                final_code=details.final_code,
+                tries=total_tries,
+            )
 
-        return raw_answer, trace
+        return raw_answer, trace, details
 
-    def _try_execute(self, query: str) -> tuple[str, str]:
+    def _try_execute(self, query: str) -> tuple[str, str, ExecutionDetails]:
         """Single attempt to run a query through the Pandas agent."""
         handler = ThinkingCaptureHandler()
         try:
             result = self._agent.invoke(query, config={"callbacks": [handler]})
             output = result["output"]
             self._client.record_estimated_usage("agent-exec", query, output)
-            return output, handler.get_trace()
+            final_code, tries = handler.get_execution_details()
+            return output, handler.get_trace(), ExecutionDetails(final_code=final_code, tries=tries)
         except Exception as e:
             err = f"[ERROR] {e}"
             self._client.record_estimated_usage("agent-exec", query, err)
-            return err, handler.get_trace()
+            final_code, tries = handler.get_execution_details()
+            return err, handler.get_trace(), ExecutionDetails(final_code=final_code, tries=tries)
 
     def synthesize(self, question: str, sub_answers: str, synthesis_hint: str) -> str:
         return self._client.invoke_chain(
@@ -1396,6 +1439,8 @@ class RunResult:
     stages_run: list[str] = field(default_factory=list)
     llm_calls: list[LLMCallLog] = field(default_factory=list)
     artifacts: dict[str, str] = field(default_factory=dict)
+    final_executed_code: str = ""
+    agent_tries: int = 0
 
 
 class BaselineRunner:
@@ -1551,7 +1596,8 @@ class BaselineRunner:
         if grounding_raw:
             fallback_query += f"\nGrounding context:\n{grounding_raw}\n"
 
-        raw_answer, trace = self.executor.execute_single(fallback_query)
+        raw_answer, trace, exec_details = self.executor.execute_single(fallback_query)
+        self._record_exec_details(r, exec_details)
         r.trace += f"\n[FALLBACK] Triggered: {reason}\n{trace}\n"
 
         # Keep the explanation brief and stable for user-facing responses.
@@ -1700,7 +1746,8 @@ class BaselineRunner:
             f"Grounding context:\n{grounding['raw_grounding']}\n\n"
             f"Question: {query}"
         )
-        raw_answer, trace = self.executor.execute_single(grounded_prompt)
+        raw_answer, trace, exec_details = self.executor.execute_single(grounded_prompt)
+        self._record_exec_details(r, exec_details)
         r.trace = trace
         r.executed = "[ERROR]" not in raw_answer
         compact = self.executor._compact_answer_text(raw_answer)
@@ -1757,7 +1804,8 @@ class BaselineRunner:
                 f"Question: {query}\n"
                 "Return a compact quantitative answer."
             )
-            raw_answer, trace = self.executor.execute_single(grounded_prompt)
+            raw_answer, trace, exec_details = self.executor.execute_single(grounded_prompt)
+            self._record_exec_details(r, exec_details)
             r.trace += trace
             r.executed = "[ERROR]" not in raw_answer
             compact = self.executor._compact_answer_text(raw_answer)
@@ -1779,7 +1827,8 @@ class BaselineRunner:
 
         if not sub_queries:
             # Fallback: execute as a single query
-            raw_answer, trace = self.executor.execute_single(query)
+            raw_answer, trace, exec_details = self.executor.execute_single(query)
+            self._record_exec_details(r, exec_details)
             r.trace += trace
             r.executed = "[ERROR]" not in raw_answer
             compact = self.executor._compact_answer_text(raw_answer)
@@ -1803,7 +1852,8 @@ class BaselineRunner:
                 "Return only a compact summary with key numeric results. "
                 "Do not print full tables or full series."
             )
-            raw_answer, trace = self.executor.execute_single(sq_query)
+            raw_answer, trace, exec_details = self.executor.execute_single(sq_query)
+            self._record_exec_details(r, exec_details)
             r.trace += f"\n--- SQ{i} [{sq['operation']}] ---\n{trace}\n"
             compact = self.executor._compact_answer_text(raw_answer)
             sub_answers.append(f"SQ{i} [{sq['operation']}] {sq['question']}: {compact}")
@@ -1820,6 +1870,12 @@ class BaselineRunner:
             synthesis_hint or "Combine the sub-answers into a coherent response.",
         )
         return r
+
+    @staticmethod
+    def _record_exec_details(r: RunResult, details: ExecutionDetails) -> None:
+        r.agent_tries += details.tries
+        if details.final_code:
+            r.final_executed_code = details.final_code
 
 
 # ════════════════════════════════════════════════════════════
