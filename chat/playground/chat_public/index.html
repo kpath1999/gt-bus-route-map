@@ -142,6 +142,50 @@
             color: var(--text);
         }
 
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 4px;
+            max-width: 820px;
+            width: 100%;
+        }
+        .domain-col {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .domain-header {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            padding: 5px 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .domain-header.bus   { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+        .domain-header.imu   { background: rgba(99,102,241,0.12); color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+        .domain-header.ecg   { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+        .difficulty-tag {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            padding: 0 2px;
+            margin-top: 8px;
+            margin-bottom: 2px;
+        }
+        .difficulty-tag:first-of-type, .domain-header + .difficulty-tag { margin-top: 0; }
+        .examples-grid .quick-action {
+            font-size: 12px;
+            padding: 8px 10px;
+            text-align: left;
+            line-height: 1.4;
+        }
+
         .message {
             display: flex;
             gap: 12px;
@@ -349,12 +393,45 @@
     <div class="messages" id="messages">
         <div class="welcome" id="welcome">
             <h2>Flash-Fusion Data Chat</h2>
-            <p>Ask questions about your datasets. I can discover files, load data, run aggregations, groupby analyses, rolling window metrics, and more.</p>
-            <div class="quick-actions">
-                <div class="quick-action" onclick="sendQuickAction(this)">What data files are available?</div>
-                <div class="quick-action" onclick="sendQuickAction(this)">List loaded datasets</div>
-                <div class="quick-action" onclick="sendQuickAction(this)">Discover CSV files in the data directory</div>
-                <div class="quick-action" onclick="sendQuickAction(this)">Help me explore a dataset</div>
+            <p>Ask questions about ECG cardiac signals, IMU activity data, or bus ride quality. Click any example to run it.</p>
+            <div class="examples-grid">
+
+                <div class="domain-col">
+                    <div class="domain-header bus">🚌 Bus · Ride Quality</div>
+                    <div class="difficulty-tag">Simple</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Was it a bumpy ride?</div>
+                    <div class="difficulty-tag">Moderate</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">When during the trip was it most uncomfortable?</div>
+                    <div class="difficulty-tag">Complex</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Is the driver driving aggressively?</div>
+                    <div class="difficulty-tag">Chain-of-Thought</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">How does the variance of lateral movement (swaying) change when the vehicle is moving fast compared to when it's in slow traffic?</div>
+                </div>
+
+                <div class="domain-col">
+                    <div class="domain-header imu">🏃 IMU · Activity</div>
+                    <div class="difficulty-tag">Simple</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">What is the dominant activity in this dataset?</div>
+                    <div class="difficulty-tag">Moderate</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Which activity shows the highest acceleration intensity?</div>
+                    <div class="difficulty-tag">Complex</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">How does walking compare to jogging in terms of variability?</div>
+                    <div class="difficulty-tag">Chain-of-Thought</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Does the user show signs of physical fatigue towards the end of their longest jogging session?</div>
+                </div>
+
+                <div class="domain-col">
+                    <div class="domain-header ecg">❤️ ECG · Cardiac</div>
+                    <div class="difficulty-tag">Simple</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">What is the average heart rate across this recording?</div>
+                    <div class="difficulty-tag">Moderate</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Are there any concerning patterns in the cardiac data?</div>
+                    <div class="difficulty-tag">Complex</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Are there any irregular heartbeat patterns in this recording?</div>
+                    <div class="difficulty-tag">Chain-of-Thought</div>
+                    <div class="quick-action" onclick="sendQuickAction(this)">Do premature ventricular contractions (PVCs) or abnormal annotations tend to occur more frequently after periods of elevated heart rate?</div>
+                </div>
+
             </div>
         </div>
     </div>

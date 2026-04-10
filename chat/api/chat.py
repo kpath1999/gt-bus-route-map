@@ -342,9 +342,8 @@ def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, s
                 details["proxy_lines"] = proxy_lines
                 return (
                     "PROXY",
-                    f"I don't have direct data for '{concept_str}', "
-                    f"but I can proxy it using {proxy_desc}. "
-                    "Would you like me to proceed?",
+                    f"The {concept_str} would have to be computed from "
+                    f"{proxy_desc}. Would you like me to proceed?",
                     details,
                 )
 
@@ -477,6 +476,7 @@ class handler(BaseHTTPRequestHandler):
                 "tries": result.agent_tries,
                 "attempts": result.execution_attempts,
                 "summary": result.execution_summary,
+                "judge": result.judge_verdict,
             }
 
             if result.execution_attempts:

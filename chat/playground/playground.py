@@ -999,6 +999,28 @@ Prioritize evidence over style and keep output as short as possible:
 - Mention baseline prevalence only for threshold/outlier claims.
 """
 
+# Intent-alignment judge (post-execution)
+JUDGE_PROMPT = """
+You are a strict intent-alignment judge for data analysis results.
+
+You receive the user's original question, the code that was executed, and
+the result that was produced.
+
+Your task is to check TWO things:
+1. **Intent alignment**: Does the result actually answer the question that
+   was asked?
+2. **Methodological soundness**: Is the computation conceptually correct
+   for the quantity being measured? Flag any obvious methodological issues.
+
+Do NOT penalise stylistic choices or minor precision differences.
+Focus only on whether the answer is *wrong* or *misleading*.
+
+Output format (strict):
+VERDICT: PASS | FAIL
+ISSUE: <one-line explanation if FAIL, or NONE>
+SUGGESTION: <one-line fix if FAIL, or NONE>
+"""
+
 # ════════════════════════════════════════════════════════════
 # 3. PIPELINE STAGES — composable building blocks
 # ════════════════════════════════════════════════════════════
@@ -1266,11 +1288,38 @@ class ExecutionLayer:
             | StrOutputParser()
         )
 
+        self._judge_chain = (
+            ChatPromptTemplate.from_messages([
+                ("system", JUDGE_PROMPT),
+                ("human",
+                 "Original question: {question}\n\n"
+                 "Executed code:\n```python\n{code}\n```\n\n"
+                 "Result: {result}"),
+            ])
+            | client.llm
+            | StrOutputParser()
+        )
+
         self._prefix_prompt = self._build_prefix(df, self._source_path)
         self._agent = self._create_agent(df)
 
+    @staticmethod
+    def _detect_available_packages() -> list[str]:
+        """Probe for analysis packages that the agent may use."""
+        available: list[str] = ["pandas", "numpy"]  # always present
+        for pkg in ("scipy", "sklearn", "statsmodels", "matplotlib"):
+            try:
+                __import__(pkg)
+                available.append(pkg)
+            except ImportError:
+                pass
+        return available
+
     def _build_prefix(self, df: pd.DataFrame, source_path: str) -> str:
         col_list = ", ".join(df.columns)
+        available_pkgs = self._detect_available_packages()
+        pkg_list = ", ".join(available_pkgs)
+
         prefix = (
             f"You are a data analyst. The dataset has columns: {col_list}.\n"
             f"Total rows: {len(df)}.\n\n"
@@ -1281,6 +1330,9 @@ class ExecutionLayer:
             "- Never reference 'data.csv'. Work only with `df`.\n"
             "- NEVER modify `df` in-place. Do not use inplace=True, df.set_index(..., inplace=True), "
             "or any other in-place mutation. Always create new variables for transformations.\n\n"
+            f"AVAILABLE PACKAGES: {pkg_list}\n"
+            "- You may ONLY import from the packages listed above.\n"
+            "- Do NOT import or use any package not in that list.\n\n"
         )
 
         col_set = set(c.lower() for c in df.columns)
@@ -1505,6 +1557,45 @@ class ExecutionLayer:
             stage="synthesize",
         )
 
+    def judge_result(
+        self, question: str, code: str, result: str,
+    ) -> dict[str, str]:
+        """Post-execution intent-alignment check.
+
+        Returns {"verdict": "PASS"|"FAIL", "issue": ..., "suggestion": ...}.
+        Defaults to PASS on any internal error to avoid blocking the pipeline.
+        """
+        if not code or not result or "[ERROR]" in result:
+            return {"verdict": "SKIP", "issue": "NONE", "suggestion": "NONE"}
+        try:
+            raw = self._client.invoke_chain(
+                self._judge_chain,
+                {"question": question, "code": code, "result": result},
+                stage="judge",
+            )
+            return self._parse_judge(raw)
+        except Exception:
+            return {"verdict": "PASS", "issue": "NONE", "suggestion": "NONE"}
+
+    @staticmethod
+    def _parse_judge(raw: str) -> dict[str, str]:
+        verdict = "PASS"
+        issue = "NONE"
+        suggestion = "NONE"
+        for line in raw.splitlines():
+            upper = line.strip().upper()
+            if upper.startswith("VERDICT:"):
+                v = line.split(":", 1)[1].strip().upper()
+                if "FAIL" in v:
+                    verdict = "FAIL"
+                elif "PASS" in v:
+                    verdict = "PASS"
+            elif upper.startswith("ISSUE:"):
+                issue = line.split(":", 1)[1].strip()
+            elif upper.startswith("SUGGESTION:"):
+                suggestion = line.split(":", 1)[1].strip()
+        return {"verdict": verdict, "issue": issue, "suggestion": suggestion}
+
 
 # ════════════════════════════════════════════════════════════
 # 5. BASELINE RUNNER — single class, mode flag, zero divergence
@@ -1533,6 +1624,7 @@ class RunResult:
     agent_tries: int = 0
     execution_attempts: list[dict[str, Any]] = field(default_factory=list)
     execution_summary: dict[str, int] = field(default_factory=dict)
+    judge_verdict: dict[str, str] = field(default_factory=lambda: {"verdict": "SKIP", "issue": "NONE", "suggestion": "NONE"})
 
 
 class BaselineRunner:
@@ -1667,6 +1759,22 @@ class BaselineRunner:
             result = self._run_b3(query, result)
         elif self.mode in ("B4", "B4a"):
             result = self._run_b4(query, result)
+
+        # ── Post-execution intent-alignment judge ───────────
+        if result.executed and result.final_executed_code and self.mode in ("B3", "B4", "B4a"):
+            result.stages_run.append("judge")
+            verdict = self.executor.judge_result(
+                query, result.final_executed_code, result.answer,
+            )
+            result.judge_verdict = verdict
+            result.artifacts["judge"] = json.dumps(verdict, ensure_ascii=True)
+            if verdict.get("verdict") == "FAIL":
+                issue = verdict.get("issue", "")
+                suggestion = verdict.get("suggestion", "")
+                result.answer += (
+                    f"\n\n⚠️ **Intent-alignment warning**: {issue}"
+                    + (f" Suggested fix: {suggestion}" if suggestion and suggestion != "NONE" else "")
+                )
 
         result.latency_s = round(time.time() - t0, 3)
         result.input_tokens = self.client.total_input_tokens()
