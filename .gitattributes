@@ -1,2 +1,0 @@
-chat/data/imu/*.txt filter=lfs diff=lfs merge=lfs -text
-chat/data/ecg/*.csv filter=lfs diff=lfs merge=lfs -text
