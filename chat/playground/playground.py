@@ -664,6 +664,11 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         self.steps: list[str] = []
         self.action_inputs: list[str] = []
         self.last_successful_action_input: str = ""
+        self._successful_tool_calls: int = 0
+        self._tool_error_count: int = 0
+        self._invalid_format_count: int = 0
+        self._invalid_tool_count: int = 0
+        self._column_error_count: int = 0
 
     def on_agent_action(self, action: AgentAction, **kwargs):
         self.steps.append(f"Thought + Action: {action.log.strip()}")
@@ -674,7 +679,18 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
     def on_tool_end(self, output: str, **kwargs):
         out = str(output).strip()
         self.steps.append(f"Observation: {out}")
-        if not self._looks_like_tool_error(out) and self.action_inputs:
+        lowered = out.lower()
+        if "invalid format" in lowered or "missing 'action:'" in lowered:
+            self._invalid_format_count += 1
+        if "is not a valid tool" in lowered:
+            self._invalid_tool_count += 1
+        if "keyerror" in lowered or "column not found" in lowered or "unknown column" in lowered:
+            self._column_error_count += 1
+
+        if self._looks_like_tool_error(out):
+            self._tool_error_count += 1
+        elif self.action_inputs:
+            self._successful_tool_calls += 1
             self.last_successful_action_input = self.action_inputs[-1]
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs):
@@ -689,6 +705,16 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         if not final_code and self.action_inputs:
             final_code = self.action_inputs[-1]
         return final_code, len(self.action_inputs)
+
+    def get_stats(self) -> dict[str, int]:
+        return {
+            "action_count": len(self.action_inputs),
+            "successful_tool_calls": self._successful_tool_calls,
+            "tool_error_count": self._tool_error_count,
+            "invalid_format_count": self._invalid_format_count,
+            "invalid_tool_count": self._invalid_tool_count,
+            "column_error_count": self._column_error_count,
+        }
 
     @staticmethod
     def _looks_like_tool_error(output: str) -> bool:
@@ -708,6 +734,7 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
 class ExecutionDetails:
     final_code: str = ""
     tries: int = 0
+    attempts: list[dict[str, Any]] = field(default_factory=list)
 
 
 # ── 1e. ResilientReActOutputParser ───────────────────────────
@@ -1365,7 +1392,7 @@ class ExecutionLayer:
         """Run a single query through the Pandas agent.
         Returns (raw_answer, trace).
         Retries once with explicit format hints if the first attempt fails."""
-        raw_answer, trace, details = self._try_execute(query)
+        raw_answer, trace, details = self._try_execute(query, attempt_label="initial")
 
         # Detect agent parse failures: empty trace or error output.
         is_failure = (
@@ -1387,7 +1414,10 @@ class ExecutionLayer:
                 f"Question: {query}"
             )
             self.reset_agent()
-            raw_answer_retry, trace_retry, details_retry = self._try_execute(retry_query)
+            raw_answer_retry, trace_retry, details_retry = self._try_execute(
+                retry_query,
+                attempt_label="format-retry",
+            )
             # Use retry result if it's better.
             retry_failed = (
                 trace_retry == "(no steps captured)"
@@ -1395,20 +1425,40 @@ class ExecutionLayer:
                 or "Invalid Format" in trace_retry
             )
             total_tries = details.tries + details_retry.tries
+            all_attempts = details.attempts + details_retry.attempts
             if not retry_failed:
                 return raw_answer_retry, trace_retry, ExecutionDetails(
                     final_code=details_retry.final_code,
                     tries=total_tries,
+                    attempts=all_attempts,
                 )
             # Both attempts failed — return the original.
             return raw_answer, trace, ExecutionDetails(
                 final_code=details.final_code,
                 tries=total_tries,
+                attempts=all_attempts,
             )
 
         return raw_answer, trace, details
 
-    def _try_execute(self, query: str) -> tuple[str, str, ExecutionDetails]:
+    @staticmethod
+    def _failure_category(trace: str, raw_answer: str) -> str:
+        if trace == "(no steps captured)":
+            return "no_steps"
+        if "is not a valid tool" in trace:
+            return "invalid_tool"
+        if "Invalid Format" in trace:
+            return "output_format"
+        if "[ERROR]" in raw_answer:
+            lowered = raw_answer.lower()
+            if "syntaxerror" in lowered:
+                return "syntax_error"
+            if "keyerror" in lowered or "column" in lowered:
+                return "column_reference_error"
+            return "runtime_error"
+        return "none"
+
+    def _try_execute(self, query: str, attempt_label: str) -> tuple[str, str, ExecutionDetails]:
         """Single attempt to run a query through the Pandas agent."""
         handler = ThinkingCaptureHandler()
         try:
@@ -1416,12 +1466,34 @@ class ExecutionLayer:
             output = result["output"]
             self._client.record_estimated_usage("agent-exec", query, output)
             final_code, tries = handler.get_execution_details()
-            return output, handler.get_trace(), ExecutionDetails(final_code=final_code, tries=tries)
+            trace = handler.get_trace()
+            attempt = {
+                "attempt": attempt_label,
+                "tries": tries,
+                "failure_category": self._failure_category(trace, output),
+                "stats": handler.get_stats(),
+            }
+            return output, trace, ExecutionDetails(
+                final_code=final_code,
+                tries=tries,
+                attempts=[attempt],
+            )
         except Exception as e:
             err = f"[ERROR] {e}"
             self._client.record_estimated_usage("agent-exec", query, err)
             final_code, tries = handler.get_execution_details()
-            return err, handler.get_trace(), ExecutionDetails(final_code=final_code, tries=tries)
+            trace = handler.get_trace()
+            attempt = {
+                "attempt": attempt_label,
+                "tries": tries,
+                "failure_category": self._failure_category(trace, err),
+                "stats": handler.get_stats(),
+            }
+            return err, trace, ExecutionDetails(
+                final_code=final_code,
+                tries=tries,
+                attempts=[attempt],
+            )
 
     def synthesize(self, question: str, sub_answers: str, synthesis_hint: str) -> str:
         return self._client.invoke_chain(
@@ -1456,6 +1528,8 @@ class RunResult:
     artifacts: dict[str, str] = field(default_factory=dict)
     final_executed_code: str = ""
     agent_tries: int = 0
+    execution_attempts: list[dict[str, Any]] = field(default_factory=list)
+    execution_summary: dict[str, int] = field(default_factory=dict)
 
 
 class BaselineRunner:
@@ -1891,6 +1965,16 @@ class BaselineRunner:
         r.agent_tries += details.tries
         if details.final_code:
             r.final_executed_code = details.final_code
+        if details.attempts:
+            r.execution_attempts.extend(details.attempts)
+            summary = dict(r.execution_summary)
+            summary["attempt_count"] = summary.get("attempt_count", 0) + len(details.attempts)
+            summary["total_tries"] = r.agent_tries
+            for at in details.attempts:
+                cat = str(at.get("failure_category", "none"))
+                key = f"failure_{cat}"
+                summary[key] = summary.get(key, 0) + 1
+            r.execution_summary = summary
 
 
 # ════════════════════════════════════════════════════════════

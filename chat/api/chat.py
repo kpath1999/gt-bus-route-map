@@ -11,10 +11,12 @@ New datasets can be added to DATASET_REGISTRY without any other code changes.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
+from typing import Any
 
 try:
     from dotenv import load_dotenv
@@ -33,6 +35,8 @@ def _load_local_env() -> None:
 
 
 _load_local_env()
+
+LOGGER = logging.getLogger("flash_fusion.api.chat")
 
 # ── Path setup for playground imports ───────────────────────
 _CHAT_ROOT = Path(__file__).resolve().parents[1]
@@ -112,6 +116,15 @@ def _get_cached_path(domain: str, ecg_record: str | None = None) -> str:
     return _resolve_data_path(domain, ecg_record)
 
 # NOTE(Kausar): this part feels like cheating; workaround?
+# NOTE(Kausar)
+"""
+Existing self-correction loops treat syntactic (e.g., AutoIOT) or 
+structural (e.g., TaskSense) success as correctness. Code can compile, 
+pass checks, and still compute the wrong metric or answer the wrong 
+question. No system verifies alignment with user intent before returning 
+results. When data is insufficient or degraded, systems still produce 
+confident answers instead of abstaining.
+"""
 # ── Lightweight keyword-based domain routing ────────────────
 # Deliberately minimal — the pipeline itself is fully schema-driven.
 _DOMAIN_HINTS: dict[str, list[str]] = {
@@ -147,7 +160,7 @@ def _schema_summary(df: pd.DataFrame) -> str:
     return meta_to_str(meta)
 
 
-def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, str]:
+def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, str, dict[str, Any]]:
     """Run Stage 1 + Stage 2 to determine if the query is answerable.
 
     Returns (status, message) where status is one of:
@@ -171,12 +184,21 @@ def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, s
             u for u in grounding["unmappable"] if not u.startswith("INVALID:")
         ]
         reasoning_concepts: list[str] = concepts.get("REASONING", [])
+        details: dict[str, Any] = {
+            "data_concepts": concepts.get("DATA", []),
+            "reasoning_concepts": reasoning_concepts,
+            "mappings": mappings,
+            "unmappable": unmappable,
+            "status": "DIRECT",
+        }
 
         if not mappings and unmappable:
+            details["status"] = "UNMAPPABLE"
             return (
                 "UNMAPPABLE",
                 f"I don't have data that can answer that question "
                 f"(unmappable concepts: {', '.join(unmappable)}).",
+                details,
             )
 
         if reasoning_concepts and mappings:
@@ -191,16 +213,27 @@ def _check_mappability(query: str, df: pd.DataFrame, model: str) -> tuple[str, s
                     for m in proxy_lines[:2]
                 )
                 concept_str = ", ".join(reasoning_concepts[:2])
+                details["status"] = "PROXY"
+                details["proxy_lines"] = proxy_lines
                 return (
                     "PROXY",
                     f"I don't have direct data for '{concept_str}', "
                     f"but I can proxy it using {proxy_desc}. "
                     "Would you like me to proceed?",
+                    details,
                 )
 
-        return "DIRECT", ""
-    except Exception:
-        return "DIRECT", ""
+        return "DIRECT", "", details
+    except Exception as exc:
+        LOGGER.warning("Mappability check failed; defaulting to DIRECT: %s", exc)
+        return "DIRECT", "", {
+            "status": "DIRECT",
+            "error": str(exc),
+            "data_concepts": [],
+            "reasoning_concepts": [],
+            "mappings": [],
+            "unmappable": [],
+        }
 
 
 # ── Vercel handler ──────────────────────────────────────────
@@ -263,8 +296,15 @@ class handler(BaseHTTPRequestHandler):
             return
 
         # ── Mappability gate ("idk" feature) ──────────────
+        map_details: dict[str, Any] = {
+            "status": "SKIPPED",
+            "data_concepts": [],
+            "reasoning_concepts": [],
+            "mappings": [],
+            "unmappable": [],
+        }
         if not confirmed:
-            map_status, map_message = _check_mappability(message, df, model)
+            map_status, map_message, map_details = _check_mappability(message, df, model)
 
             if map_status == "UNMAPPABLE":
                 self._json_response(200, {
@@ -272,6 +312,7 @@ class handler(BaseHTTPRequestHandler):
                     "domain": domain,
                     "grounded": False,
                     "idk": True,
+                    "intent_diagnostics": map_details,
                     "usage": None,
                 })
                 return
@@ -282,6 +323,7 @@ class handler(BaseHTTPRequestHandler):
                     "domain": domain,
                     "grounded": False,
                     "needs_confirmation": True,
+                    "intent_diagnostics": map_details,
                     "usage": None,
                 })
                 return
@@ -296,12 +338,22 @@ class handler(BaseHTTPRequestHandler):
             )
             result: RunResult = runner.run(message)
 
-            execution: dict | None = None
-            if result.final_executed_code:
-                execution = {
-                    "code": result.final_executed_code,
-                    "tries": result.agent_tries,
-                }
+            execution: dict[str, Any] = {
+                "code": result.final_executed_code,
+                "tries": result.agent_tries,
+                "attempts": result.execution_attempts,
+                "summary": result.execution_summary,
+            }
+
+            if result.execution_attempts:
+                LOGGER.info(
+                    "Execution diagnostics domain=%s model=%s tries=%d stages=%s summary=%s",
+                    domain,
+                    model,
+                    result.agent_tries,
+                    result.stages_run,
+                    result.execution_summary,
+                )
 
             self._json_response(200, {
                 "reply": result.answer,
@@ -309,6 +361,7 @@ class handler(BaseHTTPRequestHandler):
                 "grounded": result.executed,
                 "stages": result.stages_run,
                 "execution": execution,
+                "intent_diagnostics": map_details,
                 "usage": {
                     "input_tokens": result.input_tokens,
                     "output_tokens": result.output_tokens,
