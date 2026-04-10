@@ -195,11 +195,26 @@ MODEL_RATE_PER_1M_TOKENS = {
 
 # ── 1a. data_loader ──────────────────────────────────────────
 
+def _check_lfs_pointer(path: str) -> None:
+    """Raise early if *path* is a Git LFS pointer instead of real data."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            first_line = fh.readline(256)
+        if first_line.startswith("version https://git-lfs.github.com/spec/"):
+            raise RuntimeError(
+                f"File looks like a Git LFS pointer (not real data): {path}. "
+                "Run 'git lfs pull' to download the actual file content."
+            )
+    except (OSError, UnicodeDecodeError):
+        pass  # binary/missing — let downstream loaders handle it
+
+
 def load_data(path: str) -> tuple[pd.DataFrame, str]:
     """Format-agnostic loader.  Returns (df, format_tag).
     Supports CSV, JSON-lines, Parquet, Weka ARFF, WISDM raw .txt,
     and MIT-BIH ECG records (.hea).  Nobody calls format-specific
     readers directly anywhere else in this file."""
+    _check_lfs_pointer(path)
     ext = os.path.splitext(path)[1].lower()
     if ext == ".csv":
         return pd.read_csv(path), "csv"
