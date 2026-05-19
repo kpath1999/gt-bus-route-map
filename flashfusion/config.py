@@ -35,6 +35,8 @@ DEFAULT_MODEL = "llama-3.3-70b-versatile"
 AGENT_MAX_ITERATIONS: int = 6          # LangChain AgentExecutor max_iterations
 RESILIENT_PARSER_MAX_IDENTICAL: int = 2  # consecutive identical outputs before fallback
 RESILIENT_PARSER_MAX_FAILURES: int = 2   # consecutive parse failures before fallback
+EXECUTION_AGENT_BACKEND_DEFAULT: str = "auto"  # auto -> safe on macOS, classic elsewhere
+AGENT_SAFE_MAX_ATTEMPTS: int = 3  # codegen+execute retries for safe backend
 
 # ---------------------------------------------------------------------------
 # Stage retry limits

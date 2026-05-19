@@ -8,3 +8,4 @@ analysis/playground/run_query_analysis.py
 .env*.local
 chat/data/imu/wisdm-dataset/
 *.egg-info/
+flashfusion/eval_results

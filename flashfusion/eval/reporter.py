@@ -170,19 +170,97 @@ def save_markdown(results: list[RunResult], path: str) -> None:
         lines.append("")
         for r in group:
             ans = (r.answer or "").strip()
-            if len(ans) > 300:
-                ans = ans[:300] + "..."
             verdict = (
                 r.judge_verdict.get("verdict", "N/A")
                 if r.judge_verdict
                 else "N/A"
             )
-            lines.append(f"- **{r.baseline}**: {ans}")
+            lines.append(f"#### {r.baseline}")
+            lines.append("")
+            lines.append(f"**Answer:** {ans}")
+            lines.append("")
             lines.append(
-                f"  - Executed: {r.executed} | Rejected: {r.rejected} | "
+                f"- Executed: {r.executed} | Rejected: {r.rejected} | "
                 f"Judge: {verdict}"
             )
-            lines.append(f"  - Stages: {','.join(r.stages_run)}")
+            lines.append(f"- Stages: {','.join(r.stages_run)}")
+            lines.append(f"- Latency: {r.latency_s:.2f}s | Cost: ${r.cost_usd:.5f}")
+            lines.append("")
+
+            # Stage 1 — Concept Extraction
+            if r.s1_concepts:
+                data_c = ", ".join(r.s1_concepts.get("DATA", [])) or "NONE"
+                reasoning_c = ", ".join(r.s1_concepts.get("REASONING", [])) or "NONE"
+                lines.append("**Stage 1 — Concept Extraction**")
+                lines.append("")
+                lines.append(f"- DATA: {data_c}")
+                lines.append(f"- REASONING: {reasoning_c}")
+                lines.append("")
+
+            # Stage 2 — Schema Grounding (full raw LLM output)
+            if r.s2_grounding:
+                lines.append("**Stage 2 — Schema Grounding**")
+                lines.append("")
+                lines.append("```")
+                lines.append(r.s2_grounding.strip())
+                lines.append("```")
+                lines.append("")
+
+            # Stage 3 — Sub-query Generation
+            if r.s3_sub_queries:
+                lines.append("**Stage 3 — Sub-queries**")
+                lines.append("")
+                for i, sq in enumerate(r.s3_sub_queries, 1):
+                    lines.append(f"{i}. {sq}")
+                if r.s3_synthesis_hint:
+                    lines.append("")
+                    lines.append(f"*Synthesis hint: {r.s3_synthesis_hint}*")
+                lines.append("")
+
+            # Agent trace (AUTOIOT_ONLY / FLASH_FUSION when executed)
+            if r.trace and r.trace.strip() and r.trace.strip() != "(no steps captured)":
+                lines.append("**Agent Trace**")
+                lines.append("")
+                lines.append("```")
+                lines.append(r.trace.strip())
+                lines.append("```")
+                lines.append("")
+
+            # Final code
+            if r.final_code:
+                lines.append("**Final Code Executed**")
+                lines.append("")
+                lines.append("```python")
+                lines.append(r.final_code.strip())
+                lines.append("```")
+                lines.append("")
+
+            # Judge details
+            if r.judge_verdict and verdict not in ("N/A", "UNKNOWN"):
+                issue = r.judge_verdict.get("issue", "")
+                suggestion = r.judge_verdict.get("suggestion", "")
+                if issue or suggestion:
+                    lines.append("**Judge Details**")
+                    lines.append("")
+                    if issue:
+                        lines.append(f"- Issue: {issue}")
+                    if suggestion:
+                        lines.append(f"- Suggestion: {suggestion}")
+                    lines.append("")
+
+            if r.alignment_explanation:
+                lines.append("**Alignment Explanation**")
+                lines.append("")
+                lines.append(r.alignment_explanation)
+                lines.append("")
+
+            if r.rejected and r.rejection_reason:
+                lines.append("**Rejection Reasoning**")
+                lines.append("")
+                lines.append(f"- {r.rejection_reason}")
+                lines.append("")
+
+            lines.append("---")
             lines.append("")
 
     lines.append("## Baseline Comparison Notes")
@@ -191,13 +269,13 @@ def save_markdown(results: list[RunResult], path: str) -> None:
         "- **LLM-Only**: no schema grounding, no execution — may hallucinate."
     )
     lines.append(
-        "- **WellMax-Only**: full rewriting pipeline, describes computation; no execution."
+        "- **WellMax-Only**: S1+S2+S3 grounding, then direct grounded execution (no guardrail, no judge)."
     )
     lines.append(
-        "- **AutoIOT-Only**: pandas execution but no codebook or derived features."
+        "- **AutoIOT-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
     )
     lines.append(
-        "- **Flash-Fusion**: full pipeline + per-sub-query execution + judge."
+        "- **Flash-Fusion**: full grounding pipeline + guardrail + agent + alignment judge explanations."
     )
 
     with open(path, "w", encoding="utf-8") as fh:

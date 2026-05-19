@@ -12,9 +12,8 @@ Each query is a dict with:
 
 EXPECTED_OUTCOMES maps query id → baseline → expected behaviour keyword:
   "executes"  — agent runs code and produces a numerical/tabular result
-  "describes" — WellMax-Only describes the methodology without executing
   "hallucinates" — LLM-Only fabricates a plausible-sounding answer
-  "rejects"   — guardrail or Stage 2 blocks the query
+    "rejects"   — Flash-Fusion guardrail blocks execution
 """
 
 from __future__ import annotations
@@ -68,8 +67,9 @@ WISDM_QUERIES: list[dict] = [
         "operation": "FILTER+AGGREGATE",
         "stress": (
             "Schema trap: `heart_rate` does not exist in the dataset. "
-            "LLM-Only is the ONLY baseline that does not reject — it fabricates ~142 bpm. "
-            "WellMax-Only, AutoIOT-Only, and Flash-Fusion all trigger guardrail REJECT."
+            "LLM-Only fabricates a plausible BPM value. "
+            "AutoIOT-Only and WellMax-Only now attempt execution and may still produce weak or erroneous output. "
+            "Flash-Fusion guardrail should reject with a schema-based explanation."
         ),
     },
     {
@@ -158,7 +158,8 @@ WISDM_QUERIES: list[dict] = [
             "Forecasting rejection test. The query sounds data-driven but requires a "
             "sequence model or temporal forecasting capability the dataset cannot support. "
             "LLM-Only generates a plausible prediction narrative — entirely fabricated. "
-            "WellMax-Only, AutoIOT-Only, and Flash-Fusion all reject via guardrail. "
+            "AutoIOT-Only and WellMax-Only now attempt execution without feasibility gating. "
+            "Flash-Fusion should reject via guardrail with an explicit explanation. "
             "Flash-Fusion additionally marks 'predict next activity' as UNMAPPABLE in Stage 2."
         ),
     },
@@ -169,62 +170,62 @@ WISDM_QUERIES: list[dict] = [
 EXPECTED_OUTCOMES: dict[int, dict[str, str]] = {
     1: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",
         "AUTOIOT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     2: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",   # correct magnitude via adapter
         "AUTOIOT_ONLY":  "executes",   # but with wrong proxy for magnitude
         "FLASH_FUSION":  "executes",   # with correct magnitude column
     },
     3: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",   # correct D/E and A/B/C codebook resolution
         "AUTOIOT_ONLY":  "executes",   # likely wrong group filter
         "FLASH_FUSION":  "executes",   # correct codebook-resolved filter
     },
     4: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "rejects",
-        "AUTOIOT_ONLY":  "rejects",
+        "WELLMAX_ONLY":  "executes",
+        "AUTOIOT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
     5: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",   # correct F/Q/R mapping
         "AUTOIOT_ONLY":  "executes",   # likely wrong codes
         "FLASH_FUSION":  "executes",   # correct F/Q/R filter
     },
     6: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",   # z-score grounded threshold
         "AUTOIOT_ONLY":  "executes",   # arbitrary threshold
         "FLASH_FUSION":  "executes",   # z-score > 3 grounded threshold
     },
     7: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",
         "AUTOIOT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     8: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",
         "AUTOIOT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     9: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "describes",
+        "WELLMAX_ONLY":  "executes",
         "AUTOIOT_ONLY":  "executes",   # may partially fail on result extraction
         "FLASH_FUSION":  "executes",
     },
     10: {
         "LLM_ONLY":     "hallucinates",
-        "WELLMAX_ONLY":  "rejects",
-        "AUTOIOT_ONLY":  "rejects",
+        "WELLMAX_ONLY":  "executes",
+        "AUTOIOT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
 }

@@ -13,6 +13,10 @@ Reference: chat/playground/playground.py ~lines 660–900.
 
 from __future__ import annotations
 
+import contextlib
+import io
+import os
+import platform
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -30,6 +34,8 @@ from flashfusion.prompts.templates import (
     SYNTHESIS_PROMPT,
 )
 from flashfusion.config import (
+    AGENT_SAFE_MAX_ATTEMPTS,
+    EXECUTION_AGENT_BACKEND_DEFAULT,
     RESILIENT_PARSER_MAX_IDENTICAL,
     RESILIENT_PARSER_MAX_FAILURES,
 )
@@ -260,6 +266,9 @@ class ExecutionLayer:
     The pandas agent uses ResilientReActOutputParser to handle LLM failure modes.
     Always call reset_agent() between sub-query executions in Flash-Fusion to
     prevent DataFrame state leakage across agent runs.
+
+    Important: agent construction is lazy. Non-executing paths (guardrail-only
+    or rejected queries) should not import or construct the pandas agent stack.
     """
 
     def __init__(self, df: pd.DataFrame, client: "LLMClient") -> None:
@@ -273,7 +282,7 @@ class ExecutionLayer:
         Sets up:
             self._original_df — immutable reference copy for reset_agent()
             self._df          — working copy passed to the pandas agent
-            self._agent_executor — AgentExecutor with ResilientReActOutputParser
+            self._agent_executor — lazily created AgentExecutor (or None)
             Prompt chains for guardrail, synthesis, and judge.
 
         Agent construction notes (see CLAUDE.md §ExecutionLayer):
@@ -322,7 +331,81 @@ class ExecutionLayer:
             | StrOutputParser()
         )
 
-        self._agent_executor = self._build_agent()
+        self._safe_codegen_chain = (
+            ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        "You write Python code that runs against an in-memory pandas DataFrame named df. "
+                        "Return only Python code. Do not include markdown fences. "
+                        "Assign the final answer to a variable named result.",
+                    ),
+                    (
+                        "human",
+                        "Question: {question}\n\n"
+                        "Columns:\n{column_metadata}\n\n"
+                        "Previous error (if any):\n{last_error}",
+                    ),
+                ]
+            )
+            | client.llm
+            | StrOutputParser()
+        )
+
+        self._safe_answer_chain = (
+            ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        "You are a concise data analyst. Provide a direct answer to the question using the execution output.",
+                    ),
+                    (
+                        "human",
+                        "Question: {question}\n\nExecution output:\n{execution_output}",
+                    ),
+                ]
+            )
+            | client.llm
+            | StrOutputParser()
+        )
+
+        self._agent_executor: Any | None = None
+        self._agent_backend = self._resolve_agent_backend()
+        debug_raw = os.getenv("FLASHFUSION_DEBUG_AGENT_INIT", "")
+        self._debug_agent_init = debug_raw.lower() in {"1", "true", "yes", "on"}
+
+    def _resolve_agent_backend(self) -> str:
+        """
+        Resolve agent backend from environment.
+
+        Allowed values: auto, classic, safe.
+        auto chooses safe on macOS (Darwin), classic elsewhere.
+        """
+        raw = os.getenv("FLASHFUSION_AGENT_BACKEND", EXECUTION_AGENT_BACKEND_DEFAULT)
+        mode = (raw or "auto").strip().lower()
+        if mode not in {"auto", "classic", "safe"}:
+            mode = "auto"
+        if mode == "auto":
+            return "safe" if platform.system() == "Darwin" else "classic"
+        return mode
+
+    def _debug(self, msg: str) -> None:
+        """Emit debug logs for agent init/execution when enabled."""
+        if self._debug_agent_init:
+            print(f"[ExecutionLayer] {msg}")
+
+    def _ensure_agent(self) -> Any:
+        """
+        Build and cache the pandas agent executor on first execution use.
+
+        This keeps non-executing paths free of agent-stack imports.
+        """
+        if self._agent_backend != "classic":
+            return None
+        if self._agent_executor is None:
+            self._debug("building classic agent executor")
+            self._agent_executor = self._build_agent()
+        return self._agent_executor
 
     def _build_agent(self) -> Any:
         """
@@ -331,6 +414,11 @@ class ExecutionLayer:
         See CLAUDE.md §ExecutionLayer._build_agent for construction details.
         Reference: chat/playground/playground.py ~line 750.
         """
+        if self._agent_backend == "safe":
+            self._debug("safe backend selected; skipping classic agent construction")
+            return None
+
+        self._debug("importing langchain_classic and langchain_experimental modules")
         from langchain_classic.agents import AgentExecutor, create_react_agent
         from langchain_experimental.tools import PythonAstREPLTool
 
@@ -339,6 +427,7 @@ class ExecutionLayer:
         except ImportError:
             _get_prompt = None
 
+        self._debug("constructing PythonAstREPLTool")
         tool = PythonAstREPLTool(locals={"df": self._df})
         prefix = self._build_prefix(self._df)
 
@@ -363,12 +452,14 @@ class ExecutionLayer:
                 "Begin!\n\nQuestion: {input}\n{agent_scratchpad}"
             )
 
+        self._debug("creating ReAct agent")
         react_agent = create_react_agent(self._client.llm, [tool], prompt)
         try:
             react_agent.output_parser = ResilientReActOutputParser()
         except Exception:
             pass
 
+        self._debug("wrapping ReAct agent in AgentExecutor")
         return AgentExecutor(
             agent=react_agent,
             tools=[tool],
@@ -467,9 +558,14 @@ class ExecutionLayer:
             5. final_code, tries = handler.get_execution_details()
             6. return raw_answer, trace, ExecutionDetails(final_code, tries, [])
         """
+        if self._agent_backend == "safe":
+            self._debug("executing query with safe backend")
+            return self._execute_single_safe(query)
+
         handler = ThinkingCaptureHandler()
+        agent_executor = self._ensure_agent()
         try:
-            result = self._agent_executor.invoke(
+            result = agent_executor.invoke(
                 {"input": query}, config={"callbacks": [handler]}
             )
             raw_answer = result.get("output", "") if isinstance(result, dict) else str(result)
@@ -480,6 +576,92 @@ class ExecutionLayer:
         return raw_answer, trace, ExecutionDetails(
             final_code=final_code, tries=tries, attempts=[]
         )
+
+    def _execute_single_safe(self, query: str) -> tuple[str, str, ExecutionDetails]:
+        """Run codegen+execution without langchain_classic agent dependencies."""
+        attempts: list[dict] = []
+        trace_steps: list[str] = []
+        last_error = "(none)"
+        last_code = ""
+
+        for i in range(1, AGENT_SAFE_MAX_ATTEMPTS + 1):
+            code_text = self._client.invoke_chain(
+                self._safe_codegen_chain,
+                {
+                    "question": query,
+                    "column_metadata": meta_to_str(build_column_metadata(self._df)),
+                    "last_error": last_error,
+                },
+                stage=f"safe_codegen_{i}",
+            )
+            code = self._extract_python_code(code_text)
+            last_code = code
+
+            trace_steps.append(f"Thought: Attempt {i}: generate executable pandas code")
+            trace_steps.append("Action: python_exec")
+            trace_steps.append(f"Action Input: {code}")
+
+            ok, exec_out = self._run_safe_code(code)
+            attempts.append(
+                {
+                    "attempt": i,
+                    "code": code,
+                    "ok": ok,
+                    "output": exec_out,
+                }
+            )
+            trace_steps.append(f"Observation: {exec_out}")
+
+            if ok:
+                answer = self._client.invoke_chain(
+                    self._safe_answer_chain,
+                    {"question": query, "execution_output": exec_out},
+                    stage=f"safe_answer_{i}",
+                ).strip()
+                trace_steps.append(f"Final Answer: {answer}")
+                return answer, "\n".join(trace_steps), ExecutionDetails(
+                    final_code=code,
+                    tries=i,
+                    attempts=attempts,
+                )
+
+            last_error = exec_out
+
+        error_answer = f"[ERROR] Safe backend failed after {AGENT_SAFE_MAX_ATTEMPTS} attempts: {last_error}"
+        trace_steps.append(f"Final Answer: {error_answer}")
+        return error_answer, "\n".join(trace_steps), ExecutionDetails(
+            final_code=last_code,
+            tries=AGENT_SAFE_MAX_ATTEMPTS,
+            attempts=attempts,
+        )
+
+    def _extract_python_code(self, text: str) -> str:
+        """Extract python code from raw model output (supports fenced responses)."""
+        match = re.search(r"```(?:python)?\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        return text.strip()
+
+    def _run_safe_code(self, code: str) -> tuple[bool, str]:
+        """
+        Execute generated code in a restricted local scope.
+
+        Convention: generated code should assign the final answer to `result`.
+        """
+        local_ns: dict[str, Any] = {"df": self._df.copy(), "pd": pd, "result": None}
+        stdout_buffer = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(stdout_buffer):
+                exec(code, {"__builtins__": __builtins__}, local_ns)
+            result_obj = local_ns.get("result")
+            std_out = stdout_buffer.getvalue().strip()
+            if result_obj is None:
+                if std_out:
+                    return True, std_out
+                return True, "(no result produced)"
+            return True, str(result_obj)
+        except Exception as exc:
+            return False, f"{type(exc).__name__}: {exc}"
 
     def judge_result(self, question: str, code: str, result: str) -> dict:
         """
@@ -500,7 +682,11 @@ class ExecutionLayer:
             See CLAUDE.md §ExecutionLayer.judge_result for full parsing logic.
         """
         if not result or "[ERROR]" in str(result):
-            return {"verdict": "FAIL", "issue": "Execution error", "suggestion": ""}
+            return {
+                "verdict": "FAIL",
+                "issue": "Execution failed or produced an error instead of a valid answer.",
+                "suggestion": "Revise the query grounding and rerun with valid dataframe operations.",
+            }
         try:
             response = self._client.invoke_chain(
                 self._judge_chain,
@@ -508,7 +694,11 @@ class ExecutionLayer:
                 stage="judge",
             )
         except Exception:
-            return {"verdict": "UNKNOWN", "issue": "", "suggestion": ""}
+            return {
+                "verdict": "UNKNOWN",
+                "issue": "Judge invocation failed.",
+                "suggestion": "Treat this answer as unverified and review manually.",
+            }
 
         verdict = "UNKNOWN"
         issue = ""
@@ -533,7 +723,46 @@ class ExecutionLayer:
             elif "VERDICT: FAIL" in response.upper():
                 verdict = "FAIL"
 
+        if verdict == "PASS" and not issue:
+            issue = "No alignment issues detected against the original question."
+        if verdict == "FAIL" and not issue:
+            issue = "Answer appears misaligned with the question intent or dataset constraints."
+        if verdict == "FAIL" and not suggestion:
+            suggestion = "Adjust the computation to match the requested metric and valid schema fields."
+
         return {"verdict": verdict, "issue": issue, "suggestion": suggestion}
+
+    def explain_alignment(self, question: str, verdict: dict) -> str:
+        """
+        Build a concise user-facing alignment explanation from judge output.
+
+        Args:
+            question: Original user question.
+            verdict:  Dict from judge_result().
+
+        Returns:
+            One-line explanation suitable for reports.
+        """
+        status = (verdict.get("verdict") or "UNKNOWN").upper()
+        issue = (verdict.get("issue") or "").strip()
+        suggestion = (verdict.get("suggestion") or "").strip()
+
+        if status == "PASS":
+            return (
+                "Judge sanity check: PASS. "
+                f"The generated answer is aligned with the intent of: \"{question}\"."
+            )
+        if status == "FAIL":
+            parts = ["Judge sanity check: FAIL."]
+            if issue:
+                parts.append(f"Issue: {issue}")
+            if suggestion:
+                parts.append(f"Suggested fix: {suggestion}")
+            return " ".join(parts)
+        return (
+            "Judge sanity check: UNKNOWN. "
+            "Alignment could not be confirmed automatically."
+        )
 
     def synthesize(self, question: str, sub_answers: list[str], hint: str) -> str:
         """
@@ -570,11 +799,11 @@ class ExecutionLayer:
 
     def reset_agent(self) -> None:
         """
-        Reset the DataFrame to its original state and rebuild the agent.
+        Reset the DataFrame to its original state and invalidate the agent.
 
         Call between sub-query executions in Flash-Fusion to prevent
         PythonAstREPLTool state leakage (variables defined in one sub-query
         would otherwise persist into the next).
         """
         self._df = self._original_df.copy()
-        self._agent_executor = self._build_agent()
+        self._agent_executor = None

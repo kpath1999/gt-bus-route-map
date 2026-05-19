@@ -53,28 +53,29 @@ User Query (natural language)
         ├──► LLM-Only        20-row CSV sample + query → LLM → answer
         │                    No schema grounding · No code execution · No guardrail
         │
-        ├──► WellMax-Only    S1 → S2 (codebook) → S3 → guardrail → single grounded LLM → answer
-        │                    Schema-grounded description — describes; does NOT execute code
+        ├──► AutoIOT-Only    raw_query → Pandas agent → answer
+        │                    Real execution, but no concept extraction/codebook/guardrail
         │
-        ├──► AutoIOT-Only    schema metadata → guardrail → Pandas agent → answer
-        │                    Real execution, but no concept extraction or codebook
+        ├──► WellMax-Only    S1 → S2 (codebook) → S3 → grounded_query
+        │                    → Pandas agent(grounded_query) → answer
+        │                    Grounded execution — no judge
         │
-        └──► Flash-Fusion    S1 → S2 (codebook) → S3 → guardrail
-                             → Pandas agent (per sub-query) → synthesise
-                             → judge → [retry synthesis once if FAIL] → answer
+        └──► Flash-Fusion    S1 → S2 (codebook) → S3 → guardrail(grounded_query)
+                             → Pandas agent(grounded_query) → judge
+                             → [agent retry with correction note if FAIL] → answer
 ```
 
 ### What Each Component Contributes
 
-| Capability | LLM-Only | WellMax-Only | AutoIOT-Only | Flash-Fusion |
+| Capability | LLM-Only | AutoIOT-Only | WellMax-Only | Flash-Fusion |
 |------------|:---:|:---:|:---:|:---:|
-| Real data execution (pandas agent) | ✗ | ✗ | ✓ | ✓ |
-| Column grounding via S1+S2 | ✗ | ✓ | ✗ | ✓ |
-| Activity codebook injection | ✗ | ✓ | ✗ | ✓ |
-| Derived feature materialisation (`magnitude`) | ✗ | Describes | ✗ | ✓ |
-| Query decomposition via S3 | ✗ | ✓ | ✗ | ✓ |
-| Post-execution intent judge | ✗ | ✗ | ✗ | ✓ |
-| Guardrail rejection | ✗ | ✓ | ✓ | ✓ |
+| Real data execution (pandas agent) | ✗ | ✓ | ✓ | ✓ |
+| Column grounding via S1+S2 | ✗ | ✗ | ✓ | ✓ |
+| Activity codebook injection | ✗ | ✗ | ✓ | ✓ |
+| Derived feature materialisation (`magnitude`) | ✗ | ✗ | ✓ | ✓ |
+| Query decomposition via S3 | ✗ | ✗ | ✓ | ✓ |
+| Guardrail on grounded query | ✗ | ✗ | ✗ | grounded query |
+| Post-execution intent judge + retry | ✗ | ✗ | ✗ | ✓ |
 
 ---
 
@@ -585,6 +586,17 @@ Use `pydantic.PrivateAttr` for `_output_history` and `_parse_failure_count` sinc
 
 #### `ExecutionLayer` — agent construction
 
+Use lazy construction for the pandas agent executor:
+
+- Do NOT build the agent in `ExecutionLayer.__init__`.
+- Keep `self._agent_executor = None` initially.
+- Build it only on first execution call (e.g. `_ensure_agent()` inside `execute_single()`).
+- `reset_agent()` must invalidate (`self._agent_executor = None`) instead of eagerly rebuilding.
+
+Rationale: non-executing paths (guardrail-only, rejected queries, WellMax-only synthesis)
+must avoid importing or constructing the `langchain_classic`/pandas-agent stack, which can
+deadlock on this macOS environment.
+
 Build the ReAct agent as follows (see `chat/playground/playground.py` ~line 750 for reference):
 
 ```python
@@ -749,60 +761,28 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 
 ```
 1. meta_str = meta_to_str(build_column_metadata(self.df))
-2. stage1 = Stage1_ConceptExtraction(self.client)
-3. stage2 = Stage2_SchemaGrounding(self.client)
-   if self.adapter: stage2.codebook_str = self.adapter.get_codebook_str()
-4. stage3 = Stage3_SubqueryGeneration(self.client)
-5. concepts = stage1.run(query)
-   r.stages_run.append("S1")
-6. grounding = stage2.run(concepts, query, meta_str, self.df)
-   r.stages_run.append("S2")
-   if grounding["unmappable"]:
-       r.rejected = True
-       r.rejection_reason = f"Unmappable concepts: {grounding['unmappable']}"
-       r.answer = f"This query cannot be answered: {r.rejection_reason}"
-       return r
-7. sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
+2. stage1..stage3 setup (inject codebook if adapter)
+3. concepts = stage1.run(query); r.stages_run.append("S1")
+4. grounding = stage2.run(concepts, query, meta_str, self.df)
+    r.stages_run.append("S2")
+5. sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
    r.stages_run.append("S3")
-8. executor = ExecutionLayer(self.df, self.client)
-   proceed, reason = executor.guardrail(query)
-   r.stages_run.append("guardrail")
-   if not proceed:
-       r.rejected = True; r.rejection_reason = reason
-       r.answer = f"Query rejected: {reason}"
-       return r
-9. # Single LLM call describing what the data would show
-   grounded_prompt = (
-       f"Based on the schema grounding below, describe what the data would show "
-       f"if you could execute code. Do NOT execute code. Provide a methodological description.\n\n"
-       f"Original question: {query}\n\n"
-       f"Schema grounding:\n{grounding['raw_grounding']}\n\n"
-       f"Sub-questions to address:\n" +
-       "\n".join(f"  {i+1}. {q}" for i, q in enumerate(sub_result["sub_queries"])) +
-       f"\n\nSynthesis guidance: {sub_result['synthesis_hint']}"
-   )
-   chain = ChatPromptTemplate.from_messages([
-       ("system", "You are a precise data analyst. Describe what the computation would yield, citing specific column operations."),
-       ("human", grounded_prompt)
-   ]) | self.client.llm | StrOutputParser()
-   r.answer = self.client.invoke_chain(chain, {}, stage="wellmax_synthesis")
-   r.stages_run.append("llm_synthesis")
-   r.executed = False
+6. grounded_query = _build_grounded_query(query, grounding, sub_result)
+7. executor = ExecutionLayer(self.df, self.client)
+8. raw_answer, trace, details = executor.execute_single(grounded_query)
+   r.answer = raw_answer; r.trace = trace
+   r.executed = True
+   r.final_code = details.final_code; r.agent_tries = details.tries
+   r.stages_run.append("agent")
+   r.judge_verdict = {}  # no judge for WellMax
    return r
 ```
 
 #### `BaselineRunner._run_autoiot_only(query, r)`
 
 ```
-1. meta_str = meta_to_str(build_column_metadata(self.df))
-2. executor = ExecutionLayer(self.df, self.client)
-3. proceed, reason = executor.guardrail(query)
-   r.stages_run.append("guardrail")
-   if not proceed:
-       r.rejected = True; r.rejection_reason = reason
-       r.answer = f"Query rejected: {reason}"
-       return r
-4. raw_answer, trace, details = executor.execute_single(query)
+1. executor = ExecutionLayer(self.df, self.client)
+2. raw_answer, trace, details = executor.execute_single(query)
 5. r.answer = raw_answer; r.trace = trace
 6. r.executed = True
 7. r.final_code = details.final_code; r.agent_tries = details.tries
@@ -814,49 +794,46 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 
 ```
 1. meta_str = meta_to_str(build_column_metadata(self.df))
-2. stage1 = Stage1_ConceptExtraction(self.client)
-3. stage2 = Stage2_SchemaGrounding(self.client)
-   if self.adapter: stage2.codebook_str = self.adapter.get_codebook_str()
-4. stage3 = Stage3_SubqueryGeneration(self.client)
-5. executor = ExecutionLayer(self.df, self.client)
+2. stage1..stage3 setup (inject codebook if adapter)
+3. executor = ExecutionLayer(self.df, self.client)
 
-6. concepts = stage1.run(query); r.stages_run.append("S1")
-7. grounding = stage2.run(concepts, query, meta_str, self.df); r.stages_run.append("S2")
-   if grounding["unmappable"]:
-       r.rejected = True; r.rejection_reason = f"Unmappable: {grounding['unmappable']}"
-       r.answer = f"Query rejected: {r.rejection_reason}"; return r
-8. proceed, reason = executor.guardrail(query); r.stages_run.append("guardrail")
+4. concepts = stage1.run(query); r.stages_run.append("S1")
+5. grounding = stage2.run(concepts, query, meta_str, self.df); r.stages_run.append("S2")
+   # No early exit on unmappable — guardrail decides
+6. sub_result = stage3.run(query, grounding["raw_grounding"], meta_str); r.stages_run.append("S3")
+
+7. grounded_query = _build_grounded_query(query, grounding, sub_result)
+8. proceed, reason = executor.guardrail(grounded_query); r.stages_run.append("guardrail")
    if not proceed:
        r.rejected = True; r.rejection_reason = reason
-       r.answer = f"Query rejected: {reason}"; return r
-9. sub_result = stage3.run(query, grounding["raw_grounding"], meta_str); r.stages_run.append("S3")
+       r.answer = f"Query rejected: {reason}"
+       r.executed = False; return r
 
-10. sub_answers = []
-    for sq in sub_result["sub_queries"]:
+9. raw_answer, trace, details = executor.execute_single(grounded_query)
+   r.trace = trace; r.executed = True
+   r.final_code = details.final_code; r.agent_tries = details.tries
+   r.stages_run.append("agent")
+
+10. verdict = executor.judge_result(query, r.final_code, raw_answer)
+    r.stages_run.append("judge"); r.judge_verdict = verdict
+    r.alignment_explanation = executor.explain_alignment(query, verdict)
+
+11. if verdict.get("verdict") == "FAIL" and verdict.get("suggestion"):
+        # Retry: re-execute with correction note appended to grounded query
+        retry_query = grounded_query + f"\n\nCorrection note: {verdict['suggestion']}"
         executor.reset_agent()
-        raw_ans, trace, details = executor.execute_single(sq)
-        sub_answers.append(raw_ans)
-        r.agent_tries += details.tries
-        if details.final_code:
-            r.final_code = details.final_code  # keep last non-empty
-    r.stages_run.append("agent")
-    r.executed = True
+        retry_answer, retry_trace, retry_details = executor.execute_single(retry_query)
+        r.trace += "\n---[RETRY]---\n" + (retry_trace or "")
+        if retry_details.final_code: r.final_code = retry_details.final_code
+        r.agent_tries += retry_details.tries
+        r.stages_run.extend(["agent_retry"])
+        retry_verdict = executor.judge_result(query, r.final_code, retry_answer)
+        r.stages_run.append("judge_retry")
+        r.judge_verdict = retry_verdict
+        r.alignment_explanation = executor.explain_alignment(query, retry_verdict)
+        raw_answer = retry_answer
 
-11. synthesis = executor.synthesize(query, sub_answers, sub_result["synthesis_hint"])
-    r.stages_run.append("synthesis")
-
-12. verdict = executor.judge_result(query, r.final_code, synthesis)
-    r.stages_run.append("judge")
-    r.judge_verdict = verdict
-
-13. if verdict.get("verdict") == "FAIL" and verdict.get("suggestion"):
-        # Retry synthesis once with judge's suggestion
-        retry_hint = f"{sub_result['synthesis_hint']} Additionally: {verdict['suggestion']}"
-        synthesis = executor.synthesize(query, sub_answers, retry_hint)
-        r.stages_run.append("synthesis_retry")
-
-14. r.answer = synthesis
-    return r
+12. r.answer = raw_answer; return r
 ```
 
 ---
@@ -867,7 +844,7 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 
 ```
 AutoIOT-Only has no judge → judge_verdict == {}
-WellMax-Only has no agent → executed == False
+WellMax-Only has no judge → judge_verdict == {}  (but executed == True)
 LLM-Only has no agent and no guardrail → executed == False, rejected == False
 
 Score matrix:
@@ -875,7 +852,7 @@ Score matrix:
   not result.executed                       → 0.0
   result.executed and verdict == "PASS"     → 1.0
   result.executed and verdict == "FAIL"     → 0.5
-  result.executed and no judge (empty dict) → 0.5  ← AutoIOT-Only case
+  result.executed and no judge (empty dict) → 0.5  ← AutoIOT-Only and WellMax-Only
 ```
 
 #### `aggregate_metrics(results) -> pd.DataFrame`

@@ -8,6 +8,7 @@ All LLM calls are mocked — these tests run without a GROQ_API_KEY.
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -147,6 +148,109 @@ class TestResilientReActOutputParser:
 
 class TestExecutionLayer:
     """Tests for ExecutionLayer.guardrail() and execute_single()."""
+
+    def test_constructor_does_not_build_agent(self, minimal_df, mock_client):
+        """
+        ExecutionLayer.__init__ should not eagerly build the pandas agent.
+        """
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.object(ExecutionLayer, "_build_agent", return_value=MagicMock()) as build_agent:
+            ExecutionLayer(minimal_df, mock_client)
+        build_agent.assert_not_called()
+
+    def test_guardrail_does_not_build_agent(self, minimal_df, mock_client):
+        """
+        guardrail() should run without triggering pandas agent construction.
+        """
+        mock_client.invoke_chain.return_value = "PROCEED"
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.object(ExecutionLayer, "_build_agent", return_value=MagicMock()) as build_agent:
+            layer = ExecutionLayer(minimal_df, mock_client)
+            proceed, reason = layer.guardrail("Count samples per activity.")
+        assert proceed is True
+        assert reason == ""
+        build_agent.assert_not_called()
+
+    def test_execute_single_builds_agent_lazily_once(self, minimal_df, mock_client):
+        """
+        execute_single() should build the agent only on first use.
+        """
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"output": "42"}
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "classic"}, clear=False):
+            with patch.object(ExecutionLayer, "_build_agent", return_value=mock_agent) as build_agent:
+                layer = ExecutionLayer(minimal_df, mock_client)
+                first_answer, _, _ = layer.execute_single("How many rows?")
+                second_answer, _, _ = layer.execute_single("How many rows?")
+
+        assert first_answer == "42"
+        assert second_answer == "42"
+        assert build_agent.call_count == 1
+
+    def test_reset_agent_invalidates_and_rebuilds_lazily(self, minimal_df, mock_client):
+        """
+        reset_agent() should invalidate the cached agent and rebuild on next execute.
+        """
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {"output": "ok"}
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "classic"}, clear=False):
+            with patch.object(ExecutionLayer, "_build_agent", return_value=mock_agent) as build_agent:
+                layer = ExecutionLayer(minimal_df, mock_client)
+                layer.execute_single("first")
+                assert build_agent.call_count == 1
+
+                layer.reset_agent()
+                layer.execute_single("second")
+
+        assert build_agent.call_count == 2
+
+    def test_backend_auto_uses_safe_on_macos(self, minimal_df, mock_client):
+        """
+        auto backend should resolve to safe on Darwin to avoid classic import deadlocks.
+        """
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "auto"}, clear=False):
+            with patch("platform.system", return_value="Darwin"):
+                layer = ExecutionLayer(minimal_df, mock_client)
+        assert layer._agent_backend == "safe"
+
+    def test_backend_env_override_classic(self, minimal_df, mock_client):
+        """
+        explicit env override must force classic backend even on Darwin.
+        """
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "classic"}, clear=False):
+            with patch("platform.system", return_value="Darwin"):
+                layer = ExecutionLayer(minimal_df, mock_client)
+        assert layer._agent_backend == "classic"
+
+    def test_execute_single_safe_backend(self, minimal_df, mock_client):
+        """
+        safe backend should execute generated code and return answer + trace + details.
+        """
+        responses = {
+            "safe_codegen_1": "result = int(df.shape[0])",
+            "safe_answer_1": "There are 2 rows in the dataset.",
+        }
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            answer, trace, details = layer.execute_single("How many rows?")
+
+        assert "2 rows" in answer
+        assert "Action Input" in trace
+        assert details.final_code.strip() == "result = int(df.shape[0])"
+        assert details.tries == 1
 
     def test_guardrail_proceed_on_valid_query(self, minimal_df, mock_client):
         """

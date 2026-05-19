@@ -1,9 +1,8 @@
 """
 baselines/autoiot_only.py — AutoIOT-Only baseline.
 
-Injects schema metadata (column descriptions) as context, runs a guardrail
-check on the raw query, then hands the original query directly to the pandas
-DataFrame agent without any Stage 1/2/3 concept extraction or codebook injection.
+Hands the raw query directly to the pandas DataFrame agent without any
+Stage 1/2/3 concept extraction, codebook injection, or feasibility guardrail.
 
 This baseline demonstrates the value of real code execution but exposes the
 weakness of missing semantic grounding:
@@ -12,9 +11,10 @@ weakness of missing semantic grounding:
   - Has no post-execution judge for intent alignment
 
 Expected benchmark behaviour:
-  - Q4, Q10: rejected=True (guardrail)
-  - Q1, Q7, Q8: executed=True, likely correct
-  - Q2, Q3, Q5, Q6: executed=True, potentially wrong proxy/filter
+    - All queries: execution attempted
+    - Q1, Q7, Q8: likely correct
+    - Q2, Q3, Q5, Q6: potentially wrong proxy/filter
+    - Q4, Q10: may produce unsupported/low-quality answers because no feasibility gate
 
 See CLAUDE.md §_run_autoiot_only for the full algorithm.
 """
@@ -22,7 +22,6 @@ See CLAUDE.md §_run_autoiot_only for the full algorithm.
 from __future__ import annotations
 
 from flashfusion.pipeline.executor import ExecutionLayer
-from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.pipeline.runner import LLMClient, RunResult
 
 
@@ -47,35 +46,19 @@ def run_autoiot_only(
 
     Implementation steps (see CLAUDE.md §_run_autoiot_only):
         1. executor = ExecutionLayer(df, client)
-        2. proceed, reason = executor.guardrail(query)
-           r.stages_run.append("guardrail")
-           if not proceed:
-               r.rejected = True; r.rejection_reason = reason
-               r.answer = f"Query rejected: {reason}"
-               return r
-        3. raw_answer, trace, details = executor.execute_single(query)
-        4. r.answer = raw_answer
-        5. r.trace = trace
-        6. r.executed = True
-        7. r.final_code = details.final_code
-        8. r.agent_tries = details.tries
-        9. r.stages_run.append("agent")
-        10. r.judge_verdict = {}  # AutoIOT-Only has no judge
-        11. return r
+        2. raw_answer, trace, details = executor.execute_single(query)
+        3. r.answer = raw_answer
+        4. r.trace = trace
+        5. r.executed = True
+        6. r.final_code = details.final_code
+        7. r.agent_tries = details.tries
+        8. r.stages_run.append("agent")
+        9. r.judge_verdict = {}  # AutoIOT-Only has no judge
+        10. return r
 
-    Note: AutoIOT-Only does NOT call Stage 1/2/3. The guardrail uses the raw query
-    with schema metadata that ExecutionLayer builds from df.columns internally.
+    Note: AutoIOT-Only does NOT call Stage 1/2/3 and does not run guardrail.
     """
     executor = ExecutionLayer(df, client)
-    proceed, reason = executor.guardrail(query)
-    r.stages_run.append("guardrail")
-    if not proceed:
-        r.rejected = True
-        r.rejection_reason = reason
-        r.answer = f"Query rejected: {reason}"
-        r.executed = False
-        return r
-
     raw_answer, trace, details = executor.execute_single(query)
     r.answer = raw_answer
     r.trace = trace

@@ -179,6 +179,7 @@ class RunResult:
     executed: bool = False                           # True if pandas agent ran code
     stages_run: list = field(default_factory=list)  # e.g. ["S1","S2","S3","guardrail","agent","judge"]
     judge_verdict: dict = field(default_factory=dict)  # {"verdict": "PASS"|"FAIL", "issue": str, ...}
+    alignment_explanation: str = ""                   # user-facing alignment/rejection rationale
     rejected: bool = False                           # True if guardrail or S2 rejected query
     rejection_reason: str = ""
 
@@ -186,6 +187,12 @@ class RunResult:
     final_code: str = ""                             # last successfully executed pandas code
     agent_tries: int = 0                             # total agent iterations across sub-queries
     execution_attempts: list = field(default_factory=list)  # per-attempt stats
+
+    # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
+    s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
+    s2_grounding: str = ""                               # Stage 2 raw LLM grounding text
+    s3_sub_queries: list = field(default_factory=list)   # Stage 3 concrete sub-questions
+    s3_synthesis_hint: str = ""                          # Stage 3 synthesis guidance string
 
 
 # ---------------------------------------------------------------------------
@@ -198,8 +205,8 @@ class BaselineRunner:
 
     Supported modes (self.MODES):
         "LLM_ONLY"     — B0: raw 20-row CSV + query → single LLM call
-        "WELLMAX_ONLY"  — B3: S1 + S2 + S3 + guardrail → single grounded LLM call
-        "AUTOIOT_ONLY"  — Agent: schema metadata + guardrail → pandas agent
+        "WELLMAX_ONLY"  — B3: S1 + S2 + S3 → grounded query → pandas agent
+        "AUTOIOT_ONLY"  — Agent: raw query → pandas agent
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
     The adapter (WISDMAdapter) is optional but required for Flash-Fusion and
