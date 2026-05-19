@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from flashfusion.eval.ground_truth import GroundTruthEntry
+from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.config import (
     ACCURACY_EXEC_SCORE,
     ACCURACY_FAIL_SCORE,
@@ -120,7 +122,24 @@ def compute_cost(result: RunResult) -> dict:
     }
 
 
-def aggregate_metrics(results: list[RunResult]) -> pd.DataFrame:
+def compute_accuracy_v2(
+    result: RunResult,
+    ground_truth: GroundTruthEntry,
+    scorer: SemanticScorer,
+) -> dict:
+    """Compute simplified GT-based accuracy: rejection-binary or text similarity."""
+    out = scorer.score_result(result, ground_truth)
+    return {
+        "score": float(out["score"]),
+        "method": str(out.get("method", "text_similarity")),
+    }
+
+
+def aggregate_metrics(
+    results: list[RunResult],
+    ground_truth_by_id: dict[int, GroundTruthEntry] | None = None,
+    scorer: SemanticScorer | None = None,
+) -> pd.DataFrame:
     """
     Build a tidy DataFrame of per-(baseline, query) metrics.
 
@@ -134,7 +153,8 @@ def aggregate_metrics(results: list[RunResult]) -> pd.DataFrame:
         pd.DataFrame with columns:
             baseline        (str)
             query_id        (int)   — 1-indexed position in WISDM_QUERIES
-            accuracy_score  (float) — from compute_accuracy()
+            gt_score        (float | None) — ground-truth closeness score when GT is provided
+            gt_method       (str)   — scoring method used
             latency_s       (float) — from compute_latency()
             cost_usd        (float) — from compute_cost()
             input_tokens    (int)
@@ -160,15 +180,23 @@ def aggregate_metrics(results: list[RunResult]) -> pd.DataFrame:
     query_lookup = {q["text"]: q["id"] for q in WISDM_QUERIES}
     rows: list[dict] = []
     for idx, r in enumerate(results, start=1):
-        acc = compute_accuracy(r)
         lat = compute_latency(r)
         cost = compute_cost(r)
         query_id = query_lookup.get(r.query, idx)
+
+        gt_score: float | None = None
+        gt_method = "N/A"
+        if ground_truth_by_id and scorer and query_id in ground_truth_by_id:
+            acc_v2 = compute_accuracy_v2(r, ground_truth_by_id[query_id], scorer)
+            gt_score = acc_v2["score"]
+            gt_method = acc_v2["method"]
+
         rows.append(
             {
                 "baseline": r.baseline,
                 "query_id": query_id,
-                "accuracy_score": acc["score"],
+                "gt_score": gt_score,
+                "gt_method": gt_method,
                 "latency_s": lat["total_s"],
                 "cost_usd": cost["total_usd"],
                 "input_tokens": cost["input_tokens"],

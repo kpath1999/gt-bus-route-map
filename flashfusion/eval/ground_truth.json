@@ -1,0 +1,62 @@
+[
+  {
+    "query_id": 1,
+    "query_text": "How many data samples were recorded for each activity?",
+    "reference_answer": "Sample counts by activity label: Walking: 424397; Jogging: 342174; Upstairs: 122869; Downstairs: 100425; Sitting: 59939; Standing: 48394",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 2,
+    "query_text": "Which 3 activities have the highest average overall acceleration magnitude?",
+    "reference_answer": "Top 3 activities by mean magnitude: Jogging (13.4107), Walking (11.4290), Downstairs (10.8317)",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 3,
+    "query_text": "Compare the average acceleration magnitude between sedentary activities and locomotion activities.",
+    "reference_answer": "Average magnitude - sedentary (D,E): 9.8328; locomotion (A,B,C): 11.9625.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 4,
+    "query_text": "What is the average heart rate recorded during jogging?",
+    "reference_answer": "Reject: heart_rate is not present in this dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 5,
+    "query_text": "For subject 1610, what percentage of their recorded samples involve hand-related activities — typing, writing, and clapping?",
+    "reference_answer": "Reject: subject_id 1610 does not exist in the dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 6,
+    "query_text": "Which subjects show unusually high peak acceleration values that could indicate sensor noise or data errors?",
+    "reference_answer": "Subjects with unusually high peak acceleration (z-score > 3 on magnitude): 1, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 18, 19, 20, 23, 24, 25, 26, 27, 29, 30, 31, 32, 34, 36",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 7,
+    "query_text": "Is x-axis acceleration positively correlated with z-axis acceleration during stair climbing?",
+    "reference_answer": "For stair climbing (C), Pearson correlation between x and z is -0.0455.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 8,
+    "query_text": "Which subject has the longest total recording duration based on their timestamp range?",
+    "reference_answer": "Subject with longest duration is 19 with 131623531465000 ms range.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 9,
+    "query_text": "Based on their three-axis acceleration patterns, which two distinct activities are most similar to each other?",
+    "reference_answer": "Most similar activity pair by centroid correlation is Downstairs and Jogging (corr=0.9999).",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 10,
+    "query_text": "Based on the data, predict which activity this subject is likely to perform next.",
+    "reference_answer": "Reject: next-activity prediction is out of scope for this benchmark.",
+    "expected_rejection": true
+  }
+]

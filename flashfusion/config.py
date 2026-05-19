@@ -37,6 +37,7 @@ RESILIENT_PARSER_MAX_IDENTICAL: int = 2  # consecutive identical outputs before 
 RESILIENT_PARSER_MAX_FAILURES: int = 2   # consecutive parse failures before fallback
 EXECUTION_AGENT_BACKEND_DEFAULT: str = "auto"  # auto -> safe on macOS, classic elsewhere
 AGENT_SAFE_MAX_ATTEMPTS: int = 3  # codegen+execute retries for safe backend
+AGENT_SAFE_CODE_TIMEOUT_S: float = 10.0  # hard timeout for each safe code execution attempt
 
 # ---------------------------------------------------------------------------
 # Stage retry limits

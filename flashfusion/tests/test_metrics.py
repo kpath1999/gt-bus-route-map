@@ -13,7 +13,9 @@ from flashfusion.config import (
     ACCURACY_FAIL_SCORE,
     ACCURACY_PASS_SCORE,
 )
+from flashfusion.eval.ground_truth import GroundTruthEntry
 from flashfusion.eval.metrics import aggregate_metrics, compute_accuracy
+from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.runner import RunResult
 
 
@@ -165,26 +167,42 @@ class TestAggregateMetrics:
             ),
         ]
         df = aggregate_metrics(results)
-        required = {"baseline", "accuracy_score", "latency_s", "cost_usd"}
+        required = {"baseline", "gt_score", "latency_s", "cost_usd"}
         assert required.issubset(set(df.columns))
 
-    def test_flash_fusion_higher_accuracy_than_llm_only(self):
+    def test_flash_fusion_higher_gt_score_than_llm_only(self):
         """
-        On a PASS result, Flash-Fusion should have higher accuracy than LLM-Only.
+        With ground truth enabled, better-aligned answers should get higher gt_score.
         """
+        q1_text = "How many data samples were recorded for each activity?"
         results = [
-            make_result(baseline="LLM_ONLY", executed=False, rejected=False, query="Q1"),
+            make_result(
+                baseline="LLM_ONLY",
+                executed=True,
+                rejected=False,
+                query=q1_text,
+                answer="random unrelated text",
+            ),
             make_result(
                 baseline="FLASH_FUSION",
                 executed=True,
                 rejected=False,
                 judge_verdict={"verdict": "PASS"},
-                query="Q1",
+                query=q1_text,
+                answer="The count for walking is 424397",
             ),
         ]
-        df = aggregate_metrics(results)
-        ff_score = df[df["baseline"] == "FLASH_FUSION"]["accuracy_score"].iloc[0]
-        llm_score = df[df["baseline"] == "LLM_ONLY"]["accuracy_score"].iloc[0]
+        gt = {
+            1: GroundTruthEntry(
+                query_id=1,
+                query_text=q1_text,
+                reference_answer="Walking has 424397 samples",
+                expected_rejection=False,
+            )
+        }
+        df = aggregate_metrics(results, ground_truth_by_id=gt, scorer=SemanticScorer())
+        ff_score = df[df["baseline"] == "FLASH_FUSION"]["gt_score"].iloc[0]
+        llm_score = df[df["baseline"] == "LLM_ONLY"]["gt_score"].iloc[0]
         assert ff_score > llm_score
 
     def test_aggregate_multiple_queries(self):

@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import contextlib
 import io
+import multiprocessing as mp
 import os
 import platform
 import re
+from queue import Empty
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -35,6 +37,7 @@ from flashfusion.prompts.templates import (
 )
 from flashfusion.config import (
     AGENT_SAFE_MAX_ATTEMPTS,
+    AGENT_SAFE_CODE_TIMEOUT_S,
     EXECUTION_AGENT_BACKEND_DEFAULT,
     RESILIENT_PARSER_MAX_IDENTICAL,
     RESILIENT_PARSER_MAX_FAILURES,
@@ -42,6 +45,26 @@ from flashfusion.config import (
 
 if TYPE_CHECKING:
     from flashfusion.pipeline.runner import LLMClient
+
+
+def _safe_exec_worker(code: str, df: pd.DataFrame, output_queue) -> None:
+    """Execute generated code in an isolated process and return (ok, output)."""
+    local_ns: dict[str, Any] = {"df": df.copy(), "pd": pd, "result": None}
+    stdout_buffer = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(stdout_buffer):
+            exec(code, {"__builtins__": __builtins__}, local_ns)
+        result_obj = local_ns.get("result")
+        std_out = stdout_buffer.getvalue().strip()
+        if result_obj is None:
+            if std_out:
+                output_queue.put((True, std_out))
+                return
+            output_queue.put((True, "(no result produced)"))
+            return
+        output_queue.put((True, str(result_obj)))
+    except Exception as exc:
+        output_queue.put((False, f"{type(exc).__name__}: {exc}"))
 
 # ---------------------------------------------------------------------------
 # ExecutionDetails
@@ -648,20 +671,45 @@ class ExecutionLayer:
 
         Convention: generated code should assign the final answer to `result`.
         """
-        local_ns: dict[str, Any] = {"df": self._df.copy(), "pd": pd, "result": None}
-        stdout_buffer = io.StringIO()
+        ctx = mp.get_context("spawn")
+        output_queue = ctx.Queue(maxsize=1)
+        proc = ctx.Process(
+            target=_safe_exec_worker,
+            args=(code, self._df, output_queue),
+            daemon=True,
+        )
+
         try:
-            with contextlib.redirect_stdout(stdout_buffer):
-                exec(code, {"__builtins__": __builtins__}, local_ns)
-            result_obj = local_ns.get("result")
-            std_out = stdout_buffer.getvalue().strip()
-            if result_obj is None:
-                if std_out:
-                    return True, std_out
-                return True, "(no result produced)"
-            return True, str(result_obj)
-        except Exception as exc:
-            return False, f"{type(exc).__name__}: {exc}"
+            proc.start()
+            proc.join(timeout=AGENT_SAFE_CODE_TIMEOUT_S)
+
+            if proc.is_alive():
+                proc.terminate()
+                proc.join(timeout=1.0)
+                if proc.is_alive():
+                    proc.kill()
+                    proc.join(timeout=1.0)
+                return (
+                    False,
+                    (
+                        "TimeoutError: Safe code execution exceeded "
+                        f"{AGENT_SAFE_CODE_TIMEOUT_S:.1f}s and was terminated"
+                    ),
+                )
+
+            try:
+                ok, out = output_queue.get_nowait()
+                return bool(ok), str(out)
+            except Empty:
+                return (
+                    False,
+                    (
+                        "RuntimeError: Safe execution process exited without output "
+                        f"(exit_code={proc.exitcode})"
+                    ),
+                )
+        finally:
+            output_queue.close()
 
     def judge_result(self, question: str, code: str, result: str) -> dict:
         """

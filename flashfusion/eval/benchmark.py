@@ -28,17 +28,29 @@ import argparse
 import dataclasses
 import json
 import os
+import signal
 import sys
+import time
 
 from flashfusion.adapters.wisdm_adapter import WISDMAdapter
+from flashfusion.eval.ground_truth import load_ground_truth
+from flashfusion.eval.ground_truth_llm_judge import (
+    run_llm_ground_truth_judge,
+    _rows_from_run_results,
+)
 from flashfusion.eval.metrics import aggregate_metrics
 from flashfusion.eval.queries import WISDM_QUERIES
 from flashfusion.eval.reporter import print_table, save_csv, save_markdown
+from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_wisdm
 from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
 from flashfusion.config import DEFAULT_MODEL
 
 ALL_BASELINES = ["LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"]
+
+
+class QueryTimeoutError(TimeoutError):
+    """Raised when a single query run exceeds the configured latency budget."""
 
 
 def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
@@ -100,6 +112,14 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if not api_key:
         sys.exit("Error: GROQ_API_KEY environment variable not set")
 
+    try:
+        ground_truth_by_id = load_ground_truth(args.ground_truth)
+    except FileNotFoundError as e:
+        sys.exit(str(e))
+    except Exception as e:
+        sys.exit(f"Invalid ground truth file: {e}")
+    scorer = SemanticScorer()
+
     if args.baselines == "all":
         baselines = list(ALL_BASELINES)
     else:
@@ -142,8 +162,37 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
                 client=client,
                 adapter=adapter,
             )
+            t0 = time.time()
+
+            def _timeout_handler(signum, frame):
+                raise QueryTimeoutError()
+
+            prev_handler = signal.getsignal(signal.SIGALRM)
+            signal.signal(signal.SIGALRM, _timeout_handler)
+            signal.setitimer(signal.ITIMER_REAL, args.max_query_latency)
             try:
                 result = runner.run(query_text)
+            except QueryTimeoutError:
+                elapsed = time.time() - t0
+                result = RunResult(
+                    baseline=baseline,
+                    model=args.model,
+                    query=query_text,
+                    answer=(
+                        f"[TIMEOUT] Query exceeded {args.max_query_latency:.1f}s "
+                        "latency budget; skipped to next query."
+                    ),
+                    rejected=False,
+                    executed=False,
+                )
+                result.latency_s = elapsed
+                result.rejection_reason = (
+                    f"Timed out after {elapsed:.2f}s (budget {args.max_query_latency:.2f}s)"
+                )
+                result.stages_run = ["timeout"]
+                result.input_tokens = client.total_input_tokens()
+                result.output_tokens = client.total_output_tokens()
+                result.cost_usd = client.total_cost_usd()
             except Exception as e:
                 result = RunResult(
                     baseline=baseline,
@@ -156,6 +205,9 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
                 result.input_tokens = client.total_input_tokens()
                 result.output_tokens = client.total_output_tokens()
                 result.cost_usd = client.total_cost_usd()
+            finally:
+                signal.setitimer(signal.ITIMER_REAL, 0)
+                signal.signal(signal.SIGALRM, prev_handler)
             results.append(result)
 
             j = result.judge_verdict.get("verdict", "N/A") if result.judge_verdict else "N/A"
@@ -169,9 +221,28 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             with open(raw_results_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(dataclasses.asdict(result)) + "\n")
 
-    metrics_df = aggregate_metrics(results)
+    metrics_df = aggregate_metrics(
+        results,
+        ground_truth_by_id=ground_truth_by_id,
+        scorer=scorer,
+    )
+
+    if args.ground_truth_measurement in {"llm", "both"}:
+        judge_out_dir = os.path.join(args.output, "ground_truth_llm_judge")
+        run_llm_ground_truth_judge(
+            rows=_rows_from_run_results(results),
+            ground_truth_by_id=ground_truth_by_id,
+            output_dir=judge_out_dir,
+            model_name=args.model,
+            api_key=api_key,
+            data_path=args.data,
+            max_answer_chars=args.llm_judge_max_answer_chars,
+            max_code_chars=args.llm_judge_max_code_chars,
+        )
+        print(f"LLM ground-truth judgments written to {judge_out_dir}")
+
     save_csv(metrics_df, os.path.join(args.output, "metrics.csv"))
-    save_markdown(results, os.path.join(args.output, "report.md"))
+    save_markdown(results, os.path.join(args.output, "report.md"), metrics_df=metrics_df)
     print("\n=== Summary ===")
     print_table(metrics_df)
     print(f"\nResults written to {args.output}")
@@ -229,6 +300,38 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         default="flashfusion/eval_results/",
         help="Output directory for metrics.csv, report.md, raw_results.jsonl",
+    )
+    parser.add_argument(
+        "--ground-truth",
+        default="flashfusion/eval/ground_truth.json",
+        help="Path to ground truth JSON file (required to score answers)",
+    )
+    parser.add_argument(
+        "--max-query-latency",
+        type=float,
+        default=20.0,
+        help="Per-query latency budget in seconds; timed-out queries are skipped",
+    )
+    parser.add_argument(
+        "--ground-truth-measurement",
+        default="semantic",
+        choices=["semantic", "llm", "both"],
+        help=(
+            "Ground-truth scoring mode: semantic (fast local), "
+            "llm (LLM judge outputs), or both"
+        ),
+    )
+    parser.add_argument(
+        "--llm-judge-max-answer-chars",
+        type=int,
+        default=1800,
+        help="Max answer chars passed to LLM judge",
+    )
+    parser.add_argument(
+        "--llm-judge-max-code-chars",
+        type=int,
+        default=1400,
+        help="Max generated-code chars passed to LLM judge",
     )
     return parser
 

@@ -20,7 +20,7 @@ from flashfusion.pipeline.runner import RunResult
 
 def print_table(df: pd.DataFrame) -> None:
     """
-    Print a summary accuracy/latency/cost table to stdout grouped by baseline.
+    Print a summary GT-score/latency/cost table to stdout grouped by baseline.
 
     Args:
         df: DataFrame as returned by aggregate_metrics().
@@ -39,18 +39,24 @@ def print_table(df: pd.DataFrame) -> None:
     if df.empty:
         print("(no results to summarise)")
         return
+    metric_cols = ["latency_s", "cost_usd"]
+    if "gt_score" in df.columns:
+        metric_cols.insert(0, "gt_score")
     summary = (
-        df.groupby("baseline")[["accuracy_score", "latency_s", "cost_usd"]]
+        df.groupby("baseline")[metric_cols]
         .mean()
         .reset_index()
     )
-    summary.columns = [
-        "Baseline",
-        "Avg Accuracy",
-        "Avg Latency (s)",
-        "Avg Cost (USD)",
-    ]
-    summary = summary.sort_values("Avg Accuracy", ascending=False)
+    summary = summary.rename(
+        columns={
+            "baseline": "Baseline",
+            "gt_score": "Avg GT Score",
+            "latency_s": "Avg Latency (s)",
+            "cost_usd": "Avg Cost (USD)",
+        }
+    )
+    sort_col = "Avg GT Score" if "Avg GT Score" in summary.columns else "Avg Latency (s)"
+    summary = summary.sort_values(sort_col, ascending=False)
     print(
         tabulate(
             summary,
@@ -80,7 +86,11 @@ def save_csv(df: pd.DataFrame, path: str) -> None:
     df.to_csv(path, index=False)
 
 
-def save_markdown(results: list[RunResult], path: str) -> None:
+def save_markdown(
+    results: list[RunResult],
+    path: str,
+    metrics_df: pd.DataFrame | None = None,
+) -> None:
     """
     Write a comprehensive human-readable Markdown report.
 
@@ -118,7 +128,8 @@ def save_markdown(results: list[RunResult], path: str) -> None:
     if dirname:
         os.makedirs(dirname, exist_ok=True)
 
-    metrics_df = aggregate_metrics(results)
+    if metrics_df is None:
+        metrics_df = aggregate_metrics(results)
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     lines: list[str] = []
@@ -129,20 +140,24 @@ def save_markdown(results: list[RunResult], path: str) -> None:
     lines.append("## Summary Table")
     lines.append("")
     if not metrics_df.empty:
+        metric_cols = ["latency_s", "cost_usd"]
+        if "gt_score" in metrics_df.columns:
+            metric_cols.insert(0, "gt_score")
         summary = (
-            metrics_df.groupby("baseline")[
-                ["accuracy_score", "latency_s", "cost_usd"]
-            ]
+            metrics_df.groupby("baseline")[metric_cols]
             .mean()
             .reset_index()
-            .sort_values("accuracy_score", ascending=False)
         )
-        summary.columns = [
-            "Baseline",
-            "Avg Accuracy",
-            "Avg Latency (s)",
-            "Avg Cost (USD)",
-        ]
+        summary = summary.rename(
+            columns={
+                "baseline": "Baseline",
+                "gt_score": "Avg GT Score",
+                "latency_s": "Avg Latency (s)",
+                "cost_usd": "Avg Cost (USD)",
+            }
+        )
+        sort_col = "Avg GT Score" if "Avg GT Score" in summary.columns else "Avg Latency (s)"
+        summary = summary.sort_values(sort_col, ascending=False)
         lines.append(
             tabulate(
                 summary,
