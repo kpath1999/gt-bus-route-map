@@ -6,7 +6,7 @@ DO NOT MODIFY without re-running the full benchmark and updating CLAUDE.md.
 Each query is a dict with:
   id         (int)   1-indexed query identifier
   text       (str)   The exact natural language query fed to each baseline
-    complexity (str)   "simple" | "medium" | "out_of_scope"
+    complexity (str)   "direct" | "intermediate" | "out_of_scope"
   operation  (str)   Primary pandas operation expected (AGGREGATE, FILTER, etc.)
   stress     (str)   Which capability gap this query exposes
 
@@ -21,10 +21,10 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 1,
         "text": "What is the maximum recorded x-acceleration for user 15?",
-        "complexity": "simple",
+        "complexity": "direct",
         "operation": "FILTER+AGGREGATE",
         "stress": (
-            "Simple scalar lookup baseline. All tool-using baselines should execute. "
+            "direct scalar lookup baseline. All tool-using baselines should execute. "
             "Used to confirm that differences on later queries are due to reasoning depth, "
             "not basic filtering or aggregation failures."
         ),
@@ -32,7 +32,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 2,
         "text": "How many total samples in the dataset are classified as the Walking activity?",
-        "complexity": "simple",
+        "complexity": "direct",
         "operation": "FILTER+COUNT",
         "stress": (
             "Category counting with activity-label normalization. "
@@ -43,7 +43,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 3,
         "text": "What is the average y-accel value for user 5 during the Sitting activity?",
-        "complexity": "simple",
+        "complexity": "direct",
         "operation": "FILTER+AGGREGATE",
         "stress": (
             "Conjunctive filter (subject + activity) with numeric aggregation. "
@@ -53,7 +53,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 4,
         "text": "Which user has the highest total number of recorded data samples?",
-        "complexity": "simple",
+        "complexity": "direct",
         "operation": "GROUPBY+RANK",
         "stress": (
             "Groupby+argmax control query. "
@@ -67,7 +67,7 @@ WISDM_QUERIES: list[dict] = [
             "Compare the overall acceleration magnitude between dynamic movements, "
             "such as walking and jogging, and resting states like sitting."
         ),
-        "complexity": "medium",
+        "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE",
         "stress": (
             "Requires derived feature reasoning (`magnitude`) and semantic grouping of "
@@ -81,7 +81,7 @@ WISDM_QUERIES: list[dict] = [
             "Identify the user whose total recorded duration of stationary activities "
             "exceeds their duration of active locomotion."
         ),
-        "complexity": "medium",
+        "complexity": "intermediate",
         "operation": "FILTER+GROUPBY+COMPARE",
         "stress": (
             "Multi-step decomposition query: map stationary/locomotion sets, aggregate per user, "
@@ -94,7 +94,7 @@ WISDM_QUERIES: list[dict] = [
         "text": (
             "What is the median net acceleration vector length for user 20 while ascending steps?"
         ),
-        "complexity": "medium",
+        "complexity": "intermediate",
         "operation": "FILTER+DERIVE+AGGREGATE",
         "stress": (
             "Derived vector magnitude plus median aggregation under activity synonym handling "
@@ -108,7 +108,7 @@ WISDM_QUERIES: list[dict] = [
             "Calculate the difference in average z-axis acceleration between ascending "
             "and descending elevation changes for all users."
         ),
-        "complexity": "medium",
+        "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE+DIFF",
         "stress": (
             "Comparative aggregation across two activity families. "

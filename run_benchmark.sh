@@ -172,32 +172,13 @@ echo "  ✓  Split complete"
 echo ""
 echo "▶  [3/4]  Generating visualizations…"
 
-# 3a: Semantic score + latency + cost + token charts via existing module.
-#     Only called when all three default baseline files are present.
-WELLMAX_CSV="$PER_BASELINE_DIR/WELLMAX_ONLY/metrics.csv"
-AUTOIOT_CSV="$PER_BASELINE_DIR/AUTOIOT_ONLY/metrics.csv"
-FF_CSV="$PER_BASELINE_DIR/FLASH_FUSION/metrics.csv"
-
-if [ -f "$WELLMAX_CSV" ] && [ -f "$AUTOIOT_CSV" ] && [ -f "$FF_CSV" ]; then
-    "$PYTHON" -m flashfusion.eval.visualize_comparison \
-        --wellmax    "$WELLMAX_CSV" \
-        --autoiot    "$AUTOIOT_CSV" \
-        --flashfusion "$FF_CSV" \
-        --accuracy-column gt_score \
-        --title "Baseline Comparison — $TIMESTAMP" \
-        --output "$VISUALS_DIR"
-    echo "  ✓  Semantic charts written"
-else
-    echo "  Warning: one or more per-baseline files missing; using combined metrics for charts."
-    # Fallback: generate charts directly from the combined metrics.csv
-    "$PYTHON" -m flashfusion.eval.visualize_comparison \
-        --wellmax    "$BENCHMARK_DIR/metrics.csv" \
-        --autoiot    "$BENCHMARK_DIR/metrics.csv" \
-        --flashfusion "$BENCHMARK_DIR/metrics.csv" \
-        --accuracy-column gt_score \
-        --title "Baseline Comparison — $TIMESTAMP (combined)" \
-        --output "$VISUALS_DIR" || true
-fi
+# 3a: Baseline comparison charts/tables grouped by query type.
+"$PYTHON" -m flashfusion.eval.visualize_comparison \
+    --metrics "$BENCHMARK_DIR/metrics.csv" \
+    --accuracy-column gt_score \
+    --title "Baseline Comparison — $TIMESTAMP" \
+    --output "$VISUALS_DIR"
+echo "  ✓  Baseline comparison charts written"
 
 # 3b: LLM judge charts — avg score and verdict distribution.
 #     Paths passed as positional args; heredoc is single-quoted (no shell expansion).
