@@ -49,18 +49,15 @@ def run_flash_fusion(
     df,
     client: LLMClient,
     r: RunResult,
-    adapter=None,
 ) -> RunResult:
     """
     Execute the full Flash-Fusion pipeline.
 
     Args:
         query:   Raw natural language query.
-        df:      Enriched WISDM DataFrame (WISDMAdapter.get_derived_features()
-                 already applied by BaselineRunner before dispatch).
+        df:      WISDM DataFrame (deterministically enriched by BaselineRunner).
         client:  LLMClient instance for this run.
         r:       RunResult to populate.
-        adapter: Optional WISDMAdapter — used to inject codebook_str into Stage 2.
 
     Returns:
         Populated RunResult.
@@ -80,8 +77,6 @@ def run_flash_fusion(
 
     stage1 = Stage1_ConceptExtraction(client)
     stage2 = Stage2_SchemaGrounding(client)
-    if adapter is not None:
-        stage2.codebook_str = adapter.get_codebook_str()
     stage3 = Stage3_SubqueryGeneration(client)
     executor = ExecutionLayer(df, client)
 
@@ -127,6 +122,7 @@ def run_flash_fusion(
     r.executed = True
     r.final_code = details.final_code or ""
     r.agent_tries = details.tries
+    r.execution_attempts = list(details.attempts)
     r.stages_run.append("agent")
 
     verdict = executor.judge_result(query, r.final_code, raw_answer)
@@ -143,6 +139,8 @@ def run_flash_fusion(
         if retry_details.final_code:
             r.final_code = retry_details.final_code
         r.agent_tries += retry_details.tries
+        if retry_details.attempts:
+            r.execution_attempts.extend(retry_details.attempts)
         r.stages_run.append("agent_retry")
         retry_verdict = executor.judge_result(query, r.final_code, retry_answer)
         r.stages_run.append("judge_retry")

@@ -86,6 +86,36 @@ def _extract_first_json(text: str) -> dict[str, Any]:
         return {}
 
 
+def _resolve_candidate_code(row: dict[str, Any]) -> str:
+    """Resolve best available generated code from a result row."""
+    final_code = str(row.get("final_code", "")).strip()
+    if final_code:
+        return final_code
+
+    attempts = row.get("execution_attempts", [])
+    if isinstance(attempts, list):
+        for attempt in reversed(attempts):
+            if not isinstance(attempt, dict):
+                continue
+            for key in ("code", "generated_code", "final_code", "candidate_code", "action_input"):
+                value = str(attempt.get(key, "")).strip()
+                if value:
+                    return value
+
+    trace = str(row.get("trace", ""))
+    if "Action Input:" in trace:
+        action_inputs = [
+            ln.split("Action Input:", 1)[1].strip()
+            for ln in trace.splitlines()
+            if "Action Input:" in ln
+        ]
+        action_inputs = [x for x in action_inputs if x]
+        if action_inputs:
+            return action_inputs[-1]
+
+    return ""
+
+
 def build_ground_truth_sanity(
     ground_truth_by_id: dict[int, GroundTruthEntry],
     data_path: str | None,
@@ -242,6 +272,7 @@ Candidate generated code:
 
         gt = ground_truth_by_id[qid]
         sanity = sanity_by_id.get(qid, {})
+        candidate_code = _resolve_candidate_code(row)
         llm_raw = client.invoke_chain(
             chain,
             {
@@ -257,7 +288,7 @@ Candidate generated code:
                 "executed": str(bool(row.get("executed", False))),
                 "rejected": str(bool(row.get("rejected", False))),
                 "candidate_answer": _clip(str(row.get("answer", "")), max_answer_chars),
-                "candidate_code": _clip(str(row.get("final_code", "")), max_code_chars),
+                "candidate_code": _clip(candidate_code, max_code_chars),
             },
             stage="gt_llm_judge",
         )
@@ -284,7 +315,7 @@ Candidate generated code:
                 "candidate_answer": str(row.get("answer", "")),
                 "candidate_rejected": bool(row.get("rejected", False)),
                 "candidate_executed": bool(row.get("executed", False)),
-                "candidate_code": str(row.get("final_code", "")),
+                "candidate_code": candidate_code,
                 "llm_verdict": verdict,
                 "llm_score": score,
                 "llm_reason": str(parsed.get("reason", "")),

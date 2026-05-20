@@ -20,7 +20,7 @@ from flashfusion.pipeline.runner import RunResult
 
 def print_table(df: pd.DataFrame) -> None:
     """
-    Print a summary GT-score/latency/cost table to stdout grouped by baseline.
+    Print a summary LLM-accuracy/latency/cost table to stdout grouped by baseline.
 
     Args:
         df: DataFrame as returned by aggregate_metrics().
@@ -50,12 +50,12 @@ def print_table(df: pd.DataFrame) -> None:
     summary = summary.rename(
         columns={
             "baseline": "Baseline",
-            "gt_score": "Avg GT Score",
+            "gt_score": "Avg LLM Accuracy",
             "latency_s": "Avg Latency (s)",
             "cost_usd": "Avg Cost (USD)",
         }
     )
-    sort_col = "Avg GT Score" if "Avg GT Score" in summary.columns else "Avg Latency (s)"
+    sort_col = "Avg LLM Accuracy" if "Avg LLM Accuracy" in summary.columns else "Avg Latency (s)"
     summary = summary.sort_values(sort_col, ascending=False)
     print(
         tabulate(
@@ -151,12 +151,12 @@ def save_markdown(
         summary = summary.rename(
             columns={
                 "baseline": "Baseline",
-                "gt_score": "Avg GT Score",
+                "gt_score": "Avg LLM Accuracy",
                 "latency_s": "Avg Latency (s)",
                 "cost_usd": "Avg Cost (USD)",
             }
         )
-        sort_col = "Avg GT Score" if "Avg GT Score" in summary.columns else "Avg Latency (s)"
+        sort_col = "Avg LLM Accuracy" if "Avg LLM Accuracy" in summary.columns else "Avg Latency (s)"
         summary = summary.sort_values(sort_col, ascending=False)
         lines.append(
             tabulate(

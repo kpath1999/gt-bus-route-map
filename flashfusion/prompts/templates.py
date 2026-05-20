@@ -44,17 +44,14 @@ REASONING: <comma-separated list of reasoning concepts, or NONE>\
 # Stage 2 — Schema Grounding
 # Maps DATA concepts to actual columns.
 # Maps REASONING concepts to concrete column+operation proxies.
-# Uses the activity codebook to resolve semantic group names to letter codes.
-# Placeholders: {column_metadata}, {codebook}
+# Uses semantic activity labels directly from the dataset.
+# Placeholder: {column_metadata}
 # ---------------------------------------------------------------------------
 SCHEMA_GROUNDING_PROMPT: str = """\
 You are a schema grounding specialist for the WISDM activity recognition dataset.
 
 Dataset columns and metadata:
 {column_metadata}
-
-Activity codebook (maps activity_label letter codes to human-readable names):
-{codebook}
 
 You receive DATA and REASONING concepts extracted from a user query.
 
@@ -63,15 +60,15 @@ Your tasks:
 2. For each REASONING concept, define a concrete proxy — which column(s) and what
    operation(s) approximate that concept. Use these standard mappings:
      - "magnitude" / "intensity" / "overall acceleration" → column `magnitude` = sqrt(x²+y²+z²)
-     - "sedentary" / "stationary" → activity_label IN ('D','E')  [Sitting, Standing]
-     - "locomotion" / "active" / "movement" → activity_label IN ('A','B','C')  [Walking, Jogging, Stairs]
-     - "hand activities" / "hand-related" → activity_label IN ('F','Q','R')  [Typing, Writing, Clapping]
+     - "sedentary" / "stationary" → activity_label IN ('Sitting','Standing')
+     - "locomotion" / "active" / "movement" → activity_label IN ('Walking','Jogging','Stairs')
+     - "hand activities" / "hand-related" → activity_label IN ('Typing','Writing','Clapping')
      - "outlier" / "unusually high" / "abnormal" → z-score > 3 on the relevant column
      - "most similar" / "similarity" → Euclidean distance or correlation between per-activity
        mean(x, y, z) centroid vectors after groupby(activity_label)
      - "predict" / "forecast" / "next activity" → UNMAPPABLE (no sequence model in dataset)
      - Any column not present (e.g. "heart_rate", "temperature", "GPS") → UNMAPPABLE
-3. Use the activity codebook above to resolve English group names to exact letter codes.
+3. Always prefer activity names exactly as they appear in `activity_label`.
 4. If a DATA concept cannot be mapped to any available column, mark it UNMAPPABLE.
 
 Output format — output ONLY the following structure, nothing else:

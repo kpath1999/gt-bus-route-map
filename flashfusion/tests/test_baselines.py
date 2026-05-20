@@ -85,7 +85,7 @@ def test_wellmax_executes_grounded_query_without_guardrail() -> None:
         executor = execution_layer_cls.return_value
         executor.execute_single.return_value = ("answer", "trace", MagicMock(final_code="code", tries=2))
 
-        out = run_wellmax_only(query, _df(), _client(), r, adapter=None)
+        out = run_wellmax_only(query, _df(), _client(), r)
 
     executor.guardrail.assert_not_called()
     assert executor.execute_single.call_count == 1
@@ -123,7 +123,7 @@ def test_flash_fusion_rejection_sets_explanation() -> None:
         executor = execution_layer_cls.return_value
         executor.guardrail.return_value = (False, "heart_rate is not in schema")
 
-        out = run_flash_fusion(query, _df(), _client(), r, adapter=None)
+        out = run_flash_fusion(query, _df(), _client(), r)
 
     executor.execute_single.assert_not_called()
     executor.judge_result.assert_not_called()

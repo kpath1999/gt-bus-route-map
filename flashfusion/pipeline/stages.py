@@ -183,10 +183,6 @@ class Stage1_ConceptExtraction:
 class Stage2_SchemaGrounding:
     """
     Stage 2: Map concepts to dataset columns and operation proxies.
-
-    The codebook_str attribute must be set by BaselineRunner before calling run()
-    when an adapter is available:
-        stage2.codebook_str = adapter.get_codebook_str()
     """
 
     def __init__(self, client: "LLMClient") -> None:
@@ -195,9 +191,8 @@ class Stage2_SchemaGrounding:
             client: LLMClient wrapping a ChatGroq model.
         """
         self.client = client
-        self.codebook_str: str = "No codebook provided."
         # Note: the chain is built inside run() because SCHEMA_GROUNDING_PROMPT
-        # contains {column_metadata} and {codebook} that must be formatted first.
+        # contains {column_metadata} that must be formatted first.
 
     def run(
         self,
@@ -234,10 +229,7 @@ class Stage2_SchemaGrounding:
             Known columns: subject_id, activity_label, timestamp, x, y, z,
                            magnitude, activity_name.
         """
-        system_prompt = SCHEMA_GROUNDING_PROMPT.format(
-            column_metadata=meta_str,
-            codebook=self.codebook_str or "No codebook provided.",
-        )
+        system_prompt = SCHEMA_GROUNDING_PROMPT.format(column_metadata=meta_str)
         chain = (
             ChatPromptTemplate.from_messages(
                 [("system", system_prompt), ("human", "{input}")]

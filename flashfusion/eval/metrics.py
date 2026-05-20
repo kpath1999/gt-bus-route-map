@@ -2,88 +2,65 @@
 eval/metrics.py — Accuracy, latency, and cost metrics for benchmark results.
 
 Functions:
-  compute_accuracy(result, ground_truth=None) → dict
+    compute_accuracy(result) → dict
   compute_latency(result) → dict
   compute_cost(result) → dict
   aggregate_metrics(results) → pd.DataFrame
 
 Accuracy scoring rules (see CLAUDE.md §eval/metrics.py):
-  1.0  — executed=True AND judge_verdict["verdict"] == "PASS"
-  0.5  — executed=True AND (judge_verdict["verdict"] == "FAIL" OR judge_verdict == {})
-  0.0  — rejected=True OR executed=False
-
-Note: AutoIOT-Only always has judge_verdict == {} (no judge). Its score is 0.5
-when it executes, which reflects unverified alignment — intentionally lower than
-Flash-Fusion's 1.0 on correctly-judged runs.
+    Use raw LLM judge score (llm_score) in [0,1] when available.
+    Missing or invalid judgments default to 0.0.
 """
 
 from __future__ import annotations
 
 import pandas as pd
 
-from flashfusion.eval.ground_truth import GroundTruthEntry
-from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.config import (
-    ACCURACY_EXEC_SCORE,
     ACCURACY_FAIL_SCORE,
     ACCURACY_PASS_SCORE,
 )
 from flashfusion.pipeline.runner import RunResult
 
 
-def compute_accuracy(
-    result: RunResult,
-    ground_truth: str | None = None,
-) -> dict:
+def _normalize_verdict(verdict: str | None) -> str:
+    if verdict is None:
+        return ""
+    return str(verdict).strip().upper()
+
+
+def _score_from_llm_verdict(verdict: str | None) -> float:
+    normalized = _normalize_verdict(verdict)
+    if normalized in {"PASS", "PARTIAL"}:
+        return ACCURACY_PASS_SCORE
+    return ACCURACY_FAIL_SCORE
+
+
+def compute_accuracy(result: RunResult) -> dict:
     """
-    Compute the accuracy score for a single benchmark result.
+    Compute binary accuracy from the run-level judge verdict.
 
-    Scoring logic:
-        if result.rejected or not result.executed:
-            score = ACCURACY_FAIL_SCORE  (0.0)
-        elif result.judge_verdict.get("verdict") == "PASS":
-            score = ACCURACY_PASS_SCORE  (1.0)
-        elif result.judge_verdict.get("verdict") == "FAIL":
-            score = ACCURACY_EXEC_SCORE  (0.5)
-        else:  # executed but no judge (AutoIOT-Only)
-            score = ACCURACY_EXEC_SCORE  (0.5)
-
-    If ground_truth is provided (future extension), it can override the judge-based
-    score via an exact-match or substring check. Leave as None for current benchmarks.
+    PASS/PARTIAL map to 1.0; FAIL/UNSURE/missing/unknown map to 0.0.
 
     Args:
-        result:       RunResult from BaselineRunner.run().
-        ground_truth: Optional reference answer string (unused unless provided).
+        result: RunResult from BaselineRunner.run().
 
     Returns:
         dict with keys:
-            score      (float)        — 0.0, 0.5, or 1.0
+            score      (float)        — 0.0 or 1.0
             executed   (bool)         — whether pandas agent ran code
-            judge_pass (bool | None)  — True/False from judge, None if no judge
+            judge_pass (bool)         — True when verdict is PASS/PARTIAL
             rejected   (bool)         — whether query was rejected by guardrail/S2
     """
-    verdict = result.judge_verdict.get("verdict") if result.judge_verdict else None
-    judge_pass: bool | None
-    if verdict == "PASS":
-        judge_pass = True
-    elif verdict == "FAIL":
-        judge_pass = False
-    else:
-        judge_pass = None
-
-    if result.rejected or not result.executed:
-        score = ACCURACY_FAIL_SCORE
-    elif verdict == "PASS":
-        score = ACCURACY_PASS_SCORE
-    elif verdict == "FAIL":
-        score = ACCURACY_EXEC_SCORE
-    else:
-        score = ACCURACY_EXEC_SCORE
+    verdict = _normalize_verdict(
+        result.judge_verdict.get("verdict") if result.judge_verdict else None
+    )
+    score = _score_from_llm_verdict(verdict)
 
     return {
         "score": score,
         "executed": result.executed,
-        "judge_pass": judge_pass,
+        "judge_pass": verdict in {"PASS", "PARTIAL"},
         "rejected": result.rejected,
     }
 
@@ -122,23 +99,9 @@ def compute_cost(result: RunResult) -> dict:
     }
 
 
-def compute_accuracy_v2(
-    result: RunResult,
-    ground_truth: GroundTruthEntry,
-    scorer: SemanticScorer,
-) -> dict:
-    """Compute simplified GT-based accuracy: rejection-binary or text similarity."""
-    out = scorer.score_result(result, ground_truth)
-    return {
-        "score": float(out["score"]),
-        "method": str(out.get("method", "text_similarity")),
-    }
-
-
 def aggregate_metrics(
     results: list[RunResult],
-    ground_truth_by_id: dict[int, GroundTruthEntry] | None = None,
-    scorer: SemanticScorer | None = None,
+    llm_judgments_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Build a tidy DataFrame of per-(baseline, query) metrics.
@@ -153,8 +116,8 @@ def aggregate_metrics(
         pd.DataFrame with columns:
             baseline        (str)
             query_id        (int)   — 1-indexed position in WISDM_QUERIES
-            gt_score        (float | None) — ground-truth closeness score when GT is provided
-            gt_method       (str)   — scoring method used
+            gt_score        (float) — raw llm_score when present, else 0.0
+            gt_method       (str)   — scoring method: llm_judge_score[(_missing)]
             latency_s       (float) — from compute_latency()
             cost_usd        (float) — from compute_cost()
             input_tokens    (int)
@@ -178,18 +141,46 @@ def aggregate_metrics(
     from flashfusion.eval.queries import WISDM_QUERIES
 
     query_lookup = {q["text"]: q["id"] for q in WISDM_QUERIES}
+    judgment_by_key: dict[tuple[str, int], tuple[float, str]] = {}
+
+    if llm_judgments_df is not None and not llm_judgments_df.empty:
+        required = {"baseline", "query_id", "llm_verdict", "llm_score"}
+        missing = [c for c in required if c not in llm_judgments_df.columns]
+        if missing:
+            raise ValueError(
+                f"llm_judgments_df missing required columns: {sorted(missing)}"
+            )
+
+        for row in llm_judgments_df.to_dict(orient="records"):
+            baseline = str(row.get("baseline", "")).strip()
+            try:
+                qid = int(row.get("query_id", 0))
+            except (TypeError, ValueError):
+                continue
+            key = (baseline, qid)
+            if key not in judgment_by_key:
+                verdict = _normalize_verdict(row.get("llm_verdict"))
+                try:
+                    raw_score = float(row.get("llm_score", 0.0))
+                except (TypeError, ValueError):
+                    raw_score = 0.0
+                raw_score = max(0.0, min(1.0, raw_score))
+                judgment_by_key[key] = (raw_score, verdict)
+
     rows: list[dict] = []
     for idx, r in enumerate(results, start=1):
         lat = compute_latency(r)
         cost = compute_cost(r)
         query_id = query_lookup.get(r.query, idx)
 
-        gt_score: float | None = None
-        gt_method = "N/A"
-        if ground_truth_by_id and scorer and query_id in ground_truth_by_id:
-            acc_v2 = compute_accuracy_v2(r, ground_truth_by_id[query_id], scorer)
-            gt_score = acc_v2["score"]
-            gt_method = acc_v2["method"]
+        score_and_verdict = judgment_by_key.get((r.baseline, query_id))
+        if score_and_verdict is None:
+            gt_score = 0.0
+            llm_verdict = ""
+            gt_method = "llm_judge_score_missing"
+        else:
+            gt_score, llm_verdict = score_and_verdict
+            gt_method = "llm_judge_score"
 
         rows.append(
             {

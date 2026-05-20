@@ -147,19 +147,15 @@ class TestStage2SchemaGrounding:
         assert any("activity_label" in m for m in result["mappings"])
         assert "heart_rate" in result["unmappable"]
 
-    def test_injects_codebook_when_set(self, mock_client, minimal_df):
-        """
-        If stage.codebook_str is set, it should be passed to invoke_chain
-        (verified by checking the call args contain the codebook text).
-        """
+    def test_runs_without_codebook_injection(self, mock_client, minimal_df):
+        """Stage2 should run successfully without any adapter/codebook state."""
         from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
-        mock_client.invoke_chain.return_value = "MAPPINGS:\n  walking → A\nUNMAPPABLE: NONE"
+        mock_client.invoke_chain.return_value = "MAPPINGS:\n  walking → activity_label == 'Walking'\nUNMAPPABLE: NONE"
         stage = Stage2_SchemaGrounding(mock_client)
-        stage.codebook_str = "A=Walking, B=Jogging"
         meta_str = meta_to_str(build_column_metadata(minimal_df))
         concepts = {"DATA": ["walking"], "REASONING": []}
-        stage.run(concepts, "walking stats", meta_str, minimal_df)
-        assert stage.codebook_str == "A=Walking, B=Jogging"
+        result = stage.run(concepts, "walking stats", meta_str, minimal_df)
+        assert any("activity_label" in m for m in result["mappings"])
         assert mock_client.invoke_chain.call_count >= 1
 
     def test_retry_on_empty_mappings(self, mock_client, minimal_df):

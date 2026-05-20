@@ -65,6 +65,7 @@ def run_autoiot_only(
     r.executed = True
     r.final_code = details.final_code
     r.agent_tries = details.tries
+    r.execution_attempts = list(details.attempts)
     r.stages_run.append("agent")
     r.judge_verdict = {}
     return r

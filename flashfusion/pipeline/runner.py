@@ -16,7 +16,6 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 import pandas as pd
 from langchain_core.output_parsers import StrOutputParser
@@ -24,10 +23,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 
 from flashfusion.config import MODEL_RATE_PER_1M_TOKENS, TOKEN_ESTIMATE_MULTIPLIER
-from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
-
-if TYPE_CHECKING:
-    from flashfusion.adapters.wisdm_adapter import WISDMAdapter
 
 
 # ---------------------------------------------------------------------------
@@ -209,8 +204,8 @@ class BaselineRunner:
         "AUTOIOT_ONLY"  — Agent: raw query → pandas agent
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
-    The adapter (WISDMAdapter) is optional but required for Flash-Fusion and
-    WellMax-Only to achieve full accuracy on semantic group queries.
+    For rewriting baselines (WellMax/Flash-Fusion), derived features are applied
+    internally before dispatch: magnitude and activity_name.
     """
 
     MODES: frozenset = frozenset(
@@ -222,15 +217,13 @@ class BaselineRunner:
         mode: str,
         df: pd.DataFrame,
         client: LLMClient,
-        adapter: "WISDMAdapter | None" = None,
         data_path: str = "WISDM",
     ) -> None:
         """
         Args:
             mode:       One of self.MODES.
-            df:         WISDM DataFrame (raw — adapter derives features as needed).
+            df:         WISDM DataFrame.
             client:     LLMClient for this run.
-            adapter:    Optional WISDMAdapter for codebook + derived features.
             data_path:  Descriptive label injected into agent prefix (not a file path).
 
         Raises:
@@ -239,11 +232,34 @@ class BaselineRunner:
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}, got {mode!r}")
         self.mode = mode
-        self.df = df.copy()          # working copy; will be enriched in-place if adapter set
+        self.df = df.copy()
         self.client = client
-        self.adapter = adapter
         self.data_path = data_path
-        self._adapter_applied = False  # guard: apply derived features only once
+        self._enrichment_applied = False
+
+    @staticmethod
+    def _apply_default_enrichment(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
+        """
+        Add deterministic derived columns used by rewriting baselines.
+
+        Returns:
+            (enriched_df, provenance)
+        """
+        enriched = df.copy()
+        provenance: dict[str, str] = {}
+
+        if all(col in enriched.columns for col in ("x", "y", "z")) and "magnitude" not in enriched.columns:
+            enriched["magnitude"] = (enriched["x"] ** 2 + enriched["y"] ** 2 + enriched["z"] ** 2) ** 0.5
+            provenance["magnitude"] = "sqrt(x^2 + y^2 + z^2)"
+
+        if "activity_label" in enriched.columns and "activity_name" not in enriched.columns:
+            labels = enriched["activity_label"]
+            if pd.api.types.is_string_dtype(labels) or labels.dtype == object:
+                labels = labels.astype(str).str.strip()
+            enriched["activity_name"] = labels
+            provenance["activity_name"] = "copied from activity_label"
+
+        return enriched, provenance
 
     def run(self, query: str) -> RunResult:
         """
@@ -259,10 +275,7 @@ class BaselineRunner:
         Implementation:
             1. r = RunResult(baseline=self.mode, model=self.client.model_name, query=query)
             2. t0 = time.time()
-            3. Apply adapter derived features once (guarded by _adapter_applied flag):
-               if self.adapter and not self._adapter_applied:
-                   self.df, _ = self.adapter.get_derived_features(self.df)
-                   self._adapter_applied = True
+            3. Apply deterministic enrichment once for rewriting baselines.
             4. Dispatch to _run_<mode>(query, r)
             5. r.latency_s = time.time() - t0
             6. r.input_tokens  = self.client.total_input_tokens()
@@ -275,13 +288,9 @@ class BaselineRunner:
         )
         t0 = time.time()
 
-        if (
-            self.adapter is not None
-            and not self._adapter_applied
-            and self.mode in {"WELLMAX_ONLY", "FLASH_FUSION"}
-        ):
-            self.df, _ = self.adapter.get_derived_features(self.df)
-            self._adapter_applied = True
+        if not self._enrichment_applied and self.mode in {"WELLMAX_ONLY", "FLASH_FUSION"}:
+            self.df, _ = self._apply_default_enrichment(self.df)
+            self._enrichment_applied = True
 
         from flashfusion.baselines.autoiot_only import run_autoiot_only
         from flashfusion.baselines.flash_fusion import run_flash_fusion
@@ -291,11 +300,11 @@ class BaselineRunner:
         if self.mode == "LLM_ONLY":
             run_llm_only(query, self.df, self.client, r)
         elif self.mode == "WELLMAX_ONLY":
-            run_wellmax_only(query, self.df, self.client, r, adapter=self.adapter)
+            run_wellmax_only(query, self.df, self.client, r)
         elif self.mode == "AUTOIOT_ONLY":
             run_autoiot_only(query, self.df, self.client, r)
         elif self.mode == "FLASH_FUSION":
-            run_flash_fusion(query, self.df, self.client, r, adapter=self.adapter)
+            run_flash_fusion(query, self.df, self.client, r)
 
         r.latency_s = time.time() - t0
         r.input_tokens = self.client.total_input_tokens()
@@ -311,7 +320,7 @@ class BaselineRunner:
     def _run_wellmax_only(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.wellmax_only.run_wellmax_only."""
         from flashfusion.baselines.wellmax_only import run_wellmax_only
-        return run_wellmax_only(query, self.df, self.client, r, adapter=self.adapter)
+        return run_wellmax_only(query, self.df, self.client, r)
 
     def _run_autoiot_only(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.autoiot_only.run_autoiot_only."""
@@ -321,4 +330,4 @@ class BaselineRunner:
     def _run_flash_fusion(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.flash_fusion.run_flash_fusion."""
         from flashfusion.baselines.flash_fusion import run_flash_fusion
-        return run_flash_fusion(query, self.df, self.client, r, adapter=self.adapter)
+        return run_flash_fusion(query, self.df, self.client, r)

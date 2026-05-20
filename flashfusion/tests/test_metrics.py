@@ -1,21 +1,18 @@
 """
-tests/test_metrics.py — Unit tests for eval/metrics.py accuracy scoring rules.
+tests/test_metrics.py — Unit tests for eval/metrics.py LLM-verdict scoring rules.
 
 Run with: pytest flashfusion/tests/test_metrics.py -v
 """
 
 from __future__ import annotations
 
-import pytest
+import pandas as pd
 
 from flashfusion.config import (
-    ACCURACY_EXEC_SCORE,
     ACCURACY_FAIL_SCORE,
     ACCURACY_PASS_SCORE,
 )
-from flashfusion.eval.ground_truth import GroundTruthEntry
 from flashfusion.eval.metrics import aggregate_metrics, compute_accuracy
-from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.runner import RunResult
 
 
@@ -50,7 +47,7 @@ def make_result(**kwargs) -> RunResult:
 # ---------------------------------------------------------------------------
 
 class TestComputeAccuracy:
-    """Validate the 0.0 / 0.5 / 1.0 accuracy scoring rules."""
+    """Validate binary PASS/PARTIAL vs FAIL/UNSURE scoring rules."""
 
     def test_flash_fusion_pass_scores_10(self):
         """
@@ -65,9 +62,22 @@ class TestComputeAccuracy:
         acc = compute_accuracy(r)
         assert acc["score"] == ACCURACY_PASS_SCORE  # 1.0
 
-    def test_flash_fusion_fail_scores_05(self):
+    def test_partial_scores_10(self):
         """
-        Flash-Fusion: executed=True + judge verdict FAIL → score == 0.5
+        PARTIAL should count as correct (1.0).
+        """
+        r = make_result(
+            baseline="FLASH_FUSION",
+            executed=True,
+            rejected=False,
+            judge_verdict={"verdict": "PARTIAL", "issue": "", "suggestion": ""},
+        )
+        acc = compute_accuracy(r)
+        assert acc["score"] == ACCURACY_PASS_SCORE  # 1.0
+
+    def test_fail_scores_00(self):
+        """
+        FAIL should count as incorrect (0.0).
         """
         r = make_result(
             baseline="FLASH_FUSION",
@@ -76,41 +86,28 @@ class TestComputeAccuracy:
             judge_verdict={"verdict": "FAIL", "issue": "Wrong column", "suggestion": "Fix it"},
         )
         acc = compute_accuracy(r)
-        assert acc["score"] == ACCURACY_EXEC_SCORE  # 0.5
+        assert acc["score"] == ACCURACY_FAIL_SCORE  # 0.0
 
-    def test_autoiot_only_no_judge_scores_05(self):
+    def test_unsure_scores_00(self):
         """
-        AutoIOT-Only: executed=True + no judge (judge_verdict == {}) → score == 0.5
-        """
-        r = make_result(
-            baseline="AUTOIOT_ONLY",
-            executed=True,
-            rejected=False,
-            judge_verdict={},  # AutoIOT-Only has no judge
-        )
-        acc = compute_accuracy(r)
-        assert acc["score"] == ACCURACY_EXEC_SCORE  # 0.5
-
-    def test_rejected_scores_00(self):
-        """
-        Any baseline: rejected=True → score == 0.0
+        UNSURE should count as incorrect (0.0) under strict policy.
         """
         r = make_result(
             baseline="WELLMAX_ONLY",
-            executed=False,
-            rejected=True,
-            rejection_reason="heart_rate column does not exist",
+            executed=True,
+            rejected=False,
+            judge_verdict={"verdict": "UNSURE"},
         )
         acc = compute_accuracy(r)
         assert acc["score"] == ACCURACY_FAIL_SCORE  # 0.0
 
-    def test_llm_only_not_executed_scores_00(self):
+    def test_missing_verdict_scores_00(self):
         """
-        LLM-Only: executed=False + rejected=False → score == 0.0
+        Missing verdict should count as incorrect (0.0).
         """
         r = make_result(
-            baseline="LLM_ONLY",
-            executed=False,
+            baseline="AUTOIOT_ONLY",
+            executed=True,
             rejected=False,
             judge_verdict={},
         )
@@ -131,9 +128,9 @@ class TestComputeAccuracy:
         assert acc["rejected"] is False
         assert acc["judge_pass"] is True
 
-    def test_judge_pass_none_when_no_judge(self):
+    def test_judge_pass_false_when_no_judge(self):
         """
-        When judge_verdict == {}, judge_pass should be None (no judge ran).
+        Missing verdict should return judge_pass=False.
         """
         r = make_result(
             baseline="AUTOIOT_ONLY",
@@ -142,7 +139,7 @@ class TestComputeAccuracy:
             judge_verdict={},
         )
         acc = compute_accuracy(r)
-        assert acc["judge_pass"] is None
+        assert acc["judge_pass"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -170,55 +167,141 @@ class TestAggregateMetrics:
         required = {"baseline", "gt_score", "latency_s", "cost_usd"}
         assert required.issubset(set(df.columns))
 
-    def test_flash_fusion_higher_gt_score_than_llm_only(self):
+    def test_uses_raw_llm_score_for_gt_score(self):
         """
-        With ground truth enabled, better-aligned answers should get higher gt_score.
+        gt_score should use raw llm_score values (not verdict binarization).
         """
         q1_text = "What is the maximum recorded x-acceleration for user 15?"
+        q2_text = "How many total samples in the dataset are classified as the Walking activity?"
+        q3_text = "What is the average y-accel value for user 5 during the Sitting activity?"
+        q4_text = "Which user has the highest total number of recorded data samples?"
         results = [
             make_result(
-                baseline="LLM_ONLY",
+                baseline="AUTOIOT_ONLY",
                 executed=True,
                 rejected=False,
                 query=q1_text,
-                answer="random unrelated text",
             ),
             make_result(
                 baseline="FLASH_FUSION",
                 executed=True,
                 rejected=False,
-                judge_verdict={"verdict": "PASS"},
-                query=q1_text,
-                answer="Maximum x-acceleration for user 15 is 18.4321",
+                query=q2_text,
+            ),
+            make_result(
+                baseline="WELLMAX_ONLY",
+                executed=True,
+                rejected=False,
+                query=q3_text,
+            ),
+            make_result(
+                baseline="FLASH_FUSION",
+                executed=True,
+                rejected=False,
+                query=q4_text,
             ),
         ]
-        gt = {
-            1: GroundTruthEntry(
-                query_id=1,
-                query_text=q1_text,
-                reference_answer="Maximum x-acceleration for user 15 is 18.4320",
-                expected_rejection=False,
-            )
-        }
-        df = aggregate_metrics(results, ground_truth_by_id=gt, scorer=SemanticScorer())
-        ff_score = df[df["baseline"] == "FLASH_FUSION"]["gt_score"].iloc[0]
-        llm_score = df[df["baseline"] == "LLM_ONLY"]["gt_score"].iloc[0]
-        assert ff_score > llm_score
 
-    def test_aggregate_multiple_queries(self):
+        judgments = pd.DataFrame(
+            [
+                {
+                    "baseline": "AUTOIOT_ONLY",
+                    "query_id": 1,
+                    "llm_verdict": "PASS",
+                    "llm_score": 0.95,
+                },
+                {
+                    "baseline": "FLASH_FUSION",
+                    "query_id": 2,
+                    "llm_verdict": "PARTIAL",
+                    "llm_score": 0.6,
+                },
+                {
+                    "baseline": "WELLMAX_ONLY",
+                    "query_id": 3,
+                    "llm_verdict": "FAIL",
+                    "llm_score": 0.1,
+                },
+                {
+                    "baseline": "FLASH_FUSION",
+                    "query_id": 4,
+                    "llm_verdict": "UNSURE",
+                    "llm_score": 0.2,
+                },
+            ]
+        )
+
+        df = aggregate_metrics(results, llm_judgments_df=judgments)
+
+        by_key = {
+            (row["baseline"], int(row["query_id"])): float(row["gt_score"])
+            for _, row in df.iterrows()
+        }
+        assert by_key[("AUTOIOT_ONLY", 1)] == 0.95
+        assert by_key[("FLASH_FUSION", 2)] == 0.6
+        assert by_key[("WELLMAX_ONLY", 3)] == 0.1
+        assert by_key[("FLASH_FUSION", 4)] == 0.2
+
+    def test_missing_judgment_defaults_to_zero(self):
         """
-        aggregate_metrics() should handle multiple queries per baseline.
+        Rows without llm_judgment should be strict-0 with missing method.
         """
+        q1_text = "What is the maximum recorded x-acceleration for user 15?"
+        q2_text = "How many total samples in the dataset are classified as the Walking activity?"
         results = [
-            make_result(baseline="LLM_ONLY", executed=False, rejected=False, query="Q1"),
-            make_result(baseline="LLM_ONLY", executed=False, rejected=False, query="Q2"),
-            make_result(
-                baseline="FLASH_FUSION",
-                executed=True,
-                rejected=False,
-                judge_verdict={"verdict": "PASS"},
-                query="Q1",
-            ),
+            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q1_text),
+            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q2_text),
         ]
-        df = aggregate_metrics(results)
-        assert len(df) == 3  # one row per result
+        judgments = pd.DataFrame(
+            [
+                {
+                    "baseline": "FLASH_FUSION",
+                    "query_id": 1,
+                    "llm_verdict": "PASS",
+                    "llm_score": 0.97,
+                }
+            ]
+        )
+
+        df = aggregate_metrics(results, llm_judgments_df=judgments)
+        q1 = df[df["query_id"] == 1].iloc[0]
+        q2 = df[df["query_id"] == 2].iloc[0]
+        assert float(q1["gt_score"]) == 0.97
+        assert str(q1["gt_method"]) == "llm_judge_score"
+        assert float(q2["gt_score"]) == 0.0
+        assert str(q2["gt_method"]) == "llm_judge_score_missing"
+
+    def test_rejects_invalid_llm_judgments_schema(self):
+        """
+        aggregate_metrics() should fail fast when llm_judgments columns are missing.
+        """
+        results = [make_result(query="What is the maximum recorded x-acceleration for user 15?")]
+        invalid = pd.DataFrame([{"baseline": "FLASH_FUSION", "query_id": 1}])
+        try:
+            aggregate_metrics(results, llm_judgments_df=invalid)
+            assert False, "Expected ValueError for missing llm_score/llm_verdict columns"
+        except ValueError as e:
+            assert "llm_judgments_df missing required columns" in str(e)
+
+    def test_clamps_out_of_range_llm_scores(self):
+        """
+        llm_score should be clamped into [0,1] before writing gt_score.
+        """
+        q1_text = "What is the maximum recorded x-acceleration for user 15?"
+        q2_text = "How many total samples in the dataset are classified as the Walking activity?"
+        results = [
+            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q1_text),
+            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q2_text),
+        ]
+        judgments = pd.DataFrame(
+            [
+                {"baseline": "FLASH_FUSION", "query_id": 1, "llm_verdict": "PASS", "llm_score": 1.4},
+                {"baseline": "FLASH_FUSION", "query_id": 2, "llm_verdict": "FAIL", "llm_score": -0.2},
+            ]
+        )
+
+        df = aggregate_metrics(results, llm_judgments_df=judgments)
+        q1 = df[df["query_id"] == 1].iloc[0]
+        q2 = df[df["query_id"] == 2].iloc[0]
+        assert float(q1["gt_score"]) == 1.0
+        assert float(q2["gt_score"]) == 0.0

@@ -26,19 +26,19 @@
   {
     "query_id": 5,
     "query_text": "Compare the overall acceleration magnitude between dynamic movements, such as walking and jogging, and resting states like sitting.",
-    "reference_answer": "Average magnitude for dynamic activities (walking,jogging) is 12.3135; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.4807.",
+    "reference_answer": "Average magnitude for dynamic activities (walking,jogging,upstairs,downstairs) is 11.9625; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.1297.",
     "expected_rejection": false
   },
   {
     "query_id": 6,
     "query_text": "Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion.",
-    "reference_answer": "No user has stationary duration proxy greater than locomotion duration proxy.",
+    "reference_answer": "Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).",
     "expected_rejection": false
   },
   {
     "query_id": 7,
     "query_text": "What is the median net acceleration vector length for user 20 while ascending steps?",
-    "reference_answer": "Median net acceleration magnitude for user 20 while ascending steps is 9.8931.",
+    "reference_answer": "Median net acceleration vector length for user 20 while ascending steps is 9.8931.",
     "expected_rejection": false
   },
   {

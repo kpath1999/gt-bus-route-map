@@ -49,17 +49,15 @@ def run_wellmax_only(
     df,
     client: LLMClient,
     r: RunResult,
-    adapter=None,
 ) -> RunResult:
     """
     Execute the WellMax-Only baseline.
 
     Args:
         query:   Raw natural language query.
-        df:      Enriched WISDM DataFrame (derived features already applied by caller).
+        df:      WISDM DataFrame (deterministically enriched by BaselineRunner).
         client:  LLMClient instance for this run.
         r:       RunResult to populate.
-        adapter: Optional WISDMAdapter for codebook injection into Stage 2.
 
     Returns:
         Populated RunResult.
@@ -76,8 +74,6 @@ def run_wellmax_only(
 
     stage1 = Stage1_ConceptExtraction(client)
     stage2 = Stage2_SchemaGrounding(client)
-    if adapter is not None:
-        stage2.codebook_str = adapter.get_codebook_str()
     stage3 = Stage3_SubqueryGeneration(client)
 
     concepts = stage1.run(query)
@@ -107,6 +103,7 @@ def run_wellmax_only(
     r.executed = True
     r.final_code = details.final_code
     r.agent_tries = details.tries
+    r.execution_attempts = list(details.attempts)
     r.stages_run.append("agent")
     r.judge_verdict = {}
     return r

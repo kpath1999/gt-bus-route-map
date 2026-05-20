@@ -16,6 +16,7 @@
 #   BASELINES     Comma-separated baselines
 #                   (default: AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
 #   QUERIES       Comma-separated query IDs or "all"  (default: all)
+#   RUNS          Number of repeated benchmark runs      (default: 1)
 #   MAX_LATENCY   Per-query timeout in seconds        (default: 90)
 #   MODEL         Groq model override (empty = benchmark config default)
 #
@@ -23,7 +24,7 @@
 #   flashfusion/eval_results/runs/
 #     run_YYYYMMDD_HHMMSS/
 #       benchmark/                   ← raw benchmark output
-#         metrics.csv                ← semantic scores, latency, cost, tokens
+#         metrics.csv                ← LLM-verdict accuracy, latency, cost, tokens
 #         raw_results.jsonl
 #         report.md
 #         ground_truth_llm_judge/    ← LLM judge artefacts (auto-generated)
@@ -65,6 +66,7 @@ WISDM_DATA="${WISDM_DATA:-chat/data/imu/WISDM_ar_v1.1_raw.txt}"
 GROUND_TRUTH="${GROUND_TRUTH:-flashfusion/eval/ground_truth.json}"
 BASELINES="${BASELINES:-AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION}"
 QUERIES="${QUERIES:-all}"
+RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
 MODEL="${MODEL:-}"
 
@@ -110,6 +112,7 @@ echo "  Flash-Fusion  —  End-to-End Benchmark"
 echo "  Timestamp  : $TIMESTAMP"
 echo "  Baselines  : $BASELINES"
 echo "  Queries    : $QUERIES"
+echo "  Runs       : $RUNS"
 echo "  Max latency: ${MAX_LATENCY}s per query"
 echo "  Output dir : $RUN_DIR"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -117,8 +120,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # ── Step 1: Benchmark + integrated LLM judge ─────────────────────────────────
 echo ""
 echo "▶  [1/4]  Running benchmark…"
-echo "          (--ground-truth-measurement both runs semantic scoring"
-echo "           and the LLM judge together; judge output → $JUDGE_DIR)"
+echo "          (--ground-truth-measurement llm uses LLM-verdict scoring;"
+echo "           LLM judge artefacts written to $JUDGE_DIR)"
 echo ""
 
 # Build command as array so optional --model flag is handled cleanly
@@ -126,8 +129,9 @@ CMD=("$PYTHON" -m flashfusion.eval.benchmark
     --data          "$WISDM_DATA"
     --baselines     "$BASELINES"
     --queries       "$QUERIES"
+    --runs          "$RUNS"
     --ground-truth  "$GROUND_TRUTH"
-    --ground-truth-measurement both
+    --ground-truth-measurement llm
     --max-query-latency "$MAX_LATENCY"
     --output        "$BENCHMARK_DIR"
 )
@@ -176,7 +180,7 @@ echo "▶  [3/4]  Generating visualizations…"
 "$PYTHON" -m flashfusion.eval.visualize_comparison \
     --metrics "$BENCHMARK_DIR/metrics.csv" \
     --accuracy-column gt_score \
-    --title "Baseline Comparison — $TIMESTAMP" \
+    --title "Baseline Comparison" \
     --output "$VISUALS_DIR"
 echo "  ✓  Baseline comparison charts written"
 
@@ -248,7 +252,7 @@ ax_dist.set_ylim(0, 1.1)
 ax_dist.tick_params(axis="x", rotation=15)
 ax_dist.legend(loc="upper right")
 
-fig.suptitle(f"LLM Judge Results  —  {timestamp}", fontsize=13, fontweight="bold")
+fig.suptitle(f"LLM Judge Results", fontsize=13, fontweight="bold")
 fig.tight_layout()
 
 out_png = visuals_dir / "llm_judge_bars.png"
@@ -295,7 +299,7 @@ def _tabulate(df, title):
         print(df.to_string(index=False))
     print()
 
-# --- Semantic score summary ---
+# --- LLM verdict accuracy summary ---
 if metrics_path.exists():
     df = pd.read_csv(metrics_path)
     agg_cols = [c for c in ["gt_score", "latency_s", "cost_usd",
@@ -308,9 +312,9 @@ if metrics_path.exists():
         ).astype(int)
     sort_col = "gt_score" if "gt_score" in summary.columns else agg_cols[0]
     summary = summary.sort_values(sort_col, ascending=False).reset_index(drop=True)
-    _tabulate(summary, "Semantic Score Summary  (averages per baseline)")
+    _tabulate(summary, "LLM Verdict Accuracy Summary  (averages per baseline)")
 else:
-    print(f"  Warning: {metrics_path} not found; skipping semantic summary.")
+    print(f"  Warning: {metrics_path} not found; skipping LLM accuracy summary.")
 
 # --- LLM judge summary ---
 if judge_summary_path.exists():
@@ -336,7 +340,7 @@ echo "  Latest symlink : $LATEST_LINK  →  run_$TIMESTAMP"
 echo ""
 echo "  Key artefacts:"
 printf "    %-22s %s\n" "Benchmark report:"  "$BENCHMARK_DIR/report.md"
-printf "    %-22s %s\n" "Semantic metrics:"  "$BENCHMARK_DIR/metrics.csv"
+printf "    %-22s %s\n" "LLM metrics:"       "$BENCHMARK_DIR/metrics.csv"
 printf "    %-22s %s\n" "LLM judge detail:"  "$JUDGE_DIR/llm_judgments.csv"
 printf "    %-22s %s\n" "LLM judge summary:" "$JUDGE_DIR/llm_judgments_summary.csv"
 printf "    %-22s %s\n" "Visualizations:"    "$VISUALS_DIR/"
