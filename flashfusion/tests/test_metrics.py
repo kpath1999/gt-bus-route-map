@@ -174,7 +174,7 @@ class TestAggregateMetrics:
         """
         With ground truth enabled, better-aligned answers should get higher gt_score.
         """
-        q1_text = "How many data samples were recorded for each activity?"
+        q1_text = "What is the maximum recorded x-acceleration for user 15?"
         results = [
             make_result(
                 baseline="LLM_ONLY",
@@ -189,14 +189,14 @@ class TestAggregateMetrics:
                 rejected=False,
                 judge_verdict={"verdict": "PASS"},
                 query=q1_text,
-                answer="The count for walking is 424397",
+                answer="Maximum x-acceleration for user 15 is 18.4321",
             ),
         ]
         gt = {
             1: GroundTruthEntry(
                 query_id=1,
                 query_text=q1_text,
-                reference_answer="Walking has 424397 samples",
+                reference_answer="Maximum x-acceleration for user 15 is 18.4320",
                 expected_rejection=False,
             )
         }

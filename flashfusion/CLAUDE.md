@@ -30,10 +30,10 @@ export GROQ_API_KEY="gsk_..."
 # Smoke test: 3 queries × 4 baselines (~5 min)
 python -m flashfusion.eval.benchmark \
   --data chat/data/imu/WISDM_ar_v1.1_raw.txt \
-  --baselines all --queries 1,4,10 \
+    --baselines all --queries 1,5,12 \
   --output flashfusion/eval_results/
 
-# Full benchmark: 10 queries × 4 baselines (~40 min)
+# Full benchmark: 12 queries × 4 baselines (~50 min)
 python -m flashfusion.eval.benchmark \
   --data chat/data/imu/WISDM_ar_v1.1_raw.txt \
   --baselines all \
@@ -113,23 +113,25 @@ Q=Writing      R=Clapping        S=Folding Clothes
 
 ---
 
-## 10 Evaluation Queries
+## 12 Evaluation Queries
 
 Full definitions with metadata in `eval/queries.py`. These queries are deliberately designed
 to expose capability gaps between baselines.
 
 | # | Query | Primary Stress Point |
 |---|-------|---------------------|
-| Q1 | "How many data samples were recorded for each activity?" | LLM-Only hallucination vs. real computation |
-| Q2 | "Which 3 activities have the highest average overall acceleration magnitude?" | Only Flash-Fusion materialises `magnitude` via adapter |
-| Q3 | "Compare average acceleration magnitude between sedentary and locomotion activities." | AutoIOT-Only cannot resolve group names without codebook |
-| Q4 | "What is the average heart rate recorded during jogging?" | LLM-Only is the ONLY baseline that does NOT reject |
-| Q5 | "For subject 1610, what % of samples involve hand-related activities?" | AutoIOT-Only cannot map English names → letter codes |
-| Q6 | "Which subjects show unusually high peak acceleration values?" | Threshold semantics — only Flash-Fusion grounds "unusual" to z>3 |
-| Q7 | "Is x-axis acceleration positively correlated with z-axis during stair climbing?" | AutoIOT-Only may match Flash-Fusion — measures overhead cost |
-| Q8 | "Which subject has the longest total recording duration?" | Both AutoIOT-Only and Flash-Fusion should succeed |
-| Q9 | "Which two activities are most similar based on three-axis acceleration patterns?" | Only Flash-Fusion decomposes and executes the full 4-step chain |
-| Q10 | "Predict which activity this subject is likely to perform next." | LLM-Only does not reject forecasting — hallucinates |
+| Q1 | "What is the maximum recorded x-acceleration for user 15?" | Control query for scalar filter+aggregate correctness |
+| Q2 | "How many total samples ... Walking activity?" | Label-normalization check on categorical counting |
+| Q3 | "Average y-accel for user 5 during Sitting" | Conjunctive filter fidelity (subject + activity) |
+| Q4 | "Which user has the highest total number of samples?" | Groupby+rank execution baseline |
+| Q5 | "Compare magnitude for dynamic vs resting states" | Derived-feature grounding (`magnitude`) + semantic grouping |
+| Q6 | "User with stationary duration exceeding locomotion" | Multi-step decomposition and per-user comparison |
+| Q7 | "Median vector length for user 20 ascending steps" | Derived metric with activity-synonym handling |
+| Q8 | "Difference in average z between ascending/descending" | Comparative aggregate with signed-difference reporting |
+| Q9 | "Walking speed vs age correlation" | Out-of-scope (missing speed/age schema) |
+| Q10 | "Predict exact geographic location for jogging" | Out-of-scope geolocation inference |
+| Q11 | "Female vs male cadence during stair climbing" | Out-of-scope demographic + cadence fields |
+| Q12 | "Personalized workout routine recommendation" | Out-of-scope prescriptive recommendation |
 
 ---
 
@@ -1032,13 +1034,13 @@ Test aggregate_metrics():
 # 1. Smoke test (3 queries × 4 baselines, ~5 min)
 python -m flashfusion.eval.benchmark \
   --data chat/data/imu/WISDM_ar_v1.1_raw.txt \
-  --baselines all --queries 1,4,10 \
+    --baselines all --queries 1,5,12 \
   --output flashfusion/eval_results/
 
 # Expected:
-#   Q1:  LLM_ONLY executed=False  |  AUTOIOT_ONLY executed=True
-#   Q4:  LLM_ONLY rejected=False  |  WELLMAX_ONLY rejected=True  |  FLASH_FUSION rejected=True
-#   Q10: LLM_ONLY rejected=False  |  AUTOIOT_ONLY rejected=True  |  FLASH_FUSION rejected=True
+#   Q1:  all baselines should execute successfully
+#   Q5:  FLASH_FUSION should produce grounded magnitude comparison
+#   Q12: FLASH_FUSION should reject; AUTOIOT_ONLY and WELLMAX_ONLY typically attempt execution
 
 # 2. Unit tests
 pytest flashfusion/tests/ -v

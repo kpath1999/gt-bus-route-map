@@ -262,14 +262,14 @@ def _build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Flash-Fusion Benchmark — evaluate 4 baselines × 10 WISDM queries "
+            "Flash-Fusion Benchmark — evaluate 4 baselines × 12 WISDM queries "
             "measuring accuracy, latency, and token cost."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
             "  python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt "
-            "--baselines all --queries 1,4,10\n"
+            "--baselines all --queries 1,5,9,12\n"
             "  python -m flashfusion.eval.benchmark --data ... --baselines FLASH_FUSION,LLM_ONLY"
         ),
     )
@@ -289,7 +289,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--queries",
         default="all",
-        help='Comma-separated 1-indexed query IDs or "all". E.g. "1,4,10"',
+        help='Comma-separated 1-indexed query IDs or "all". E.g. "1,5,9,12"',
     )
     parser.add_argument(
         "--model",

@@ -1,62 +1,74 @@
 [
   {
     "query_id": 1,
-    "query_text": "How many data samples were recorded for each activity?",
-    "reference_answer": "Sample counts by activity label: Walking: 424397; Jogging: 342174; Upstairs: 122869; Downstairs: 100425; Sitting: 59939; Standing: 48394",
+    "query_text": "What is the maximum recorded x-acceleration for user 15?",
+    "reference_answer": "Maximum x-acceleration for user 15 is 19.5700.",
     "expected_rejection": false
   },
   {
     "query_id": 2,
-    "query_text": "Which 3 activities have the highest average overall acceleration magnitude?",
-    "reference_answer": "Top 3 activities by mean magnitude: Jogging (13.4107), Walking (11.4290), Downstairs (10.8317)",
+    "query_text": "How many total samples in the dataset are classified as the Walking activity?",
+    "reference_answer": "Total Walking samples in the dataset: 424397.",
     "expected_rejection": false
   },
   {
     "query_id": 3,
-    "query_text": "Compare the average acceleration magnitude between sedentary activities and locomotion activities.",
-    "reference_answer": "Average magnitude - sedentary (D,E): 9.8328; locomotion (A,B,C): 11.9625.",
+    "query_text": "What is the average y-accel value for user 5 during the Sitting activity?",
+    "reference_answer": "Average y-acceleration for user 5 during Sitting is 3.0414.",
     "expected_rejection": false
   },
   {
     "query_id": 4,
-    "query_text": "What is the average heart rate recorded during jogging?",
-    "reference_answer": "Reject: heart_rate is not present in this dataset.",
-    "expected_rejection": true
+    "query_text": "Which user has the highest total number of recorded data samples?",
+    "reference_answer": "User with the highest sample count is 20 with 56632 samples.",
+    "expected_rejection": false
   },
   {
     "query_id": 5,
-    "query_text": "For subject 1610, what percentage of their recorded samples involve hand-related activities — typing, writing, and clapping?",
-    "reference_answer": "Reject: subject_id 1610 does not exist in the dataset.",
-    "expected_rejection": true
+    "query_text": "Compare the overall acceleration magnitude between dynamic movements, such as walking and jogging, and resting states like sitting.",
+    "reference_answer": "Average magnitude for dynamic activities (walking,jogging) is 12.3135; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.4807.",
+    "expected_rejection": false
   },
   {
     "query_id": 6,
-    "query_text": "Which subjects show unusually high peak acceleration values that could indicate sensor noise or data errors?",
-    "reference_answer": "Subjects with unusually high peak acceleration (z-score > 3 on magnitude): 1, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 18, 19, 20, 23, 24, 25, 26, 27, 29, 30, 31, 32, 34, 36",
+    "query_text": "Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion.",
+    "reference_answer": "No user has stationary duration proxy greater than locomotion duration proxy.",
     "expected_rejection": false
   },
   {
     "query_id": 7,
-    "query_text": "Is x-axis acceleration positively correlated with z-axis acceleration during stair climbing?",
-    "reference_answer": "For stair climbing (C), Pearson correlation between x and z is -0.0455.",
+    "query_text": "What is the median net acceleration vector length for user 20 while ascending steps?",
+    "reference_answer": "Median net acceleration magnitude for user 20 while ascending steps is 9.8931.",
     "expected_rejection": false
   },
   {
     "query_id": 8,
-    "query_text": "Which subject has the longest total recording duration based on their timestamp range?",
-    "reference_answer": "Subject with longest duration is 19 with 131623531465000 ms range.",
+    "query_text": "Calculate the difference in average z-axis acceleration between ascending and descending elevation changes for all users.",
+    "reference_answer": "Average z for ascending elevation changes is 0.3235; descending is 0.6841; difference (ascending-descending) is -0.3605.",
     "expected_rejection": false
   },
   {
     "query_id": 9,
-    "query_text": "Based on their three-axis acceleration patterns, which two distinct activities are most similar to each other?",
-    "reference_answer": "Most similar activity pair by centroid correlation is Downstairs and Jogging (corr=0.9999).",
-    "expected_rejection": false
+    "query_text": "How does the average walking speed in miles per hour correlate with the age of the users?",
+    "reference_answer": "Reject: speed in mph and user age are not available in this dataset.",
+    "expected_rejection": true
   },
   {
     "query_id": 10,
-    "query_text": "Based on the data, predict which activity this subject is likely to perform next.",
-    "reference_answer": "Reject: next-activity prediction is out of scope for this benchmark.",
+    "query_text": "Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",
+    "reference_answer": "Reject: acceleration records do not contain geographic location signals.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 11,
+    "query_text": "Are female subjects more likely to have a higher cadence during stair climbing than male subjects?",
+    "reference_answer": "Reject: sex and cadence attributes are unavailable in this dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 12,
+    "query_text": "Recommend a personalized daily workout routine for user 3 based on their most frequent physical activities.",
+    "reference_answer": "Reject: personalized workout recommendation is outside benchmark analytics scope.",
     "expected_rejection": true
   }
 ]
