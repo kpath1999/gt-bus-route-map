@@ -90,6 +90,7 @@ def save_markdown(
     results: list[RunResult],
     path: str,
     metrics_df: pd.DataFrame | None = None,
+    query_defs: list[dict] | None = None,
 ) -> None:
     """
     Write a comprehensive human-readable Markdown report.
@@ -129,7 +130,7 @@ def save_markdown(
         os.makedirs(dirname, exist_ok=True)
 
     if metrics_df is None:
-        metrics_df = aggregate_metrics(results)
+        metrics_df = aggregate_metrics(results, query_defs=query_defs)
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
 
     lines: list[str] = []
@@ -171,7 +172,9 @@ def save_markdown(
         lines.append("(no results)")
     lines.append("")
 
-    query_lookup = {q["text"]: q for q in WISDM_QUERIES}
+    if query_defs is None:
+        query_defs = WISDM_QUERIES
+    query_lookup = {q["text"]: q for q in query_defs}
     grouped: dict[str, list[RunResult]] = {}
     for r in results:
         grouped.setdefault(r.query, []).append(r)

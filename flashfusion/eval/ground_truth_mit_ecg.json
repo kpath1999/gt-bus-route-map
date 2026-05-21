@@ -1,0 +1,74 @@
+[
+  {
+    "query_id": 1,
+    "query_text": "How many total samples belong to record_id 101?",
+    "reference_answer": "Total samples for record_id 101: 650000.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 2,
+    "query_text": "What is the maximum MLII value for record_id 105?",
+    "reference_answer": "Maximum MLII for record_id 105 is 3.0000.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 3,
+    "query_text": "What is the average V1 value for record_id 234?",
+    "reference_answer": "Average V1 for record_id 234 is 0.0489.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 4,
+    "query_text": "How many beats are annotated (annotation is non-empty) for record_id 109?",
+    "reference_answer": "Annotated-beat count for record_id 109 is 2535.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 5,
+    "query_text": "Which record_id has the highest count of annotated beats?",
+    "reference_answer": "record_id 215 has the highest annotated-beat count with 3400 samples.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 6,
+    "query_text": "Compare the average absolute MLII signal between record_id 101 and record_id 234.",
+    "reference_answer": "Average |MLII| is 0.3413 for record_id 101 and 0.2796 for record_id 234; difference (101-234) is 0.0617.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 7,
+    "query_text": "For record_id 109, what is the difference between mean MLII during annotated versus unannotated samples?",
+    "reference_answer": "For record_id 109, mean MLII during annotated samples is 1.5017 and during unannotated samples is -0.2371; difference (annotated-unannotated) is 1.7388.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 8,
+    "query_text": "Which record_id shows the highest variability (standard deviation) in V1?",
+    "reference_answer": "record_id 107 has the highest V1 standard deviation at 0.6115.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 9,
+    "query_text": "How does arrhythmia burden correlate with patient age?",
+    "reference_answer": "Reject: patient age is unavailable in this ECG dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 10,
+    "query_text": "Predict each patient's medication regimen from the ECG waveform.",
+    "reference_answer": "Reject: medication labels are unavailable in this ECG dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 11,
+    "query_text": "Are female patients more likely than male patients to have ventricular beats?",
+    "reference_answer": "Reject: sex metadata is unavailable in this ECG dataset.",
+    "expected_rejection": true
+  },
+  {
+    "query_id": 12,
+    "query_text": "Estimate where each recording was collected geographically.",
+    "reference_answer": "Reject: geographic collection metadata is unavailable in this ECG dataset.",
+    "expected_rejection": true
+  }
+]

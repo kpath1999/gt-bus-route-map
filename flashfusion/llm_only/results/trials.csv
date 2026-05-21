@@ -1,0 +1,2 @@
+baseline,dataset,n_rows,question_id,question,rep,prompt_tokens,completion_tokens,total_tokens,prompt_tokens_estimated,latency_s,cost_usd,truncation_pct,prompt_sha256,answer,api_error,model
+LLM_ONLY,bus,1219,1,What is the maximum recorded accel_mean value in this trip?,1,96486,4,96490,50901,14.694192886352539,0.0569299,0.0,5568b296586e868d,9.38,,llama-3.3-70b-versatile

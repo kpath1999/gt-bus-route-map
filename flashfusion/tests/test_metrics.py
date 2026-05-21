@@ -62,9 +62,9 @@ class TestComputeAccuracy:
         acc = compute_accuracy(r)
         assert acc["score"] == ACCURACY_PASS_SCORE  # 1.0
 
-    def test_partial_scores_10(self):
+    def test_partial_scores_00(self):
         """
-        PARTIAL should count as correct (1.0).
+        PARTIAL is not emitted by the binary judge — treated as FAIL (0.0).
         """
         r = make_result(
             baseline="FLASH_FUSION",
@@ -73,7 +73,7 @@ class TestComputeAccuracy:
             judge_verdict={"verdict": "PARTIAL", "issue": "", "suggestion": ""},
         )
         acc = compute_accuracy(r)
-        assert acc["score"] == ACCURACY_PASS_SCORE  # 1.0
+        assert acc["score"] == ACCURACY_FAIL_SCORE  # 0.0
 
     def test_fail_scores_00(self):
         """
@@ -167,9 +167,9 @@ class TestAggregateMetrics:
         required = {"baseline", "gt_score", "latency_s", "cost_usd"}
         assert required.issubset(set(df.columns))
 
-    def test_uses_raw_llm_score_for_gt_score(self):
+    def test_uses_binary_llm_score_for_gt_score(self):
         """
-        gt_score should use raw llm_score values (not verdict binarization).
+        gt_score should reflect binary llm_score values (1.0 for PASS, 0.0 for FAIL).
         """
         q1_text = "What is the maximum recorded x-acceleration for user 15?"
         q2_text = "How many total samples in the dataset are classified as the Walking activity?"
@@ -208,25 +208,25 @@ class TestAggregateMetrics:
                     "baseline": "AUTOIOT_ONLY",
                     "query_id": 1,
                     "llm_verdict": "PASS",
-                    "llm_score": 0.95,
+                    "llm_score": 1.0,
                 },
                 {
                     "baseline": "FLASH_FUSION",
                     "query_id": 2,
-                    "llm_verdict": "PARTIAL",
-                    "llm_score": 0.6,
+                    "llm_verdict": "FAIL",
+                    "llm_score": 0.0,
                 },
                 {
                     "baseline": "WELLMAX_ONLY",
                     "query_id": 3,
                     "llm_verdict": "FAIL",
-                    "llm_score": 0.1,
+                    "llm_score": 0.0,
                 },
                 {
                     "baseline": "FLASH_FUSION",
                     "query_id": 4,
-                    "llm_verdict": "UNSURE",
-                    "llm_score": 0.2,
+                    "llm_verdict": "PASS",
+                    "llm_score": 1.0,
                 },
             ]
         )
@@ -237,10 +237,10 @@ class TestAggregateMetrics:
             (row["baseline"], int(row["query_id"])): float(row["gt_score"])
             for _, row in df.iterrows()
         }
-        assert by_key[("AUTOIOT_ONLY", 1)] == 0.95
-        assert by_key[("FLASH_FUSION", 2)] == 0.6
-        assert by_key[("WELLMAX_ONLY", 3)] == 0.1
-        assert by_key[("FLASH_FUSION", 4)] == 0.2
+        assert by_key[("AUTOIOT_ONLY", 1)] == 1.0
+        assert by_key[("FLASH_FUSION", 2)] == 0.0
+        assert by_key[("WELLMAX_ONLY", 3)] == 0.0
+        assert by_key[("FLASH_FUSION", 4)] == 1.0
 
     def test_missing_judgment_defaults_to_zero(self):
         """

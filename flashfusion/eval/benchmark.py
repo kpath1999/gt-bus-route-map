@@ -41,9 +41,13 @@ from flashfusion.eval.ground_truth_llm_judge import (
     _rows_from_run_results,
 )
 from flashfusion.eval.metrics import aggregate_metrics
-from flashfusion.eval.queries import WISDM_QUERIES
+from flashfusion.eval.queries import (
+    DATASET_WISDM,
+    SUPPORTED_DATASETS,
+    get_queries,
+)
 from flashfusion.eval.reporter import print_table, save_csv, save_markdown
-from flashfusion.pipeline.loader import load_wisdm
+from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
 from flashfusion.config import DEFAULT_MODEL
 
@@ -84,6 +88,8 @@ def _run_single_benchmark_iteration(
     max_query_latency: float,
     llm_judge_max_answer_chars: int,
     llm_judge_max_code_chars: int,
+    dataset: str,
+    query_defs: list[dict],
 ) -> tuple[list[RunResult], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Execute one full baseline x query benchmark run and persist artifacts."""
     os.makedirs(output_dir, exist_ok=True)
@@ -94,7 +100,7 @@ def _run_single_benchmark_iteration(
     results: list[RunResult] = []
     for baseline in baselines:
         for qid in query_ids:
-            query_def = WISDM_QUERIES[qid - 1]
+            query_def = query_defs[qid - 1]
             query_text = query_def["text"]
             print(
                 f"\n[{baseline}] Q{qid}: {query_text[:60]}...",
@@ -174,6 +180,7 @@ def _run_single_benchmark_iteration(
         model_name=model_name,
         api_key=api_key,
         data_path=data_path,
+        dataset=dataset,
         max_answer_chars=llm_judge_max_answer_chars,
         max_code_chars=llm_judge_max_code_chars,
     )
@@ -182,10 +189,16 @@ def _run_single_benchmark_iteration(
     metrics_df = aggregate_metrics(
         results,
         llm_judgments_df=judgments_df,
+        query_defs=query_defs,
     )
 
     save_csv(metrics_df, os.path.join(output_dir, "metrics.csv"))
-    save_markdown(results, os.path.join(output_dir, "report.md"), metrics_df=metrics_df)
+    save_markdown(
+        results,
+        os.path.join(output_dir, "report.md"),
+        metrics_df=metrics_df,
+        query_defs=query_defs,
+    )
     print("\n=== Summary ===")
     print_table(metrics_df)
     print(f"\nResults written to {output_dir}")
@@ -270,11 +283,13 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         if b not in ALL_BASELINES:
             sys.exit(f"Error: unknown baseline {b!r}. Options: {ALL_BASELINES}")
 
+    query_defs = get_queries(args.dataset)
+
     if args.queries == "all":
-        query_ids = [q["id"] for q in WISDM_QUERIES]
+        query_ids = [q["id"] for q in query_defs]
     else:
         query_ids = [int(x.strip()) for x in args.queries.split(",") if x.strip()]
-    valid_ids = {q["id"] for q in WISDM_QUERIES}
+    valid_ids = {q["id"] for q in query_defs}
     for qid in query_ids:
         if qid not in valid_ids:
             sys.exit(f"Error: unknown query id {qid}. Valid: {sorted(valid_ids)}")
@@ -282,7 +297,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if args.runs < 1:
         sys.exit("Error: --runs must be >= 1")
 
-    df_base = load_wisdm(args.data)
+    df_base = load_dataset_by_name(args.data, args.dataset)
     os.makedirs(args.output, exist_ok=True)
 
     if args.runs == 1:
@@ -295,6 +310,8 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             api_key=api_key,
             ground_truth_by_id=ground_truth_by_id,
             data_path=args.data,
+            dataset=args.dataset,
+            query_defs=query_defs,
             max_query_latency=args.max_query_latency,
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
@@ -319,6 +336,8 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             api_key=api_key,
             ground_truth_by_id=ground_truth_by_id,
             data_path=args.data,
+            dataset=args.dataset,
+            query_defs=query_defs,
             max_query_latency=args.max_query_latency,
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
@@ -393,7 +412,12 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     baseline_avg_df["runs"] = args.runs
     save_csv(baseline_avg_df, os.path.join(args.output, "metrics_baseline_avg.csv"))
 
-    save_markdown(all_results, os.path.join(args.output, "report.md"), metrics_df=combined_metrics_df)
+    save_markdown(
+        all_results,
+        os.path.join(args.output, "report.md"),
+        metrics_df=combined_metrics_df,
+        query_defs=query_defs,
+    )
     save_markdown([], os.path.join(args.output, "report_avg.md"), metrics_df=baseline_avg_df)
 
     print("\n=== Combined Summary (all per-query rows across runs) ===")
@@ -431,7 +455,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--data",
         required=True,
-        help="Path to WISDM_ar_v1.1_raw.txt (relative to repo root or absolute)",
+        help="Path to dataset file (relative to repo root or absolute)",
+    )
+    parser.add_argument(
+        "--dataset",
+        default=DATASET_WISDM,
+        choices=list(SUPPORTED_DATASETS),
+        help="Dataset profile for loading and query-bank selection",
     )
     parser.add_argument(
         "--baselines",

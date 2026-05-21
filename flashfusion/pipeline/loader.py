@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from flashfusion.eval.queries import DATASET_BUS, DATASET_MIT_ECG, DATASET_WISDM
+
 
 def load_wisdm(path: str) -> pd.DataFrame:
     """
@@ -78,6 +80,101 @@ def load_wisdm(path: str) -> pd.DataFrame:
         df["y"] = df["y"].astype("float64")
         df["z"] = df["z"].astype("float64")
     return df
+
+
+def load_mit_arrythmia(path: str) -> pd.DataFrame:
+    """
+    Load consolidated MIT arrhythmia text into a clean DataFrame.
+
+    Expected line format (headerless, semicolon-terminated):
+        sample_idx,time_s,MLII,V1,record_id,annotation;
+    """
+    rows: list[list] = []
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            line = line.strip().rstrip(";").strip()
+            if not line:
+                continue
+            parts = [p.strip() for p in line.split(",")]
+            if len(parts) < 6:
+                continue
+            if len(parts) > 6:
+                parts = parts[:5] + [",".join(parts[5:]).strip()]
+            try:
+                sample_idx = int(parts[0])
+                time_s = float(parts[1])
+                mlii = float(parts[2])
+                v1 = float(parts[3])
+                record_id = int(parts[4])
+                annotation = parts[5]
+                if annotation.lower() in {"nan", "none"}:
+                    annotation = ""
+            except (ValueError, IndexError):
+                continue
+            rows.append([sample_idx, time_s, mlii, v1, record_id, annotation])
+
+    df = pd.DataFrame(
+        rows,
+        columns=["sample_idx", "time_s", "MLII", "V1", "record_id", "annotation"],
+    )
+    if not df.empty:
+        df["sample_idx"] = df["sample_idx"].astype("int64")
+        df["time_s"] = df["time_s"].astype("float64")
+        df["MLII"] = df["MLII"].astype("float64")
+        df["V1"] = df["V1"].astype("float64")
+        df["record_id"] = df["record_id"].astype("int32")
+        df["annotation"] = df["annotation"].astype(str)
+    return df
+
+
+def load_bus_data(path: str) -> pd.DataFrame:
+    """Load bus telemetry CSV into a normalized DataFrame."""
+    required_columns = [
+        "timestamp",
+        "latitude",
+        "longitude",
+        "accel_mean",
+        "accel_variance",
+        "accel_stats_x_p1",
+        "accel_stats_x_p10",
+        "accel_stats_x_p90",
+        "accel_stats_x_p99",
+        "accel_stats_y_p1",
+        "accel_stats_y_p10",
+        "accel_stats_y_p90",
+        "accel_stats_y_p99",
+        "accel_stats_z_p1",
+        "accel_stats_z_p10",
+        "accel_stats_z_p90",
+        "accel_stats_z_p99",
+    ]
+    df = pd.read_csv(path)
+    missing = [c for c in required_columns if c not in df.columns]
+    if missing:
+        raise ValueError(f"Bus dataset missing required columns: {missing}")
+
+    df = df[required_columns].copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    numeric_columns = [c for c in required_columns if c != "timestamp"]
+    for col in numeric_columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df = df.dropna(subset=required_columns).reset_index(drop=True)
+    if not df.empty:
+        for col in numeric_columns:
+            df[col] = df[col].astype("float64")
+    return df
+
+
+def load_dataset_by_name(path: str, dataset: str) -> pd.DataFrame:
+    """Load a supported benchmark dataset by identifier."""
+    if dataset == DATASET_WISDM:
+        return load_wisdm(path)
+    if dataset == DATASET_MIT_ECG:
+        return load_mit_arrythmia(path)
+    if dataset == DATASET_BUS:
+        return load_bus_data(path)
+    raise ValueError(f"Unsupported dataset {dataset!r}")
 
 
 def build_column_metadata(df: pd.DataFrame) -> dict:

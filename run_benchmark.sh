@@ -9,10 +9,16 @@
 #   ./run_benchmark.sh
 #
 # Optional overrides (env vars):
+#   DATASET       Dataset profile: wisdm | mit_ecg | bus
+#                   (default: wisdm)
 #   WISDM_DATA    Path to raw WISDM .txt file
 #                   (default: chat/data/imu/WISDM_ar_v1.1_raw.txt)
+#   MIT_ECG_DATA  Path to consolidated MIT ECG txt file
+#                   (default: data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt)
+#   BUS_DATA      Path to bus telemetry CSV file
+#                   (default: data/bus/bus_data.csv)
 #   GROUND_TRUTH  Path to ground_truth.json
-#                   (default: flashfusion/eval/ground_truth.json)
+#                   (default: dataset-specific under flashfusion/eval/)
 #   BASELINES     Comma-separated baselines
 #                   (default: AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
 #   QUERIES       Comma-separated query IDs or "all"  (default: all)
@@ -62,13 +68,36 @@ else
 fi
 
 # ── Configuration (overridable via env) ───────────────────────────────────────
+DATASET="${DATASET:-wisdm}"
 WISDM_DATA="${WISDM_DATA:-chat/data/imu/WISDM_ar_v1.1_raw.txt}"
-GROUND_TRUTH="${GROUND_TRUTH:-flashfusion/eval/ground_truth.json}"
+MIT_ECG_DATA="${MIT_ECG_DATA:-data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt}"
+BUS_DATA="${BUS_DATA:-data/bus/bus_data.csv}"
 BASELINES="${BASELINES:-AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION}"
 QUERIES="${QUERIES:-all}"
 RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
 MODEL="${MODEL:-}"
+
+case "$DATASET" in
+    wisdm)
+        DATA_PATH="$WISDM_DATA"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth.json"
+        ;;
+    mit_ecg)
+        DATA_PATH="$MIT_ECG_DATA"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_mit_ecg.json"
+        ;;
+    bus)
+        DATA_PATH="$BUS_DATA"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_bus.json"
+        ;;
+    *)
+        echo "ERROR: Unsupported DATASET '$DATASET'. Use wisdm, mit_ecg, or bus."
+        exit 1
+        ;;
+esac
+
+GROUND_TRUTH="${GROUND_TRUTH:-$DEFAULT_GROUND_TRUTH}"
 
 # ── Validate pre-conditions ───────────────────────────────────────────────────
 if [ -z "${GROQ_API_KEY:-}" ]; then
@@ -76,8 +105,8 @@ if [ -z "${GROQ_API_KEY:-}" ]; then
     echo "       Export it with:  export GROQ_API_KEY='gsk_...'"
     exit 1
 fi
-if [ ! -f "$WISDM_DATA" ]; then
-    echo "ERROR: WISDM data file not found: $WISDM_DATA"
+if [ ! -f "$DATA_PATH" ]; then
+    echo "ERROR: Dataset file not found for DATASET=$DATASET: $DATA_PATH"
     exit 1
 fi
 if [ ! -f "$GROUND_TRUTH" ]; then
@@ -112,6 +141,8 @@ echo "  Flash-Fusion  —  End-to-End Benchmark"
 echo "  Timestamp  : $TIMESTAMP"
 echo "  Baselines  : $BASELINES"
 echo "  Queries    : $QUERIES"
+echo "  Dataset    : $DATASET"
+echo "  Data path  : $DATA_PATH"
 echo "  Runs       : $RUNS"
 echo "  Max latency: ${MAX_LATENCY}s per query"
 echo "  Output dir : $RUN_DIR"
@@ -126,7 +157,8 @@ echo ""
 
 # Build command as array so optional --model flag is handled cleanly
 CMD=("$PYTHON" -m flashfusion.eval.benchmark
-    --data          "$WISDM_DATA"
+    --data          "$DATA_PATH"
+    --dataset       "$DATASET"
     --baselines     "$BASELINES"
     --queries       "$QUERIES"
     --runs          "$RUNS"
@@ -179,6 +211,7 @@ echo "▶  [3/4]  Generating visualizations…"
 # 3a: Baseline comparison charts/tables grouped by query type.
 "$PYTHON" -m flashfusion.eval.visualize_comparison \
     --metrics "$BENCHMARK_DIR/metrics.csv" \
+    --dataset "$DATASET" \
     --accuracy-column gt_score \
     --title "Baseline Comparison" \
     --output "$VISUALS_DIR"
@@ -224,26 +257,22 @@ colors = [PALETTE.get(str(b), "#999999") for b in df["baseline"]]
 
 fig, (ax_score, ax_dist) = plt.subplots(1, 2, figsize=(13, 5.2))
 
-# --- Avg LLM score bar ---
-ax_score.bar(df["baseline"], df["avg_llm_score"], color=colors)
-ax_score.set_title("LLM Judge — Avg Score (0–1)", fontweight="bold")
-ax_score.set_ylabel("Score")
+# --- Pass rate bar ---
+ax_score.bar(df["baseline"], df["pass_rate"], color=colors)
+ax_score.set_title("LLM Judge — Pass Rate", fontweight="bold")
+ax_score.set_ylabel("Rate")
 ax_score.set_ylim(0, 1.15)
 ax_score.tick_params(axis="x", rotation=15)
-for i, v in enumerate(df["avg_llm_score"]):
+for i, v in enumerate(df["pass_rate"]):
     ax_score.text(i, v + 0.025, f"{v:.3f}", ha="center", fontsize=10, fontweight="bold")
 
 # --- Verdict distribution stacked bar ---
 bar_x = list(range(len(df)))
 pass_vals    = df["pass_rate"].tolist()
-partial_vals = df["partial_rate"].tolist()
 fail_vals    = df["fail_rate"].tolist()
-bottom_partial = pass_vals
-bottom_fail    = [p + q for p, q in zip(pass_vals, partial_vals)]
 
-ax_dist.bar(bar_x, pass_vals,    label="PASS",    color="#4caf50")
-ax_dist.bar(bar_x, partial_vals, bottom=bottom_partial, label="PARTIAL", color="#ff9800")
-ax_dist.bar(bar_x, fail_vals,    bottom=bottom_fail,    label="FAIL",    color="#f44336")
+ax_dist.bar(bar_x, pass_vals, label="PASS", color="#4caf50")
+ax_dist.bar(bar_x, fail_vals, bottom=pass_vals, label="FAIL", color="#f44336")
 ax_dist.set_xticks(bar_x)
 ax_dist.set_xticklabels(df["baseline"].tolist())
 ax_dist.set_title("LLM Judge — Verdict Distribution", fontweight="bold")
@@ -319,7 +348,7 @@ else:
 # --- LLM judge summary ---
 if judge_summary_path.exists():
     jsum = pd.read_csv(judge_summary_path).round(4)
-    jsum = jsum.sort_values("avg_llm_score", ascending=False).reset_index(drop=True)
+    jsum = jsum.sort_values("pass_rate", ascending=False).reset_index(drop=True)
     _tabulate(jsum, "LLM Judge Summary  (averages per baseline)")
 else:
     print(f"  Note: {judge_summary_path} not found; LLM judge may not have run.")

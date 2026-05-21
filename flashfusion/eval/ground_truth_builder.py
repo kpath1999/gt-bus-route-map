@@ -1,6 +1,4 @@
-"""
-eval/ground_truth_builder.py — Build deterministic WISDM ground truth JSON.
-"""
+"""Build deterministic ground-truth JSON for supported benchmark datasets."""
 
 from __future__ import annotations
 
@@ -10,23 +8,16 @@ from pathlib import Path
 
 import pandas as pd
 
-from flashfusion.eval.queries import WISDM_QUERIES
-from flashfusion.pipeline.loader import load_wisdm
+from flashfusion.eval.queries import (
+    DATASET_BUS,
+    DATASET_MIT_ECG,
+    DATASET_WISDM,
+    get_queries,
+)
+from flashfusion.pipeline.loader import load_dataset_by_name
 
-"""
-DATASET details:
 
-Number of examples: 1,098,207
-Number of attributes: 6
-
-raw.txt follows this format:
-[user],[activity],[timestamp],[x-acceleration],[y-accel],[z-accel];
-
-This line is a representative example:
-33,Jogging,49105962326000,-0.6946377,12.680544,0.50395286;
-"""
-
-def build_ground_truth(df: pd.DataFrame) -> list[dict]:
+def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
     df = df.copy()
 
     # ---------------------------------------------------------------------------
@@ -36,7 +27,7 @@ def build_ground_truth(df: pd.DataFrame) -> list[dict]:
     df["activity_lower"] = df["activity_label"].str.lower()
     df["magnitude"] = (df["x"] ** 2 + df["y"] ** 2 + df["z"] ** 2) ** 0.5
 
-    qmap = {q["id"]: q["text"] for q in WISDM_QUERIES}
+    qmap = {q["id"]: q["text"] for q in get_queries(DATASET_WISDM)}
 
     # ---------------------------------------------------------------------------
     # Q1 — Maximum x-acceleration for user 15
@@ -233,9 +224,274 @@ def build_ground_truth(df: pd.DataFrame) -> list[dict]:
     return entries
 
 
+def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
+    """Build deterministic MIT ECG ground-truth entries for 12 queries."""
+    df = df.copy()
+    df["annotation"] = df["annotation"].astype(str).fillna("")
+    df["is_annotated"] = df["annotation"].str.strip() != ""
+
+    qmap = {q["id"]: q["text"] for q in get_queries(DATASET_MIT_ECG)}
+
+    q1_total_101 = int(df.loc[df["record_id"] == 101].shape[0])
+    q2_max_mlii_105 = float(df.loc[df["record_id"] == 105, "MLII"].max())
+    q3_mean_v1_234 = float(df.loc[df["record_id"] == 234, "V1"].mean())
+    q4_ann_109 = int(df.loc[(df["record_id"] == 109) & (df["is_annotated"])].shape[0])
+
+    ann_counts = (
+        df.loc[df["is_annotated"]]
+        .groupby("record_id")
+        .size()
+        .sort_values(ascending=False)
+    )
+    q5_record = int(ann_counts.index[0])
+    q5_count = int(ann_counts.iloc[0])
+
+    q6_abs_101 = float(df.loc[df["record_id"] == 101, "MLII"].abs().mean())
+    q6_abs_234 = float(df.loc[df["record_id"] == 234, "MLII"].abs().mean())
+    q6_diff = q6_abs_101 - q6_abs_234
+
+    rec109 = df.loc[df["record_id"] == 109]
+    q7_ann_mean = float(rec109.loc[rec109["is_annotated"], "MLII"].mean())
+    q7_unann_mean = float(rec109.loc[~rec109["is_annotated"], "MLII"].mean())
+    q7_diff = q7_ann_mean - q7_unann_mean
+
+    v1_std = df.groupby("record_id")["V1"].std().sort_values(ascending=False)
+    q8_record = int(v1_std.index[0])
+    q8_std = float(v1_std.iloc[0])
+
+    return [
+        {
+            "query_id": 1,
+            "query_text": qmap[1],
+            "reference_answer": f"Total samples for record_id 101: {q1_total_101}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 2,
+            "query_text": qmap[2],
+            "reference_answer": f"Maximum MLII for record_id 105 is {q2_max_mlii_105:.4f}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 3,
+            "query_text": qmap[3],
+            "reference_answer": f"Average V1 for record_id 234 is {q3_mean_v1_234:.4f}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 4,
+            "query_text": qmap[4],
+            "reference_answer": f"Annotated-beat count for record_id 109 is {q4_ann_109}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 5,
+            "query_text": qmap[5],
+            "reference_answer": (
+                f"record_id {q5_record} has the highest annotated-beat count with {q5_count} samples."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 6,
+            "query_text": qmap[6],
+            "reference_answer": (
+                f"Average |MLII| is {q6_abs_101:.4f} for record_id 101 and {q6_abs_234:.4f} for record_id 234; "
+                f"difference (101-234) is {q6_diff:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 7,
+            "query_text": qmap[7],
+            "reference_answer": (
+                f"For record_id 109, mean MLII during annotated samples is {q7_ann_mean:.4f} and "
+                f"during unannotated samples is {q7_unann_mean:.4f}; difference (annotated-unannotated) is {q7_diff:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 8,
+            "query_text": qmap[8],
+            "reference_answer": (
+                f"record_id {q8_record} has the highest V1 standard deviation at {q8_std:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 9,
+            "query_text": qmap[9],
+            "reference_answer": "Reject: patient age is unavailable in this ECG dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 10,
+            "query_text": qmap[10],
+            "reference_answer": "Reject: medication labels are unavailable in this ECG dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 11,
+            "query_text": qmap[11],
+            "reference_answer": "Reject: sex metadata is unavailable in this ECG dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 12,
+            "query_text": qmap[12],
+            "reference_answer": "Reject: geographic collection metadata is unavailable in this ECG dataset.",
+            "expected_rejection": True,
+        },
+    ]
+
+
+def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
+    """Build deterministic bus ground-truth entries for 12 queries."""
+    df = df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+    df = df.dropna().reset_index(drop=True)
+
+    qmap = {q["id"]: q["text"] for q in get_queries(DATASET_BUS)}
+
+    q1_max_var = float(df["accel_variance"].max())
+    q2_mean_accel = float(df["accel_mean"].mean())
+
+    q3_idx = int(df["accel_stats_z_p99"].idxmax())
+    q3_ts = df.loc[q3_idx, "timestamp"]
+
+    q4_count = int((df["accel_variance"] > 0.20).sum())
+
+    lat_median = float(df["latitude"].median())
+    north_mask = df["latitude"] >= lat_median
+    q5_north = float(df.loc[north_mask, "accel_variance"].mean())
+    q5_south = float(df.loc[~north_mask, "accel_variance"].mean())
+    q5_diff = q5_north - q5_south
+
+    df["vertical_shock_proxy"] = df["accel_stats_z_p99"] - df["accel_stats_z_p10"]
+    q6_idx = int(df["vertical_shock_proxy"].idxmax())
+    q6_row = df.loc[q6_idx]
+
+    q7_x = float(df["accel_stats_x_p99"].mean())
+    q7_y = float(df["accel_stats_y_p99"].mean())
+    q7_diff = q7_x - q7_y
+
+    q8_q3 = float(df["accel_variance"].quantile(0.75))
+    q8_z_median = float(df["accel_stats_z_p99"].median())
+    q8_mask = (df["accel_variance"] >= q8_q3) & (df["accel_stats_z_p99"] > q8_z_median)
+    q8_fraction = float(q8_mask.mean())
+
+    return [
+        {
+            "query_id": 1,
+            "query_text": qmap[1],
+            "reference_answer": f"Maximum accel_variance is {q1_max_var:.4f}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 2,
+            "query_text": qmap[2],
+            "reference_answer": f"Average accel_mean across all samples is {q2_mean_accel:.4f}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 3,
+            "query_text": qmap[3],
+            "reference_answer": (
+                "Highest accel_stats_z_p99 occurs at "
+                f"{q3_ts.strftime('%Y-%m-%d %H:%M:%S')} with value {float(df.loc[q3_idx, 'accel_stats_z_p99']):.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 4,
+            "query_text": qmap[4],
+            "reference_answer": f"Samples with accel_variance > 0.20: {q4_count}.",
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 5,
+            "query_text": qmap[5],
+            "reference_answer": (
+                f"Median latitude split is {lat_median:.6f}. "
+                f"North-half mean accel_variance is {q5_north:.4f}, south-half mean is {q5_south:.4f}, "
+                f"difference (north-south) is {q5_diff:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 6,
+            "query_text": qmap[6],
+            "reference_answer": (
+                f"Largest vertical shock proxy is {float(q6_row['vertical_shock_proxy']):.4f} at "
+                f"({float(q6_row['latitude']):.6f}, {float(q6_row['longitude']):.6f}) "
+                f"timestamp {q6_row['timestamp'].strftime('%Y-%m-%d %H:%M:%S' )}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 7,
+            "query_text": qmap[7],
+            "reference_answer": (
+                f"Mean accel_stats_x_p99 is {q7_x:.4f}, mean accel_stats_y_p99 is {q7_y:.4f}, "
+                f"difference (x-y) is {q7_diff:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 8,
+            "query_text": qmap[8],
+            "reference_answer": (
+                f"Top-quartile accel_variance threshold is {q8_q3:.4f}, z_p99 median is {q8_z_median:.4f}, "
+                f"and the qualifying fraction is {q8_fraction:.4f}."
+            ),
+            "expected_rejection": False,
+        },
+        {
+            "query_id": 9,
+            "query_text": qmap[9],
+            "reference_answer": "Reject: passenger occupancy data is unavailable in this bus dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 10,
+            "query_text": qmap[10],
+            "reference_answer": "Reject: weather metadata is unavailable in this bus dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 11,
+            "query_text": qmap[11],
+            "reference_answer": "Reject: driver identity metadata is unavailable in this bus dataset.",
+            "expected_rejection": True,
+        },
+        {
+            "query_id": 12,
+            "query_text": qmap[12],
+            "reference_answer": "Reject: future road maintenance labels are unavailable in this bus dataset.",
+            "expected_rejection": True,
+        },
+    ]
+
+
+def build_ground_truth(df: pd.DataFrame, dataset: str) -> list[dict]:
+    if dataset == DATASET_WISDM:
+        return build_ground_truth_wisdm(df)
+    if dataset == DATASET_MIT_ECG:
+        return build_ground_truth_mit_ecg(df)
+    if dataset == DATASET_BUS:
+        return build_ground_truth_bus(df)
+    raise ValueError(f"Unsupported dataset {dataset!r}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build Flash-Fusion ground truth JSON")
-    parser.add_argument("--data", required=True, help="Path to WISDM raw txt")
+    parser.add_argument("--data", required=True, help="Path to benchmark dataset file")
+    parser.add_argument(
+        "--dataset",
+        default=DATASET_WISDM,
+        choices=[DATASET_WISDM, DATASET_MIT_ECG, DATASET_BUS],
+        help="Dataset profile for deterministic ground-truth generation",
+    )
     parser.add_argument(
         "--output",
         default="flashfusion/eval/ground_truth.json",
@@ -243,8 +499,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    df = load_wisdm(args.data)
-    entries = build_ground_truth(df)
+    df = load_dataset_by_name(args.data, args.dataset)
+    entries = build_ground_truth(df, args.dataset)
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as fh:

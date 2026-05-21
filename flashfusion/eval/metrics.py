@@ -31,7 +31,7 @@ def _normalize_verdict(verdict: str | None) -> str:
 
 def _score_from_llm_verdict(verdict: str | None) -> float:
     normalized = _normalize_verdict(verdict)
-    if normalized in {"PASS", "PARTIAL"}:
+    if normalized == "PASS":
         return ACCURACY_PASS_SCORE
     return ACCURACY_FAIL_SCORE
 
@@ -40,7 +40,7 @@ def compute_accuracy(result: RunResult) -> dict:
     """
     Compute binary accuracy from the run-level judge verdict.
 
-    PASS/PARTIAL map to 1.0; FAIL/UNSURE/missing/unknown map to 0.0.
+    PASS maps to 1.0; FAIL/missing/unknown map to 0.0.
 
     Args:
         result: RunResult from BaselineRunner.run().
@@ -49,7 +49,7 @@ def compute_accuracy(result: RunResult) -> dict:
         dict with keys:
             score      (float)        — 0.0 or 1.0
             executed   (bool)         — whether pandas agent ran code
-            judge_pass (bool)         — True when verdict is PASS/PARTIAL
+            judge_pass (bool)         — True when verdict is PASS
             rejected   (bool)         — whether query was rejected by guardrail/S2
     """
     verdict = _normalize_verdict(
@@ -60,7 +60,7 @@ def compute_accuracy(result: RunResult) -> dict:
     return {
         "score": score,
         "executed": result.executed,
-        "judge_pass": verdict in {"PASS", "PARTIAL"},
+        "judge_pass": verdict == "PASS",
         "rejected": result.rejected,
     }
 
@@ -102,6 +102,7 @@ def compute_cost(result: RunResult) -> dict:
 def aggregate_metrics(
     results: list[RunResult],
     llm_judgments_df: pd.DataFrame | None = None,
+    query_defs: list[dict] | None = None,
 ) -> pd.DataFrame:
     """
     Build a tidy DataFrame of per-(baseline, query) metrics.
@@ -140,7 +141,9 @@ def aggregate_metrics(
     """
     from flashfusion.eval.queries import WISDM_QUERIES
 
-    query_lookup = {q["text"]: q["id"] for q in WISDM_QUERIES}
+    if query_defs is None:
+        query_defs = WISDM_QUERIES
+    query_lookup = {q["text"]: q["id"] for q in query_defs}
     judgment_by_key: dict[tuple[str, int], tuple[float, str]] = {}
 
     if llm_judgments_df is not None and not llm_judgments_df.empty:

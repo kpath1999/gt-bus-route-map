@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from flashfusion.eval.queries import WISDM_QUERIES
+from flashfusion.eval.queries import DATASET_WISDM, SUPPORTED_DATASETS, get_queries
 
 
 QUERY_TYPE_ORDER = ["Direct", "Reasoning", "Out-of-Scope"]
@@ -166,11 +166,12 @@ def _resolve_input_df(args: argparse.Namespace) -> pd.DataFrame:
     )
 
 
-def _prepare_query_types(df: pd.DataFrame) -> pd.DataFrame:
+def _prepare_query_types(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
     if "query_id" not in df.columns:
         raise ValueError("Input metrics must include 'query_id' column")
 
-    complexity_by_id = {int(q["id"]): str(q["complexity"]) for q in WISDM_QUERIES}
+    query_defs = get_queries(dataset)
+    complexity_by_id = {int(q["id"]): str(q["complexity"]) for q in query_defs}
     df = df.copy()
     df["query_id"] = pd.to_numeric(df["query_id"], errors="coerce")
     if df["query_id"].isna().any():
@@ -180,7 +181,7 @@ def _prepare_query_types(df: pd.DataFrame) -> pd.DataFrame:
 
     unknown = sorted(df[df["query_type"].isna()]["query_id"].unique().tolist())
     if unknown:
-        raise ValueError(f"Unknown query_id values not found in WISDM_QUERIES: {unknown}")
+        raise ValueError(f"Unknown query_id values not found in {dataset} query bank: {unknown}")
 
     return df
 
@@ -539,6 +540,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default="Baseline Comparison by Query Type",
         help="Chart title",
     )
+    parser.add_argument(
+        "--dataset",
+        default=DATASET_WISDM,
+        choices=list(SUPPORTED_DATASETS),
+        help="Dataset profile used to resolve query complexity by query_id",
+    )
     return parser
 
 
@@ -551,7 +558,7 @@ def main() -> None:
 
     all_df = _resolve_input_df(args)
     all_df = _prepare_metrics(all_df, accuracy_col=args.accuracy_column)
-    all_df = _prepare_query_types(all_df)
+    all_df = _prepare_query_types(all_df, dataset=args.dataset)
     summary, use_variation = _aggregate_by_query_type(all_df, accuracy_col=args.accuracy_column)
     overall_accuracy = _aggregate_overall_accuracy(
         all_df,

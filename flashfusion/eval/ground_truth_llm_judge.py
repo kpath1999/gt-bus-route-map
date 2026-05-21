@@ -23,14 +23,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.ground_truth import GroundTruthEntry, load_ground_truth
 from flashfusion.eval.ground_truth_builder import build_ground_truth
-from flashfusion.eval.queries import WISDM_QUERIES
+from flashfusion.eval.queries import DATASET_WISDM, SUPPORTED_DATASETS, get_queries
 from flashfusion.eval.semantic_scorer import SemanticScorer
-from flashfusion.pipeline.loader import load_wisdm
+from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.runner import LLMClient, RunResult
 
 
-def _query_lookup() -> dict[str, int]:
-    return {q["text"]: q["id"] for q in WISDM_QUERIES}
+def _query_lookup(dataset: str) -> dict[str, int]:
+    return {q["text"]: q["id"] for q in get_queries(dataset)}
 
 
 def _clip(text: str, limit: int) -> str:
@@ -119,6 +119,7 @@ def _resolve_candidate_code(row: dict[str, Any]) -> str:
 def build_ground_truth_sanity(
     ground_truth_by_id: dict[int, GroundTruthEntry],
     data_path: str | None,
+    dataset: str,
 ) -> pd.DataFrame:
     """
     Compare current ground truth against deterministic dataset-derived references.
@@ -130,8 +131,8 @@ def build_ground_truth_sanity(
 
     rebuilt_by_id: dict[int, dict[str, Any]] = {}
     if data_path:
-        df = load_wisdm(data_path)
-        rebuilt = build_ground_truth(df)
+        df = load_dataset_by_name(data_path, dataset)
+        rebuilt = build_ground_truth(df, dataset)
         rebuilt_by_id = {int(x["query_id"]): x for x in rebuilt}
 
     for qid in sorted(ground_truth_by_id):
@@ -182,6 +183,7 @@ def build_ground_truth_sanity(
 def judge_rows_with_llm(
     rows: list[dict[str, Any]],
     ground_truth_by_id: dict[int, GroundTruthEntry],
+    dataset: str,
     model_name: str,
     api_key: str,
     sanity_df: pd.DataFrame | None = None,
@@ -189,7 +191,7 @@ def judge_rows_with_llm(
     max_code_chars: int = 1400,
 ) -> pd.DataFrame:
     """Run LLM-based per-row judgment against ground truth."""
-    q_lookup = _query_lookup()
+    q_lookup = _query_lookup(dataset)
     sanity_by_id: dict[int, dict[str, Any]] = {}
     if sanity_df is not None and not sanity_df.empty:
         sanity_by_id = {
@@ -215,16 +217,15 @@ def judge_rows_with_llm(
 Judge whether candidate answer matches ground truth.
 
 Return JSON with keys:
-- verdict: PASS | PARTIAL | FAIL | UNSURE
-- score: number in [0,1]
+- verdict: PASS | FAIL
 - reason: one short sentence
 - ground_truth_sanity: SOUND | POSSIBLY_WRONG | WRONG
 - ground_truth_note: short note
 
 Rules:
+- PASS only if the candidate answer is factually correct. FAIL otherwise — there is no middle ground.
 - If expected_rejection=true, PASS only if candidate clearly rejects for the same scope/schema reason.
-- If expected_rejection=false and candidate rejects, score should be 0.
-- Accept numeric tolerance and equivalent wording.
+- If expected_rejection=false and candidate rejects, verdict must be FAIL.
 - Use generated code and deterministic hint only as supporting evidence.
 
 Query:
@@ -294,15 +295,11 @@ Candidate generated code:
         )
 
         parsed = _extract_first_json(llm_raw)
-        verdict = str(parsed.get("verdict", "UNSURE")).upper()
-        if verdict not in {"PASS", "PARTIAL", "FAIL", "UNSURE"}:
-            verdict = "UNSURE"
+        verdict = str(parsed.get("verdict", "FAIL")).upper()
+        if verdict not in {"PASS", "FAIL"}:
+            verdict = "FAIL"
 
-        try:
-            score = float(parsed.get("score", 0.0))
-        except (TypeError, ValueError):
-            score = 0.0
-        score = max(0.0, min(1.0, score))
+        score = 1.0 if verdict == "PASS" else 0.0
 
         judged_rows.append(
             {
@@ -336,9 +333,7 @@ def summarize_judgments(judgments_df: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame(
             columns=[
                 "baseline",
-                "avg_llm_score",
                 "pass_rate",
-                "partial_rate",
                 "fail_rate",
                 "count",
             ]
@@ -346,20 +341,17 @@ def summarize_judgments(judgments_df: pd.DataFrame) -> pd.DataFrame:
 
     tmp = judgments_df.copy()
     tmp["is_pass"] = (tmp["llm_verdict"] == "PASS").astype(int)
-    tmp["is_partial"] = (tmp["llm_verdict"] == "PARTIAL").astype(int)
     tmp["is_fail"] = (tmp["llm_verdict"] == "FAIL").astype(int)
 
     summary = (
         tmp.groupby("baseline")
         .agg(
-            avg_llm_score=("llm_score", "mean"),
             pass_rate=("is_pass", "mean"),
-            partial_rate=("is_partial", "mean"),
             fail_rate=("is_fail", "mean"),
             count=("query_id", "count"),
         )
         .reset_index()
-        .sort_values("avg_llm_score", ascending=False)
+        .sort_values("pass_rate", ascending=False)
     )
     return summary
 
@@ -372,16 +364,22 @@ def run_llm_ground_truth_judge(
     model_name: str,
     api_key: str,
     data_path: str | None = None,
+    dataset: str = DATASET_WISDM,
     max_answer_chars: int = 1800,
     max_code_chars: int = 1400,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run full LLM judging workflow and write output artifacts."""
     os.makedirs(output_dir, exist_ok=True)
 
-    sanity_df = build_ground_truth_sanity(ground_truth_by_id=ground_truth_by_id, data_path=data_path)
+    sanity_df = build_ground_truth_sanity(
+        ground_truth_by_id=ground_truth_by_id,
+        data_path=data_path,
+        dataset=dataset,
+    )
     judgments_df = judge_rows_with_llm(
         rows=rows,
         ground_truth_by_id=ground_truth_by_id,
+        dataset=dataset,
         model_name=model_name,
         api_key=api_key,
         sanity_df=sanity_df,
@@ -453,6 +451,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional dataset path for deterministic sanity checks",
     )
     parser.add_argument(
+        "--dataset",
+        default=DATASET_WISDM,
+        choices=list(SUPPORTED_DATASETS),
+        help="Dataset profile for query lookup and deterministic sanity checks",
+    )
+    parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
         help=f"LLM model for judging (default: {DEFAULT_MODEL})",
@@ -498,6 +502,7 @@ def main() -> None:
         model_name=args.model,
         api_key=api_key,
         data_path=args.data,
+        dataset=args.dataset,
         max_answer_chars=args.max_answer_chars,
         max_code_chars=args.max_code_chars,
     )
