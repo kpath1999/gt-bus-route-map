@@ -89,18 +89,18 @@ class LLMClient:
             7. Return result if str, else str(result)
         """
         import sys as _sys
-        _sys.stdout.write(
-            f"  [DEBUG invoke_chain] stage={stage!r}  model={self.model_name}  "
-            f"input_len={len(str(inputs))}  → calling LLM…\n"
-        )
-        _sys.stdout.flush()
+        # _sys.stdout.write(
+        #     f"  [DEBUG invoke_chain] stage={stage!r}  model={self.model_name}  "
+        #     f"input_len={len(str(inputs))}  → calling LLM…\n"
+        # )
+        # _sys.stdout.flush()
         t0 = time.time()
         result = chain.invoke(inputs)
         latency = time.time() - t0
-        _sys.stdout.write(
-            f"  [DEBUG invoke_chain] stage={stage!r}  done in {latency:.2f}s\n"
-        )
-        _sys.stdout.flush()
+        # _sys.stdout.write(
+        #     f"  [DEBUG invoke_chain] stage={stage!r}  done in {latency:.2f}s\n"
+        # )
+        # _sys.stdout.flush()
         if isinstance(result, str):
             output_text = result
         else:

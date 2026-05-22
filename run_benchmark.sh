@@ -24,7 +24,7 @@
 #                   (default: data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt)
 #   BUS_DATA      Path to bus telemetry CSV file
 #                   (default: data/bus/bus_data.csv)
-#   GROUND_TRUTH  Path to ground_truth.json
+#   GROUND_TRUTH  Path to ground_truth_wisdm.json
 #                   (default: dataset-specific under flashfusion/eval/)
 #   BASELINES     Comma-separated baselines
 #                   (default: AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
@@ -35,7 +35,7 @@
 #
 # Output layout (relative to repo root):
 #   flashfusion/eval_results/runs/
-#     run_YYYYMMDD_HHMMSS/
+#     run_{dataset}_YYYYMMDD_HHMMSS/
 #       benchmark/                   ← raw benchmark output
 #         metrics.csv                ← LLM-verdict accuracy, latency, cost, tokens
 #         raw_results.jsonl
@@ -55,7 +55,7 @@
 #         baseline_summary.csv
 #         baseline_summary.md
 #         per_query_metrics.csv
-#     latest -> run_YYYYMMDD_HHMMSS  ← symlink to most recent run
+#     latest -> run_{dataset}_YYYYMMDD_HHMMSS  ← symlink to most recent run
 #
 # Previous runs are never deleted — each timestamped directory is permanent.
 # =============================================================================
@@ -157,6 +157,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --quick)
+            BASELINES="FLASH_FUSION"
             RUNS="1"
             QUERIES="1,5,9"
             shift
@@ -176,15 +177,18 @@ done
 case "$DATASET" in
     wisdm)
         DATA_PATH="$WISDM_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth.json"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_wisdm.json"
+        RUN_PREFIX="run_wisdm"
         ;;
     mit_ecg)
         DATA_PATH="$MIT_ECG_DATA"
         DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_mit_ecg.json"
+        RUN_PREFIX="run_ecg"
         ;;
     bus)
         DATA_PATH="$BUS_DATA"
         DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_bus.json"
+        RUN_PREFIX="run_bus"
         ;;
     *)
         echo "ERROR: Unsupported DATASET '$DATASET'. Use wisdm, mit_ecg, or bus."
@@ -274,7 +278,7 @@ fi
 # ── Directory layout ──────────────────────────────────────────────────────────
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 RUNS_BASE="flashfusion/eval_results/runs"
-RUN_DIR="$RUNS_BASE/run_$TIMESTAMP"
+RUN_DIR="$RUNS_BASE/${RUN_PREFIX}_${TIMESTAMP}"
 BENCHMARK_DIR="$RUN_DIR/benchmark"
 JUDGE_DIR="$BENCHMARK_DIR/ground_truth_llm_judge"
 PER_BASELINE_DIR="$RUN_DIR/per_baseline"
@@ -320,7 +324,7 @@ CMD=("$PYTHON" -m flashfusion.eval.benchmark
 
 # _STEP1_START=$(date +%s)
 # echo "  [DEBUG] Step 1 started at $(date)"
-# "${CMD[@]}"
+"${CMD[@]}"
 # _STEP1_END=$(date +%s)
 # echo "  [DEBUG] Step 1 finished at $(date)  ($(( _STEP1_END - _STEP1_START ))s)"
 

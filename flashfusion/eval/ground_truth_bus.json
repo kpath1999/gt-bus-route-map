@@ -7,49 +7,49 @@
   },
   {
     "query_id": 2,
-    "query_text": "What is the average accel_mean across all samples?",
+    "query_text": "What is the average accel_mean across all recorded samples?",
     "reference_answer": "Average accel_mean across all samples is 9.2834.",
     "expected_rejection": false
   },
   {
     "query_id": 3,
-    "query_text": "At which timestamp was the highest accel_stats_z_p99 recorded?",
+    "query_text": "At what exact timestamp was the highest accel_stats_z_p99 recorded?",
     "reference_answer": "Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.",
     "expected_rejection": false
   },
   {
     "query_id": 4,
-    "query_text": "How many samples have accel_variance greater than 0.20?",
+    "query_text": "How many data samples show an accel_variance strictly greater than 0.20?",
     "reference_answer": "Samples with accel_variance > 0.20: 352.",
     "expected_rejection": false
   },
   {
     "query_id": 5,
-    "query_text": "Compare average accel_variance between the northern half and southern half of the route (split by median latitude).",
-    "reference_answer": "Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631, difference (north-south) is 0.2068.",
+    "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+    "reference_answer": "Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.",
     "expected_rejection": false
   },
   {
     "query_id": 6,
-    "query_text": "Which coordinate has the largest vertical shock proxy defined as (accel_stats_z_p99 - accel_stats_z_p10)?",
-    "reference_answer": "Largest vertical shock proxy is 10.2660 at (33.776932, -84.391906) timestamp 2025-06-06 16:02:01.",
+    "query_text": "Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",
+    "reference_answer": "Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.",
     "expected_rejection": false
   },
   {
     "query_id": 7,
-    "query_text": "What is the difference between mean accel_stats_x_p99 and mean accel_stats_y_p99?",
-    "reference_answer": "Mean accel_stats_x_p99 is 1.6981, mean accel_stats_y_p99 is 5.1644, difference (x-y) is -3.4663.",
+    "query_text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+    "reference_answer": "Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.",
     "expected_rejection": false
   },
   {
     "query_id": 8,
-    "query_text": "What fraction of samples are in the top quartile of accel_variance and also have accel_stats_z_p99 above its median?",
-    "reference_answer": "Top-quartile accel_variance threshold is 0.2100, z_p99 median is 9.9600, and the qualifying fraction is 0.2034.",
+    "query_text": "If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",
+    "reference_answer": "The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.",
     "expected_rejection": false
   },
   {
     "query_id": 9,
-    "query_text": "How does passenger occupancy vary with road roughness in this trip?",
+    "query_text": "How does passenger occupancy correlate with road roughness during this trip?",
     "reference_answer": "Reject: passenger occupancy data is unavailable in this bus dataset.",
     "expected_rejection": true
   },

@@ -106,7 +106,7 @@ def _run_single_benchmark_iteration(
                 f"\n[{baseline}] Q{qid}: {query_text[:60]}...",
                 flush=True,
             )
-            print(f"  [DEBUG] Starting runner.run() at {time.strftime('%H:%M:%S')}", flush=True)
+            # print(f"  [DEBUG] Starting runner.run() at {time.strftime('%H:%M:%S')}", flush=True)
 
             client = LLMClient(model_name=model_name, api_key=api_key)
             runner = BaselineRunner(
@@ -174,23 +174,46 @@ def _run_single_benchmark_iteration(
                 f.write(json.dumps(dataclasses.asdict(result)) + "\n")
 
     judge_out_dir = os.path.join(output_dir, "ground_truth_llm_judge")
-    print(f"  [DEBUG] Starting LLM judge at {time.strftime('%H:%M:%S')}  ({len(results)} results to judge)", flush=True)
-    judgments_df, _, sanity_df = run_llm_ground_truth_judge(
-        rows=_rows_from_run_results(results),
-        ground_truth_by_id=ground_truth_by_id,
-        output_dir=judge_out_dir,
-        model_name=model_name,
-        api_key=api_key,
-        data_path=data_path,
-        dataset=dataset,
-        max_answer_chars=llm_judge_max_answer_chars,
-        max_code_chars=llm_judge_max_code_chars,
-    )
-    print(f"LLM ground-truth judgments written to {judge_out_dir}")
+    rows_for_judge: list[dict] = []
+    skipped_judge_count = 0
+    for result, row in zip(results, _rows_from_run_results(results)):
+        # Out-of-scope guardrail rejections are scored deterministically in metrics.
+        if result.rejected and not result.executed:
+            skipped_judge_count += 1
+            continue
+        rows_for_judge.append(row)
+
+    if not rows_for_judge:
+        # print(
+        #     "  [DEBUG] Skipping LLM judge because no rows are eligible "
+        #     f"(skipped {skipped_judge_count} guardrail-rejected rows).",
+        #     flush=True,
+        # )
+        judgments_df = pd.DataFrame()
+        sanity_df = pd.DataFrame()
+    else:
+        # print(
+        #     f"  [DEBUG] Ground truth LLM initiates at {time.strftime('%H:%M:%S')} "
+        #     f"({len(rows_for_judge)} eligible rows; skipped {skipped_judge_count} guardrail-rejected rows)",
+        #     flush=True,
+        # )
+        judgments_df, _, sanity_df = run_llm_ground_truth_judge(
+            rows=rows_for_judge,
+            ground_truth_by_id=ground_truth_by_id,
+            output_dir=judge_out_dir,
+            model_name=model_name,
+            api_key=api_key,
+            data_path=data_path,
+            dataset=dataset,
+            max_answer_chars=llm_judge_max_answer_chars,
+            max_code_chars=llm_judge_max_code_chars,
+        )
+        print(f"Ground-truth LLM responses written to {judge_out_dir}")
 
     metrics_df = aggregate_metrics(
         results,
         llm_judgments_df=judgments_df,
+        ground_truth_by_id=ground_truth_by_id,
         query_defs=query_defs,
     )
 
@@ -299,10 +322,10 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if args.runs < 1:
         sys.exit("Error: --runs must be >= 1")
 
-    print(f"[DEBUG] Loading dataset from {args.data!r} …", flush=True)
+    # print(f"[DEBUG] Loading dataset from {args.data!r} …", flush=True)
     _t_load = time.time()
     df_base = load_dataset_by_name(args.data, args.dataset)
-    print(f"[DEBUG] Dataset loaded in {time.time()-_t_load:.2f}s  shape={df_base.shape}", flush=True)
+    # print(f"[DEBUG] Dataset loaded in {time.time()-_t_load:.2f}s  shape={df_base.shape}", flush=True)
     os.makedirs(args.output, exist_ok=True)
     if args.runs == 1:
         results, _, _, _ = _run_single_benchmark_iteration(
@@ -498,7 +521,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ground-truth",
-        default="flashfusion/eval/ground_truth.json",
+        default="flashfusion/eval/ground_truth_wisdm.json",
         help="Path to ground truth JSON file (required to score answers)",
     )
     parser.add_argument(

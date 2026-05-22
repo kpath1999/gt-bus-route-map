@@ -102,6 +102,7 @@ def compute_cost(result: RunResult) -> dict:
 def aggregate_metrics(
     results: list[RunResult],
     llm_judgments_df: pd.DataFrame | None = None,
+    ground_truth_by_id=None,
     query_defs: list[dict] | None = None,
 ) -> pd.DataFrame:
     """
@@ -178,9 +179,23 @@ def aggregate_metrics(
 
         score_and_verdict = judgment_by_key.get((r.baseline, query_id))
         if score_and_verdict is None:
-            gt_score = 0.0
+            expected_rejection = None
+            if ground_truth_by_id is not None:
+                gt_entry = ground_truth_by_id.get(query_id)
+                if gt_entry is not None:
+                    expected_rejection = bool(gt_entry.expected_rejection)
+
+            if r.rejected and not r.executed and expected_rejection is not None:
+                if expected_rejection:
+                    gt_score = 1.0
+                    gt_method = "guardrail_skip_expected_rejection"
+                else:
+                    gt_score = 0.0
+                    gt_method = "guardrail_skip_unexpected_rejection"
+            else:
+                gt_score = 0.0
+                gt_method = "llm_judge_score_missing"
             llm_verdict = ""
-            gt_method = "llm_judge_score_missing"
         else:
             gt_score, llm_verdict = score_and_verdict
             gt_method = "llm_judge_score"

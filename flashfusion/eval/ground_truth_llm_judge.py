@@ -40,6 +40,38 @@ def _clip(text: str, limit: int) -> str:
     return text[:limit] + " ...[truncated]"
 
 
+def _normalize_answer(text: str) -> str:
+    """
+    Normalize numeric answers for robust comparison.
+    
+    - Strips trailing sentence-ending periods from numbers
+    - Rounds floats to 3 decimal places for consistent formatting
+    - Preserves original text structure otherwise
+    """
+    import re
+    
+    text = (text or "").strip()
+    
+    # Pattern: number (possibly negative, with decimals) followed by period at word boundary
+    # Replace trailing period only when it's sentence punctuation, not part of number
+    def normalize_number(match):
+        num_str = match.group(1)
+        try:
+            # Parse as float and round to 3 decimals
+            num = float(num_str)
+            # Format with up to 3 decimals, stripping unnecessary trailing zeros
+            formatted = f"{num:.3f}".rstrip('0').rstrip('.')
+            return formatted
+        except (ValueError, OverflowError):
+            return num_str
+    
+    # Match numbers (integer or float, possibly negative) followed by optional period
+    # Capture number, normalize it, and remove trailing period if present
+    text = re.sub(r'(-?\d+\.?\d*)(?:\.(?=\s|$))?', normalize_number, text)
+    
+    return text
+
+
 def _load_jsonl_rows(path: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with open(path, "r", encoding="utf-8") as fh:
@@ -209,6 +241,8 @@ def judge_rows_with_llm(
                 "system",
                 "You evaluate benchmark answers against ground truth. "
                 "Be strict, concise, and prefer factual correctness over phrasing. "
+                "For numeric answers: treat values as equivalent if they differ by less than 0.01 or represent the same number with different trailing zeros. "
+                "Ignore formatting differences like trailing periods after numbers. "
                 "Return JSON only.",
             ),
             (
@@ -224,6 +258,7 @@ Return JSON with keys:
 
 Rules:
 - PASS only if the candidate answer is factually correct. FAIL otherwise — there is no middle ground.
+- For numeric values: -3.175 and -3.1750 are equivalent; ignore trailing zeros and minor rounding differences (< 0.01).
 - If expected_rejection=true, PASS only if candidate clearly rejects for the same scope/schema reason.
 - If expected_rejection=false and candidate rejects, verdict must be FAIL.
 - Use generated code and deterministic hint only as supporting evidence.
@@ -274,21 +309,26 @@ Candidate generated code:
         gt = ground_truth_by_id[qid]
         sanity = sanity_by_id.get(qid, {})
         candidate_code = _resolve_candidate_code(row)
+        
+        # Normalize answers for robust numeric comparison
+        normalized_gt_answer = _normalize_answer(gt.reference_answer)
+        normalized_candidate_answer = _normalize_answer(str(row.get("answer", "")))
+        
         llm_raw = client.invoke_chain(
             chain,
             {
                 "query_text": gt.query_text,
                 "expected_rejection": str(gt.expected_rejection),
-                "ground_truth_answer": gt.reference_answer,
+                "ground_truth_answer": normalized_gt_answer,
                 "deterministic_hint": _clip(
-                    str(sanity.get("rebuilt_reference_answer", "")),
+                    _normalize_answer(str(sanity.get("rebuilt_reference_answer", ""))),
                     max_answer_chars,
                 ),
                 "deterministic_flag": str(sanity.get("sanity_flag", "")),
                 "baseline": baseline,
                 "executed": str(bool(row.get("executed", False))),
                 "rejected": str(bool(row.get("rejected", False))),
-                "candidate_answer": _clip(str(row.get("answer", "")), max_answer_chars),
+                "candidate_answer": _clip(normalized_candidate_answer, max_answer_chars),
                 "candidate_code": _clip(candidate_code, max_code_chars),
             },
             stage="gt_llm_judge",
@@ -427,7 +467,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "LLM ground-truth judge for benchmark raw_results.jsonl files. "
-            "Compares candidate answers against flashfusion/eval/ground_truth.json."
+            "Compares candidate answers against flashfusion/eval/ground_truth_wisdm.json."
         )
     )
     parser.add_argument(
@@ -442,7 +482,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ground-truth",
-        default="flashfusion/eval/ground_truth.json",
+        default="flashfusion/eval/ground_truth_wisdm.json",
         help="Path to ground truth JSON",
     )
     parser.add_argument(

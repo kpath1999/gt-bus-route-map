@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 
 from flashfusion.eval.queries import (
     DATASET_BUS,
@@ -232,114 +233,141 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
 
     qmap = {q["id"]: q["text"] for q in get_queries(DATASET_MIT_ECG)}
 
-    q1_total_101 = int(df.loc[df["record_id"] == 101].shape[0])
-    q2_max_mlii_105 = float(df.loc[df["record_id"] == 105, "MLII"].max())
-    q3_mean_v1_234 = float(df.loc[df["record_id"] == 234, "V1"].mean())
-    q4_ann_109 = int(df.loc[(df["record_id"] == 109) & (df["is_annotated"])].shape[0])
+    # --- DIRECT (Q1–Q4) ---
 
-    ann_counts = (
-        df.loc[df["is_annotated"]]
-        .groupby("record_id")
-        .size()
+    # Q1: Min MLII for record_id 101
+    q1_min_mlii_101 = float(df.loc[df["record_id"] == 101, "MLII"].min())
+
+    # Q2: Max time_s (total duration) for record_id 234
+    q2_max_time_234 = float(df.loc[df["record_id"] == 234, "time_s"].max())
+
+    # Q3: Count of samples with MLII > 0 for record_id 106
+    q3_count_106 = int(
+        df.loc[(df["record_id"] == 106) & (df["MLII"] > 0)].shape[0]
+    )
+
+    # Q4: Timestamp of last annotated beat in record_id 221
+    rec221_ann = df.loc[(df["record_id"] == 221) & (df["is_annotated"]), "time_s"]
+    q4_last_ann_221 = float(rec221_ann.max())
+
+    # --- INTERMEDIATE (Q5–Q8) ---
+
+    # Q5: Estimated average HR in BPM for record_id 208
+    #     HR (BPM) = (annotation_count / max_time_s) * 60
+    rec208 = df.loc[df["record_id"] == 208]
+    q5_ann_count_208 = int(rec208.loc[rec208["is_annotated"]].shape[0])
+    q5_max_time_208 = float(rec208["time_s"].max())
+    q5_hr_208 = (q5_ann_count_208 / q5_max_time_208) * 60.0
+
+    # Q6: Record with largest peak-to-peak MLII amplitude (max - min)
+    mlii_range = (
+        df.groupby("record_id")["MLII"]
+        .agg(lambda x: x.max() - x.min())
         .sort_values(ascending=False)
     )
-    q5_record = int(ann_counts.index[0])
-    q5_count = int(ann_counts.iloc[0])
+    q6_record = int(mlii_range.index[0])
+    q6_range = float(mlii_range.iloc[0])
 
-    q6_abs_101 = float(df.loc[df["record_id"] == 101, "MLII"].abs().mean())
-    q6_abs_234 = float(df.loc[df["record_id"] == 234, "MLII"].abs().mean())
-    q6_diff = q6_abs_101 - q6_abs_234
+    # Q7: 10-second interval with highest annotated beat count for record_id 101
+    rec101 = df.loc[df["record_id"] == 101]
+    rec101_ann = rec101.loc[rec101["is_annotated"]].copy()
+    if rec101_ann.empty:
+        q7_interval = 0
+        q7_interval_start = 0
+        q7_interval_end = 10
+        q7_interval_count = 0
+    else:
+        rec101_ann["interval_10s"] = (rec101_ann["time_s"] // 10).astype(int)
+        interval_counts = (
+            rec101_ann.groupby("interval_10s").size().sort_values(ascending=False)
+        )
+        q7_interval = int(interval_counts.index[0])
+        q7_interval_start = q7_interval * 10
+        q7_interval_end = q7_interval_start + 10
+        q7_interval_count = int(interval_counts.iloc[0])
 
-    rec109 = df.loc[df["record_id"] == 109]
-    q7_ann_mean = float(rec109.loc[rec109["is_annotated"], "MLII"].mean())
-    q7_unann_mean = float(rec109.loc[~rec109["is_annotated"], "MLII"].mean())
-    q7_diff = q7_ann_mean - q7_unann_mean
-
-    v1_std = df.groupby("record_id")["V1"].std().sort_values(ascending=False)
-    q8_record = int(v1_std.index[0])
-    q8_std = float(v1_std.iloc[0])
+    # Q8: RMS of MLII for record_id 106
+    #     RMS = sqrt(mean(x^2))
+    mlii_106 = df.loc[df["record_id"] == 106, "MLII"]
+    q8_rms_106 = float(np.sqrt((mlii_106 ** 2).mean()))
 
     return [
         {
             "query_id": 1,
             "query_text": qmap[1],
-            "reference_answer": f"Total samples for record_id 101: {q1_total_101}.",
+            "reference_answer": f"Minimum MLII for record_id 101 is {q1_min_mlii_101:.4f}.",
             "expected_rejection": False,
         },
         {
             "query_id": 2,
             "query_text": qmap[2],
-            "reference_answer": f"Maximum MLII for record_id 105 is {q2_max_mlii_105:.4f}.",
+            "reference_answer": f"Total recording duration for record_id 234 is {q2_max_time_234:.4f} seconds.",
             "expected_rejection": False,
         },
         {
             "query_id": 3,
             "query_text": qmap[3],
-            "reference_answer": f"Average V1 for record_id 234 is {q3_mean_v1_234:.4f}.",
+            "reference_answer": f"record_id 106 has {q3_count_106} samples with MLII > 0.",
             "expected_rejection": False,
         },
         {
             "query_id": 4,
             "query_text": qmap[4],
-            "reference_answer": f"Annotated-beat count for record_id 109 is {q4_ann_109}.",
+            "reference_answer": f"The last annotated beat in record_id 221 occurs at time_s = {q4_last_ann_221:.6f}.",
             "expected_rejection": False,
         },
         {
             "query_id": 5,
             "query_text": qmap[5],
             "reference_answer": (
-                f"record_id {q5_record} has the highest annotated-beat count with {q5_count} samples."
+                f"record_id 208 has {q5_ann_count_208} annotated beats over {q5_max_time_208:.4f} seconds, "
+                f"giving an estimated average heart rate of {q5_hr_208:.2f} BPM."
             ),
             "expected_rejection": False,
         },
         {
             "query_id": 6,
             "query_text": qmap[6],
-            "reference_answer": (
-                f"Average |MLII| is {q6_abs_101:.4f} for record_id 101 and {q6_abs_234:.4f} for record_id 234; "
-                f"difference (101-234) is {q6_diff:.4f}."
-            ),
+            "reference_answer": f"record_id {q6_record} has the largest peak-to-peak MLII amplitude at {q6_range:.4f}.",
             "expected_rejection": False,
         },
         {
             "query_id": 7,
             "query_text": qmap[7],
             "reference_answer": (
-                f"For record_id 109, mean MLII during annotated samples is {q7_ann_mean:.4f} and "
-                f"during unannotated samples is {q7_unann_mean:.4f}; difference (annotated-unannotated) is {q7_diff:.4f}."
+                f"The 10-second interval [{q7_interval_start}s, {q7_interval_end}s) "
+                f"contains the highest number of annotated beats for record_id 101 with {q7_interval_count} beats."
             ),
             "expected_rejection": False,
         },
         {
             "query_id": 8,
             "query_text": qmap[8],
-            "reference_answer": (
-                f"record_id {q8_record} has the highest V1 standard deviation at {q8_std:.4f}."
-            ),
+            "reference_answer": f"The RMS of the MLII signal for record_id 106 is {q8_rms_106:.4f}.",
             "expected_rejection": False,
         },
         {
             "query_id": 9,
             "query_text": qmap[9],
-            "reference_answer": "Reject: patient age is unavailable in this ECG dataset.",
+            "reference_answer": "Reject: patient outcome and mortality data are unavailable in this ECG dataset.",
             "expected_rejection": True,
         },
         {
             "query_id": 10,
             "query_text": qmap[10],
-            "reference_answer": "Reject: medication labels are unavailable in this ECG dataset.",
+            "reference_answer": "Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.",
             "expected_rejection": True,
         },
         {
             "query_id": 11,
             "query_text": qmap[11],
-            "reference_answer": "Reject: sex metadata is unavailable in this ECG dataset.",
+            "reference_answer": "Reject: family medical history is unavailable in this ECG dataset.",
             "expected_rejection": True,
         },
         {
             "query_id": 12,
             "query_text": qmap[12],
-            "reference_answer": "Reject: geographic collection metadata is unavailable in this ECG dataset.",
+            "reference_answer": "Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.",
             "expected_rejection": True,
         },
     ]
@@ -353,6 +381,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
 
     qmap = {q["id"]: q["text"] for q in get_queries(DATASET_BUS)}
 
+    # --- DIRECT (Q1–Q4) --- unchanged ---
+
     q1_max_var = float(df["accel_variance"].max())
     q2_mean_accel = float(df["accel_mean"].mean())
 
@@ -361,24 +391,33 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
 
     q4_count = int((df["accel_variance"] > 0.20).sum())
 
+    # --- INTERMEDIATE (Q5–Q8) ---
+
+    # Q5: unchanged — north/south median-latitude split on accel_variance
     lat_median = float(df["latitude"].median())
     north_mask = df["latitude"] >= lat_median
     q5_north = float(df.loc[north_mask, "accel_variance"].mean())
     q5_south = float(df.loc[~north_mask, "accel_variance"].mean())
     q5_diff = q5_north - q5_south
 
-    df["vertical_shock_proxy"] = df["accel_stats_z_p99"] - df["accel_stats_z_p10"]
-    q6_idx = int(df["vertical_shock_proxy"].idxmax())
+    # Q6: UPDATED — vertical shock is now z_p99 - z_p1 (not z_p10)
+    df["vertical_shock"] = df["accel_stats_z_p99"] - df["accel_stats_z_p1"]
+    q6_idx = int(df["vertical_shock"].idxmax())
     q6_row = df.loc[q6_idx]
 
-    q7_x = float(df["accel_stats_x_p99"].mean())
-    q7_y = float(df["accel_stats_y_p99"].mean())
-    q7_diff = q7_x - q7_y
+    # Q7: UPDATED — 3D peak magnitude: mean of sqrt(x_p99^2 + y_p99^2 + z_p99^2)
+    df["peak_magnitude"] = np.sqrt(
+        df["accel_stats_x_p99"] ** 2
+        + df["accel_stats_y_p99"] ** 2
+        + df["accel_stats_z_p99"] ** 2
+    )
+    q7_mean_magnitude = float(df["peak_magnitude"].mean())
 
-    q8_q3 = float(df["accel_variance"].quantile(0.75))
-    q8_z_median = float(df["accel_stats_z_p99"].median())
-    q8_mask = (df["accel_variance"] >= q8_q3) & (df["accel_stats_z_p99"] > q8_z_median)
-    q8_fraction = float(q8_mask.mean())
+    # Q8: unchanged — 1-minute interval with highest total accel_variance
+    df["minute_bin"] = df["timestamp"].dt.floor("min")
+    variance_by_minute = df.groupby("minute_bin")["accel_variance"].sum().sort_values(ascending=False)
+    q8_bin = variance_by_minute.index[0]
+    q8_total = float(variance_by_minute.iloc[0])
 
     return [
         {
@@ -397,7 +436,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 3,
             "query_text": qmap[3],
             "reference_answer": (
-                "Highest accel_stats_z_p99 occurs at "
+                f"Highest accel_stats_z_p99 occurs at "
                 f"{q3_ts.strftime('%Y-%m-%d %H:%M:%S')} with value {float(df.loc[q3_idx, 'accel_stats_z_p99']):.4f}."
             ),
             "expected_rejection": False,
@@ -413,8 +452,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[5],
             "reference_answer": (
                 f"Median latitude split is {lat_median:.6f}. "
-                f"North-half mean accel_variance is {q5_north:.4f}, south-half mean is {q5_south:.4f}, "
-                f"difference (north-south) is {q5_diff:.4f}."
+                f"North-half mean accel_variance is {q5_north:.4f}, south-half mean is {q5_south:.4f}; "
+                f"the northern half is {'rougher' if q5_diff > 0 else 'smoother'} by {abs(q5_diff):.4f}."
             ),
             "expected_rejection": False,
         },
@@ -422,9 +461,9 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 6,
             "query_text": qmap[6],
             "reference_answer": (
-                f"Largest vertical shock proxy is {float(q6_row['vertical_shock_proxy']):.4f} at "
-                f"({float(q6_row['latitude']):.6f}, {float(q6_row['longitude']):.6f}) "
-                f"timestamp {q6_row['timestamp'].strftime('%Y-%m-%d %H:%M:%S' )}."
+                f"Largest vertical shock (z_p99 - z_p1) is {float(q6_row['vertical_shock']):.4f} at "
+                f"({float(q6_row['latitude']):.6f}, {float(q6_row['longitude']):.6f}), "
+                f"timestamp {q6_row['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}."
             ),
             "expected_rejection": False,
         },
@@ -432,8 +471,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 7,
             "query_text": qmap[7],
             "reference_answer": (
-                f"Mean accel_stats_x_p99 is {q7_x:.4f}, mean accel_stats_y_p99 is {q7_y:.4f}, "
-                f"difference (x-y) is {q7_diff:.4f}."
+                f"Average 3D peak acceleration magnitude "
+                f"[sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is {q7_mean_magnitude:.4f}."
             ),
             "expected_rejection": False,
         },
@@ -441,8 +480,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 8,
             "query_text": qmap[8],
             "reference_answer": (
-                f"Top-quartile accel_variance threshold is {q8_q3:.4f}, z_p99 median is {q8_z_median:.4f}, "
-                f"and the qualifying fraction is {q8_fraction:.4f}."
+                f"The 1-minute window starting at {q8_bin.strftime('%Y-%m-%d %H:%M:%S')} "
+                f"had the highest total accel_variance of {q8_total:.4f}."
             ),
             "expected_rejection": False,
         },
@@ -494,7 +533,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
-        default="flashfusion/eval/ground_truth.json",
+        default="flashfusion/eval/ground_truth_wisdm.json",
         help="Output ground-truth JSON path",
     )
     args = parser.parse_args()

@@ -55,7 +55,7 @@ Read these before drafting the outline. Every outline claim must map to at least
 ### Evaluation
 
 8. `flashfusion/eval/queries.py`
-9. `flashfusion/eval/ground_truth.json`
+9. `flashfusion/eval/ground_truth_wisdm.json`
 10. `flashfusion/eval/metrics.py`
 11. `flashfusion/eval/benchmark.py`
 12. `flashfusion/eval/visualize_comparison.py`
@@ -217,7 +217,7 @@ Use this map to generate an outline, not full prose.
 1. `flashfusion/CLAUDE.md`
 2. `flashfusion/prompts/templates.py`
 3. `flashfusion/eval/queries.py`
-4. `flashfusion/eval/ground_truth.json`
+4. `flashfusion/eval/ground_truth_wisdm.json`
 5. `flashfusion/eval_results/runs/latest/benchmark/metrics.csv`
 6. `flashfusion/eval_results/runs/latest/visuals/baseline_summary.md`
 7. `flashfusion/eval_results/runs/latest/visuals/accuracy_by_query_type.md`
