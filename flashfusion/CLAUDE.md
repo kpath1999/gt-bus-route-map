@@ -61,8 +61,8 @@ User Query (natural language)
         │                    Grounded execution — no judge
         │
         └──► Flash-Fusion    S1 → S2 (codebook) → S3 → guardrail(grounded_query)
-                             → Pandas agent(grounded_query) → judge
-                             → [agent retry with correction note if FAIL] → answer
+                     → judge_plan(S3 output) → [optional one S3 refine]
+                     → Pandas agent(grounded_query) → answer
 ```
 
 ### What Each Component Contributes
@@ -74,8 +74,8 @@ User Query (natural language)
 | Activity codebook injection | ✗ | ✗ | ✓ | ✓ |
 | Derived feature materialisation (`magnitude`) | ✗ | ✗ | ✓ | ✓ |
 | Query decomposition via S3 | ✗ | ✗ | ✓ | ✓ |
-| Guardrail on grounded query | ✗ | ✗ | ✗ | grounded query |
-| Post-execution intent judge + retry | ✗ | ✗ | ✗ | ✓ |
+| Guardrail on grounded query | ✗ | ✗ | ✗ | ✓ |
+| Pre-execution plan judge + one refine | ✗ | ✗ | ✗ | ✓ |
 
 ---
 
@@ -811,31 +811,28 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
        r.answer = f"Query rejected: {reason}"
        r.executed = False; return r
 
-9. raw_answer, trace, details = executor.execute_single(grounded_query)
+9. plan_verdict = executor.judge_plan(query, grounding["raw_grounding"],
+                                      sub_result["sub_queries"], sub_result["synthesis_hint"])
+   r.stages_run.append("judge_plan")
+
+10. if plan_verdict.get("verdict") == "FAIL" and plan_verdict.get("suggestion"):
+        refined_input = query + "\n\nPlan correction note: " + plan_verdict["suggestion"]
+        sub_result = stage3.run(refined_input, grounding["raw_grounding"], meta_str)
+        r.stages_run.append("S3_refine")
+        grounded_query = _build_grounded_query(query, grounding, sub_result)
+        plan_verdict = executor.judge_plan(query, grounding["raw_grounding"],
+                                           sub_result["sub_queries"], sub_result["synthesis_hint"])
+        r.stages_run.append("judge_plan_retry")
+
+11. r.judge_verdict = plan_verdict
+    r.alignment_explanation = executor.explain_alignment(query, plan_verdict)
+
+12. raw_answer, trace, details = executor.execute_single(grounded_query)
    r.trace = trace; r.executed = True
    r.final_code = details.final_code; r.agent_tries = details.tries
    r.stages_run.append("agent")
 
-10. verdict = executor.judge_result(query, r.final_code, raw_answer)
-    r.stages_run.append("judge"); r.judge_verdict = verdict
-    r.alignment_explanation = executor.explain_alignment(query, verdict)
-
-11. if verdict.get("verdict") == "FAIL" and verdict.get("suggestion"):
-        # Retry: re-execute with correction note appended to grounded query
-        retry_query = grounded_query + f"\n\nCorrection note: {verdict['suggestion']}"
-        executor.reset_agent()
-        retry_answer, retry_trace, retry_details = executor.execute_single(retry_query)
-        r.trace += "\n---[RETRY]---\n" + (retry_trace or "")
-        if retry_details.final_code: r.final_code = retry_details.final_code
-        r.agent_tries += retry_details.tries
-        r.stages_run.extend(["agent_retry"])
-        retry_verdict = executor.judge_result(query, r.final_code, retry_answer)
-        r.stages_run.append("judge_retry")
-        r.judge_verdict = retry_verdict
-        r.alignment_explanation = executor.explain_alignment(query, retry_verdict)
-        raw_answer = retry_answer
-
-12. r.answer = raw_answer; return r
+13. r.answer = raw_answer; return r
 ```
 
 ---
@@ -1069,7 +1066,7 @@ print(df.groupby('baseline')[['accuracy_score','latency_s','cost_usd']].mean())
 4. **WellMax-Only has no judge**: `judge_verdict` must be `{}` — never add a judge call.
 5. **AutoIOT-Only has no judge**: Same — `judge_verdict = {}` — accuracy scorer treats this as 0.5.
 6. **Stage 2 codebook injection**: Format `SCHEMA_GROUNDING_PROMPT` with `{codebook}=adapter.get_codebook_str()` before building the chain. Without this, AutoIOT-Only and LLM-Only cannot resolve group names.
-7. **Agent state leakage**: Always call `executor.reset_agent()` between sub-queries in Flash-Fusion. The `PythonAstREPLTool` is stateful.
+7. **Plan judge is pre-execution only**: In Flash-Fusion, `judge_verdict` now reflects plan-gate quality (not post-answer grading).
 8. **LLMClient per benchmark run**: Create a **new** `LLMClient` for each `(baseline, query)` pair so `call_log` is isolated and `total_cost_usd()` reflects only that one run.
 9. **`PrivateAttr` in Pydantic models**: `ResilientReActOutputParser` inherits from a Pydantic model. Use `_output_history: list = PrivateAttr(default_factory=list)` — not a regular class attribute.
 10. **Guardrail prompt formatting**: GUARDRAIL_PROMPT contains `{column_metadata}`. Format it at call time: `GUARDRAIL_PROMPT.format(column_metadata=meta_str)` — then use the formatted string as system message.

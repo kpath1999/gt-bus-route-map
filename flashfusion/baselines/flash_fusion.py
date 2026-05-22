@@ -1,17 +1,17 @@
 """
 baselines/flash_fusion.py — Flash-Fusion baseline (B4).
 
-S1 → S2 → S3 → guardrail(grounded_query) → agent(grounded_query) → judge
-                                               [one agent retry on FAIL]
+S1 → S2 → S3 → guardrail(grounded_query) → judge_plan → agent(grounded_query)
+                                      [one S3 refinement on FAIL]
 
 The stages build a grounded query that maps indirect concepts to exact column
 names and injects sub-task structure. The agent resolves sub-tasks autonomously
-via its ReAct loop. The judge verifies intent alignment and triggers one agent
-retry with the correction note appended to the grounded query if FAIL.
+via its ReAct loop. The pre-agent judge verifies that Stage-3 decomposition is
+likely to answer the original intent and can request one Stage-3 refinement.
 
 Expected benchmark behaviour:
   - Q4, Q10: rejected=True (guardrail on grounded_query)
-  - Q1–Q3, Q5–Q9: executed=True, judge_verdict={"verdict": "PASS"|"FAIL"}
+    - Q1–Q3, Q5–Q9: executed=True, judge_verdict={"verdict": "PASS"|"FAIL"}
 
 See CLAUDE.md §_run_flash_fusion for the full algorithm.
 """
@@ -65,13 +65,13 @@ def run_flash_fusion(
     Algorithm:
         S1 → S2 → S3 → build grounded_query
         guardrail(grounded_query) → reject or proceed
-        execute_single(grounded_query) → raw_answer, trace, details
-        judge_result(query, final_code, raw_answer) → verdict
+        judge_plan(query, grounding, sub_queries, synthesis_hint) → plan verdict
         if FAIL + suggestion:
-            reset_agent()
-            execute_single(grounded_query + correction_note) → retry
-            judge_result again → final verdict
-        r.answer = final raw_answer; r.executed = True
+            rerun S3 once with correction note appended to query context
+            rebuild grounded_query
+            judge_plan again → final plan verdict
+        execute_single(grounded_query) → raw_answer, trace, details
+        r.answer = raw_answer; r.executed = True
     """
     meta_str = meta_to_str(build_column_metadata(df))
 
@@ -117,6 +117,41 @@ def run_flash_fusion(
         r.executed = False
         return r
 
+    plan_verdict = executor.judge_plan(
+        query,
+        grounding["raw_grounding"],
+        sub_result["sub_queries"],
+        sub_result["synthesis_hint"],
+    )
+    r.stages_run.append("judge_plan")
+
+    if plan_verdict.get("verdict") == "FAIL" and plan_verdict.get("suggestion"):
+        refine_input = (
+            f"{query}\n\n"
+            f"Plan correction note: {plan_verdict['suggestion']}"
+        )
+        refined_sub_result = stage3.run(refine_input, grounding["raw_grounding"], meta_str)
+        sub_result = refined_sub_result
+        r.s3_sub_queries = sub_result["sub_queries"]
+        r.s3_synthesis_hint = sub_result["synthesis_hint"]
+        r.stages_run.append("S3_refine")
+        grounded_query = _build_grounded_query(
+            query,
+            grounding["raw_grounding"],
+            sub_result["sub_queries"],
+            sub_result["synthesis_hint"],
+        )
+        plan_verdict = executor.judge_plan(
+            query,
+            grounding["raw_grounding"],
+            sub_result["sub_queries"],
+            sub_result["synthesis_hint"],
+        )
+        r.stages_run.append("judge_plan_retry")
+
+    r.judge_verdict = plan_verdict
+    r.alignment_explanation = executor.explain_alignment(query, plan_verdict)
+
     raw_answer, trace, details = executor.execute_single(grounded_query)
     r.trace = trace
     r.executed = True
@@ -124,29 +159,6 @@ def run_flash_fusion(
     r.agent_tries = details.tries
     r.execution_attempts = list(details.attempts)
     r.stages_run.append("agent")
-
-    verdict = executor.judge_result(query, r.final_code, raw_answer)
-    r.stages_run.append("judge")
-    r.judge_verdict = verdict
-    r.alignment_explanation = executor.explain_alignment(query, verdict)
-
-    if verdict.get("verdict") == "FAIL" and verdict.get("suggestion"):
-        retry_query = grounded_query + f"\n\nCorrection note: {verdict['suggestion']}"
-        executor.reset_agent()
-        retry_answer, retry_trace, retry_details = executor.execute_single(retry_query)
-        if retry_trace:
-            r.trace = (r.trace + "\n---[RETRY]---\n" + retry_trace) if r.trace else retry_trace
-        if retry_details.final_code:
-            r.final_code = retry_details.final_code
-        r.agent_tries += retry_details.tries
-        if retry_details.attempts:
-            r.execution_attempts.extend(retry_details.attempts)
-        r.stages_run.append("agent_retry")
-        retry_verdict = executor.judge_result(query, r.final_code, retry_answer)
-        r.stages_run.append("judge_retry")
-        r.judge_verdict = retry_verdict
-        r.alignment_explanation = executor.explain_alignment(query, retry_verdict)
-        raw_answer = retry_answer
 
     r.answer = raw_answer
     return r

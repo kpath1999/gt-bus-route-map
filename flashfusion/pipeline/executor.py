@@ -33,6 +33,7 @@ from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.prompts.templates import (
     GUARDRAIL_PROMPT,
     JUDGE_PROMPT,
+    PLAN_JUDGE_PROMPT,
     SYNTHESIS_PROMPT,
 )
 from flashfusion.config import (
@@ -347,6 +348,23 @@ class ExecutionLayer:
                         "Question: {question}\n\n"
                         "Code executed:\n{code}\n\n"
                         "Result:\n{result}",
+                    ),
+                ]
+            )
+            | client.llm
+            | StrOutputParser()
+        )
+
+        self._plan_judge_chain = (
+            ChatPromptTemplate.from_messages(
+                [
+                    ("system", PLAN_JUDGE_PROMPT),
+                    (
+                        "human",
+                        "Question: {question}\n\n"
+                        "Schema grounding:\n{grounding}\n\n"
+                        "Sub-queries:\n{sub_queries}\n\n"
+                        "Synthesis hint:\n{synthesis_hint}",
                     ),
                 ]
             )
@@ -748,6 +766,67 @@ class ExecutionLayer:
                 "suggestion": "Treat this answer as unverified and review manually.",
             }
 
+        verdict = self._parse_judge_response(response)
+        if verdict["verdict"] == "PASS" and not verdict["issue"]:
+            verdict["issue"] = "No alignment issues detected against the original question."
+        if verdict["verdict"] == "FAIL" and not verdict["issue"]:
+            verdict["issue"] = "Answer appears misaligned with the question intent or dataset constraints."
+        if verdict["verdict"] == "FAIL" and not verdict["suggestion"]:
+            verdict["suggestion"] = "Adjust the computation to match the requested metric and valid schema fields."
+        return verdict
+
+    def judge_plan(
+        self,
+        question: str,
+        grounding: str,
+        sub_queries: list[str],
+        synthesis_hint: str,
+    ) -> dict:
+        """
+        Evaluate whether the Stage-3 plan is adequate before execution.
+
+        Args:
+            question: Original user question.
+            grounding: Stage-2 raw grounding text.
+            sub_queries: Stage-3 generated sub-queries.
+            synthesis_hint: Stage-3 synthesis hint.
+
+        Returns:
+            dict with keys: verdict ("PASS" | "FAIL" | "UNKNOWN"), issue, suggestion.
+        """
+        sub_query_text = "\n".join(f"- {sq}" for sq in sub_queries) if sub_queries else "(none)"
+        try:
+            response = self._client.invoke_chain(
+                self._plan_judge_chain,
+                {
+                    "question": question,
+                    "grounding": grounding or "(none)",
+                    "sub_queries": sub_query_text,
+                    "synthesis_hint": synthesis_hint or "(none)",
+                },
+                stage="judge_plan",
+            )
+        except Exception:
+            return {
+                "verdict": "FAIL",
+                "issue": "Plan judge invocation failed.",
+                "suggestion": "Regenerate Stage-3 sub-queries to explicitly cover each requested analysis step.",
+            }
+
+        verdict = self._parse_judge_response(response)
+        if verdict["verdict"] == "UNKNOWN":
+            verdict["verdict"] = "FAIL"
+        if not verdict["issue"]:
+            verdict["issue"] = "Plan quality could not be verified for complete intent coverage."
+        if verdict["verdict"] == "FAIL" and not verdict["suggestion"]:
+            verdict["suggestion"] = (
+                "Regenerate Stage-3 with ordered, executable sub-queries that fully cover the original question intent."
+            )
+        return verdict
+
+    def _parse_judge_response(self, response: str) -> dict:
+        """Parse strict VERDICT/ISSUE/SUGGESTION response format used by judge chains."""
+
         verdict = "UNKNOWN"
         issue = ""
         suggestion = ""
@@ -770,14 +849,6 @@ class ExecutionLayer:
                 verdict = "PASS"
             elif "VERDICT: FAIL" in response.upper():
                 verdict = "FAIL"
-
-        if verdict == "PASS" and not issue:
-            issue = "No alignment issues detected against the original question."
-        if verdict == "FAIL" and not issue:
-            issue = "Answer appears misaligned with the question intent or dataset constraints."
-        if verdict == "FAIL" and not suggestion:
-            suggestion = "Adjust the computation to match the requested metric and valid schema fields."
-
         return {"verdict": verdict, "issue": issue, "suggestion": suggestion}
 
     def explain_alignment(self, question: str, verdict: dict) -> str:

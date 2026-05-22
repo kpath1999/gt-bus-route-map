@@ -1,6 +1,6 @@
 # Flash-Fusion Baseline Flow
 
-Full pipeline with safety gates, verification, and adaptive retry logic.
+Full pipeline with safety gates and pre-execution plan refinement.
 
 ```mermaid
 flowchart TD
@@ -15,34 +15,29 @@ flowchart TD
     Build --> Guardrail{Guardrail Check:<br/>Feasible?}
     
     Guardrail -->|REJECT| Reject([Rejection Response<br/>with reason])
-    Guardrail -->|PROCEED| Agent1[Pandas ReAct Agent<br/>ExecutionLayer.execute_single]
+    Guardrail -->|PROCEED| PlanJudge{Plan Judge:<br/>S3 answers intent?}
     
-    Agent1 --> Judge1{Judge Verdict:<br/>Intent Aligned?}
+    PlanJudge -->|PASS| Agent[Pandas ReAct Agent<br/>ExecutionLayer.execute_single]
+    PlanJudge -->|FAIL + suggestion| Refine[Regenerate Stage-3 once<br/>with correction note]
+    Refine --> PlanJudgeRetry{Plan Judge Retry:<br/>Improved?}
+    PlanJudgeRetry --> Agent
     
-    Judge1 -->|PASS| Final([Final Answer])
-    Judge1 -->|FAIL + suggestion| Retry[Reset Agent<br/>+ Append Correction Note]
+    Agent --> Final([Final Answer])
     
-    Retry --> Agent2[Pandas ReAct Agent<br/>Retry with correction]
-    Agent2 --> Judge2{Re-judge<br/>Verdict?}
-    
-    Judge2 --> Final2([Final Answer<br/>after retry])
-    
-    Note1[/"✓ Full grounding pipeline<br/>✓ Feasibility guardrail<br/>✓ Intent judge + retry<br/>✓ Adaptive correction"/]
+    Note1[/"✓ Full grounding pipeline<br/>✓ Feasibility guardrail<br/>✓ Pre-agent plan judge<br/>✓ One-shot S3 refinement"/]
     
     style Start fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
     style Final fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
-    style Final2 fill:#c8e6c9,stroke:#388e3c,stroke-width:3px
     style Reject fill:#ffcdd2,stroke:#c62828,stroke-width:2px
     style S1 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style S2 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style S3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style Build fill:#fff9c4,stroke:#f9a825,stroke-width:2px
     style Guardrail fill:#fff176,stroke:#f57f17,stroke-width:3px
-    style Judge1 fill:#81d4fa,stroke:#0277bd,stroke-width:3px
-    style Judge2 fill:#81d4fa,stroke:#0277bd,stroke-width:3px
-    style Agent1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Agent2 fill:#ffe0b2,stroke:#e65100,stroke-width:2px
-    style Retry fill:#ffccbc,stroke:#d84315,stroke-width:2px
+    style PlanJudge fill:#81d4fa,stroke:#0277bd,stroke-width:3px
+    style PlanJudgeRetry fill:#4fc3f7,stroke:#01579b,stroke-width:3px
+    style Agent fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Refine fill:#ffccbc,stroke:#d84315,stroke-width:2px
     style Pipeline fill:#fce4ec,stroke:#c2185b,stroke-width:2px
     style Note1 fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
 ```
@@ -51,9 +46,9 @@ flowchart TD
 
 - **Full grounding pipeline**: S1 → S2 → S3 with codebook and derived features
 - **Feasibility guardrail**: Rejects queries requiring unavailable schema before execution
-- **Intent judge**: Validates that agent's answer aligns with user's original question
-- **Adaptive retry**: If judge returns FAIL + suggestion, retries with correction appended
-- **One retry only**: Single retry attempt to balance accuracy and latency
+- **Plan judge**: Validates Stage-3 decomposition before any code execution
+- **Adaptive plan refinement**: If plan judge returns FAIL + suggestion, regenerates S3 once
+- **Single-pass execution**: Agent executes once after plan acceptance
 
 ## Stage Details
 
@@ -66,30 +61,29 @@ Same as WellMax-Only (see [wellmax_baseline_flow.md](wellmax_baseline_flow.md))
 - **Output**: `PROCEED` or `REJECT: <reason>`
 - **Rejection examples**: Queries requiring age, gender, GPS location, predictive forecasting
 
-### Judge Verdict
-- **Input**: Original query, final code, raw answer
-- **Logic**: LLM validates intent alignment between query and answer
+### Plan Judge
+- **Input**: Original query, S2 grounding, S3 sub-queries, synthesis hint
+- **Logic**: LLM validates whether the decomposition is complete, ordered, and executable
 - **Output**: `{"verdict": "PASS"|"FAIL", "suggestion": "..."|null}`
-- **Retry trigger**: FAIL + non-null suggestion → retry with correction note
+- **Refinement trigger**: FAIL + non-null suggestion → regenerate Stage-3 once
 
-### Retry Mechanism
-1. Reset agent state
-2. Append correction note to grounded query: `"\n\nCorrection note: {suggestion}"`
-3. Re-execute agent with modified query
-4. Re-judge final answer
-5. Return retry result as final answer (no further retries)
+### Plan Refinement Mechanism
+1. Append correction note to Stage-3 query context
+2. Regenerate sub-queries and synthesis hint once
+3. Rebuild grounded query and re-run plan judge
+4. Execute pandas agent after plan gate is satisfied
 
 ## Expected Behavior
 
 | Query Type | Behavior |
 |------------|----------|
 | Direct Answer (Q1-Q4) | ✓ High accuracy with grounding |
-| Intermediate Reasoning (Q5-Q8) | ✓ Best performance with judge retry |
+| Intermediate Reasoning (Q5-Q8) | ✓ Improved decomposition via plan judge + one refinement |
 | Out-of-Scope (Q9-Q12) | ✓ Rejected by guardrail with clear reason |
 
 ## Code Reference
 
-See [flashfusion/baselines/flash_fusion.py](../flashfusion/baselines/flash_fusion.py#L49-L157)
-- Guardrail check: line 102
-- Judge verdict: line 136
-- Retry logic: lines 143-157
+See [flashfusion/baselines/flash_fusion.py](../flashfusion/baselines/flash_fusion.py)
+- Guardrail check: `guardrail`
+- Plan judge gate: `judge_plan`
+- One-shot plan refinement: `S3_refine` + `judge_plan_retry`

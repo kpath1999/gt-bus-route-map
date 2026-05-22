@@ -126,9 +126,132 @@ def test_flash_fusion_rejection_sets_explanation() -> None:
         out = run_flash_fusion(query, _df(), _client(), r)
 
     executor.execute_single.assert_not_called()
-    executor.judge_result.assert_not_called()
+    executor.judge_plan.assert_not_called()
     assert out.rejected is True
     assert out.executed is False
     assert "heart_rate is not in schema" in out.rejection_reason
     assert "Rejected before execution" in out.alignment_explanation
     assert out.stages_run == ["S1", "S2", "S3", "guardrail"]
+
+
+def test_flash_fusion_runs_plan_judge_before_agent() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "Compare mean magnitude for walking and jogging."
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls:
+        s1_cls.return_value.run.return_value = {"DATA": ["magnitude"], "REASONING": ["compare"]}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": "MAPPINGS:\n  compare -> activity_name + mean(magnitude)",
+            "mappings": ["compare -> activity_name + mean(magnitude)"],
+            "unmappable": [],
+        }
+        s3_cls.return_value.run.return_value = {
+            "sub_queries": [
+                "[FILTER] Keep rows where activity_name is Walking or Jogging",
+                "[GROUPBY] Group by activity_name and compute mean(magnitude)",
+            ],
+            "synthesis_hint": "Compare the two means directly.",
+        }
+
+        executor = execution_layer_cls.return_value
+        executor.guardrail.return_value = (True, "")
+        executor.judge_plan.return_value = {
+            "verdict": "PASS",
+            "issue": "No alignment issues detected against the original question.",
+            "suggestion": "",
+        }
+        executor.explain_alignment.return_value = "Judge sanity check: PASS."
+        executor.execute_single.return_value = (
+            "Jogging has higher mean magnitude.",
+            "trace",
+            MagicMock(final_code="code", tries=2, attempts=[]),
+        )
+
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    executor.judge_plan.assert_called_once()
+    executor.execute_single.assert_called_once()
+    assert out.executed is True
+    assert out.stages_run == ["S1", "S2", "S3", "guardrail", "judge_plan", "agent"]
+
+
+def test_flash_fusion_refines_plan_once_on_plan_judge_fail() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "Find users with longer stationary than locomotion durations."
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls:
+        s1_cls.return_value.run.return_value = {"DATA": ["timestamp"], "REASONING": ["stationary", "locomotion"]}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": "MAPPINGS:\n  stationary -> Sitting,Standing\n  locomotion -> Walking,Jogging,Stairs",
+            "mappings": [
+                "stationary -> Sitting,Standing",
+                "locomotion -> Walking,Jogging,Stairs",
+            ],
+            "unmappable": [],
+        }
+        s3_cls.return_value.run.side_effect = [
+            {
+                "sub_queries": ["[AGGREGATE] Compute total duration overall"],
+                "synthesis_hint": "Return the duration.",
+            },
+            {
+                "sub_queries": [
+                    "[FILTER] Split stationary vs locomotion rows",
+                    "[GROUPBY] Aggregate duration by subject_id and category",
+                    "[RANK] Keep users where stationary total exceeds locomotion total",
+                ],
+                "synthesis_hint": "Report matching users and both totals.",
+            },
+        ]
+
+        executor = execution_layer_cls.return_value
+        executor.guardrail.return_value = (True, "")
+        executor.judge_plan.side_effect = [
+            {
+                "verdict": "FAIL",
+                "issue": "Plan misses category split before aggregation.",
+                "suggestion": "Add explicit stationary vs locomotion split before per-user aggregation.",
+            },
+            {
+                "verdict": "PASS",
+                "issue": "No alignment issues detected against the original question.",
+                "suggestion": "",
+            },
+        ]
+        executor.explain_alignment.return_value = "Judge sanity check: PASS."
+        executor.execute_single.return_value = (
+            "Users 1600 and 1601 have longer stationary totals.",
+            "trace",
+            MagicMock(final_code="code", tries=1, attempts=[]),
+        )
+
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    assert s3_cls.return_value.run.call_count == 2
+    assert executor.judge_plan.call_count == 2
+    assert out.stages_run == [
+        "S1",
+        "S2",
+        "S3",
+        "guardrail",
+        "judge_plan",
+        "S3_refine",
+        "judge_plan_retry",
+        "agent",
+    ]

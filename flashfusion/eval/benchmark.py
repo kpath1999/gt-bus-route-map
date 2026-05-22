@@ -106,6 +106,7 @@ def _run_single_benchmark_iteration(
                 f"\n[{baseline}] Q{qid}: {query_text[:60]}...",
                 flush=True,
             )
+            print(f"  [DEBUG] Starting runner.run() at {time.strftime('%H:%M:%S')}", flush=True)
 
             client = LLMClient(model_name=model_name, api_key=api_key)
             runner = BaselineRunner(
@@ -164,7 +165,7 @@ def _run_single_benchmark_iteration(
             j = result.judge_verdict.get("verdict", "N/A") if result.judge_verdict else "N/A"
             print(
                 f"  -> executed={result.executed} rejected={result.rejected} "
-                f"judge={j} latency={result.latency_s:.1f}s "
+                f"alignment={j} latency={result.latency_s:.1f}s "
                 f"cost=${result.cost_usd:.4f}",
                 flush=True,
             )
@@ -173,6 +174,7 @@ def _run_single_benchmark_iteration(
                 f.write(json.dumps(dataclasses.asdict(result)) + "\n")
 
     judge_out_dir = os.path.join(output_dir, "ground_truth_llm_judge")
+    print(f"  [DEBUG] Starting LLM judge at {time.strftime('%H:%M:%S')}  ({len(results)} results to judge)", flush=True)
     judgments_df, _, sanity_df = run_llm_ground_truth_judge(
         rows=_rows_from_run_results(results),
         ground_truth_by_id=ground_truth_by_id,
@@ -297,9 +299,11 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if args.runs < 1:
         sys.exit("Error: --runs must be >= 1")
 
+    print(f"[DEBUG] Loading dataset from {args.data!r} …", flush=True)
+    _t_load = time.time()
     df_base = load_dataset_by_name(args.data, args.dataset)
+    print(f"[DEBUG] Dataset loaded in {time.time()-_t_load:.2f}s  shape={df_base.shape}", flush=True)
     os.makedirs(args.output, exist_ok=True)
-
     if args.runs == 1:
         results, _, _, _ = _run_single_benchmark_iteration(
             baselines=baselines,

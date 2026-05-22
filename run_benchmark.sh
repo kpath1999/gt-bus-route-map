@@ -6,7 +6,14 @@
 #
 # Usage:
 #   export GROQ_API_KEY="gsk_..."
-#   ./run_benchmark.sh
+#   ./run_benchmark.sh --wisdm
+#   ./run_benchmark.sh --ecg
+#   ./run_benchmark.sh --bus
+#
+# CLI shortcuts:
+#   --wisdm | --ecg | --bus          Choose dataset quickly
+#   --quick                           Use RUNS=1 and QUERIES=1,5,9 for a fast smoke pass
+#   --help                            Show all options
 #
 # Optional overrides (env vars):
 #   DATASET       Dataset profile: wisdm | mit_ecg | bus
@@ -22,8 +29,8 @@
 #   BASELINES     Comma-separated baselines
 #                   (default: AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
 #   QUERIES       Comma-separated query IDs or "all"  (default: all)
-#   RUNS          Number of repeated benchmark runs      (default: 1)
-#   MAX_LATENCY   Per-query timeout in seconds        (default: 90)
+#   RUNS          Number of repeated benchmark runs      (default: 3)
+#   MAX_LATENCY   Per-query timeout in seconds        (default: 30)
 #   MODEL         Groq model override (empty = benchmark config default)
 #
 # Output layout (relative to repo root):
@@ -77,6 +84,94 @@ QUERIES="${QUERIES:-all}"
 RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
 MODEL="${MODEL:-}"
+GROUND_TRUTH="${GROUND_TRUTH:-}"
+
+print_help() {
+    cat <<'EOF'
+Usage:
+  ./run_benchmark.sh --wisdm
+  ./run_benchmark.sh --ecg
+  ./run_benchmark.sh --bus
+
+Options:
+  --wisdm                      Set DATASET=wisdm
+  --ecg                        Set DATASET=mit_ecg
+  --bus                        Set DATASET=bus
+  --dataset <name>             Dataset profile: wisdm | mit_ecg | bus
+  --baselines <csv>            Baselines list (default AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
+  --queries <csv|all>          Query IDs, e.g. 1,5,9 or all
+  --runs <n>                   Number of repeated runs
+  --max-latency <seconds>      Per-query timeout
+  --model <name>               Groq model override
+  --ground-truth <path>        Override ground-truth JSON file
+  --quick                      Shortcut for RUNS=1 and QUERIES=1,5,9
+  -h, --help                   Show this help message
+
+Examples:
+  ./run_benchmark.sh --wisdm
+  ./run_benchmark.sh --bus --queries 1,2,3 --runs 1
+  ./run_benchmark.sh --ecg --quick
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --wisdm)
+            DATASET="wisdm"
+            shift
+            ;;
+        --ecg|--mit-ecg|--mit_ecg)
+            DATASET="mit_ecg"
+            shift
+            ;;
+        --bus)
+            DATASET="bus"
+            shift
+            ;;
+        --dataset)
+            DATASET="${2:-}"
+            shift 2
+            ;;
+        --baselines)
+            BASELINES="${2:-}"
+            shift 2
+            ;;
+        --queries)
+            QUERIES="${2:-}"
+            shift 2
+            ;;
+        --runs)
+            RUNS="${2:-}"
+            shift 2
+            ;;
+        --max-latency)
+            MAX_LATENCY="${2:-}"
+            shift 2
+            ;;
+        --model)
+            MODEL="${2:-}"
+            shift 2
+            ;;
+        --ground-truth)
+            GROUND_TRUTH="${2:-}"
+            shift 2
+            ;;
+        --quick)
+            RUNS="1"
+            QUERIES="1,5,9"
+            shift
+            ;;
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        *)
+            echo "ERROR: Unknown option: $1"
+            echo "Run ./run_benchmark.sh --help for usage."
+            exit 1
+            ;;
+    esac
+done
 
 case "$DATASET" in
     wisdm)
@@ -121,6 +216,60 @@ if ! "$PYTHON" -c "import matplotlib" >/dev/null 2>&1; then
     echo "         $PYTHON -m pip install -e flashfusion/"
     exit 1
 fi
+
+# ── [DEBUG] Groq API connectivity probe ──────────────────────────────────────
+# echo ""
+# echo "▶  [DEBUG]  Probing Groq API connectivity (curl + Python)…"
+# _GROQ_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+#     --max-time 10 \
+#     -H "Authorization: Bearer ${GROQ_API_KEY}" \
+#     "https://api.groq.com/openai/v1/models" 2>/dev/null || true)
+# echo "  curl HTTP status for api.groq.com/models: ${_GROQ_HTTP_STATUS}"
+# if [[ "$_GROQ_HTTP_STATUS" != "200" ]]; then
+#     echo "  WARNING: Groq API probe returned non-200. Network or key issue likely."
+# fi
+
+# echo "  [curl] testing chat completion endpoint..."
+# _GROQ_CHAT_STATUS=$(curl -s -o /tmp/flashfusion_groq_probe.json -w "%{http_code}" \
+#     --max-time 20 \
+#     -H "Authorization: Bearer ${GROQ_API_KEY}" \
+#     -H "Content-Type: application/json" \
+#     -d '{"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
+#     "https://api.groq.com/openai/v1/chat/completions" 2>/dev/null || true)
+# echo "  [curl] chat completion HTTP status: ${_GROQ_CHAT_STATUS}"
+# if [[ -f /tmp/flashfusion_groq_probe.json ]]; then
+#     echo "  [curl] response preview: $(head -c 160 /tmp/flashfusion_groq_probe.json | tr '\n' ' ')"
+# fi
+
+# "$PYTHON" - <<PYEOF
+# import os, sys, time
+# print("  [PY] Python version:", sys.version.split()[0], flush=True)
+# try:
+#     print("  [PY] importing langchain_groq...", flush=True)
+#     from langchain_groq import ChatGroq
+#     print("  [PY] langchain_groq imported OK", flush=True)
+# except ImportError as e:
+#     print(f"  [PY] ERROR: {e}", flush=True)
+#     sys.exit(1)
+# try:
+#     print("  [PY] importing langchain_core pieces...", flush=True)
+#     from langchain_core.prompts import ChatPromptTemplate
+#     from langchain_core.output_parsers import StrOutputParser
+#     print("  [PY] langchain_core imports OK", flush=True)
+#     key = os.environ.get("GROQ_API_KEY","")
+#     print("  [PY] constructing ChatGroq client...", flush=True)
+#     llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+#     print("  [PY] ChatGroq client constructed", flush=True)
+#     chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
+#     print("  [PY] invoking LangChain pipeline...", flush=True)
+#     t0 = time.time()
+#     resp = chain.invoke({})
+#     latency = time.time() - t0
+#     print(f"  [PY] Groq API ping OK  ({latency:.2f}s): {resp[:60]!r}", flush=True)
+# except Exception as e:
+#     print(f"  [PY] Groq API ping FAILED: {type(e).__name__}: {e}", flush=True)
+# PYEOF
+# echo ""
 
 # ── Directory layout ──────────────────────────────────────────────────────────
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -169,7 +318,11 @@ CMD=("$PYTHON" -m flashfusion.eval.benchmark
 )
 [ -n "$MODEL" ] && CMD+=(--model "$MODEL")
 
-"${CMD[@]}"
+# _STEP1_START=$(date +%s)
+# echo "  [DEBUG] Step 1 started at $(date)"
+# "${CMD[@]}"
+# _STEP1_END=$(date +%s)
+# echo "  [DEBUG] Step 1 finished at $(date)  ($(( _STEP1_END - _STEP1_START ))s)"
 
 echo ""
 echo "  ✓  Benchmark complete → $BENCHMARK_DIR"

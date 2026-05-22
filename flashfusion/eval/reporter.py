@@ -193,15 +193,22 @@ def save_markdown(
                 if r.judge_verdict
                 else "N/A"
             )
+            verdict_label = (
+                "Plan Judge"
+                if "judge_plan" in r.stages_run or "judge_plan_retry" in r.stages_run
+                else "Judge"
+            )
             lines.append(f"#### {r.baseline}")
             lines.append("")
             lines.append(f"**Answer:** {ans}")
             lines.append("")
             lines.append(
                 f"- Executed: {r.executed} | Rejected: {r.rejected} | "
-                f"Judge: {verdict}"
+                f"{verdict_label}: {verdict}"
             )
             lines.append(f"- Stages: {','.join(r.stages_run)}")
+            if "S3_refine" in r.stages_run:
+                lines.append("- Plan refinement: yes (one Stage-3 regeneration)")
             lines.append(f"- Latency: {r.latency_s:.2f}s | Cost: ${r.cost_usd:.5f}")
             lines.append("")
 
@@ -258,7 +265,7 @@ def save_markdown(
                 issue = r.judge_verdict.get("issue", "")
                 suggestion = r.judge_verdict.get("suggestion", "")
                 if issue or suggestion:
-                    lines.append("**Judge Details**")
+                    lines.append(f"**{verdict_label} Details**")
                     lines.append("")
                     if issue:
                         lines.append(f"- Issue: {issue}")
@@ -293,7 +300,7 @@ def save_markdown(
         "- **AutoIOT-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
     )
     lines.append(
-        "- **Flash-Fusion**: full grounding pipeline + guardrail + agent + alignment judge explanations."
+        "- **Flash-Fusion**: full grounding pipeline + guardrail + pre-agent plan judge (+ one refinement) + grounded execution."
     )
 
     with open(path, "w", encoding="utf-8") as fh:

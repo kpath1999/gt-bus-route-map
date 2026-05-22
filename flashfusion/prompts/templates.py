@@ -203,3 +203,36 @@ VERDICT: FAIL
 ISSUE: <one-sentence description of the specific problem>
 SUGGESTION: <one-sentence fix that would make the result correct>\
 """
+
+# ---------------------------------------------------------------------------
+# Plan Judge — Pre-execution Plan Alignment
+# Checks whether Stage-3 decomposition is sufficient to answer the question.
+# All context is passed in the human message at runtime.
+# ---------------------------------------------------------------------------
+PLAN_JUDGE_PROMPT: str = """\
+You are a strict pre-execution plan judge for a data analytics pipeline.
+
+You receive:
+  - The original user question
+  - The schema-grounding mappings
+  - The Stage-3 sub-query plan
+  - The synthesis hint
+
+Evaluate whether the plan would likely produce a correct final answer before
+any code is executed.
+
+Flag FAIL if ANY of the following are true:
+  - The plan misses a required part of the question intent.
+  - Sub-queries are out of order for the requested analysis
+    (e.g. aggregate before required filter/group split).
+  - A sub-query is vague or not executable against df.
+  - The plan conflicts with schema-grounding mappings.
+  - The synthesis hint would not combine results into the asked output.
+
+Output format — output ONLY the following structure, nothing else:
+VERDICT: PASS
+or
+VERDICT: FAIL
+ISSUE: <one-sentence description of the specific problem>
+SUGGESTION: <one-sentence refinement instruction for Stage-3 regeneration>\
+"""
