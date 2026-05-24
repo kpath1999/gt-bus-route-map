@@ -825,15 +825,27 @@ class ExecutionLayer:
         return verdict
 
     def _parse_judge_response(self, response: str) -> dict:
-        """Parse strict VERDICT/ISSUE/SUGGESTION response format used by judge chains."""
+        """Parse strict VERDICT/ISSUE/SUGGESTION/CHECKLIST response format used by judge chains."""
 
         verdict = "UNKNOWN"
         issue = ""
         suggestion = ""
+        checklist = []
+        in_checklist = False
         for line in response.splitlines():
             stripped = line.strip()
             upper = stripped.upper()
-            if upper.startswith("VERDICT:"):
+            
+            if upper.startswith("CHECKLIST:"):
+                in_checklist = True
+                continue
+            elif in_checklist and (upper.startswith("VERDICT:") or upper.startswith("ISSUE:") or upper.startswith("SUGGESTION:")):
+                in_checklist = False
+                
+            if in_checklist:
+                if stripped:
+                    checklist.append(stripped)
+            elif upper.startswith("VERDICT:"):
                 v = stripped.split(":", 1)[1].strip().upper()
                 if "PASS" in v:
                     verdict = "PASS"
@@ -849,7 +861,11 @@ class ExecutionLayer:
                 verdict = "PASS"
             elif "VERDICT: FAIL" in response.upper():
                 verdict = "FAIL"
-        return {"verdict": verdict, "issue": issue, "suggestion": suggestion}
+        
+        result = {"verdict": verdict, "issue": issue, "suggestion": suggestion}
+        if checklist:
+            result["checklist"] = checklist
+        return result
 
     def explain_alignment(self, question: str, verdict: dict) -> str:
         """

@@ -47,8 +47,9 @@ REASONING: <comma-separated list of reasoning concepts, or NONE>\
 # Uses semantic activity labels directly from the dataset.
 # Placeholder: {column_metadata}
 # ---------------------------------------------------------------------------
+# Schema Grounding
 SCHEMA_GROUNDING_PROMPT: str = """\
-You are a schema grounding specialist for the WISDM activity recognition dataset.
+You are a schema grounding specialist for IoT activity and sensor datasets.
 
 Dataset columns and metadata:
 {column_metadata}
@@ -56,20 +57,13 @@ Dataset columns and metadata:
 You receive DATA and REASONING concepts extracted from a user query.
 
 Your tasks:
-1. For each DATA concept, identify the best matching column(s) from the dataset.
+1. For each DATA concept, identify the best matching column(s) from the dataset schema.
 2. For each REASONING concept, define a concrete proxy — which column(s) and what
-   operation(s) approximate that concept. Use these standard mappings:
-     - "magnitude" / "intensity" / "overall acceleration" → column `magnitude` = sqrt(x²+y²+z²)
-     - "sedentary" / "stationary" → activity_label IN ('Sitting','Standing')
-     - "locomotion" / "active" / "movement" → activity_label IN ('Walking','Jogging','Stairs')
-     - "hand activities" / "hand-related" → activity_label IN ('Typing','Writing','Clapping')
-     - "outlier" / "unusually high" / "abnormal" → z-score > 3 on the relevant column
-     - "most similar" / "similarity" → Euclidean distance or correlation between per-activity
-       mean(x, y, z) centroid vectors after groupby(activity_label)
-     - "predict" / "forecast" / "next activity" → UNMAPPABLE (no sequence model in dataset)
-     - Any column not present (e.g. "heart_rate", "temperature", "GPS") → UNMAPPABLE
-3. Always prefer activity names exactly as they appear in `activity_label`.
-4. If a DATA concept cannot be mapped to any available column, mark it UNMAPPABLE.
+   operation(s) approximate that concept. Use these heuristics:
+     - Combine raw columns with standard operations where appropriate (e.g. Euclidean distance, root mean square, difference).
+     - Standard aggregations (min, max, count, mean).
+     - Any column not present → UNMAPPABLE, UNLESS the query explicitly provides a mathematical or procedural way to derive it from available columns (e.g., estimating an unknown metric from a count and duration).
+3. If a DATA concept cannot be mapped to any available column and has no explicit derivation, mark it UNMAPPABLE.
 
 Output format — output ONLY the following structure, nothing else:
 MAPPINGS:
@@ -84,8 +78,9 @@ UNMAPPABLE: <comma-separated list of unmappable concepts, or NONE>\
 # Each sub-question is independently answerable by a pandas DataFrame agent.
 # Placeholders: {column_metadata}, {grounding}
 # ---------------------------------------------------------------------------
+# Sub-query Generation
 SUBQUERY_GENERATION_PROMPT: str = """\
-You are a query decomposition specialist for WISDM accelerometer data analysis.
+You are a query decomposition specialist for IoT sensor data analysis.
 
 Dataset column metadata:
 {column_metadata}
@@ -103,6 +98,8 @@ Each sub-question MUST:
   - Be independently answerable by executing pandas code on a DataFrame named `df`.
   - Be prefixed with the operation tag in brackets: [OPERATION]
   - Be concrete and unambiguous — avoid vague phrasing.
+  - CRITICAL: For every restriction or qualifying clause in the original question, include an explicit [FILTER] sub-question that executes before any [GROUPBY] or [AGGREGATE] step.
+  - CRITICAL: When generating a [RANK] or argmax sub-question, always ask to return BOTH the entity identifier and its corresponding metric value.
 
 Also provide a one-line SYNTHESIS_HINT: how to combine the sub-answers into a
 final natural-language response to the original query.
@@ -122,28 +119,25 @@ SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 # The query is passed as the human message at runtime.
 # ---------------------------------------------------------------------------
 GUARDRAIL_PROMPT: str = """\
-You are a strict query feasibility gatekeeper for the WISDM accelerometer dataset.
+You are a strict query feasibility gatekeeper for IoT sensor datasets.
 
 Available columns and metadata:
 {column_metadata}
 
-Note: The column `magnitude` = sqrt(x²+y²+z²) is always available as a derived column.
-The column `activity_name` contains the English label for each activity_label code.
-
 Decide whether the user's query can be answered using ONLY the available columns.
 
 PROCEED if:
-  - All required data can be derived from available columns (including magnitude and activity_name).
+  - All required data can be derived from available columns.
   - The query requires aggregation, filtering, grouping, correlation, ranking, or
     statistical analysis of the available data.
-  - The query asks about patterns, comparisons, or distributions across activities or subjects.
+  - The query asks about patterns, comparisons, or distributions across entities.
+  - The query requires columns that do not exist BUT explicitly explains how to derive them using mathematically possible operations on available data.
 
 REJECT if:
-  - The query requires columns that do not exist and cannot be derived
-    (e.g., heart rate, temperature, GPS coordinates, weight, height, age).
-  - The query requires temporal forecasting or prediction of future events.
-  - The query requires external data, internet access, or domain knowledge not in the dataset.
-  - The query asks for personally identifying information beyond subject_id.
+  - The query requires external data columns that do not exist and cannot be derived.
+  - The query requires temporal forecasting or prediction of future events without sequence models.
+  - The query requires internet access or domain knowledge not in the dataset or query text.
+  - The query asks for personally identifying information beyond identifiers present in the schema.
 
 Output format — output ONLY one of these two options, nothing else:
 PROCEED
@@ -187,10 +181,7 @@ You receive:
 Evaluate whether the result CORRECTLY and COMPLETELY answers the original question.
 
 Flag FAIL if ANY of the following are true:
-  - A column name in the code does not exist in the WISDM dataset schema
-    (valid columns: subject_id, activity_label, timestamp, x, y, z, magnitude, activity_name).
-  - An activity letter code is used incorrectly
-    (e.g. 'A' used for Jogging instead of Walking).
+  - A column name in the code does not exist in the dataset schema.
   - The aggregation or arithmetic logic is clearly wrong (e.g. summing when mean is needed).
   - The result is empty, None, or NaN when real data should exist.
   - The result answers a different question than what was originally asked.
@@ -220,8 +211,11 @@ You receive:
 
 Evaluate whether the plan would likely produce a correct final answer before
 any code is executed.
+You must explicitly extract all filters, derivations, and ranking targets from the original question into a CHECKLIST before determining the verdict.
 
 Flag FAIL if ANY of the following are true:
+  - The plan misses an explicit [FILTER] step for any qualifying/restricting clause from the original question.
+  - Any [RANK] or argmax sub-query doesn't explicitly request returning BOTH the target entity identifier and the metric value used.
   - The plan misses a required part of the question intent.
   - Sub-queries are out of order for the requested analysis
     (e.g. aggregate before required filter/group split).
@@ -230,6 +224,10 @@ Flag FAIL if ANY of the following are true:
   - The synthesis hint would not combine results into the asked output.
 
 Output format — output ONLY the following structure, nothing else:
+CHECKLIST:
+  [ ] Filter present: <description>
+  [ ] Grouping present: <description>
+  [ ] Rank context: explicitly returns BOTH winning entity and metric value (if applicable)
 VERDICT: PASS
 or
 VERDICT: FAIL
