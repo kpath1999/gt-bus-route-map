@@ -115,7 +115,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
     # ascending: Upstairs / Stairs
     # descending: Downstairs
     # ---------------------------------------------------------------------------
-    q8_up_mean = float(df.loc[df["activity_lower"].isin({"upstairs", "stairs"}), "z"].mean())
+    q8_up_mean = float(df.loc[df["activity_lower"].isin({"upstairs"}), "z"].mean())
     q8_down_mean = float(df.loc[df["activity_lower"] == "downstairs", "z"].mean())
     q8_diff = q8_up_mean - q8_down_mean
 
@@ -218,7 +218,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
         {
             "query_id": 12,
             "query_text": qmap[12],
-            "reference_answer": "Reject: personalized workout recommendation is outside benchmark analytics scope.",
+            "reference_answer": "Reject: future MVPA-guideline compliance cannot be predicted from this dataset and the WHO guideline threshold is not represented in the schema.",
             "expected_rejection": True,
         },
     ]
@@ -533,7 +533,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--output",
-        default="flashfusion/eval/ground_truth_wisdm.json",
+        default="flashfusion/eval/ground_truth/ground_truth_wisdm.json",
         help="Output ground-truth JSON path",
     )
     args = parser.parse_args()

@@ -7,7 +7,7 @@ This module implements a multi-stage query rewriting pipeline that converts
 abstract, open-ended user queries into structured, schema-grounded prompts
 suitable for execution against a tabular IoT sensor dataset.
 
-The pipeline has four stages, inspired by MaxWell (SenSys'25) and TaskSense:
+The pipeline has four stages, inspired by WellMax (SenSys'25) and TaskSense:
 
   Stage 1   — Concept Extraction
     Identify every abstract concept in the user query and classify it as
@@ -43,10 +43,10 @@ consume directly.
 """
 
 # AutoIOT + Tavily: narrowing in on definitions for abstract/jargon words (Stage 1.5).
-# MaxWell / TaskSense: getting every abstract query to be rewritten into a structured, high-signal prompt.
+# WellMax / TaskSense: getting every abstract query to be rewritten into a structured, high-signal prompt.
 
 """
-Some ideas provided by the MaxWell SenSys'25 paper on query rewriting:
+Some ideas provided by the WellMax SenSys'25 paper on query rewriting:
 
 The Query Rewriting Module (QRM) is designed to leverage the processed sensing data
 to refine user queries so that the LLM agent's responses are both contextually aware

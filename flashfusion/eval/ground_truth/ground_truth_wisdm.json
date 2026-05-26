@@ -25,13 +25,13 @@
   },
   {
     "query_id": 5,
-    "query_text": "Compare the overall acceleration magnitude between dynamic movements, such as walking and jogging, and resting states like sitting.",
+    "query_text": "Compare the overall acceleration magnitude between dynamic movements and resting states.",
     "reference_answer": "Average magnitude for dynamic activities (walking,jogging,upstairs,downstairs) is 11.9625; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.1297.",
     "expected_rejection": false
   },
   {
     "query_id": 6,
-    "query_text": "Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion.",
+    "query_text": "Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.",
     "reference_answer": "Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).",
     "expected_rejection": false
   },
@@ -43,7 +43,7 @@
   },
   {
     "query_id": 8,
-    "query_text": "Calculate the difference in average z-axis acceleration between ascending and descending elevation changes for all users.",
+    "query_text": "Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.",
     "reference_answer": "Average z for ascending elevation changes is 0.3235; descending is 0.6841; difference (ascending-descending) is -0.3605.",
     "expected_rejection": false
   },
@@ -67,8 +67,8 @@
   },
   {
     "query_id": 12,
-    "query_text": "Recommend a personalized daily workout routine for user 3 based on their most frequent physical activities.",
-    "reference_answer": "Reject: personalized workout recommendation is outside benchmark analytics scope.",
+    "query_text": "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
+    "reference_answer": "Reject: future MVPA-guideline compliance cannot be predicted from this dataset and the WHO guideline threshold is not represented in the schema.",
     "expected_rejection": true
   }
 ]

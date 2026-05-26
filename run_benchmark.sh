@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # run_benchmark.sh
-# End-to-end Flash-Fusion benchmark: 3 baselines × 12 WISDM queries
+# End-to-end Flash-Fusion benchmark: default 2 baselines × 12 queries
 #   → integrated LLM judge  → visualizations  → console summary
 #
 # Usage:
@@ -24,10 +24,10 @@
 #                   (default: data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt)
 #   BUS_DATA      Path to bus telemetry CSV file
 #                   (default: data/bus/bus_data.csv)
-#   GROUND_TRUTH  Path to ground_truth_wisdm.json
-#                   (default: dataset-specific under flashfusion/eval/)
+#   GROUND_TRUTH  Path to a ground-truth JSON file
+#                   (default: dataset-specific under flashfusion/eval/ground_truth/)
 #   BASELINES     Comma-separated baselines
-#                   (default: AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
+#                   (default: AUTOIOT_ONLY,FLASH_FUSION)
 #   QUERIES       Comma-separated query IDs or "all"  (default: all)
 #   RUNS          Number of repeated benchmark runs      (default: 3)
 #   MAX_LATENCY   Per-query timeout in seconds        (default: 30)
@@ -45,8 +45,8 @@
 #           llm_judgments_summary.csv
 #       per_baseline/                ← metrics.csv split per baseline
 #         AUTOIOT_ONLY/metrics.csv
-#         WELLMAX_ONLY/metrics.csv
 #         FLASH_FUSION/metrics.csv
+#         (other baselines appear here only if explicitly requested)
 #       visuals/                     ← PNG charts + summary tables
 #         accuracy_latency_cost_bars.png
 #         token_usage_bars.png
@@ -75,11 +75,13 @@ else
 fi
 
 # ── Configuration (overridable via env) ───────────────────────────────────────
+# Default to running all datasets when no --dataset flag is provided
+# (defaults: 3 runs, baselines AUTOIOT_ONLY and FLASH_FUSION)
 DATASET="${DATASET:-wisdm}"
 WISDM_DATA="${WISDM_DATA:-chat/data/imu/WISDM_ar_v1.1_raw.txt}"
 MIT_ECG_DATA="${MIT_ECG_DATA:-data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt}"
 BUS_DATA="${BUS_DATA:-data/bus/bus_data.csv}"
-BASELINES="${BASELINES:-AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION}"
+BASELINES="${BASELINES:-AUTOIOT_ONLY,FLASH_FUSION}"
 QUERIES="${QUERIES:-all}"
 RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
@@ -98,7 +100,7 @@ Options:
   --ecg                        Set DATASET=mit_ecg
   --bus                        Set DATASET=bus
   --dataset <name>             Dataset profile: wisdm | mit_ecg | bus
-  --baselines <csv>            Baselines list (default AUTOIOT_ONLY,WELLMAX_ONLY,FLASH_FUSION)
+    --baselines <csv>            Baselines list (default AUTOIOT_ONLY,FLASH_FUSION)
   --queries <csv|all>          Query IDs, e.g. 1,5,9 or all
   --runs <n>                   Number of repeated runs
   --max-latency <seconds>      Per-query timeout
@@ -157,7 +159,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --quick)
-            BASELINES="FLASH_FUSION"
+            BASELINES="AUTOIOT_ONLY,FLASH_FUSION"
             RUNS="1"
             QUERIES="1,5,9"
             shift
@@ -177,17 +179,17 @@ done
 case "$DATASET" in
     wisdm)
         DATA_PATH="$WISDM_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_wisdm.json"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_wisdm.json"
         RUN_PREFIX="run_wisdm"
         ;;
     mit_ecg)
         DATA_PATH="$MIT_ECG_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_mit_ecg.json"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_mit_ecg.json"
         RUN_PREFIX="run_ecg"
         ;;
     bus)
         DATA_PATH="$BUS_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth_bus.json"
+        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_bus.json"
         RUN_PREFIX="run_bus"
         ;;
     *)

@@ -26,11 +26,11 @@ QUERY_TYPE_LABELS = {
     "out_of_scope": "Out-of-Scope",
 }
 
-BASELINE_ORDER = ["FLASH_FUSION", "WELLMAX_ONLY", "AUTOIOT_ONLY"]
+BASELINE_ORDER = ["FLASH_FUSION", "AUTOIOT_ONLY"]
 BASELINE_LABELS = {
     "FLASH_FUSION": "Flash-Fusion",
     "WELLMAX_ONLY": "WellMax + AutoIOT",
-    "AUTOIOT_ONLY": "AutoIOT",
+    "AUTOIOT_ONLY": "Agent-Only",
 }
 BASELINE_COLORS = {
     "FLASH_FUSION": "#2c8c4a",
@@ -39,6 +39,13 @@ BASELINE_COLORS = {
 }
 
 ERROR_BAR_METRICS = {"accuracy_percent", "latency_s", "cost_usd"}
+
+
+def _ordered_baselines_from(values: pd.Series) -> list[str]:
+    present = {str(v) for v in values.dropna().unique().tolist()}
+    ordered = [b for b in BASELINE_ORDER if b in present]
+    extras = sorted([b for b in present if b not in BASELINE_ORDER])
+    return ordered + extras
 
 
 METRICS = [
@@ -254,7 +261,7 @@ def _aggregate_by_query_type(df: pd.DataFrame, accuracy_col: str) -> tuple[pd.Da
     if use_variation:
         summary["accuracy_percent_std"] = summary["accuracy_raw_std"] * 100.0
 
-    ordered_baselines = [b for b in BASELINE_ORDER if b in set(summary["baseline"])]
+    ordered_baselines = _ordered_baselines_from(summary["baseline"])
     full_index = pd.MultiIndex.from_product(
         [ordered_baselines, QUERY_TYPE_ORDER], names=["baseline", "query_type"]
     )
@@ -321,7 +328,7 @@ def _format_for_table_with_variation(mean_v: float, std_v: float, kind: str) -> 
 
 def _metric_table(summary: pd.DataFrame, metric_key: str) -> pd.DataFrame:
     table = summary.pivot(index="baseline", columns="query_type", values=metric_key)
-    table = table.reindex(index=[b for b in BASELINE_ORDER if b in table.index])
+    table = table.reindex(index=_ordered_baselines_from(pd.Series(table.index)))
     table = table.reindex(columns=QUERY_TYPE_ORDER)
     table.index = [BASELINE_LABELS.get(b, str(b)) for b in table.index]
     table.index.name = "Baseline"
@@ -398,7 +405,8 @@ def _plot_grouped_metric(
     x = np.arange(len(query_labels))
     width = 0.24
 
-    for idx, baseline in enumerate(BASELINE_ORDER):
+    baselines = _ordered_baselines_from(summary["baseline"])
+    for idx, baseline in enumerate(baselines):
         base_df = summary[summary["baseline"] == baseline].set_index("query_type")
         vals = [base_df[metric_key].get(qt, np.nan) for qt in QUERY_TYPE_ORDER]
         errs = None
@@ -424,7 +432,7 @@ def _plot_grouped_metric(
                 errs = np.append(errs, float(overall_std))
             elif errs is not None:
                 errs = np.append(errs, 0.0)
-        centers = x + (idx - 1) * width
+        centers = x + (idx - (len(baselines) - 1) / 2) * width
         bars = ax.bar(
             centers,
             vals,
@@ -508,7 +516,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--metrics",
         default="flashfusion/eval_results/runs/latest/benchmark/metrics.csv",
-        help="Path to combined metrics.csv containing all baselines",
+        help=(
+            "Path to combined metrics.csv containing all baselines "
+            "(default view focuses on Flash-Fusion and Agent-Only)"
+        ),
     )
     parser.add_argument(
         "--wellmax",

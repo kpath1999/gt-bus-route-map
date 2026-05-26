@@ -467,7 +467,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "LLM ground-truth judge for benchmark raw_results.jsonl files. "
-            "Compares candidate answers against flashfusion/eval/ground_truth_wisdm.json."
+            "Compares candidate answers against flashfusion/eval/ground_truth/ground_truth_wisdm.json."
         )
     )
     parser.add_argument(
@@ -482,7 +482,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ground-truth",
-        default="flashfusion/eval/ground_truth_wisdm.json",
+        default="flashfusion/eval/ground_truth/ground_truth_wisdm.json",
         help="Path to ground truth JSON",
     )
     parser.add_argument(

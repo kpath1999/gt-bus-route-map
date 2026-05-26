@@ -4,16 +4,16 @@ eval/benchmark.py — CLI entry point for the Flash-Fusion benchmark.
 Usage:
     python -m flashfusion.eval.benchmark --help
 
-    # Smoke test (3 queries × 4 baselines)
+    # Smoke test (3 queries × default 2 baselines)
     python -m flashfusion.eval.benchmark \\
         --data chat/data/imu/WISDM_ar_v1.1_raw.txt \\
-        --baselines all --queries 1,4,10 \\
+        --queries 1,4,10 \\
         --output flashfusion/eval_results/
 
     # Full benchmark
     python -m flashfusion.eval.benchmark \\
         --data chat/data/imu/WISDM_ar_v1.1_raw.txt \\
-        --baselines all \\
+        --baselines AUTOIOT_ONLY,FLASH_FUSION \\
         --output flashfusion/eval_results/
 
 Environment:
@@ -146,17 +146,24 @@ def _run_single_benchmark_iteration(
                 result.output_tokens = client.total_output_tokens()
                 result.cost_usd = client.total_cost_usd()
             except Exception as e:
+                import traceback
+                tb_lines = traceback.format_exc().splitlines()
+                traceback_tail = "\n".join(tb_lines[-10:]) if len(tb_lines) > 10 else traceback.format_exc()
+                error_msg = f"[ERROR] {type(e).__name__}: {e}"
                 result = RunResult(
                     baseline=baseline,
                     model=model_name,
                     query=query_text,
-                    answer=f"[ERROR] {e}",
+                    answer=error_msg,
                     rejected=False,
                     executed=False,
                 )
+                result.alignment_explanation = f"Exception during {baseline} execution:\n{traceback_tail}"
                 result.input_tokens = client.total_input_tokens()
                 result.output_tokens = client.total_output_tokens()
                 result.cost_usd = client.total_cost_usd()
+                print(f"  [ERROR] {baseline} failed: {e}", file=sys.stderr, flush=True)
+                print(f"  Traceback (last 10 lines):\n{traceback_tail}", file=sys.stderr, flush=True)
             finally:
                 signal.setitimer(signal.ITIMER_REAL, 0)
                 signal.signal(signal.SIGALRM, prev_handler)
@@ -461,22 +468,23 @@ def _build_parser() -> argparse.ArgumentParser:
 
     Arguments:
         --data       (required) Path to WISDM_ar_v1.1_raw.txt
-        --baselines  (default "all") "all" or comma-separated baseline names
+        --baselines  (default "AUTOIOT_ONLY,FLASH_FUSION") "all" or comma-separated baseline names
         --queries    (default "all") "all" or comma-separated 1-indexed query IDs
         --model      (default config.DEFAULT_MODEL) Groq model identifier
         --output     (default "flashfusion/eval_results/") Output directory path
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Flash-Fusion Benchmark — evaluate 4 baselines × 12 WISDM queries "
+            "Flash-Fusion Benchmark — evaluate default Agent-Only vs Flash-Fusion "
+            "(or any selected baselines) across query sets "
             "measuring accuracy, latency, and token cost."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
             "  python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt "
-            "--baselines all --queries 1,5,9,12\n"
-            "  python -m flashfusion.eval.benchmark --data ... --baselines FLASH_FUSION,LLM_ONLY"
+            "--baselines AUTOIOT_ONLY,FLASH_FUSION --queries 1,5,9,12\n"
+            "  python -m flashfusion.eval.benchmark --data ... --baselines all"
         ),
     )
     parser.add_argument(
@@ -492,9 +500,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--baselines",
-        default="all",
+        default="AUTOIOT_ONLY,FLASH_FUSION",
         help=(
             'Comma-separated baseline names or "all". '
+            "Default focuses on Agent-Only (AUTOIOT_ONLY) and FLASH_FUSION. "
             f"Options: {', '.join(ALL_BASELINES)}"
         ),
     )
@@ -521,7 +530,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--ground-truth",
-        default="flashfusion/eval/ground_truth_wisdm.json",
+        default="flashfusion/eval/ground_truth/ground_truth_wisdm.json",
         help="Path to ground truth JSON file (required to score answers)",
     )
     parser.add_argument(

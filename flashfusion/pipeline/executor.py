@@ -528,6 +528,9 @@ class ExecutionLayer:
             "- Do NOT import external libraries not already available.\n"
             "- Return only the final computed value, not intermediate steps.\n"
             "- Never modify `df` in-place.\n"
+            "- For ranking/argmax operations, always set `result` as a dict containing\n"
+            "  the identifier key and the metric key separately\n"
+            "  Never return a bare numeric ID — it is indistinguishable from a measurement value.\n"
         )
 
     def guardrail(self, query: str) -> tuple[bool, str]:

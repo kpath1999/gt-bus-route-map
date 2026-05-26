@@ -70,8 +70,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 5,
         "text": (
-            "Compare the overall acceleration magnitude between dynamic movements, "
-            "such as walking and jogging, and resting states like sitting."
+            "Compare the overall acceleration magnitude between dynamic movements and resting states."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE",
@@ -85,7 +84,7 @@ WISDM_QUERIES: list[dict] = [
         "id": 6,
         "text": (
             "Identify the user whose total recorded duration of stationary activities "
-            "exceeds their duration of active locomotion."
+            "exceeds their duration of active locomotion by the largest margin."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+GROUPBY+COMPARE",
@@ -111,8 +110,8 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 8,
         "text": (
-            "Calculate the difference in average z-axis acceleration between ascending "
-            "and descending elevation changes for all users."
+            "Calculate the difference between the average z-axis acceleration between "
+            "Upstairs and Downstairs activities for all users."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE+DIFF",
@@ -159,13 +158,14 @@ WISDM_QUERIES: list[dict] = [
     },
     {
         "id": 12,
-        "text": "Recommend a personalized daily workout routine for user 3 based on their most frequent physical activities.",
+        "text": "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
         "complexity": "out_of_scope",
         "operation": "NONE",
         "stress": (
-            "Out-of-scope recommendation task requiring prescriptive planning beyond dataset-backed analytics. "
-            "Flash-Fusion should reject as non-analytic/prescriptive intent; AutoIOT-Only and "
-            "WellMax-Only are expected to attempt response generation."
+            "Out-of-scope forecasting task requiring future behavior prediction and an external "
+            "public-health guideline threshold not represented in the dataset. Flash-Fusion should "
+            "reject on forecasting/scope grounds; AutoIOT-Only and WellMax-Only are expected to "
+            "attempt execution anyway."
         ),
     },
 ]
@@ -295,7 +295,7 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 6,
-        "text": "Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",
+        "text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
         "complexity": "intermediate",
         "operation": "DERIVE+RANK+SELECT",
         "stress": "Derivation of a compound feature (z_p99 - z_p1) mapped to a semantic concept, followed by coordinate retrieval.",

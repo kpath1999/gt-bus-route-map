@@ -17,23 +17,20 @@ from __future__ import annotations
 # DATA (maps directly to a column) or REASONING (requires a proxy derivation).
 # ---------------------------------------------------------------------------
 CONCEPT_EXTRACTION_PROMPT: str = """\
-You are a concept extraction specialist for IoT activity recognition data queries.
-
-The dataset contains accelerometer readings with these columns:
-  subject_id, activity_label, timestamp, x, y, z, magnitude, activity_name
+You are a concept extraction specialist for time-series and sensor data queries.
 
 Given the user's natural language query, identify every distinct semantic concept
 and classify each as one of:
 
   DATA     — a measurable quantity that maps directly to a dataset column.
-             Examples: "x-axis acceleration", "subject", "activity", "timestamp",
-             "acceleration magnitude", "recording duration"
+             Examples: "timestamp", "identifier", "measurement value", "location",
+             "signal amplitude", "recording duration"
 
   REASONING — a qualitative or derived idea that requires computing a proxy from columns,
              or a semantic grouping that requires codebook resolution.
              Examples: "intensity", "similarity", "outlier", "unusual",
-             "sedentary activities", "locomotion activities", "hand activities",
-             "most similar", "predict next", "unusually high"
+             "high values", "low values", "most similar", "predict next",
+             "anomalous patterns"
 
 Output format — output ONLY these two lines, nothing else:
 DATA: <comma-separated list of data concepts, or NONE>
@@ -49,10 +46,18 @@ REASONING: <comma-separated list of reasoning concepts, or NONE>\
 # ---------------------------------------------------------------------------
 # Schema Grounding
 SCHEMA_GROUNDING_PROMPT: str = """\
-You are a schema grounding specialist for IoT activity and sensor datasets.
+You are a schema grounding specialist for time-series and sensor datasets.
 
 Dataset columns and metadata:
 {column_metadata}
+
+IMPORTANT — reading the metadata:
+  - ``values=[...]`` means the list is COMPLETE (every unique value is shown).
+  - ``sample=[...]`` means the list is a partial sample only.
+  When mapping a semantic group concept such as 'dynamic', 'resting', 'stationary',
+  or 'active locomotion', you MUST inspect ALL entries in a ``values=`` list and
+  include every value that belongs to that group in your mapping. Do NOT infer
+  group membership solely from examples given in the query text.
 
 You receive DATA and REASONING concepts extracted from a user query.
 
@@ -80,7 +85,7 @@ UNMAPPABLE: <comma-separated list of unmappable concepts, or NONE>\
 # ---------------------------------------------------------------------------
 # Sub-query Generation
 SUBQUERY_GENERATION_PROMPT: str = """\
-You are a query decomposition specialist for IoT sensor data analysis.
+You are a query decomposition specialist for time-series data analysis.
 
 Dataset column metadata:
 {column_metadata}
@@ -91,15 +96,15 @@ Schema grounding (concept → column/operation mappings):
 Decompose the original user query into 2–4 concrete sub-questions.
 
 Each sub-question MUST:
-  - Reference exact column names from the dataset (subject_id, activity_label, timestamp,
-    x, y, z, magnitude, activity_name).
+  - Reference exact column names from the dataset schema provided in the metadata above.
   - Specify exactly ONE analytical operation from this list:
     [FILTER], [AGGREGATE], [GROUPBY], [CORRELATE], [WINDOW], [RANK]
   - Be independently answerable by executing pandas code on a DataFrame named `df`.
   - Be prefixed with the operation tag in brackets: [OPERATION]
   - Be concrete and unambiguous — avoid vague phrasing.
   - CRITICAL: For every restriction or qualifying clause in the original question, include an explicit [FILTER] sub-question that executes before any [GROUPBY] or [AGGREGATE] step.
-  - CRITICAL: When generating a [RANK] or argmax sub-question, always ask to return BOTH the entity identifier and its corresponding metric value.
+  - CRITICAL: When generating a [RANK] or argmax sub-question, always ask to return the result as a Python dict containing BOTH the entity identifier key AND its metric value key so synthesis can unambiguously label each number. Example: `result = {{{{'record_id': record_id_value, 'peak_to_peak': amplitude_value}}}}`. Never return a bare scalar for a RANK result.
+  - CRITICAL: When generating a [FILTER] for a semantic category, enumerate ALL matching values from the schema's ``values=`` list — never rely solely on examples given in the query text. Check the complete value list in the metadata and include every value that belongs to the category.
 
 Also provide a one-line SYNTHESIS_HINT: how to combine the sub-answers into a
 final natural-language response to the original query.
@@ -119,7 +124,7 @@ SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 # The query is passed as the human message at runtime.
 # ---------------------------------------------------------------------------
 GUARDRAIL_PROMPT: str = """\
-You are a strict query feasibility gatekeeper for IoT sensor datasets.
+You are a strict query feasibility gatekeeper for time-series and sensor datasets.
 
 Available columns and metadata:
 {column_metadata}
@@ -150,7 +155,7 @@ REJECT: <one-sentence explanation of why the query cannot be answered>\
 # All context is passed in the human message at runtime.
 # ---------------------------------------------------------------------------
 SYNTHESIS_PROMPT: str = """\
-You are a precise natural-language synthesiser for IoT sensor query results.
+You are a precise natural-language synthesiser for data query results.
 
 Your task is to combine the answers to sub-questions into a single, direct response
 to the original user question.
@@ -158,7 +163,7 @@ to the original user question.
 Rules:
   - Answer the original question directly in 1–4 sentences.
   - Include ALL specific quantitative findings: numbers, counts, labels, percentages.
-  - Use plain English activity names (e.g. "Jogging", "Sitting") — not letter codes.
+  - Use human-readable labels from the dataset — not codes or raw identifiers.
   - Do NOT mention internal implementation details: no column names, no pandas code,
     no DataFrames, no sub-question structure.
   - Do NOT add caveats, disclaimers, or meta-commentary about limitations.
@@ -222,12 +227,14 @@ Flag FAIL if ANY of the following are true:
   - A sub-query is vague or not executable against df.
   - The plan conflicts with schema-grounding mappings.
   - The synthesis hint would not combine results into the asked output.
+  - A [FILTER] step uses a semantic category but does NOT enumerate all matching values from the schema's ``values=`` list.
 
 Output format — output ONLY the following structure, nothing else:
 CHECKLIST:
   [ ] Filter present: <description>
   [ ] Grouping present: <description>
   [ ] Rank context: explicitly returns BOTH winning entity and metric value (if applicable)
+  [ ] Categorical completeness: all matching label values for each semantic group are explicitly listed (if applicable)
 VERDICT: PASS
 or
 VERDICT: FAIL

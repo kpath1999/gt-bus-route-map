@@ -262,6 +262,23 @@ class BaselineRunner:
             enriched["magnitude"] = (enriched["x"] ** 2 + enriched["y"] ** 2 + enriched["z"] ** 2) ** 0.5
             provenance["magnitude"] = "sqrt(x^2 + y^2 + z^2)"
 
+        # dt_s: inter-sample recording time in seconds for each row.
+        # Computed as the consecutive timestamp difference within each subject,
+        # clipped to 0 (removes session-boundary negatives), then converted from
+        # nanoseconds to seconds.  Use dt_s to measure activity duration by summing
+        # rows for a given activity group — never use max-min timestamp span.
+        if "timestamp" in enriched.columns and "subject_id" in enriched.columns and "dt_s" not in enriched.columns:
+            _sorted = enriched.sort_values(["subject_id", "timestamp"])
+            _diffs = (
+                _sorted.groupby("subject_id")["timestamp"]
+                .diff()
+                .clip(lower=0)
+                .fillna(0)
+                / 1e9
+            )
+            enriched["dt_s"] = _diffs.reindex(enriched.index).fillna(0)
+            provenance["dt_s"] = "inter-sample time in seconds: diff(timestamp).clip(0).fillna(0)/1e9 within subject_id"
+
         if "activity_label" in enriched.columns and "activity_name" not in enriched.columns:
             labels = enriched["activity_label"]
             if pd.api.types.is_string_dtype(labels) or labels.dtype == object:

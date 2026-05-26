@@ -27,8 +27,8 @@ JUDGMENTS_CSV = RESULTS_DIR / "judgments.csv"
 SUMMARY_CSV = RESULTS_DIR / "summary.csv"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-GT_WISDM = REPO_ROOT / "flashfusion/eval/ground_truth_wisdm.json"
-GT_ECG = REPO_ROOT / "flashfusion/eval/ground_truth_mit_ecg.json"
+GT_WISDM = REPO_ROOT / "flashfusion/eval/ground_truth/ground_truth_wisdm.json"
+GT_ECG = REPO_ROOT / "flashfusion/eval/ground_truth/ground_truth_mit_ecg.json"
 
 
 def _grade_dataset(

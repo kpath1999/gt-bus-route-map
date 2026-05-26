@@ -14,6 +14,8 @@ Implementation notes (see CLAUDE.md §pipeline/loader.py for full algorithm):
 
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
 from flashfusion.eval.queries import DATASET_BUS, DATASET_MIT_ECG, DATASET_WISDM
@@ -177,6 +179,34 @@ def load_dataset_by_name(path: str, dataset: str) -> pd.DataFrame:
     raise ValueError(f"Unsupported dataset {dataset!r}")
 
 
+# Maximum number of unique values to include in full for non-numeric columns.
+# Columns with n_unique <= this threshold get an "all_values" key (complete
+# enumeration); columns above the threshold get a "sample_values" key (5 items).
+MAX_CAT_VALUES: int = 30
+
+_ANNOTATION_LIKE_PATTERN = re.compile(r"(annotation|label|tag|event)", re.IGNORECASE)
+
+
+def _semantic_note_for_column(col: str, series: pd.Series, non_null: pd.Series) -> str | None:
+    if pd.api.types.is_numeric_dtype(series):
+        return None
+    if not _ANNOTATION_LIKE_PATTERN.search(col):
+        return None
+    if non_null.empty:
+        return None
+    values = non_null.astype(str).str.strip()
+    empty_count = int((values == "").sum())
+    if empty_count > 0:
+        return (
+            "Empty string ('') indicates missing annotation; "
+            f"filter df[df['{col}'] != ''] before counting."
+        )
+    return (
+        "Check for empty strings indicating missing annotations; "
+        f"filter df[df['{col}'] != ''] before counting."
+    )
+
+
 def build_column_metadata(df: pd.DataFrame) -> dict:
     """
     Compute descriptive metadata for every column in the DataFrame.
@@ -185,7 +215,11 @@ def build_column_metadata(df: pd.DataFrame) -> dict:
     always contains:
         dtype         (str)  — string representation of the pandas dtype
         n_unique      (int)  — number of unique non-null values
-        sample_values (list) — up to 5 unique values (arbitrary order)
+
+    For non-numeric columns:
+        all_values    (list) — ALL unique values when n_unique <= MAX_CAT_VALUES
+        sample_values (list) — up to 5 unique values when n_unique > MAX_CAT_VALUES
+        semantic_note (str)  — optional hint for schema semantics (when applicable)
 
     For numeric columns, additionally contains:
         min   (float)
@@ -203,12 +237,20 @@ def build_column_metadata(df: pd.DataFrame) -> dict:
     for col in df.columns:
         series = df[col]
         non_null = series.dropna()
-        sample = non_null.unique()[:5].tolist() if not non_null.empty else []
+        n_unique = int(non_null.nunique())
         entry: dict = {
             "dtype": str(series.dtype),
-            "n_unique": int(non_null.nunique()),
-            "sample_values": sample,
+            "n_unique": n_unique,
         }
+        if not pd.api.types.is_numeric_dtype(series):
+            unique_vals = non_null.unique().tolist() if not non_null.empty else []
+            if n_unique <= MAX_CAT_VALUES:
+                entry["all_values"] = unique_vals
+            else:
+                entry["sample_values"] = unique_vals[:5]
+            semantic_note = _semantic_note_for_column(col, series, non_null)
+            if semantic_note:
+                entry["semantic_note"] = semantic_note
         if pd.api.types.is_numeric_dtype(series) and not non_null.empty:
             entry["min"] = float(non_null.min())
             entry["max"] = float(non_null.max())
@@ -224,7 +266,12 @@ def meta_to_str(metadata: dict) -> str:
     Format column metadata as a compact multi-line string for prompt injection.
 
     One line per column:
-        "{col} ({dtype}): n_unique={n_unique} | sample={sample_values}"
+        "{col} ({dtype}): n_unique={n_unique} | values={all_values}"   (complete list)
+        "{col} ({dtype}): n_unique={n_unique} | sample={sample_values}"  (partial list)
+
+    The key distinction:
+        ``values=`` — the list is COMPLETE (all unique values present).
+        ``sample=`` — the list is a partial sample only.
 
     Numeric columns append:
         " | min={min:.3f} max={max:.3f} mean={mean:.3f} std={std:.3f}"
@@ -239,14 +286,17 @@ def meta_to_str(metadata: dict) -> str:
     for col, info in metadata.items():
         dtype = info.get("dtype", "")
         n_unique = info.get("n_unique", 0)
-        sample = info.get("sample_values", [])
-        line = (
-            f"{col} ({dtype}): n_unique={n_unique} | sample={sample}"
-        )
+        if "all_values" in info:
+            line = f"{col} ({dtype}): n_unique={n_unique} | values={info['all_values']}"
+        else:
+            sample = info.get("sample_values", [])
+            line = f"{col} ({dtype}): n_unique={n_unique} | sample={sample}"
         if "min" in info and "max" in info:
             line += (
                 f" | min={info['min']:.3f} max={info['max']:.3f}"
                 f" mean={info['mean']:.3f} std={info['std']:.3f}"
             )
+        if "semantic_note" in info:
+            line += f" | note={info['semantic_note']}"
         lines.append(line)
     return "\n".join(lines)
