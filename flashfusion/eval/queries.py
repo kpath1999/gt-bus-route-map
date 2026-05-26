@@ -309,7 +309,7 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 8,
-        "text": "If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",
+        "text": "If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence?",
         "complexity": "intermediate",
         "operation": "DERIVE+GROUPBY+AGGREGATE+RANK",
         "stress": "Requires parsing string timestamps into math-derived time bins (truncating to minutes), mapping 'turbulence' to variance sum, grouping, and ranking.",

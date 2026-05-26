@@ -234,20 +234,38 @@ def judge_rows_with_llm(
             for r in sanity_df.to_dict(orient="records")
         }
 
-    client = LLMClient(model_name=model_name, api_key=api_key)
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You evaluate benchmark answers against ground truth. "
-                "Be strict, concise, and prefer factual correctness over phrasing. "
-                "For numeric answers: treat values as equivalent if they differ by less than 0.01 or represent the same number with different trailing zeros. "
-                "Ignore formatting differences like trailing periods after numbers. "
-                "Return JSON only.",
-            ),
-            (
-                "user",
-                """
+    client = None
+    chain = None
+
+    judged_rows: list[dict[str, Any]] = []
+    for row in rows:
+        query_text = str(row.get("query", ""))
+        baseline = str(row.get("baseline", "UNKNOWN"))
+        qid = q_lookup.get(query_text)
+        if qid is None or qid not in ground_truth_by_id:
+            continue
+
+        gt = ground_truth_by_id[qid]
+        sanity = sanity_by_id.get(qid, {})
+        candidate_code = _resolve_candidate_code(row)
+
+        candidate_answer = str(row.get("answer", ""))
+
+        if chain is None:
+            client = LLMClient(model_name=model_name, api_key=api_key)
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    (
+                        "system",
+                        "You evaluate benchmark answers against ground truth. "
+                        "Be strict, concise, and prefer factual correctness over phrasing. "
+                        "For numeric answers: treat values as equivalent if they differ by less than 0.01 or represent the same number with different trailing zeros. "
+                        "Ignore formatting differences like trailing periods after numbers. "
+                        "Return JSON only.",
+                    ),
+                    (
+                        "user",
+                        """
 Judge whether candidate answer matches ground truth.
 
 Return JSON with keys:
@@ -259,7 +277,7 @@ Return JSON with keys:
 Rules:
 - PASS only if the candidate answer is factually correct. FAIL otherwise — there is no middle ground.
 - For numeric values: -3.175 and -3.1750 are equivalent; ignore trailing zeros and minor rounding differences (< 0.01).
-- If expected_rejection=true, PASS only if candidate clearly rejects for the same scope/schema reason.
+- If expected_rejection=true, PASS if the candidate clearly states the request is unanswerable or out of scope.
 - If expected_rejection=false and candidate rejects, verdict must be FAIL.
 - Use generated code and deterministic hint only as supporting evidence.
 
@@ -293,26 +311,14 @@ Candidate answer:
 Candidate generated code:
 {candidate_code}
 """,
-            ),
-        ]
-    )
-    chain = prompt | client.llm | StrOutputParser()
+                    ),
+                ]
+            )
+            chain = prompt | client.llm | StrOutputParser()
 
-    judged_rows: list[dict[str, Any]] = []
-    for row in rows:
-        query_text = str(row.get("query", ""))
-        baseline = str(row.get("baseline", "UNKNOWN"))
-        qid = q_lookup.get(query_text)
-        if qid is None or qid not in ground_truth_by_id:
-            continue
-
-        gt = ground_truth_by_id[qid]
-        sanity = sanity_by_id.get(qid, {})
-        candidate_code = _resolve_candidate_code(row)
-        
         # Normalize answers for robust numeric comparison
         normalized_gt_answer = _normalize_answer(gt.reference_answer)
-        normalized_candidate_answer = _normalize_answer(str(row.get("answer", "")))
+        normalized_candidate_answer = _normalize_answer(candidate_answer)
         
         llm_raw = client.invoke_chain(
             chain,
