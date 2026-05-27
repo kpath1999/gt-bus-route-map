@@ -43,7 +43,7 @@ WISDM_QUERIES: list[dict] = [
         "stress": (
             "Category counting with activity-label normalization. "
             "WellMax-Only and Flash-Fusion should align when labels are normalized; "
-            "AutoIOT-Only can drift if it misreads label variants."
+            "Agent-Only can drift if it misreads label variants."
         ),
     },
     {
@@ -77,7 +77,7 @@ WISDM_QUERIES: list[dict] = [
         "stress": (
             "Requires derived feature reasoning (`magnitude`) and semantic grouping of "
             "dynamic vs resting activities. Flash-Fusion should consistently ground this "
-            "before execution; AutoIOT-Only and WellMax-Only may collapse to weaker proxies."
+            "before execution; Agent-Only and WellMax-Only may collapse to weaker proxies."
         ),
     },
     {
@@ -91,7 +91,7 @@ WISDM_QUERIES: list[dict] = [
         "stress": (
             "Multi-step decomposition query: map stationary/locomotion sets, aggregate per user, "
             "then compare totals. Flash-Fusion should execute a faithful analytic chain; "
-            "AutoIOT-Only and WellMax-Only may simplify intent or mishandle category mapping."
+            "Agent-Only and WellMax-Only may simplify intent or mishandle category mapping."
         ),
     },
     {
@@ -117,7 +117,7 @@ WISDM_QUERIES: list[dict] = [
         "operation": "FILTER+AGGREGATE+DIFF",
         "stress": (
             "Comparative aggregation across two activity families. "
-            "Flash-Fusion should return a computed signed difference; AutoIOT-Only and "
+            "Flash-Fusion should return a computed signed difference; Agent-Only and "
             "WellMax-Only may answer descriptively without robust calculation."
         ),
     },
@@ -130,7 +130,7 @@ WISDM_QUERIES: list[dict] = [
         "operation": "NONE",
         "stress": (
             "Out-of-scope feature request: speed and age are unavailable in WISDM schema. "
-            "Flash-Fusion should reject with schema-grounded rationale; AutoIOT-Only and "
+            "Flash-Fusion should reject with schema-grounded rationale; Agent-Only and "
             "WellMax-Only are expected to attempt execution anyway."
         ),
     },
@@ -141,7 +141,7 @@ WISDM_QUERIES: list[dict] = [
         "operation": "NONE",
         "stress": (
             "Out-of-scope inference: geolocation is not represented in this dataset. "
-            "Flash-Fusion should reject; AutoIOT-Only and WellMax-Only are expected to "
+            "Flash-Fusion should reject; Agent-Only and WellMax-Only are expected to "
             "proceed despite missing required signals."
         ),
     },
@@ -152,7 +152,7 @@ WISDM_QUERIES: list[dict] = [
         "operation": "NONE",
         "stress": (
             "Out-of-scope demographic + cadence analysis. Sex and cadence fields are absent. "
-            "Flash-Fusion should reject on schema/feasibility grounds while AutoIOT-Only "
+            "Flash-Fusion should reject on schema/feasibility grounds while Agent-Only "
             "and WellMax-Only are expected to attempt execution."
         ),
     },
@@ -164,7 +164,7 @@ WISDM_QUERIES: list[dict] = [
         "stress": (
             "Out-of-scope forecasting task requiring future behavior prediction and an external "
             "public-health guideline threshold not represented in the dataset. Flash-Fusion should "
-            "reject on forecasting/scope grounds; AutoIOT-Only and WellMax-Only are expected to "
+            "reject on forecasting/scope grounds; Agent-Only and WellMax-Only are expected to "
             "attempt execution anyway."
         ),
     },
@@ -349,94 +349,94 @@ BUS_QUERIES: list[dict] = [
 EXPECTED_OUTCOMES: dict[int, dict[str, str]] = {
     1: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     2: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     3: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     4: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     5: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     6: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     7: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     8: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "executes",
     },
     9: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
     10: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
     11: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
     12: {
         "WELLMAX_ONLY":  "executes",
-        "AUTOIOT_ONLY":  "executes",
+        "AGENT_ONLY":  "executes",
         "FLASH_FUSION":  "rejects",
     },
 }
 
 EXPECTED_OUTCOMES_MIT_ECG: dict[int, dict[str, str]] = {
-    1: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    2: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    3: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    4: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    5: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    6: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    7: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    8: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    9: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    10: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    11: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    12: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    1: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    2: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    3: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    4: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    5: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    6: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    7: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    8: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    9: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    10: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    11: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    12: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
 }
 
 EXPECTED_OUTCOMES_BUS: dict[int, dict[str, str]] = {
-    1: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    2: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    3: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    4: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    5: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    6: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    7: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    8: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "executes"},
-    9: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    10: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    11: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
-    12: {"WELLMAX_ONLY": "executes", "AUTOIOT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    1: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    2: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    3: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    4: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    5: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    6: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    7: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    8: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "executes"},
+    9: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    10: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    11: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
+    12: {"WELLMAX_ONLY": "executes", "AGENT_ONLY": "executes", "FLASH_FUSION": "rejects"},
 }
 
 

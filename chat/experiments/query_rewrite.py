@@ -42,7 +42,7 @@ The output is a structured dictionary that eval.py's abstract handler can
 consume directly.
 """
 
-# AutoIOT + Tavily: narrowing in on definitions for abstract/jargon words (Stage 1.5).
+# Agent + Tavily: narrowing in on definitions for abstract/jargon words (Stage 1.5).
 # WellMax / TaskSense: getting every abstract query to be rewritten into a structured, high-signal prompt.
 
 """
@@ -90,7 +90,7 @@ DATA PATHS:
 1: /Users/kausar/Documents/flash-fusion/data/bus
 --- contains: processed raw README.md snapshots
 
-2: /Users/kausar/Documents/flash-fusion/data/AutoIOT_dataset
+2: /Users/kausar/Documents/flash-fusion/data/Agent_dataset
 -- contains: ECG.0 IMU
 
 3: /Users/kausar/Documents/visig

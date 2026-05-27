@@ -106,7 +106,7 @@ class TestComputeAccuracy:
         Missing verdict should count as incorrect (0.0).
         """
         r = make_result(
-            baseline="AUTOIOT_ONLY",
+            baseline="AGENT_ONLY",
             executed=True,
             rejected=False,
             judge_verdict={},
@@ -133,7 +133,7 @@ class TestComputeAccuracy:
         Missing verdict should return judge_pass=False.
         """
         r = make_result(
-            baseline="AUTOIOT_ONLY",
+            baseline="AGENT_ONLY",
             executed=True,
             rejected=False,
             judge_verdict={},
@@ -177,7 +177,7 @@ class TestAggregateMetrics:
         q4_text = "Which user has the highest total number of recorded data samples?"
         results = [
             make_result(
-                baseline="AUTOIOT_ONLY",
+                baseline="AGENT_ONLY",
                 executed=True,
                 rejected=False,
                 query=q1_text,
@@ -205,7 +205,7 @@ class TestAggregateMetrics:
         judgments = pd.DataFrame(
             [
                 {
-                    "baseline": "AUTOIOT_ONLY",
+                    "baseline": "AGENT_ONLY",
                     "query_id": 1,
                     "llm_verdict": "PASS",
                     "llm_score": 1.0,
@@ -237,7 +237,7 @@ class TestAggregateMetrics:
             (row["baseline"], int(row["query_id"])): float(row["gt_score"])
             for _, row in df.iterrows()
         }
-        assert by_key[("AUTOIOT_ONLY", 1)] == 1.0
+        assert by_key[("AGENT_ONLY", 1)] == 1.0
         assert by_key[("FLASH_FUSION", 2)] == 0.0
         assert by_key[("WELLMAX_ONLY", 3)] == 0.0
         assert by_key[("FLASH_FUSION", 4)] == 1.0

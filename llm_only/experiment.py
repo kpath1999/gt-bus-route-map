@@ -24,7 +24,7 @@ import pandas as pd
 
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.queries import MIT_ECG_QUERIES, WISDM_QUERIES
-from flashfusion.llm_only.runner import (
+from llm_only.runner import (
     TrialResult,
     run_flash_fusion_trial,
     run_llm_only_trial,
@@ -43,7 +43,7 @@ COST_CAP_USD = 5.0
 
 BUS_DATA_PATH = REPO_ROOT / "chat/data/bus/bus_data.csv"
 WISDM_DATA_PATH = REPO_ROOT / "chat/data/imu/WISDM_ar_v1.1_raw.txt"
-ECG_DATA_PATH = REPO_ROOT / "data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt"
+ECG_DATA_PATH = REPO_ROOT / "data/Agent_dataset/ECG.0/MIT_arrythmia_v1.txt"
 
 
 def _load_bus() -> pd.DataFrame:

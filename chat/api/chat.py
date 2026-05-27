@@ -131,7 +131,7 @@ _DOMAIN_PROFILES: dict[str, str] = {
         "Questions often mention activity, movement intensity, transitions, variance, users."
     ),
     "ecg": (
-        "AutoIOT ECG data derived from MIT-BIH arrhythmia recordings. "
+        "Agent ECG data derived from MIT-BIH arrhythmia recordings. "
         "Cardiac waveform and annotations: heart rate, beat types, arrhythmia, PVC, QRS, ST segment, rhythm."
     ),
     "bus": (

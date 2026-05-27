@@ -1,4 +1,4 @@
-# AutoIOT-Only Baseline Flow
+# Agent-Only Baseline Flow
 
 Direct execution baseline with no preprocessing or verification layers.
 
@@ -33,4 +33,4 @@ flowchart TD
 
 ## Code Reference
 
-See [flashfusion/baselines/autoiot_only.py](../flashfusion/baselines/autoiot_only.py#L34-L56)
+See [flashfusion/baselines/agent_only.py](../flashfusion/baselines/agent_only.py#L34-L56)

@@ -2,7 +2,7 @@ V1:
 
 Search complete: Find token usage sources
 
-Searched codebase for "flash fusion wellmax autoiot evaluation pipeline prompt templates context assembly input tokens", 22 results
+Searched codebase for "flash fusion wellmax agent evaluation pipeline prompt templates context assembly input tokens", 22 results
 
 Searched codebase for "token accounting input_tokens logging prompt concatenation context length", 16 results
 
@@ -10,13 +10,13 @@ Searched codebase for "agent stages S1 S2 S3 guardrail agent judge token inflati
 
 Searched for regex `input_tokens|input_token|token_usage|token_accounting`, 82 results
 
-Searched for regex `flash_fusion|wellmax|autoiot`, 200 results
+Searched for regex `flash_fusion|wellmax|agent`, 200 results
 
 Searched for files matching `**/*flash*fusion*.{py,ts,js,java,go,rb}`, 1 match
 
 Searched for files matching `**/*wellmax*.{py,ts,js,java,go,rb}`, 1 match
 
-Searched for files matching `**/*autoiot*.{py,ts,js,java,go,rb}`, 1 match
+Searched for files matching `**/*agent*.{py,ts,js,java,go,rb}`, 1 match
 
 Searched for regex `prompt.*assembly|assemble.*prompt|context.*assembly|concatenate.*prompt`, no results
 
@@ -28,13 +28,13 @@ Searched for files matching `**/baselines/**/flash_fusion*.py`, 1 match
 
 Searched for files matching `**/baselines/**/wellmax_only*.py`, 1 match
 
-Searched for files matching `**/baselines/**/autoiot_only*.py`, 1 match
+Searched for files matching `**/baselines/**/agent_only*.py`, 1 match
 
 Searched for files matching `**/flashfusion/baselines/flash_fusion*.py`, 1 match
 
 Searched for files matching `**/flashfusion/baselines/wellmax_only*.py`, 1 match
 
-Searched for files matching `**/flashfusion/baselines/autoiot_only*.py`, 1 match
+Searched for files matching `**/flashfusion/baselines/agent_only*.py`, 1 match
 
 Searched for files matching `**/flashfusion/pipeline/runner*.py`, 1 match
 
@@ -46,7 +46,7 @@ Read [](file:///Users/kausar/Documents/flash-fusion/flashfusion/baselines/wellma
 
 Read [](file:///Users/kausar/Documents/flash-fusion/flashfusion/baselines/flash_fusion.py)
 
-Read [](file:///Users/kausar/Documents/flash-fusion/flashfusion/baselines/autoiot_only.py)
+Read [](file:///Users/kausar/Documents/flash-fusion/flashfusion/baselines/agent_only.py)
 
 Read [](file:///Users/kausar/Documents/flash-fusion/flashfusion/pipeline/runner.py#1-1), lines 1 to 260
 
@@ -94,13 +94,13 @@ Here is a concise brainstorm of likely causes and solutions, followed by the pla
 
 ## Plan: Reduce Flash-Fusion Input Tokens
 
-Shrink Flash-Fusion prompt payloads and grounded-query content without removing guardrail/judge, so accuracy stays intact while the mean input tokens land between WellMax and AutoIOT. The safest path is to keep the pipeline stages but reduce the size of schema/codebook/context injected into them, and to reuse compact grounding in both Stage 3 and the agent prompt.
+Shrink Flash-Fusion prompt payloads and grounded-query content without removing guardrail/judge, so accuracy stays intact while the mean input tokens land between WellMax and Agent. The safest path is to keep the pipeline stages but reduce the size of schema/codebook/context injected into them, and to reuse compact grounding in both Stage 3 and the agent prompt.
 
 **Steps**
-1. Compute the current mean input tokens for Flash-Fusion, WellMax, and AutoIOT from the latest metrics to pin the numeric target (mean between WellMax and AutoIOT). *depends on none*
+1. Compute the current mean input tokens for Flash-Fusion, WellMax, and Agent from the latest metrics to pin the numeric target (mean between WellMax and Agent). *depends on none*
 2. Add a compact schema formatter in loader.py that emits only column names, dtypes, and limited categorical samples (no min/max/mean/std). Keep the existing `meta_to_str()` untouched for baselines that still want the full schema. *depends on 1*
 3. Add a compact codebook formatter in wisdm_adapter.py (single-line “A=Walking, B=Jogging, ...” format). *depends on 2*
-4. Update flash_fusion.py to compute and pass compact schema/codebook strings into Stage 2, Stage 3, guardrail, and safe backend codegen. Keep WellMax and AutoIOT unchanged so only Flash-Fusion shifts downward. *depends on 2,3*
+4. Update flash_fusion.py to compute and pass compact schema/codebook strings into Stage 2, Stage 3, guardrail, and safe backend codegen. Keep WellMax and Agent unchanged so only Flash-Fusion shifts downward. *depends on 2,3*
 5. In stages.py, accept an optional compact grounding string for Stage 3 (built from parsed mappings and unmappable lists) and avoid passing the full Stage 2 raw response when compact mode is enabled. *depends on 4*
 6. In flash_fusion.py, build the grounded agent query from compact mappings + sub-tasks + synthesis hint (no verbose “MAPPINGS/UNMAPPABLE” boilerplate). Optionally cap the number of mapping lines included to a small max (e.g., 8) to prevent prompt blowups. *depends on 4,5*
 7. In executor.py, add a compact-schema path for guardrail and safe backend codegen, wired from Flash-Fusion only. Keep judge inputs intact to preserve accuracy scoring. *depends on 4*
@@ -115,7 +115,7 @@ Shrink Flash-Fusion prompt payloads and grounded-query content without removing 
 - benchmark.py — re-run benchmark to verify target and accuracy
 
 **Verification**
-1. Recompute mean input tokens for Flash-Fusion, WellMax, AutoIOT from the new metrics CSV and confirm Flash-Fusion mean falls between the other two.
+1. Recompute mean input tokens for Flash-Fusion, WellMax, Agent from the new metrics CSV and confirm Flash-Fusion mean falls between the other two.
 2. Verify Flash-Fusion gt_score and judge verdicts match pre-change runs for the same query set.
 3. Spot-check a few Flash-Fusion prompts (Stage 2 input, Stage 3 input, guardrail input) to confirm compact schema and grounding are used.
 
@@ -219,7 +219,7 @@ Created memory file [](file:///Users/kausar/Library/Application%20Support/Code/U
 Revised scope is now tightly focused on intermediate queries only (ids 5-8), where Flash-Fusion input token usage is much higher than both other baselines. The plan prioritizes reducing repeated prompt payload size in S2/S3/guardrail/safe-codegen paths before touching core prompt logic, so quality risk stays low.
 
 Current intermediate means from your latest metrics:
-1. AUTOIOT_ONLY: 209.75
+1. AGENT_ONLY: 209.75
 2. WELLMAX_ONLY: 657.00
 3. FLASH_FUSION: 1262.00
 

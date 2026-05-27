@@ -30,7 +30,7 @@ Before outlining, Claude must internalize this mismatch. The existing narrative 
 | Domain | University bus fleet / vehicular telematics | Human activity recognition (WISDM wrist accelerometer) |
 | Dataset | GPS + IMU from campus buses | WISDM: 51 subjects, 18 activities, x/y/z accel, 424k+ rows |
 | Core contribution | Edge summarization + cloud clustering | 3-stage query planning (S1/S2/S3) + guardrail + judge + retry |
-| Baselines | Flash-Fusion vs raw-data-to-LLM | LLM-Only -> AutoIOT-Only -> WellMax-Only -> Flash-Fusion |
+| Baselines | Flash-Fusion vs raw-data-to-LLM | LLM-Only -> Agent-Only -> WellMax-Only -> Flash-Fusion |
 | Key claims | 95% latency reduction, 98% token/cost decrease | Flash-Fusion GT score 0.6448; 100% out-of-scope rejection |
 | Framing | Raw telemetry token explosion only | Schema opacity + scope-boundary failures in sensor querying |
 
@@ -48,7 +48,7 @@ Read these before drafting the outline. Every outline claim must map to at least
 2. `flashfusion/prompts/templates.py`
 3. `flashfusion/baselines/flash_fusion.py`
 4. `flashfusion/baselines/wellmax_only.py`
-5. `flashfusion/baselines/autoiot_only.py`
+5. `flashfusion/baselines/agent_only.py`
 6. `flashfusion/pipeline/runner.py`
 7. `flashfusion/diagram/baseline_comparison.md`
 
@@ -79,23 +79,23 @@ Use these exact values when creating metric placeholders in the outline. Do not 
 **Overall GT score (avg across 12 queries):**
 - Flash-Fusion: 0.6448
 - WellMax-Only: 0.3052
-- AutoIOT-Only: 0.2805
+- Agent-Only: 0.2805
 
 **Accuracy by query type:**
-- Direct (Q1-Q4): Flash-Fusion 57.7%, WellMax 56.7%, AutoIOT 60.0%
-- Reasoning (Q5-Q8): Flash-Fusion 35.7%, WellMax 34.9%, AutoIOT 24.2%
-- Out-of-Scope (Q9-Q12): Flash-Fusion 100.0%, WellMax 0.0%, AutoIOT 0.0%
+- Direct (Q1-Q4): Flash-Fusion 57.7%, WellMax 56.7%, Agent 60.0%
+- Reasoning (Q5-Q8): Flash-Fusion 35.7%, WellMax 34.9%, Agent 24.2%
+- Out-of-Scope (Q9-Q12): Flash-Fusion 100.0%, WellMax 0.0%, Agent 0.0%
 
 **Latency (avg seconds):**
-- Flash-Fusion 5.64s, WellMax 5.80s, AutoIOT 4.97s
+- Flash-Fusion 5.64s, WellMax 5.80s, Agent 4.97s
 
 **Cost (avg USD/query):**
-- Flash-Fusion $0.000682, WellMax $0.000653, AutoIOT $0.000231
+- Flash-Fusion $0.000682, WellMax $0.000653, Agent $0.000231
 
 **Token usage (avg/query):**
 - Flash-Fusion 1053.6 total (752.2 in / 301.4 out)
 - WellMax 981.8 total (612.7 in / 369.2 out)
-- AutoIOT 339.2 total (185.7 in / 153.6 out)
+- Agent 339.2 total (185.7 in / 153.6 out)
 
 **Main interpretation to preserve in outline comments:**
 - Flash-Fusion wins on reliable out-of-scope rejection and stronger reasoning performance.
@@ -155,7 +155,7 @@ Use this map to generate an outline, not full prose.
 ### 4 Baselines
 - Present incremental ablation chain:
   - LLM-Only
-  - AutoIOT-Only
+  - Agent-Only
   - WellMax-Only
   - Flash-Fusion
 - Add `Author Comment` explaining causal interpretation (what each added component contributes).

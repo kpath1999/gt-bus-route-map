@@ -211,7 +211,7 @@ class BaselineRunner:
     Supported modes (self.MODES):
         "LLM_ONLY"     — B0: raw 20-row CSV + query → single LLM call
         "WELLMAX_ONLY"  — B3: S1 + S2 + S3 → grounded query → pandas agent
-        "AUTOIOT_ONLY"  — Agent: raw query → pandas agent
+        "AGENT_ONLY"  — Agent: raw query → pandas agent
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
     For rewriting baselines (WellMax/Flash-Fusion), derived features are applied
@@ -219,7 +219,13 @@ class BaselineRunner:
     """
 
     MODES: frozenset = frozenset(
-        {"LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"}
+        {
+            "LLM_ONLY",
+            "WELLMAX_ONLY",
+            "AGENT_ONLY",
+            "AUTOIOT_PAPER",
+            "FLASH_FUSION",
+        }
     )
 
     def __init__(
@@ -319,7 +325,8 @@ class BaselineRunner:
             self.df, _ = self._apply_default_enrichment(self.df)
             self._enrichment_applied = True
 
-        from flashfusion.baselines.autoiot_only import run_autoiot_only
+        from flashfusion.baselines.agent_only import run_agent_only
+        from flashfusion.baselines.autoiot_paper import run_autoiot_paper
         from flashfusion.baselines.flash_fusion import run_flash_fusion
         from flashfusion.baselines.llm_only import run_llm_only
         from flashfusion.baselines.wellmax_only import run_wellmax_only
@@ -328,8 +335,10 @@ class BaselineRunner:
             run_llm_only(query, self.df, self.client, r)
         elif self.mode == "WELLMAX_ONLY":
             run_wellmax_only(query, self.df, self.client, r)
-        elif self.mode == "AUTOIOT_ONLY":
-            run_autoiot_only(query, self.df, self.client, r)
+        elif self.mode == "AGENT_ONLY":
+            run_agent_only(query, self.df, self.client, r)
+        elif self.mode == "AUTOIOT_PAPER":
+            run_autoiot_paper(query, self.df, self.client, r)
         elif self.mode == "FLASH_FUSION":
             run_flash_fusion(query, self.df, self.client, r)
 
@@ -349,10 +358,10 @@ class BaselineRunner:
         from flashfusion.baselines.wellmax_only import run_wellmax_only
         return run_wellmax_only(query, self.df, self.client, r)
 
-    def _run_autoiot_only(self, query: str, r: RunResult) -> RunResult:
-        """Delegates to baselines.autoiot_only.run_autoiot_only."""
-        from flashfusion.baselines.autoiot_only import run_autoiot_only
-        return run_autoiot_only(query, self.df, self.client, r)
+    def _run_agent_only(self, query: str, r: RunResult) -> RunResult:
+        """Delegates to baselines.agent_only.run_agent_only."""
+        from flashfusion.baselines.agent_only import run_agent_only
+        return run_agent_only(query, self.df, self.client, r)
 
     def _run_flash_fusion(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.flash_fusion.run_flash_fusion."""

@@ -2,7 +2,7 @@
 
 ## baseline architectures
 
-**AutoIOT** — NL → code synthesis → local execution → result. Generates Python that runs locally; never ingests data into the LLM. Domain-aware and format-aware (you declare sensor type upfront). Makes no attempt to handle qualitative concepts — it solves "write me a heartbeat detector," not "was it a bumpy ride?"
+**Agent** — NL → code synthesis → local execution → result. Generates Python that runs locally; never ingests data into the LLM. Domain-aware and format-aware (you declare sensor type upfront). Makes no attempt to handle qualitative concepts — it solves "write me a heartbeat detector," not "was it a bumpy ride?"
 
 **LLaSA** — fine-tuned multimodal model: raw IMU embeddings + NL question → free-text answer, end-to-end. Requires training on domain-specific QA pairs (OpenSQA). Locked to IMU and human activity recognition. No decomposition, no grounding, no sub-queries. Answers well within its training distribution; cannot generalize to a new sensor type without retraining.
 

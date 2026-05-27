@@ -6,11 +6,13 @@ Run with: pytest flashfusion/tests/test_baselines.py -v
 
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
-from flashfusion.pipeline.runner import RunResult
+from flashfusion.pipeline.runner import BaselineRunner, RunResult
 
 
 def _df() -> pd.DataFrame:
@@ -39,17 +41,17 @@ def _result(mode: str, query: str) -> RunResult:
     return RunResult(baseline=mode, model="llama-3.3-70b-versatile", query=query)
 
 
-def test_autoiot_runs_agent_without_guardrail() -> None:
-    from flashfusion.baselines.autoiot_only import run_autoiot_only
+def test_agent_runs_agent_without_guardrail() -> None:
+    from flashfusion.baselines.agent_only import run_agent_only
 
     query = "What is the average x-axis acceleration?"
-    r = _result("AUTOIOT_ONLY", query)
+    r = _result("AGENT_ONLY", query)
 
-    with patch("flashfusion.baselines.autoiot_only.ExecutionLayer") as execution_layer_cls:
+    with patch("flashfusion.baselines.agent_only.ExecutionLayer") as execution_layer_cls:
         executor = execution_layer_cls.return_value
         executor.execute_single.return_value = ("answer", "trace", MagicMock(final_code="code", tries=1))
 
-        out = run_autoiot_only(query, _df(), _client(), r)
+        out = run_agent_only(query, _df(), _client(), r)
 
     executor.guardrail.assert_not_called()
     executor.execute_single.assert_called_once_with(query)
@@ -255,3 +257,24 @@ def test_flash_fusion_refines_plan_once_on_plan_judge_fail() -> None:
         "judge_plan_retry",
         "agent",
     ]
+
+
+def test_autoiot_paper_requires_tavily_key() -> None:
+    from flashfusion.baselines.autoiot_paper import run_autoiot_paper
+
+    query = "Find the average acceleration magnitude for walking."
+    r = _result("AUTOIOT_PAPER", query)
+
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(RuntimeError, match="TAVILY_API_KEY"):
+            run_autoiot_paper(query, _df(), _client(), r)
+
+
+def test_runner_dispatches_autoiot_paper_mode() -> None:
+    client = _client()
+    runner = BaselineRunner(mode="AUTOIOT_PAPER", df=_df(), client=client)
+
+    with patch("flashfusion.baselines.autoiot_paper.run_autoiot_paper") as fn:
+        runner.run("Compare mean x by activity")
+
+    fn.assert_called_once()

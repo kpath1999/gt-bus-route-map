@@ -2513,10 +2513,10 @@ def _run_single_dataset_eval(
         input_path = data_arg or os.path.join(BASE_DIR, "data", "bus", "raw", "bus_data.csv")
         data_path, resolved_hint = resolve_input_data_path(input_path, None)
     elif dataset_type == "imu":
-        input_path = data_arg or os.path.join(BASE_DIR, "data", "AutoIOT_dataset", "IMU", "WISDM_ar_v1.1_raw.txt")
+        input_path = data_arg or os.path.join(BASE_DIR, "data", "Agent_dataset", "IMU", "WISDM_ar_v1.1_raw.txt")
         data_path, resolved_hint = resolve_input_data_path(input_path, None)
     else:
-        input_path = data_arg or os.path.join(BASE_DIR, "data", "AutoIOT_dataset", "ECG.0")
+        input_path = data_arg or os.path.join(BASE_DIR, "data", "Agent_dataset", "ECG.0")
         if not ecg_random:
             data_path, resolved_hint = resolve_input_data_path(input_path, ecg_record)
         else:
@@ -2652,8 +2652,8 @@ def _run_single_dataset_eval(
 """
 USAGE:
 
-python src/playground/playground.py --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt
-python src/playground/playground.py --data data/AutoIOT_dataset/ECG.0/100.hea
+python src/playground/playground.py --data data/Agent_dataset/IMU/WISDM_ar_v1.1_raw.txt
+python src/playground/playground.py --data data/Agent_dataset/ECG.0/100.hea
 python src/playground/playground.py --data data/bus/raw/bus_data.csv
 """
 

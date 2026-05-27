@@ -152,7 +152,7 @@ Why it matters: Establishes a non-executing baseline for comparison.
 What it does: Shows schema-grounded but non-executing baseline.
 Why it matters: Isolates the value of grounding without agent execution.
 
-34. Command: sed -n '1,220p' flashfusion/baselines/autoiot_only.py
+34. Command: sed -n '1,220p' flashfusion/baselines/agent_only.py
 What it does: Shows execution-focused baseline without full fusion pipeline.
 Why it matters: Isolates effect of code execution without full decomposition.
 
@@ -160,7 +160,7 @@ Why it matters: Isolates effect of code execution without full decomposition.
 What it does: Shows full fused pipeline baseline.
 Why it matters: Primary system mode to compare against others.
 
-36. Command: rg "def run_llm_only|def run_wellmax_only|def run_autoiot_only|def run_flash_fusion" flashfusion/baselines
+36. Command: rg "def run_llm_only|def run_wellmax_only|def run_agent_only|def run_flash_fusion" flashfusion/baselines
 What it does: Finds callable baseline functions across files.
 Why it matters: Useful for traceability and quick comparisons.
 
@@ -306,7 +306,7 @@ Why it matters: Good for checking readability and summary correctness.
 What it does: Pretty-prints metrics.csv in a table format.
 Why it matters: Easier visual scanning than raw CSV.
 
-67. Command: for i in 1 2 3; do python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt --baselines FLASH_FUSION,AUTOIOT_ONLY --queries 2,3,5,6 --output flashfusion/eval_results_run_$i; done
+67. Command: for i in 1 2 3; do python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt --baselines FLASH_FUSION,AGENT_ONLY --queries 2,3,5,6 --output flashfusion/eval_results_run_$i; done
 What it does: Runs three repeated targeted benchmarks for stability checks.
 Why it matters: Lets you see variance across repeated runs.
 

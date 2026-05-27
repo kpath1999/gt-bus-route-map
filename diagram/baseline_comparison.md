@@ -4,7 +4,7 @@ Comparative view of all three baselines showing incremental capability enhanceme
 
 ```mermaid
 flowchart TD
-    subgraph AutoIOT["AutoIOT-Only"]
+    subgraph Agent["Agent-Only"]
         A1([Query]) --> A2[Pandas Agent] --> A3([Answer])
         style A2 fill:#fff3e0,stroke:#f57c00
     end
@@ -48,14 +48,14 @@ flowchart TD
         style F13 fill:#c8e6c9,stroke:#388e3c
     end
     
-    style AutoIOT fill:#fff8e1,stroke:#f57c00,stroke-width:2px
+    style Agent fill:#fff8e1,stroke:#f57c00,stroke-width:2px
     style WellMax fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style FlashFusion fill:#e8f5e9,stroke:#388e3c,stroke-width:3px
 ```
 
 ## Capability Comparison
 
-| Capability | AutoIOT-Only | WellMax-Only | Flash-Fusion |
+| Capability | Agent-Only | WellMax-Only | Flash-Fusion |
 |------------|:------------:|:------------:|:------------:|
 | **Real data execution** (pandas agent) | ✅ | ✅ | ✅ |
 | **Column grounding** via S1+S2 | ❌ | ✅ | ✅ |
@@ -67,7 +67,7 @@ flowchart TD
 
 ## Performance Characteristics
 
-### AutoIOT-Only
+### Agent-Only
 - **Latency**: ~5-10s (fastest — no preprocessing)
 - **Token cost**: Lowest (~200-300 total tokens)
 - **Accuracy**: Poor on queries requiring grounding or derived features
@@ -88,7 +88,7 @@ flowchart TD
 ## Incremental Enhancement Path
 
 ```
-AutoIOT-Only → WellMax-Only → Flash-Fusion
+Agent-Only → WellMax-Only → Flash-Fusion
      ↓              ↓              ↓
   Execution    Grounding    Safety Gates
    Only         Pipeline     + Verification
@@ -96,7 +96,7 @@ AutoIOT-Only → WellMax-Only → Flash-Fusion
 
 ### Key Transitions
 
-1. **AutoIOT → WellMax**: Add 3-stage grounding pipeline
+1. **Agent → WellMax**: Add 3-stage grounding pipeline
    - Enables concept-to-column mapping
    - Injects domain knowledge (activity codebook)
    - Materializes derived features
@@ -116,7 +116,7 @@ Based on [eval_results/runs/latest/](../flashfusion/eval_results/runs/latest/):
 |----------|:---------:|-------|
 | **Flash-Fusion** | **0.52** | Best accuracy with judge retry |
 | **WellMax-Only** | **0.25** | Grounding helps but no verification |
-| **AutoIOT-Only** | **0.22** | Missing grounding hurts performance |
+| **Agent-Only** | **0.22** | Missing grounding hurts performance |
 
 ### LLM Judge Score (Intent Alignment)
 
@@ -124,7 +124,7 @@ Based on [eval_results/runs/latest/](../flashfusion/eval_results/runs/latest/):
 |----------|:---------:|:---------:|-------|
 | **Flash-Fusion** | **0.92** | **92%** | Judge + retry ensures alignment |
 | **WellMax-Only** | **0.50** | **50%** | Execution correct but no verification |
-| **AutoIOT-Only** | **0.40** | **33%** | Frequent misalignment |
+| **Agent-Only** | **0.40** | **33%** | Frequent misalignment |
 
 ### Efficiency Metrics
 
@@ -132,13 +132,13 @@ Based on [eval_results/runs/latest/](../flashfusion/eval_results/runs/latest/):
 |----------|:-----------:|:--------------:|-------|
 | **Flash-Fusion** | 6.6s | $0.00081 | Highest cost for best accuracy |
 | **WellMax-Only** | 9.6s | $0.00064 | Mid-range |
-| **AutoIOT-Only** | 7.2s | $0.00023 | Cheapest but least accurate |
+| **Agent-Only** | 7.2s | $0.00023 | Cheapest but least accurate |
 
 ## Architecture Decision Rationale
 
 ### Why Three Baselines?
 
-1. **AutoIOT-Only**: Isolates value of code execution alone
+1. **Agent-Only**: Isolates value of code execution alone
 2. **WellMax-Only**: Isolates value of grounding pipeline
 3. **Flash-Fusion**: Demonstrates value of verification layer
 
@@ -150,7 +150,7 @@ Based on [eval_results/runs/latest/](../flashfusion/eval_results/runs/latest/):
 
 ## Code References
 
-- AutoIOT: [baselines/autoiot_only.py](../flashfusion/baselines/autoiot_only.py)
+- Agent: [baselines/agent_only.py](../flashfusion/baselines/agent_only.py)
 - WellMax: [baselines/wellmax_only.py](../flashfusion/baselines/wellmax_only.py)
 - Flash-Fusion: [baselines/flash_fusion.py](../flashfusion/baselines/flash_fusion.py)
 - Architecture overview: [CLAUDE.md](../flashfusion/CLAUDE.md#L32-L65)

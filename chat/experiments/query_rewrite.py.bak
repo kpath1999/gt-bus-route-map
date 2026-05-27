@@ -4,7 +4,7 @@ query_rewrite.py
 Reviewer comment: how does Flash-Fusion construct a structured and high-signal prompt?
 """
 
-# AutoIOT + Tavily: narrowing in on definitions for abstract words unless the user defines them.
+# Agent + Tavily: narrowing in on definitions for abstract words unless the user defines them.
 # MaxWell / TaskSense: getting every abstract query to be rewritten into a structured, high-signal prompt.
 
 """need a Tavily API key"""
@@ -40,7 +40,7 @@ DATA PATHS:
 1: /Users/kausar/Documents/flash-fusion/data/bus
 --- contains: processed raw README.md snapshots
 
-2: /Users/kausar/Documents/flash-fusion/data/AutoIOT_dataset
+2: /Users/kausar/Documents/flash-fusion/data/Agent_dataset
 -- contains: ECG.0 IMU
 
 3: /Users/kausar/Documents/visig

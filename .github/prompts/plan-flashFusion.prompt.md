@@ -26,7 +26,7 @@ flashfusion/
 │   ├── __init__.py
 │   ├── llm_only.py             ← B0: raw 20-row CSV sample + question → LLM
 │   ├── wellmax_only.py         ← B3: S1+S2+S3 → single grounded LLM call, no agent
-│   ├── autoiot_only.py         ← Agent with raw schema metadata, no stage rewriting
+│   ├── agent_only.py         ← Agent with raw schema metadata, no stage rewriting
 │   └── flash_fusion.py         ← B4: S1+S2+S3 + agent + judge retry loop
 ├── eval/
 │   ├── __init__.py
@@ -52,14 +52,14 @@ flashfusion/
 |----------|--------------|-------------|--------|--------|------------|
 | **LLM-Only** | B0 | None (raw 20-row CSV + question) | No | No | No |
 | **WellMax-Only** | B3 | S1 + S2 + S3 → single grounded LLM | No | No | Yes |
-| **AutoIOT-Only** | Agent | Schema metadata injected, no rewriting | Yes | No | Yes |
+| **Agent-Only** | Agent | Schema metadata injected, no rewriting | Yes | No | Yes |
 | **Flash-Fusion** | B4 | S1 + S2 + S3 + agent | Yes | Yes | Yes |
 
 **What each component contributes and what it can't do alone:**
 
 - **LLM-Only**: No schema awareness, no code execution. Will fabricate column names, statistics, and activity labels from training-set priors. Useful baseline for measuring hallucination rate.
 - **WellMax-Only**: Grounds the query to real column names and maps qualitative concepts to proxy operations — but never executes code. Answers are schema-correct descriptions, not computations.
-- **AutoIOT-Only**: Executes real pandas code against real data. However, without concept extraction, it receives abstract queries it cannot reliably map to code — especially when activity codes or derived features are involved.
+- **Agent-Only**: Executes real pandas code against real data. However, without concept extraction, it receives abstract queries it cannot reliably map to code — especially when activity codes or derived features are involved.
 - **Flash-Fusion**: Combines all three layers. Concept extraction (S1) + schema grounding (S2) + sub-query decomposition (S3) feed an agent that executes code, followed by a judge that verifies intent alignment.
 
 ---
@@ -112,7 +112,7 @@ class RunResult:
     execution_attempts: list[dict]
 
 class BaselineRunner:
-    MODES = {"LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"}
+    MODES = {"LLM_ONLY", "WELLMAX_ONLY", "AGENT_ONLY", "FLASH_FUSION"}
 
     def __init__(
         self,
@@ -127,7 +127,7 @@ class BaselineRunner:
     # Internal dispatch — one method per baseline
     def _run_llm_only(self, query: str, r: RunResult) -> RunResult: ...
     def _run_wellmax_only(self, query: str, r: RunResult) -> RunResult: ...
-    def _run_autoiot_only(self, query: str, r: RunResult) -> RunResult: ...
+    def _run_agent_only(self, query: str, r: RunResult) -> RunResult: ...
     def _run_flash_fusion(self, query: str, r: RunResult) -> RunResult: ...
 ```
 
@@ -342,10 +342,10 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Guesses plausible-sounding counts from training priors — wrong values |
 | WellMax-Only | Describes a `groupby(activity_label).count()` approach — no actual numbers |
-| AutoIOT-Only | Executes correctly, returns exact counts per letter code (no human labels) |
+| Agent-Only | Executes correctly, returns exact counts per letter code (no human labels) |
 | Flash-Fusion | Executes correctly, codebook maps codes to activity names in response |
 
-**Stress point**: LLM-Only hallucination vs. real computation; AutoIOT missing activity name context.
+**Stress point**: LLM-Only hallucination vs. real computation; Agent missing activity name context.
 
 ---
 
@@ -356,7 +356,7 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Lists activities from training knowledge (e.g., "jogging, kicking, stairs") — not computed |
 | WellMax-Only | Maps "magnitude" → `sqrt(x²+y²+z²)` proxy description — no computation |
-| AutoIOT-Only | May use `mean(x)` or `(x+y+z)/3` as a proxy — semantically wrong |
+| Agent-Only | May use `mean(x)` or `(x+y+z)/3` as a proxy — semantically wrong |
 | Flash-Fusion | WISDMAdapter materialises `magnitude` column; Stage 2 grounds to it; correct top-3 computed |
 
 **Stress point**: Only Flash-Fusion's adapter layer creates the correct derived column.
@@ -370,10 +370,10 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Fabricates numbers; may correctly label which are sedentary from training data |
 | WellMax-Only | Maps sedentary={D,E}, locomotion={A,B,C} via codebook; describes comparison — no numbers |
-| AutoIOT-Only | Has no codebook → likely filters wrong codes or fails entirely |
+| Agent-Only | Has no codebook → likely filters wrong codes or fails entirely |
 | Flash-Fusion | Codebook resolves groups; Stage 2 maps; `magnitude` derived; correct comparison executed |
 
-**Stress point**: AutoIOT-Only breaks on semantic group resolution without codebook injection.
+**Stress point**: Agent-Only breaks on semantic group resolution without codebook injection.
 
 ---
 
@@ -384,7 +384,7 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Fabricates a plausible answer (e.g., "approximately 142 bpm") |
 | WellMax-Only | Stage 2 marks `heart_rate` as UNMAPPABLE → guardrail REJECT with explanation |
-| AutoIOT-Only | Guardrail REJECT |
+| Agent-Only | Guardrail REJECT |
 | Flash-Fusion | Stage 1 classifies `heart_rate` as DATA; Stage 2 marks UNMAPPABLE; guardrail REJECT |
 
 **Stress point**: LLM-Only is the only baseline that does not reject — it hallucinates confidently.
@@ -398,10 +398,10 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Guesses a percentage |
 | WellMax-Only | Maps typing=F, writing=Q, clapping=R via codebook; describes filter + division — no numbers |
-| AutoIOT-Only | No codebook → does not know F/Q/R map to hand activities → wrong or empty filter |
+| Agent-Only | No codebook → does not know F/Q/R map to hand activities → wrong or empty filter |
 | Flash-Fusion | Codebook resolves F/Q/R; Stage 3 decomposes: FILTER(1610) → FILTER(F,Q,R) → count/total; judge verifies |
 
-**Stress point**: AutoIOT-Only cannot resolve English activity names to raw letter codes.
+**Stress point**: Agent-Only cannot resolve English activity names to raw letter codes.
 
 ---
 
@@ -412,7 +412,7 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Lists generic advice or fabricated subject IDs |
 | WellMax-Only | Describes z-score or IQR methodology; no computation |
-| AutoIOT-Only | Executes some outlier logic but threshold is arbitrary (no grounding for "unusually high") |
+| Agent-Only | Executes some outlier logic but threshold is arbitrary (no grounding for "unusually high") |
 | Flash-Fusion | Stage 2 maps "unusually high" → z-score > 3 on `magnitude`; agent executes; judge checks interpretation |
 
 **Stress point**: Threshold semantics — only Flash-Fusion grounds "unusual" to a concrete statistical rule before execution.
@@ -426,10 +426,10 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | States yes or no from training knowledge |
 | WellMax-Only | Describes Pearson correlation between x and z — no number |
-| AutoIOT-Only | Filters `activity_label == "C"`, computes `.corr()` — likely correct |
+| Agent-Only | Filters `activity_label == "C"`, computes `.corr()` — likely correct |
 | Flash-Fusion | Stage 3: FILTER(C) → CORRELATE(x, z); judge checks sign + significance claim |
 
-**Stress point**: This is a case where AutoIOT-Only may match Flash-Fusion accuracy (simple filter + corr) — useful for exposing when the overhead of rewriting does not add value.
+**Stress point**: This is a case where Agent-Only may match Flash-Fusion accuracy (simple filter + corr) — useful for exposing when the overhead of rewriting does not add value.
 
 ---
 
@@ -440,10 +440,10 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Picks a random or fabricated subject ID |
 | WellMax-Only | Describes `(max - min) per subject_id groupby` — no computation |
-| AutoIOT-Only | Executes `groupby(subject_id).agg(lambda x: x.max()-x.min()).idxmax()` correctly |
+| Agent-Only | Executes `groupby(subject_id).agg(lambda x: x.max()-x.min()).idxmax()` correctly |
 | Flash-Fusion | Same execution + judge confirms units (milliseconds) are correctly interpreted |
 
-**Stress point**: Both AutoIOT-Only and Flash-Fusion should succeed; LLM-Only and WellMax-Only reveal the value of actual execution.
+**Stress point**: Both Agent-Only and Flash-Fusion should succeed; LLM-Only and WellMax-Only reveal the value of actual execution.
 
 ---
 
@@ -454,7 +454,7 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Asserts "walking and jogging" from training knowledge — not computed from this dataset |
 | WellMax-Only | Proposes groupby → mean(x,y,z) → closest pair — describes methodology correctly |
-| AutoIOT-Only | May attempt `groupby.mean().corr()` or fail with incomplete code generation |
+| Agent-Only | May attempt `groupby.mean().corr()` or fail with incomplete code generation |
 | Flash-Fusion | Stage 3: GROUPBY activity → AGGREGATE mean(x,y,z) → CORRELATE centroid matrix → RANK off-diagonal max; judge validates approach |
 
 **Stress point**: Highest complexity — only Flash-Fusion reliably decomposes and executes the full multi-step chain.
@@ -468,7 +468,7 @@ Each query is annotated with the **expected differential outcome** across the fo
 |----------|-----------------|
 | LLM-Only | Generates a plausible prediction narrative — completely fabricated |
 | WellMax-Only | Guardrail REJECT: requires temporal forecasting, not supported by available columns |
-| AutoIOT-Only | Guardrail REJECT: schema cannot support next-activity prediction |
+| Agent-Only | Guardrail REJECT: schema cannot support next-activity prediction |
 | Flash-Fusion | Stage 1: identifies "predict next activity" as REASONING; Stage 2: UNMAPPABLE (no sequence model); REJECT |
 
 **Stress point**: Tests rejection correctness for a query that sounds data-driven but requires capabilities the schema and pipeline cannot support.
@@ -499,7 +499,7 @@ JUDGE_PROMPT: str                # placeholders: {question}, {code}, {result}
 ```bash
 python -m flashfusion.eval.benchmark \
   --data  chat/data/imu/WISDM_ar_v1.1_raw.txt \
-  --baselines  all \                  # or: LLM_ONLY,WELLMAX_ONLY,AUTOIOT_ONLY,FLASH_FUSION
+  --baselines  all \                  # or: LLM_ONLY,WELLMAX_ONLY,AGENT_ONLY,FLASH_FUSION
   --queries  all \                    # or: 1,2,3  (1-indexed)
   --model  llama-3.3-70b-versatile \
   --output  eval_results/
@@ -529,7 +529,7 @@ python -m flashfusion.eval.benchmark \
 ### Phase 3 — Baselines (can run in parallel after Phase 2)
 9. `baselines/llm_only.py` — raw 20-row DataFrame `.to_csv(index=False)` sample + query → single LLM call
 10. `baselines/wellmax_only.py` — run S1+S2+S3, format grounding into a single prompt, call LLM once (no agent)
-11. `baselines/autoiot_only.py` — inject schema metadata as system prefix, run guardrail, run agent (skip S1/S2/S3)
+11. `baselines/agent_only.py` — inject schema metadata as system prefix, run guardrail, run agent (skip S1/S2/S3)
 12. `baselines/flash_fusion.py` — full B4: S1 → S2 → S3 → per-sub-query agent → synthesise → judge; retry once on FAIL
 
 ### Phase 4 — Evaluation (sequential)
@@ -552,9 +552,9 @@ python -m flashfusion.eval.benchmark \
   --output eval_results/
 ```
 Expected:
-- Q1: AutoIOT-Only + Flash-Fusion return `executed=True`; LLM-Only returns `executed=False`
-- Q4: WellMax-Only, AutoIOT-Only, Flash-Fusion return `rejected=True`; LLM-Only does not
-- Q10: WellMax-Only, AutoIOT-Only, Flash-Fusion return `rejected=True`
+- Q1: Agent-Only + Flash-Fusion return `executed=True`; LLM-Only returns `executed=False`
+- Q4: WellMax-Only, Agent-Only, Flash-Fusion return `rejected=True`; LLM-Only does not
+- Q10: WellMax-Only, Agent-Only, Flash-Fusion return `rejected=True`
 
 ---
 

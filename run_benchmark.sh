@@ -12,7 +12,7 @@
 # Each per-dataset subdirectory contains the same layout as a single-dataset run:
 #   benchmark/         metrics.csv, raw_results.jsonl, report.md,
 #                      ground_truth_llm_judge/
-#   per_baseline/      AUTOIOT_ONLY/metrics.csv  FLASH_FUSION/metrics.csv ...
+#   per_baseline/      AGENT_ONLY/metrics.csv  FLASH_FUSION/metrics.csv ...
 #   visuals/           per-dataset PNG charts + CSV tables
 #
 # Cross-dataset visuals (visuals_all/) show balanced averages across all
@@ -35,12 +35,12 @@
 #   WISDM_DATA    Path to raw WISDM .txt file
 #                   (default: chat/data/imu/WISDM_ar_v1.1_raw.txt)
 #   MIT_ECG_DATA  Path to consolidated MIT ECG txt file
-#                   (default: data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt)
+#                   (default: data/Agent_dataset/ECG.0/MIT_arrythmia_v1.txt)
 #   BUS_DATA      Path to bus telemetry CSV file
 #                   (default: data/bus/bus_data.csv)
 #   GROUND_TRUTH  Override ground-truth JSON (single-dataset mode only)
 #   BASELINES     Comma-separated baselines
-#                   (default: AUTOIOT_ONLY,FLASH_FUSION)
+#                   (default: AGENT_ONLY,FLASH_FUSION)
 #   QUERIES       Comma-separated query IDs or "all"  (default: all)
 #   RUNS          Number of repeated benchmark runs      (default: 3)
 #   MAX_LATENCY   Per-query timeout in seconds        (default: 30)
@@ -93,9 +93,9 @@ fi
 # Default to running all datasets when no --dataset flag is provided
 DATASET="${DATASET:-all}"
 WISDM_DATA="${WISDM_DATA:-chat/data/imu/WISDM_ar_v1.1_raw.txt}"
-MIT_ECG_DATA="${MIT_ECG_DATA:-data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt}"
+MIT_ECG_DATA="${MIT_ECG_DATA:-data/Agent_dataset/ECG.0/MIT_arrythmia_v1.txt}"
 BUS_DATA="${BUS_DATA:-data/bus/bus_data.csv}"
-BASELINES="${BASELINES:-AUTOIOT_ONLY,FLASH_FUSION}"
+BASELINES="${BASELINES:-AGENT_ONLY,FLASH_FUSION}"
 QUERIES="${QUERIES:-all}"
 RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
@@ -118,7 +118,7 @@ Options:
   --ecg                        Set DATASET=mit_ecg
   --bus                        Set DATASET=bus
   --dataset <name>             Dataset profile: wisdm | mit_ecg | bus | all
-  --baselines <csv>            Baselines list (default AUTOIOT_ONLY,FLASH_FUSION)
+  --baselines <csv>            Baselines list (default AGENT_ONLY,FLASH_FUSION)
   --queries <csv|all>          Query IDs, e.g. 1,5,9 or all
   --runs <n>                   Number of repeated runs
   --max-latency <seconds>      Per-query timeout
@@ -182,7 +182,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --quick)
-            BASELINES="AUTOIOT_ONLY,FLASH_FUSION"
+            BASELINES="AGENT_ONLY,FLASH_FUSION"
             RUNS="1"
             QUERIES="1,5,9"
             shift
@@ -373,7 +373,7 @@ df = pd.read_csv(summary_path)
 if df.empty:
     print("  Warning: LLM judge summary is empty.")
     sys.exit(0)
-PALETTE = {"AUTOIOT_ONLY": "#f4a259", "WELLMAX_ONLY": "#136f63", "FLASH_FUSION": "#2d6cdf"}
+PALETTE = {"AGENT_ONLY": "#f4a259", "WELLMAX_ONLY": "#136f63", "FLASH_FUSION": "#2d6cdf"}
 colors = [PALETTE.get(str(b), "#999999") for b in df["baseline"]]
 fig, (ax_score, ax_dist) = plt.subplots(1, 2, figsize=(13, 5.2))
 ax_score.bar(df["baseline"], df["pass_rate"], color=colors)
@@ -711,7 +711,7 @@ if df.empty:
     sys.exit(0)
 
 PALETTE = {
-    "AUTOIOT_ONLY": "#f4a259",
+    "AGENT_ONLY": "#f4a259",
     "WELLMAX_ONLY":  "#136f63",
     "FLASH_FUSION":  "#2d6cdf",
 }

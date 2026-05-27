@@ -242,7 +242,7 @@ def save_markdown(
                     lines.append(f"*Synthesis hint: {r.s3_synthesis_hint}*")
                 lines.append("")
 
-            # Agent trace (AUTOIOT_ONLY / FLASH_FUSION when executed)
+            # Agent trace (AGENT_ONLY / FLASH_FUSION when executed)
             if r.trace and r.trace.strip() and r.trace.strip() != "(no steps captured)":
                 lines.append("**Agent Trace**")
                 lines.append("")
@@ -297,7 +297,7 @@ def save_markdown(
         "- **WellMax-Only**: S1+S2+S3 grounding, then direct grounded execution (no guardrail, no judge)."
     )
     lines.append(
-        "- **AutoIOT-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
+        "- **Agent-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
     )
     lines.append(
         "- **Flash-Fusion**: full grounding pipeline + guardrail + pre-agent plan judge (+ one refinement) + grounded execution."

@@ -53,7 +53,7 @@ User Query (natural language)
         ├──► LLM-Only        20-row CSV sample + query → LLM → answer
         │                    No schema grounding · No code execution · No guardrail
         │
-        ├──► AutoIOT-Only    raw_query → Pandas agent → answer
+        ├──► Agent-Only    raw_query → Pandas agent → answer
         │                    Real execution, but no concept extraction/codebook/guardrail
         │
         ├──► WellMax-Only    S1 → S2 (codebook) → S3 → grounded_query
@@ -67,7 +67,7 @@ User Query (natural language)
 
 ### What Each Component Contributes
 
-| Capability | LLM-Only | AutoIOT-Only | WellMax-Only | Flash-Fusion |
+| Capability | LLM-Only | Agent-Only | WellMax-Only | Flash-Fusion |
 |------------|:---:|:---:|:---:|:---:|
 | Real data execution (pandas agent) | ✗ | ✓ | ✓ | ✓ |
 | Column grounding via S1+S2 | ✗ | ✗ | ✓ | ✓ |
@@ -157,7 +157,7 @@ flashfusion/
 │   ├── __init__.py
 │   ├── llm_only.py         ← _run_llm_only
 │   ├── wellmax_only.py     ← _run_wellmax_only
-│   ├── autoiot_only.py     ← _run_autoiot_only
+│   ├── agent_only.py     ← _run_agent_only
 │   └── flash_fusion.py     ← _run_flash_fusion
 ├── eval/
 │   ├── __init__.py
@@ -225,7 +225,7 @@ class RunResult:
     execution_attempts: list = field(default_factory=list)
 
 class BaselineRunner:
-    MODES = {"LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"}
+    MODES = {"LLM_ONLY", "WELLMAX_ONLY", "AGENT_ONLY", "FLASH_FUSION"}
 
     def __init__(self, mode: str, df: pd.DataFrame, client: LLMClient,
                  adapter=None, data_path: str = "WISDM"): ...
@@ -735,7 +735,7 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 4. Dispatch: {
      "LLM_ONLY":     self._run_llm_only,
      "WELLMAX_ONLY":  self._run_wellmax_only,
-     "AUTOIOT_ONLY":  self._run_autoiot_only,
+     "AGENT_ONLY":  self._run_agent_only,
      "FLASH_FUSION":  self._run_flash_fusion,
    }[self.mode](query, r)
 5. r.latency_s = time.time() - t0
@@ -780,7 +780,7 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
    return r
 ```
 
-#### `BaselineRunner._run_autoiot_only(query, r)`
+#### `BaselineRunner._run_agent_only(query, r)`
 
 ```
 1. executor = ExecutionLayer(self.df, self.client)
@@ -842,7 +842,7 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 #### Accuracy Scoring Rules
 
 ```
-AutoIOT-Only has no judge → judge_verdict == {}
+Agent-Only has no judge → judge_verdict == {}
 WellMax-Only has no judge → judge_verdict == {}  (but executed == True)
 LLM-Only has no agent and no guardrail → executed == False, rejected == False
 
@@ -851,7 +851,7 @@ Score matrix:
   not result.executed                       → 0.0
   result.executed and verdict == "PASS"     → 1.0
   result.executed and verdict == "FAIL"     → 0.5
-  result.executed and no judge (empty dict) → 0.5  ← AutoIOT-Only and WellMax-Only
+  result.executed and no judge (empty dict) → 0.5  ← Agent-Only and WellMax-Only
 ```
 
 #### `aggregate_metrics(results) -> pd.DataFrame`
@@ -920,7 +920,7 @@ def main():
         sys.exit("Error: GROQ_API_KEY environment variable not set")
 
     # Resolve baselines
-    all_baselines = ["LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"]
+    all_baselines = ["LLM_ONLY", "WELLMAX_ONLY", "AGENT_ONLY", "FLASH_FUSION"]
     baselines = all_baselines if args.baselines == "all" else args.baselines.upper().split(",")
 
     # Resolve queries
@@ -1014,7 +1014,7 @@ Test `ExecutionLayer.guardrail()`:
 Test compute_accuracy():
 - RunResult(executed=True, judge_verdict={"verdict":"PASS"}) → score == 1.0
 - RunResult(executed=True, judge_verdict={"verdict":"FAIL"}) → score == 0.5
-- RunResult(executed=True, judge_verdict={}) → score == 0.5  (AutoIOT-Only)
+- RunResult(executed=True, judge_verdict={}) → score == 0.5  (Agent-Only)
 - RunResult(executed=False) → score == 0.0
 - RunResult(rejected=True) → score == 0.0
 
@@ -1037,7 +1037,7 @@ python -m flashfusion.eval.benchmark \
 # Expected:
 #   Q1:  all baselines should execute successfully
 #   Q5:  FLASH_FUSION should produce grounded magnitude comparison
-#   Q12: FLASH_FUSION should reject; AUTOIOT_ONLY and WELLMAX_ONLY typically attempt execution
+#   Q12: FLASH_FUSION should reject; AGENT_ONLY and WELLMAX_ONLY typically attempt execution
 
 # 2. Unit tests
 pytest flashfusion/tests/ -v
@@ -1064,8 +1064,8 @@ print(df.groupby('baseline')[['accuracy_score','latency_s','cost_usd']].mean())
 2. **Activity label whitespace**: `parts[1].strip()` — raw values have leading spaces.
 3. **`magnitude` column required by Q2, Q3, Q5, Q6**: Must be added by `WISDMAdapter.get_derived_features()` before agent execution for Flash-Fusion and before description for WellMax-Only.
 4. **WellMax-Only has no judge**: `judge_verdict` must be `{}` — never add a judge call.
-5. **AutoIOT-Only has no judge**: Same — `judge_verdict = {}` — accuracy scorer treats this as 0.5.
-6. **Stage 2 codebook injection**: Format `SCHEMA_GROUNDING_PROMPT` with `{codebook}=adapter.get_codebook_str()` before building the chain. Without this, AutoIOT-Only and LLM-Only cannot resolve group names.
+5. **Agent-Only has no judge**: Same — `judge_verdict = {}` — accuracy scorer treats this as 0.5.
+6. **Stage 2 codebook injection**: Format `SCHEMA_GROUNDING_PROMPT` with `{codebook}=adapter.get_codebook_str()` before building the chain. Without this, Agent-Only and LLM-Only cannot resolve group names.
 7. **Plan judge is pre-execution only**: In Flash-Fusion, `judge_verdict` now reflects plan-gate quality (not post-answer grading).
 8. **LLMClient per benchmark run**: Create a **new** `LLMClient` for each `(baseline, query)` pair so `call_log` is isolated and `total_cost_usd()` reflects only that one run.
 9. **`PrivateAttr` in Pydantic models**: `ResilientReActOutputParser` inherits from a Pydantic model. Use `_output_history: list = PrivateAttr(default_factory=list)` — not a regular class attribute.

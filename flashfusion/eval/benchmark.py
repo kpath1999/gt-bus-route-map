@@ -13,7 +13,7 @@ Usage:
     # Full benchmark
     python -m flashfusion.eval.benchmark \\
         --data chat/data/imu/WISDM_ar_v1.1_raw.txt \\
-        --baselines AUTOIOT_ONLY,FLASH_FUSION \\
+        --baselines AGENT_ONLY,FLASH_FUSION \\
         --output flashfusion/eval_results/
 
 Environment:
@@ -51,7 +51,13 @@ from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
 from flashfusion.config import DEFAULT_MODEL
 
-ALL_BASELINES = ["LLM_ONLY", "WELLMAX_ONLY", "AUTOIOT_ONLY", "FLASH_FUSION"]
+ALL_BASELINES = [
+    "LLM_ONLY",
+    "WELLMAX_ONLY",
+    "AGENT_ONLY",
+    "AUTOIOT_PAPER",
+    "FLASH_FUSION",
+]
 
 
 class QueryTimeoutError(TimeoutError):
@@ -468,7 +474,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     Arguments:
         --data       (required) Path to WISDM_ar_v1.1_raw.txt
-        --baselines  (default "AUTOIOT_ONLY,FLASH_FUSION") "all" or comma-separated baseline names
+        --baselines  (default "AGENT_ONLY,FLASH_FUSION") "all" or comma-separated baseline names
         --queries    (default "all") "all" or comma-separated 1-indexed query IDs
         --model      (default config.DEFAULT_MODEL) Groq model identifier
         --output     (default "flashfusion/eval_results/") Output directory path
@@ -483,7 +489,7 @@ def _build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt "
-            "--baselines AUTOIOT_ONLY,FLASH_FUSION --queries 1,5,9,12\n"
+            "--baselines AGENT_ONLY,FLASH_FUSION --queries 1,5,9,12\n"
             "  python -m flashfusion.eval.benchmark --data ... --baselines all"
         ),
     )
@@ -500,10 +506,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--baselines",
-        default="AUTOIOT_ONLY,FLASH_FUSION",
+        default="AGENT_ONLY,FLASH_FUSION",
         help=(
             'Comma-separated baseline names or "all". '
-            "Default focuses on Agent-Only (AUTOIOT_ONLY) and FLASH_FUSION. "
+            "Default focuses on Agent-Only (AGENT_ONLY) and FLASH_FUSION. "
             f"Options: {', '.join(ALL_BASELINES)}"
         ),
     )

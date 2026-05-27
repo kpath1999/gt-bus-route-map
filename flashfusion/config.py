@@ -70,3 +70,12 @@ TOKEN_ESTIMATE_MULTIPLIER: float = 1.3
 # ---------------------------------------------------------------------------
 WISDM_DEFAULT_PATH: str = "chat/data/imu/WISDM_ar_v1.1_raw.txt"
 WISDM_ARFF_DIR: str = "chat/data/imu/wisdm-dataset/arff_files"
+
+# ---------------------------------------------------------------------------
+# AutoIOT paper-faithful baseline defaults
+# ---------------------------------------------------------------------------
+AUTOIOT_PAPER_ITERATIONS: int = 5
+AUTOIOT_PAPER_REQUIRE_TAVILY: bool = True
+AUTOIOT_PAPER_MAX_TERMS: int = 6
+AUTOIOT_PAPER_MAX_URLS_PER_TERM: int = 2
+AUTOIOT_PAPER_HTTP_TIMEOUT_S: float = 12.0

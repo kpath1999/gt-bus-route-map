@@ -54,7 +54,7 @@ Decomposes abstract query into 2-4 concrete, column-grounded sub-questions
 | Query Type | Behavior |
 |------------|----------|
 | Direct Answer (Q1-Q4) | ✓ Typically correct due to grounding |
-| Intermediate Reasoning (Q5-Q8) | ✓ Stronger execution vs AutoIOT (has derived features) |
+| Intermediate Reasoning (Q5-Q8) | ✓ Stronger execution vs Agent (has derived features) |
 | Out-of-Scope (Q9-Q12) | ⚠️ Still executes with weak/unsupported results (no guardrail) |
 
 ## Code Reference

@@ -287,8 +287,8 @@ DOMAIN_KEYWORDS: dict[str, list[str]] = {
 }
 
 DEFAULT_DATA_PATHS: dict[str, str] = {
-    "ecg": os.path.join(BASE_DIR, "data", "AutoIOT_dataset", "ECG.0", "100.hea"),
-    "imu": os.path.join(BASE_DIR, "data", "AutoIOT_dataset", "IMU", "WISDM_ar_v1.1_raw.txt"),
+    "ecg": os.path.join(BASE_DIR, "data", "Agent_dataset", "ECG.0", "100.hea"),
+    "imu": os.path.join(BASE_DIR, "data", "Agent_dataset", "IMU", "WISDM_ar_v1.1_raw.txt"),
     "bus": os.path.join(BASE_DIR, "data", "bus", "raw", "bus_data.csv"),
 }
 

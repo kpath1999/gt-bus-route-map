@@ -57,7 +57,7 @@ def test_judge_rows_with_llm_accepts_expected_rejection(monkeypatch):
 
     rows = [
         {
-            "baseline": "AUTOIOT_ONLY",
+            "baseline": "AGENT_ONLY",
             "query": q9["text"],
             "answer": "This is out of scope for the dataset, so I cannot answer.",
             "executed": True,
