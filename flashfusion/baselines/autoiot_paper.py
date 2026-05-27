@@ -37,6 +37,11 @@ Return only a comma-separated list of terms that appear in or are implied by the
 Do not include extra prose."""
 
 
+_SEARCH_QUERIES_PROMPT = """You generate focused web-search queries for one concept.
+Given the user task and a concept term, output 1-3 concise search queries.
+Return only comma-separated queries, no prose."""
+
+
 _HIGH_LEVEL_PROMPT = """You are designing a data-analysis approach.
 Given the query and external context, output a short step-by-step high-level plan.
 Keep to 4-7 steps and stay tied to the provided schema and user goal."""
@@ -45,6 +50,24 @@ Keep to 4-7 steps and stay tied to the provided schema and user goal."""
 _DETAIL_PROMPT = """Expand the high-level plan into implementation-focused detail.
 For each step, include practical algorithm choices and validation checks.
 Do not write runnable code yet."""
+
+
+_MODULE_PROMPT = """Implement exactly one module as Python code.
+You are given the full user task, schema summary, and one detailed step.
+Output only a fenced python code block for this module."""
+
+
+_INTEGRATE_PROMPT = """Integrate all module code snippets into one coherent executable Python script.
+Requirements:
+- keep complete function bodies
+- define a clear entrypoint
+- avoid placeholders
+- ensure symbols are connected and runnable
+Output only a fenced python code block."""
+
+
+_CORRECT_PROMPT = """The code execution failed. Fix the code using the execution logs.
+Return only a fenced python code block with corrected complete code."""
 
 
 _IMPROVE_PROMPT = """You are improving an iterative data-analysis workflow.
@@ -72,20 +95,29 @@ def _clean_code_block(text: str) -> str:
     return m.group(1).strip() if m else text.strip()
 
 
-def _extract_terms(raw: str, max_terms: int) -> list[str]:
+def _extract_csv_list(raw: str, max_items: int) -> list[str]:
     chunks = re.split(r"[,;\n]", raw)
-    terms: list[str] = []
+    items: list[str] = []
     for chunk in chunks:
-        term = chunk.strip().strip("-*")
-        if not term:
+        item = chunk.strip().strip("-*")
+        if not item:
             continue
+        if item and item not in items:
+            items.append(item)
+        if len(items) >= max_items:
+            break
+    return items
+
+
+def _extract_terms(raw: str, max_terms: int) -> list[str]:
+    terms = _extract_csv_list(raw, max_terms)
+    cleaned: list[str] = []
+    for term in terms:
         if term.lower().startswith("terms:"):
             term = term.split(":", 1)[1].strip()
-        if term and term not in terms:
-            terms.append(term)
-        if len(terms) >= max_terms:
-            break
-    return terms
+        if term:
+            cleaned.append(term)
+    return cleaned
 
 
 def _fallback_terms(query: str, max_terms: int) -> list[str]:
@@ -158,27 +190,96 @@ def _tavily_search(
     return results if isinstance(results, list) else []
 
 
-def _retrieve_context(query: str, terms: list[str], tavily_key: str) -> tuple[str, list[str]]:
+def _generate_search_queries(
+    client: LLMClient,
+    query: str,
+    terms: list[str],
+) -> dict[str, list[str]]:
+    by_term: dict[str, list[str]] = {}
+    for term in terms:
+        raw = _invoke(
+            client,
+            "autoiot_search_queries",
+            _SEARCH_QUERIES_PROMPT,
+            f"Task: {query}\n\nTerm: {term}",
+        )
+        generated = _extract_csv_list(raw, 3)
+        if not generated:
+            generated = [f"{term} {query}"]
+        by_term[term] = generated
+    return by_term
+
+
+def _retrieve_context(
+    search_queries: dict[str, list[str]],
+    tavily_key: str,
+) -> tuple[str, list[str], list[dict[str, Any]]]:
     snippets: list[str] = []
     urls: list[str] = []
-    for term in terms:
-        search_q = f"{term} for this analytics task: {query}"
-        results = _tavily_search(
-            api_key=tavily_key,
-            query=search_q,
-            max_results=AUTOIOT_PAPER_MAX_URLS_PER_TERM,
-            timeout_s=AUTOIOT_PAPER_HTTP_TIMEOUT_S,
-        )
-        for item in results:
-            url = str(item.get("url", "")).strip()
-            content = str(item.get("content", "")).strip()
-            if url:
-                urls.append(url)
-            if content:
-                snippets.append(content[:400])
+    provenance: list[dict[str, Any]] = []
+    for term, queries in search_queries.items():
+        for search_q in queries:
+            results = _tavily_search(
+                api_key=tavily_key,
+                query=search_q,
+                max_results=AUTOIOT_PAPER_MAX_URLS_PER_TERM,
+                timeout_s=AUTOIOT_PAPER_HTTP_TIMEOUT_S,
+            )
+            hit_urls: list[str] = []
+            for item in results:
+                url = str(item.get("url", "")).strip()
+                content = str(item.get("content", "")).strip()
+                if url:
+                    urls.append(url)
+                    hit_urls.append(url)
+                if content:
+                    snippets.append(content[:600])
+            provenance.append(
+                {
+                    "term": term,
+                    "generated_query": search_q,
+                    "urls": hit_urls,
+                }
+            )
     dedup_urls = list(dict.fromkeys(urls))
     context_text = "\n\n".join(snippets[:10]).strip()
-    return context_text, dedup_urls
+    return context_text, dedup_urls, provenance
+
+
+def _parse_detailed_steps(detailed: str) -> list[str]:
+    blocks = [b.strip() for b in re.split(r"\n\s*\n", detailed) if b.strip()]
+    if not blocks:
+        return [detailed.strip()]
+    return blocks
+
+
+def _collect_execution_feedback(
+    *,
+    answer: str,
+    trace: str,
+    attempts: list[dict[str, Any]],
+) -> dict[str, str]:
+    if attempts:
+        latest = attempts[-1]
+        output = str(latest.get("output", "")).strip()
+        ok = bool(latest.get("ok", False))
+        return {
+            "status": "success" if ok else "failure",
+            "stdout": output if ok else "",
+            "stderr": "" if ok else output,
+        }
+
+    observations = re.findall(r"Observation:\s*(.*)", trace)
+    last_obs = observations[-1].strip() if observations else ""
+    looks_error = "error" in last_obs.lower() or "exception" in last_obs.lower()
+    if looks_error:
+        return {"status": "failure", "stdout": "", "stderr": last_obs}
+
+    return {
+        "status": "success" if "[ERROR]" not in answer else "failure",
+        "stdout": answer if "[ERROR]" not in answer else "",
+        "stderr": answer if "[ERROR]" in answer else "",
+    }
 
 
 def _select_best_version(client: LLMClient, records: list[dict[str, Any]]) -> int:
@@ -229,7 +330,10 @@ def run_autoiot_paper(
         terms = _fallback_terms(query, AUTOIOT_PAPER_MAX_TERMS)
     r.stages_run.append("autoiot_terms")
 
-    context_text, context_urls = _retrieve_context(query, terms, tavily_key)
+    search_queries = _generate_search_queries(client, query, terms)
+    r.stages_run.append("autoiot_search_queries")
+
+    context_text, context_urls, retrieval_provenance = _retrieve_context(search_queries, tavily_key)
     r.stages_run.append("autoiot_retrieval")
 
     high_level = _invoke(
@@ -244,14 +348,29 @@ def run_autoiot_paper(
         _DETAIL_PROMPT,
         f"Query: {query}\n\nHigh-level plan:\n{high_level}\n\nContext:\n{context_text}",
     )
-    draft_code = _invoke(
+    module_steps = _parse_detailed_steps(detailed)
+    module_codes: list[str] = []
+    for idx, step in enumerate(module_steps, start=1):
+        module_code_raw = _invoke(
+            client,
+            f"autoiot_module_gen_{idx}",
+            _MODULE_PROMPT,
+            f"Query: {query}\n\nSchema:\n{schema}\n\nDetailed step:\n{step}\n\nContext:\n{context_text}",
+        )
+        module_codes.append(_clean_code_block(module_code_raw))
+    r.stages_run.extend(["autoiot_design_high", "autoiot_design_detail", "autoiot_module_gen"])
+
+    integrated_raw = _invoke(
         client,
-        "autoiot_code_draft",
-        "Write a complete Python solution skeleton matching the detailed plan.",
-        f"Query: {query}\n\nDetailed plan:\n{detailed}\n\nSchema:\n{schema}",
+        "autoiot_code_integration",
+        _INTEGRATE_PROMPT,
+        (
+            f"Query: {query}\n\nSchema:\n{schema}\n\n"
+            f"Module code snippets:\n\n" + "\n\n".join(module_codes)
+        ),
     )
-    working_code = _clean_code_block(draft_code)
-    r.stages_run.extend(["autoiot_design_high", "autoiot_design_detail", "autoiot_code_draft"])
+    working_code = _clean_code_block(integrated_raw)
+    r.stages_run.append("autoiot_code_integration")
 
     executor = ExecutionLayer(df, client)
     records: list[dict[str, Any]] = []
@@ -276,6 +395,23 @@ def run_autoiot_paper(
             tries = 0
             attempts = []
 
+        feedback = _collect_execution_feedback(answer=answer, trace=trace, attempts=attempts)
+        corrected_code = ""
+        if feedback["status"] == "failure":
+            corrected_raw = _invoke(
+                client,
+                f"autoiot_correct_{i}",
+                _CORRECT_PROMPT,
+                (
+                    f"Query: {query}\n\nCurrent code:\n{working_code}\n\n"
+                    f"Execution stderr:\n{feedback['stderr']}\n\n"
+                    f"Execution stdout:\n{feedback['stdout']}"
+                ),
+            )
+            corrected_code = _clean_code_block(corrected_raw)
+            if corrected_code:
+                working_code = corrected_code
+
         record = {
             "version": i,
             "query": augmented_query,
@@ -285,6 +421,11 @@ def run_autoiot_paper(
             "tries": tries,
             "attempts": attempts,
             "context_urls": context_urls,
+            "retrieval_provenance": retrieval_provenance,
+            "search_queries": search_queries,
+            "module_codes": module_codes,
+            "execution_feedback": feedback,
+            "corrected_code": corrected_code,
         }
         records.append(record)
         latest_trace = trace
@@ -296,7 +437,13 @@ def run_autoiot_paper(
                 client,
                 f"autoiot_improve_{i}",
                 _IMPROVE_PROMPT,
-                f"Query: {query}\n\nCurrent plan:\n{detailed}\n\nLatest output:\n{answer}",
+                (
+                    f"Query: {query}\n\nCurrent plan:\n{detailed}\n\n"
+                    f"Execution status: {feedback['status']}\n"
+                    f"Execution stderr:\n{feedback['stderr']}\n\n"
+                    f"Execution stdout:\n{feedback['stdout']}\n\n"
+                    f"Latest answer:\n{answer}"
+                ),
             )
             iter_query = f"{query}\n\nRefinement guidance:\n{improvement}"
 

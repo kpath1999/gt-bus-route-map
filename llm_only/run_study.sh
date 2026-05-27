@@ -8,6 +8,13 @@
 
 set -euo pipefail
 
+# ── Load API keys from vault (.env at repo root, never committed) ─────────────
+_VAULT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.env"
+if [ -f "$_VAULT" ]; then
+    set -a; source "$_VAULT"; set +a
+fi
+unset _VAULT
+
 PHASE=1
 RESET=""
 DATASETS="bus,wisdm,ecg"

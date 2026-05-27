@@ -278,3 +278,123 @@ def test_runner_dispatches_autoiot_paper_mode() -> None:
         runner.run("Compare mean x by activity")
 
     fn.assert_called_once()
+
+
+def test_autoiot_paper_uses_generated_search_queries_for_tavily() -> None:
+    from flashfusion.baselines import autoiot_paper
+
+    query = "Find average magnitude while walking"
+    r = _result("AUTOIOT_PAPER", query)
+
+    stage_inputs: dict[str, str] = {}
+
+    def fake_invoke(client, stage, system_prompt, user_input):
+        stage_inputs[stage] = user_input
+        if stage == "autoiot_terms":
+            return "magnitude"
+        if stage == "autoiot_search_queries":
+            return "wisdm magnitude walking"
+        if stage == "autoiot_design_high":
+            return "Step 1: prepare"
+        if stage == "autoiot_design_detail":
+            return "Step 1: prepare\n- clean data"
+        if stage.startswith("autoiot_module_gen_"):
+            return "```python\ndef module_part():\n    return 1\n```"
+        if stage == "autoiot_code_integration":
+            return "```python\ndef run():\n    return 1\n```"
+        if stage.startswith("autoiot_improve_"):
+            return "tighten aggregation"
+        if stage == "autoiot_select":
+            return "1"
+        return ""
+
+    class FakeExecutionLayer:
+        def __init__(self, df, client):
+            pass
+
+        def execute_single(self, query_text):
+            return (
+                "ok",
+                "Observation: success",
+                MagicMock(final_code="result = 1", tries=1, attempts=[]),
+            )
+
+    tavily_calls: list[str] = []
+
+    def fake_tavily_search(**kwargs):
+        tavily_calls.append(kwargs["query"])
+        return [{"url": "https://example.com", "content": "context"}]
+
+    with patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"}, clear=True), patch.object(
+        autoiot_paper, "AUTOIOT_PAPER_ITERATIONS", 2
+    ), patch.object(
+        autoiot_paper, "_invoke", side_effect=fake_invoke
+    ), patch.object(
+        autoiot_paper, "ExecutionLayer", FakeExecutionLayer
+    ), patch.object(
+        autoiot_paper, "_tavily_search", side_effect=fake_tavily_search
+    ):
+        out = autoiot_paper.run_autoiot_paper(query, _df(), _client(), r)
+
+    assert "wisdm magnitude walking" in tavily_calls
+    assert "autoiot_search_queries" in out.stages_run
+    assert "autoiot_module_gen" in out.stages_run
+    assert "autoiot_code_integration" in out.stages_run
+
+
+def test_autoiot_paper_improvement_prompt_uses_execution_feedback() -> None:
+    from flashfusion.baselines import autoiot_paper
+
+    query = "Find average magnitude while walking"
+    r = _result("AUTOIOT_PAPER", query)
+
+    improve_inputs: list[str] = []
+
+    def fake_invoke(client, stage, system_prompt, user_input):
+        if stage == "autoiot_terms":
+            return "magnitude"
+        if stage == "autoiot_search_queries":
+            return "wisdm magnitude"
+        if stage == "autoiot_design_high":
+            return "Step 1: prepare"
+        if stage == "autoiot_design_detail":
+            return "Step 1: prepare\n- clean data"
+        if stage.startswith("autoiot_module_gen_"):
+            return "```python\ndef module_part():\n    return 1\n```"
+        if stage == "autoiot_code_integration":
+            return "```python\ndef run():\n    return 1\n```"
+        if stage.startswith("autoiot_correct_"):
+            return "```python\ndef run():\n    return 2\n```"
+        if stage.startswith("autoiot_improve_"):
+            improve_inputs.append(user_input)
+            return "use corrected code"
+        if stage == "autoiot_select":
+            return "1"
+        return ""
+
+    class FakeExecutionLayer:
+        def __init__(self, df, client):
+            pass
+
+        def execute_single(self, query_text):
+            details = MagicMock(
+                final_code="",
+                tries=1,
+                attempts=[{"attempt": 1, "ok": False, "output": "NameError: x is not defined"}],
+            )
+            return ("[ERROR] NameError", "Observation: NameError: x is not defined", details)
+
+    with patch.dict(os.environ, {"TAVILY_API_KEY": "test-key"}, clear=True), patch.object(
+        autoiot_paper, "AUTOIOT_PAPER_ITERATIONS", 2
+    ), patch.object(
+        autoiot_paper, "_invoke", side_effect=fake_invoke
+    ), patch.object(
+        autoiot_paper, "ExecutionLayer", FakeExecutionLayer
+    ), patch.object(
+        autoiot_paper, "_tavily_search", return_value=[]
+    ):
+        autoiot_paper.run_autoiot_paper(query, _df(), _client(), r)
+
+    assert len(improve_inputs) == 1
+    assert "Execution stderr" in improve_inputs[0]
+    assert "NameError: x is not defined" in improve_inputs[0]

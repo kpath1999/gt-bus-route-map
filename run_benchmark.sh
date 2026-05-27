@@ -80,6 +80,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# ── Load API keys from vault (.env at repo root, never committed) ─────────────
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+    set -a; source "${SCRIPT_DIR}/.env"; set +a
+fi
+
 # ── Detect Python (prefer venv) ───────────────────────────────────────────────
 if [ -f ".venv/bin/python" ]; then
     PYTHON=".venv/bin/python"

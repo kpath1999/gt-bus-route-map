@@ -59,6 +59,18 @@ ALL_BASELINES = [
     "FLASH_FUSION",
 ]
 
+DEFAULT_DATA_PATHS = {
+    "wisdm": "chat/data/imu/WISDM_ar_v1.1_raw.txt",
+    "mit_ecg": "data/AutoIOT_dataset/ECG.0/",
+    "bus": "data/bus/bus_data.csv",
+}
+
+DEFAULT_GROUND_TRUTH_PATHS = {
+    "wisdm": "flashfusion/eval/ground_truth/ground_truth_wisdm.json",
+    "mit_ecg": "flashfusion/eval/ground_truth/ground_truth_mit_ecg.json",
+    "bus": "flashfusion/eval/ground_truth/ground_truth_bus.json",
+}
+
 
 class QueryTimeoutError(TimeoutError):
     """Raised when a single query run exceeds the configured latency budget."""
@@ -300,6 +312,21 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if not api_key:
         sys.exit("Error: GROQ_API_KEY environment variable not set")
 
+    # Infer data path from dataset if not provided
+    if args.data is None:
+        args.data = DEFAULT_DATA_PATHS.get(args.dataset)
+        if args.data is None:
+            sys.exit(
+                f"Error: --data not provided and no default path configured for dataset '{args.dataset}'. "
+                f"Please specify --data explicitly."
+            )
+
+    # Infer ground truth path from dataset if using default
+    if args.ground_truth == "flashfusion/eval/ground_truth/ground_truth_wisdm.json":
+        args.ground_truth = DEFAULT_GROUND_TRUTH_PATHS.get(
+            args.dataset, args.ground_truth
+        )
+
     try:
         ground_truth_by_id = load_ground_truth(args.ground_truth)
     except FileNotFoundError as e:
@@ -495,8 +522,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--data",
-        required=True,
-        help="Path to dataset file (relative to repo root or absolute)",
+        default=None,
+        help=(
+            "Path to dataset file (relative to repo root or absolute). "
+            "If omitted, uses default path for --dataset."
+        ),
     )
     parser.add_argument(
         "--dataset",

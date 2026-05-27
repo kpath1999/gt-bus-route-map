@@ -21,6 +21,9 @@ langchain-experimental>=0.3.0
 # Tavily web search (Stage 1.5 concept enrichment)
 tavily-python>=0.3.0
 
+# Vault: load API keys from .env
+python-dotenv>=1.0.1
+
 # Vector store
 chromadb>=0.4.22
 

@@ -6,6 +6,7 @@ analysis/playground/.env
 analysis/playground/run_query_analysis.py
 .vercel
 .env*.local
+/.env
 chat/data/imu/wisdm-dataset/
 *.egg-info/
 flashfusion/eval_results
