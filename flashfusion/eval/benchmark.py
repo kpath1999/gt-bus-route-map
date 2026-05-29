@@ -57,6 +57,8 @@ ALL_BASELINES = [
     "AGENT_ONLY",
     "AUTOIOT_PAPER",
     "FLASH_FUSION",
+    "HARGPT_PAPER",
+    "LLMSENSE_PAPER",
 ]
 
 DEFAULT_DATA_PATHS = {
@@ -536,10 +538,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--baselines",
-        default="AGENT_ONLY,FLASH_FUSION",
+        default="AGENT_ONLY,LLMSENSE_PAPER,FLASH_FUSION",
         help=(
             'Comma-separated baseline names or "all". '
-            "Default focuses on Agent-Only (AGENT_ONLY) and FLASH_FUSION. "
+            "Default focuses on Agent-Only, LLMSENSE_PAPER, and FLASH_FUSION. "
             f"Options: {', '.join(ALL_BASELINES)}"
         ),
     )

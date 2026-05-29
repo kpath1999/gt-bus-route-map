@@ -158,6 +158,27 @@ def _schema_hint(df) -> str:
     return f"Columns: {cols}\nSample rows: {sample}"
 
 
+def _domain_context(df) -> str:
+    cols = set(df.columns)
+    if {"MLII", "V1", "record_id"}.issubset(cols):
+        return (
+            "ECG / cardiac electrophysiology signal analysis. "
+            "Key topics: arrhythmia detection, heart rate estimation, QRS complex, "
+            "R-peak annotation, MIT-BIH arrhythmia database, signal amplitude (mV)."
+        )
+    if {"latitude", "longitude", "accel_mean"}.issubset(cols):
+        return (
+            "Bus telematics, vehicle vibration analysis, road surface quality. "
+            "Key topics: acceleration variance, road roughness index, GPS trajectory, "
+            "percentile acceleration, transit telemetry, pothole detection, IoT vehicle monitoring."
+        )
+    return (
+        "Human Activity Recognition (HAR) using inertial measurement unit (IMU) data. "
+        "Key topics: accelerometer, wearable sensor, activity classification, WISDM dataset, "
+        "acceleration magnitude, triaxial IMU, step detection."
+    )
+
+
 def _tavily_search(
     *,
     api_key: str,
@@ -319,11 +340,12 @@ def run_autoiot_paper(
         )
 
     schema = _schema_hint(df)
+    domain = _domain_context(df)
     terms_raw = _invoke(
         client,
         "autoiot_terms",
         _TERMS_PROMPT,
-        f"Query: {query}\n\nSchema:\n{schema}",
+        f"Query: {query}\n\nDomain: {domain}\n\nSchema:\n{schema}",
     )
     terms = _extract_terms(terms_raw, AUTOIOT_PAPER_MAX_TERMS)
     if not terms:
@@ -340,7 +362,7 @@ def run_autoiot_paper(
         client,
         "autoiot_design_high",
         _HIGH_LEVEL_PROMPT,
-        f"Query: {query}\n\nSchema:\n{schema}\n\nContext:\n{context_text}",
+        f"Query: {query}\n\nDomain: {domain}\n\nSchema:\n{schema}\n\nContext:\n{context_text}",
     )
     detailed = _invoke(
         client,

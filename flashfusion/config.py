@@ -79,3 +79,11 @@ AUTOIOT_PAPER_REQUIRE_TAVILY: bool = True
 AUTOIOT_PAPER_MAX_TERMS: int = 6
 AUTOIOT_PAPER_MAX_URLS_PER_TERM: int = 2
 AUTOIOT_PAPER_HTTP_TIMEOUT_S: float = 12.0
+
+# ---------------------------------------------------------------------------
+# LLMSense baseline defaults
+# ---------------------------------------------------------------------------
+LLMSENSE_MAX_ROWS_DIRECT: int = 120
+LLMSENSE_SUMMARY_WINDOW_MIN: int = 30
+LLMSENSE_HISTORY_HOURS: int = 6
+LLMSENSE_SENSOR_HZ: float = 20.0

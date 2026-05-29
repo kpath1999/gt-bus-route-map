@@ -398,3 +398,198 @@ def test_autoiot_paper_improvement_prompt_uses_execution_feedback() -> None:
     assert len(improve_inputs) == 1
     assert "Execution stderr" in improve_inputs[0]
     assert "NameError: x is not defined" in improve_inputs[0]
+
+
+def test_hargpt_paper_classification_happy_path() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "What activity is user 1600 doing based on these IMU readings?"
+    r = _result("HARGPT_PAPER", query)
+
+    with patch.object(
+        hargpt_paper,
+        "_invoke",
+        return_value="Step-by-step analysis...\nFinal label: Walking",
+    ):
+        out = hargpt_paper.run_hargpt_paper(query, _df(), _client(), r)
+
+    assert out.rejected is False
+    assert out.executed is False
+    assert "Predicted activity: Walking" == out.answer
+    assert "hargpt_infer" in out.stages_run
+    assert "hargpt_parse" in out.stages_run
+    assert out.execution_attempts
+
+
+def test_hargpt_paper_rejects_non_classification_query() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "What is the maximum recorded x-acceleration for user 15?"
+    r = _result("HARGPT_PAPER", query)
+
+    with patch.object(hargpt_paper, "_invoke") as fake_invoke:
+        out = hargpt_paper.run_hargpt_paper(query, _df(), _client(), r)
+
+    fake_invoke.assert_not_called()
+    assert out.rejected is True
+    assert out.executed is False
+    assert "classification" in out.rejection_reason.lower()
+
+
+def test_hargpt_paper_rejects_non_imu_schema() -> None:
+    from flashfusion.baselines.hargpt_paper import run_hargpt_paper
+
+    query = "What activity is this ECG trace showing?"
+    r = _result("HARGPT_PAPER", query)
+    ecg_df = pd.DataFrame({"record_id": [101], "MLII": [0.1], "time_s": [0.0]})
+
+    out = run_hargpt_paper(query, ecg_df, _client(), r)
+
+    assert out.rejected is True
+    assert out.executed is False
+    assert "x, y, z" in out.rejection_reason
+
+
+def test_runner_dispatches_hargpt_paper_mode() -> None:
+    client = _client()
+    runner = BaselineRunner(mode="HARGPT_PAPER", df=_df(), client=client)
+
+    with patch("flashfusion.baselines.hargpt_paper.run_hargpt_paper") as fn:
+        runner.run("What activity is user 1600 doing?")
+
+    fn.assert_called_once()
+
+
+def test_runner_dispatches_llmsense_paper_mode() -> None:
+    client = _client()
+    runner = BaselineRunner(mode="LLMSENSE_PAPER", df=_df(), client=client)
+
+    with patch("flashfusion.baselines.llmsense_paper.run_llmsense_paper") as fn:
+        runner.run("Summarize user activities")
+
+    fn.assert_called_once()
+
+
+def test_llmsense_paper_short_trace_uses_narration_path() -> None:
+    from flashfusion.baselines.llmsense_paper import run_llmsense_paper
+
+    query = "What activities appear in this trace?"
+    r = _result("LLMSENSE_PAPER", query)
+
+    with patch("flashfusion.baselines.llmsense_paper._stage_narrate", return_value="narrative") as narrate_fn, patch(
+        "flashfusion.baselines.llmsense_paper._stage_summarize"
+    ) as summarize_fn, patch(
+        "flashfusion.baselines.llmsense_paper._stage_reason", return_value="answer"
+    ) as reason_fn:
+        out = run_llmsense_paper(query, _df(), _client(), r)
+
+    narrate_fn.assert_called_once()
+    summarize_fn.assert_not_called()
+    reason_fn.assert_called_once()
+    assert out.answer == "answer"
+    assert out.trace == "narrative"
+    assert out.executed is False
+    assert out.rejected is False
+    assert out.judge_verdict == {}
+    assert out.stages_run == ["N_narrate", "R_reason"]
+
+
+def test_llmsense_paper_long_trace_uses_summarization_path() -> None:
+    from flashfusion.baselines.llmsense_paper import run_llmsense_paper
+
+    query = "Which users show transitions?"
+    r = _result("LLMSENSE_PAPER", query)
+
+    long_df = pd.DataFrame(
+        {
+            "subject_id": [1600] * 130,
+            "activity_label": ["A"] * 130,
+            "timestamp": list(range(130)),
+            "x": [0.1] * 130,
+            "y": [0.2] * 130,
+            "z": [0.3] * 130,
+        }
+    )
+
+    with patch("flashfusion.baselines.llmsense_paper._stage_narrate") as narrate_fn, patch(
+        "flashfusion.baselines.llmsense_paper._stage_summarize", return_value="summary"
+    ) as summarize_fn, patch(
+        "flashfusion.baselines.llmsense_paper._stage_reason", return_value="answer"
+    ) as reason_fn:
+        out = run_llmsense_paper(query, long_df, _client(), r)
+
+    narrate_fn.assert_not_called()
+    summarize_fn.assert_called_once()
+    reason_fn.assert_called_once()
+    assert out.answer == "answer"
+    assert out.trace == "summary"
+    assert out.executed is False
+    assert out.rejected is False
+    assert out.judge_verdict == {}
+    assert out.stages_run == ["S_summarize", "R_reason"]
+
+
+def _ecg_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "record_id": ["100", "100"],
+            "time_s": [0.0, 0.003],
+            "MLII": [0.96, 0.97],
+            "V1": [0.01, 0.02],
+            "annotation": ["N", "N"],
+        }
+    )
+
+
+def _bus_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "timestamp": ["2024-01-01 08:00:00", "2024-01-01 08:01:00"],
+            "latitude": [51.5, 51.51],
+            "longitude": [-0.1, -0.11],
+            "accel_mean": [0.05, 0.08],
+            "accel_variance": [0.001, 0.003],
+        }
+    )
+
+
+def test_hargpt_paper_ecg_fallback_uses_narrative_path() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "What is the dominant rhythm in this ECG segment?"
+    r = _result("HARGPT_PAPER", query)
+
+    with patch.object(
+        hargpt_paper,
+        "_invoke_narrative",
+        return_value="Step 1: signals appear normal.\nFinal answer: Normal sinus rhythm",
+    ):
+        out = hargpt_paper.run_hargpt_paper(query, _ecg_df(), _client(), r)
+
+    assert out.rejected is False
+    assert out.executed is False
+    assert out.answer == "Normal sinus rhythm"
+    assert "hargpt_ecg_window" in out.stages_run
+    assert "hargpt_ecg_infer" in out.stages_run
+    assert "hargpt_ecg_parse" in out.stages_run
+
+
+def test_hargpt_paper_bus_fallback_uses_narrative_path() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "Are there any high-vibration segments in this bus route?"
+    r = _result("HARGPT_PAPER", query)
+
+    with patch.object(
+        hargpt_paper,
+        "_invoke_narrative",
+        return_value="Step 1: accel variance spikes detected.\nFinal answer: High vibration road segment identified",
+    ):
+        out = hargpt_paper.run_hargpt_paper(query, _bus_df(), _client(), r)
+
+    assert out.rejected is False
+    assert out.executed is False
+    assert out.answer == "High vibration road segment identified"
+    assert "hargpt_bus_window" in out.stages_run
+    assert "hargpt_bus_infer" in out.stages_run
+    assert "hargpt_bus_parse" in out.stages_run

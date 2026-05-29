@@ -212,6 +212,7 @@ class BaselineRunner:
         "LLM_ONLY"     — B0: raw 20-row CSV + query → single LLM call
         "WELLMAX_ONLY"  — B3: S1 + S2 + S3 → grounded query → pandas agent
         "AGENT_ONLY"  — Agent: raw query → pandas agent
+        "LLMSENSE_PAPER" — narration/summarization + reasoning over narrative text
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
     For rewriting baselines (WellMax/Flash-Fusion), derived features are applied
@@ -225,6 +226,8 @@ class BaselineRunner:
             "AGENT_ONLY",
             "AUTOIOT_PAPER",
             "FLASH_FUSION",
+            "HARGPT_PAPER",
+            "LLMSENSE_PAPER",
         }
     )
 
@@ -321,13 +324,15 @@ class BaselineRunner:
         )
         t0 = time.time()
 
-        if not self._enrichment_applied and self.mode in {"WELLMAX_ONLY", "FLASH_FUSION"}:
+        if not self._enrichment_applied and self.mode in {"WELLMAX_ONLY", "FLASH_FUSION", "LLMSENSE_PAPER"}:
             self.df, _ = self._apply_default_enrichment(self.df)
             self._enrichment_applied = True
 
         from flashfusion.baselines.agent_only import run_agent_only
         from flashfusion.baselines.autoiot_paper import run_autoiot_paper
         from flashfusion.baselines.flash_fusion import run_flash_fusion
+        from flashfusion.baselines.hargpt_paper import run_hargpt_paper
+        from flashfusion.baselines.llmsense_paper import run_llmsense_paper
         from flashfusion.baselines.llm_only import run_llm_only
         from flashfusion.baselines.wellmax_only import run_wellmax_only
 
@@ -341,6 +346,10 @@ class BaselineRunner:
             run_autoiot_paper(query, self.df, self.client, r)
         elif self.mode == "FLASH_FUSION":
             run_flash_fusion(query, self.df, self.client, r)
+        elif self.mode == "HARGPT_PAPER":
+            run_hargpt_paper(query, self.df, self.client, r)
+        elif self.mode == "LLMSENSE_PAPER":
+            run_llmsense_paper(query, self.df, self.client, r)
 
         r.latency_s = time.time() - t0
         r.input_tokens = self.client.total_input_tokens()
