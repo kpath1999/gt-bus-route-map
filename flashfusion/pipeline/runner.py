@@ -248,6 +248,12 @@ class BaselineRunner:
         Raises:
             ValueError: If mode is not in self.MODES.
         """
+        # DEBUG: Check what df we receive
+        import sys
+        print(f"[RUNNER INIT DEBUG] mode={mode}, df len={len(df)}, df cols={list(df.columns) if hasattr(df, 'columns') else 'N/A'}", file=sys.stderr, flush=True)
+        if len(df) > 0:
+            print(f"[RUNNER INIT DEBUG] df.head(3):\n{df.head(3)}", file=sys.stderr, flush=True)
+        
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}, got {mode!r}")
         self.mode = mode
@@ -347,6 +353,11 @@ class BaselineRunner:
         elif self.mode == "FLASH_FUSION":
             run_flash_fusion(query, self.df, self.client, r)
         elif self.mode == "HARGPT_PAPER":
+            # DEBUG: Check dataframe before calling HARGPT
+            import sys
+            print(f"[RUNNER DEBUG] Before HARGPT call - df len={len(self.df)}, cols={list(self.df.columns) if hasattr(self.df, 'columns') else 'N/A'}", file=sys.stderr, flush=True)
+            if len(self.df) > 0:
+                print(f"[RUNNER DEBUG] df.head(3):\n{self.df.head(3)}", file=sys.stderr, flush=True)
             run_hargpt_paper(query, self.df, self.client, r)
         elif self.mode == "LLMSENSE_PAPER":
             run_llmsense_paper(query, self.df, self.client, r)

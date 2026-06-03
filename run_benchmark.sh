@@ -85,6 +85,9 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
     set -a; source "${SCRIPT_DIR}/.env"; set +a
 fi
 
+export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
+export TRANSFORMERS_NO_ADVISORY_WARNINGS="${TRANSFORMERS_NO_ADVISORY_WARNINGS:-1}"
+
 # ── Detect Python (prefer venv) ───────────────────────────────────────────────
 if [ -f ".venv/bin/python" ]; then
     PYTHON=".venv/bin/python"
@@ -106,6 +109,7 @@ RUNS="${RUNS:-3}"
 MAX_LATENCY="${MAX_LATENCY:-30.0}"
 MODEL="${MODEL:-}"
 GROUND_TRUTH="${GROUND_TRUTH:-}"
+DEBUG_BENCHMARK="${DEBUG_BENCHMARK:-0}"
 
 print_help() {
     cat <<'EOF'
@@ -229,59 +233,160 @@ if ! "$PYTHON" -c "import matplotlib" >/dev/null 2>&1; then
     exit 1
 fi
 
-# ── [DEBUG] Groq API connectivity probe ──────────────────────────────────────
-# echo ""
-# echo "▶  [DEBUG]  Probing Groq API connectivity (curl + Python)…"
-# _GROQ_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-#     --max-time 10 \
-#     -H "Authorization: Bearer ${GROQ_API_KEY}" \
-#     "https://api.groq.com/openai/v1/models" 2>/dev/null || true)
-# echo "  curl HTTP status for api.groq.com/models: ${_GROQ_HTTP_STATUS}"
-# if [[ "$_GROQ_HTTP_STATUS" != "200" ]]; then
-#     echo "  WARNING: Groq API probe returned non-200. Network or key issue likely."
-# fi
+if [ "$DEBUG_BENCHMARK" = "1" ]; then
+    echo ""
+    echo "▶  [DEBUG]  Benchmark debugging enabled"
+    echo "  Python      : $PYTHON"
+    echo "  Working dir : $SCRIPT_DIR"
+    echo "  Dataset     : $DATASET"
+    echo "  Baselines   : $BASELINES"
+    echo "  Queries     : $QUERIES"
+    echo "  Runs        : $RUNS"
+    echo "  Model       : ${MODEL:-<default>}"
+    echo ""
+    echo "▶  [DEBUG]  Probing Groq API connectivity (curl + Python)…"
+    _GROQ_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+        --max-time 10 \
+        -H "Authorization: Bearer ${GROQ_API_KEY}" \
+        "https://api.groq.com/openai/v1/models" 2>/dev/null || true)
+    echo "  curl HTTP status for api.groq.com/models: ${_GROQ_HTTP_STATUS}"
+    if [[ "$_GROQ_HTTP_STATUS" != "200" ]]; then
+        echo "  WARNING: Groq API probe returned non-200. Network or key issue likely."
+    fi
 
-# echo "  [curl] testing chat completion endpoint..."
-# _GROQ_CHAT_STATUS=$(curl -s -o /tmp/flashfusion_groq_probe.json -w "%{http_code}" \
-#     --max-time 20 \
-#     -H "Authorization: Bearer ${GROQ_API_KEY}" \
-#     -H "Content-Type: application/json" \
-#     -d '{"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
-#     "https://api.groq.com/openai/v1/chat/completions" 2>/dev/null || true)
-# echo "  [curl] chat completion HTTP status: ${_GROQ_CHAT_STATUS}"
-# if [[ -f /tmp/flashfusion_groq_probe.json ]]; then
-#     echo "  [curl] response preview: $(head -c 160 /tmp/flashfusion_groq_probe.json | tr '\n' ' ')"
-# fi
+    echo "  [curl] testing chat completion endpoint..."
+    _GROQ_CHAT_STATUS=$(curl -s -o /tmp/flashfusion_groq_probe.json -w "%{http_code}" \
+        --max-time 20 \
+        -H "Authorization: Bearer ${GROQ_API_KEY}" \
+        -H "Content-Type: application/json" \
+        -d '{"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
+        "https://api.groq.com/openai/v1/chat/completions" 2>/dev/null || true)
+    echo "  [curl] chat completion HTTP status: ${_GROQ_CHAT_STATUS}"
+    if [[ -f /tmp/flashfusion_groq_probe.json ]]; then
+        echo "  [curl] response preview: $(head -c 160 /tmp/flashfusion_groq_probe.json | tr '\n' ' ')"
+    fi
 
-# "$PYTHON" - <<PYEOF
-# import os, sys, time
-# print("  [PY] Python version:", sys.version.split()[0], flush=True)
-# try:
-#     print("  [PY] importing langchain_groq...", flush=True)
-#     from langchain_groq import ChatGroq
-#     print("  [PY] langchain_groq imported OK", flush=True)
-# except ImportError as e:
-#     print(f"  [PY] ERROR: {e}", flush=True)
-#     sys.exit(1)
-# try:
-#     print("  [PY] importing langchain_core pieces...", flush=True)
-#     from langchain_core.prompts import ChatPromptTemplate
-#     from langchain_core.output_parsers import StrOutputParser
-#     print("  [PY] langchain_core imports OK", flush=True)
-#     key = os.environ.get("GROQ_API_KEY","")
-#     print("  [PY] constructing ChatGroq client...", flush=True)
-#     llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
-#     print("  [PY] ChatGroq client constructed", flush=True)
-#     chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
-#     print("  [PY] invoking LangChain pipeline...", flush=True)
-#     t0 = time.time()
-#     resp = chain.invoke({})
-#     latency = time.time() - t0
-#     print(f"  [PY] Groq API ping OK  ({latency:.2f}s): {resp[:60]!r}", flush=True)
-# except Exception as e:
-#     print(f"  [PY] Groq API ping FAILED: {type(e).__name__}: {e}", flush=True)
-# PYEOF
-# echo ""
+    "$PYTHON" - <<'PYEOF'
+import importlib.metadata as md
+packages = [
+    "langchain-groq",
+    "langchain-core",
+    "langchain",
+    "langchain-classic",
+    "groq",
+    "transformers",
+    "sentence-transformers",
+    "pydantic",
+    "httpx",
+]
+print("  [PY] Installed package versions:", flush=True)
+for name in packages:
+    try:
+        print(f"    {name}=={md.version(name)}", flush=True)
+    except md.PackageNotFoundError:
+        print(f"    {name}=<not installed>", flush=True)
+PYEOF
+
+    _py_status=0
+    if command -v timeout >/dev/null 2>&1; then
+        timeout 30 "$PYTHON" - <<'PYEOF'
+import os, sys, time
+print("  [PY] Python version:", sys.version.split()[0], flush=True)
+try:
+    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
+    from langchain_core.output_parsers import StrOutputParser
+    print("  [PY] langchain_core imported OK", flush=True)
+except Exception as e:
+    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
+    sys.exit(1)
+try:
+    print("  [PY] importing langchain_groq...", flush=True)
+    from langchain_groq import ChatGroq
+    from langchain_core.prompts import ChatPromptTemplate
+    print("  [PY] langchain_groq imported OK", flush=True)
+    key = os.environ.get("GROQ_API_KEY", "")
+    print("  [PY] constructing ChatGroq client...", flush=True)
+    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    print("  [PY] ChatGroq client constructed", flush=True)
+    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
+    print("  [PY] invoking LangChain pipeline...", flush=True)
+    t0 = time.time()
+    resp = chain.invoke({})
+    latency = time.time() - t0
+    print(f"  [PY] Groq API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
+except Exception as e:
+    print(f"  [PY] Groq API ping FAILED: {type(e).__name__}: {e}", flush=True)
+PYEOF
+        _py_status=$?
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout 30 "$PYTHON" - <<'PYEOF'
+import os, sys, time
+print("  [PY] Python version:", sys.version.split()[0], flush=True)
+try:
+    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
+    from langchain_core.output_parsers import StrOutputParser
+    print("  [PY] langchain_core imported OK", flush=True)
+except Exception as e:
+    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
+    sys.exit(1)
+try:
+    print("  [PY] importing langchain_groq...", flush=True)
+    from langchain_groq import ChatGroq
+    from langchain_core.prompts import ChatPromptTemplate
+    print("  [PY] langchain_groq imported OK", flush=True)
+    key = os.environ.get("GROQ_API_KEY", "")
+    print("  [PY] constructing ChatGroq client...", flush=True)
+    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    print("  [PY] ChatGroq client constructed", flush=True)
+    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
+    print("  [PY] invoking LangChain pipeline...", flush=True)
+    t0 = time.time()
+    resp = chain.invoke({})
+    latency = time.time() - t0
+    print(f"  [PY] Groq API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
+except Exception as e:
+    print(f"  [PY] Groq API ping FAILED: {type(e).__name__}: {e}", flush=True)
+PYEOF
+        _py_status=$?
+    else
+        echo "  [DEBUG] timeout utility not found; Python import probe may block if imports hang."
+        "$PYTHON" - <<'PYEOF'
+import os, sys, time
+print("  [PY] Python version:", sys.version.split()[0], flush=True)
+try:
+    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
+    from langchain_core.output_parsers import StrOutputParser
+    print("  [PY] langchain_core imported OK", flush=True)
+except Exception as e:
+    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
+    sys.exit(1)
+try:
+    print("  [PY] importing langchain_groq...", flush=True)
+    from langchain_groq import ChatGroq
+    from langchain_core.prompts import ChatPromptTemplate
+    print("  [PY] langchain_groq imported OK", flush=True)
+    key = os.environ.get("GROQ_API_KEY", "")
+    print("  [PY] constructing ChatGroq client...", flush=True)
+    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    print("  [PY] ChatGroq client constructed", flush=True)
+    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
+    print("  [PY] invoking LangChain pipeline...", flush=True)
+    t0 = time.time()
+    resp = chain.invoke({})
+    latency = time.time() - t0
+    print(f"  [PY] Groq API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
+except Exception as e:
+    print(f"  [PY] Groq API ping FAILED: {type(e).__name__}: {e}", flush=True)
+PYEOF
+        _py_status=$?
+    fi
+    if [ $_py_status -eq 124 ]; then
+        echo "  [PY] Import probe timed out after 30s. This usually indicates a broken or pathological dependency import in the active venv."
+    elif [ $_py_status -ne 0 ]; then
+        echo "  [PY] Import probe exited with status ${_py_status}."
+    fi
+    echo ""
+fi
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -305,8 +410,12 @@ run_single_dataset() {
 
     echo ""
     echo "  ▷  [DS: $ds]  Step 1/3 — Running benchmark…"
+    if [ "$DEBUG_BENCHMARK" = "1" ]; then
+        echo "  [DEBUG] dataset=$ds data=$data_path gt=$gt_path"
+        echo "  [DEBUG] output=$bench_dir"
+    fi
 
-    local cmd=("$PYTHON" -m flashfusion.eval.benchmark
+    local cmd=("$PYTHON" -u -m flashfusion.eval.benchmark
         --data          "$data_path"
         --dataset       "$ds"
         --baselines     "$BASELINES"
@@ -318,7 +427,19 @@ run_single_dataset() {
         --output        "$bench_dir"
     )
     [ -n "$MODEL" ] && cmd+=(--model "$MODEL")
+    if [ "$DEBUG_BENCHMARK" = "1" ]; then
+        printf '  [DEBUG] cmd:'
+        printf ' %q' "${cmd[@]}"
+        printf '\n'
+        local step1_start
+        step1_start=$(date +%s)
+    fi
     "${cmd[@]}"
+    if [ "$DEBUG_BENCHMARK" = "1" ]; then
+        local step1_end
+        step1_end=$(date +%s)
+        echo "  [DEBUG] benchmark runtime: $(( step1_end - step1_start ))s"
+    fi
     echo "  ✓  [DS: $ds]  Benchmark → $bench_dir"
 
     echo ""
@@ -473,7 +594,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # ─────────────────────────────────────────────────────────────────────────────
 if [ "$DATASET" = "all" ]; then
 
-    RUN_DIR="$RUNS_BASE/run_all_${TIMESTAMP}"
+    RUN_PREFIX="${RUN_PREFIX:-run_all}"
+    RUN_DIR="$RUNS_BASE/${RUN_PREFIX}_${TIMESTAMP}"
     VISUALS_ALL_DIR="$RUN_DIR/visuals_all"
     mkdir -p "$VISUALS_ALL_DIR"
 
@@ -625,7 +747,7 @@ echo "           LLM judge artefacts written to $JUDGE_DIR)"
 echo ""
 
 # Build command as array so optional --model flag is handled cleanly
-CMD=("$PYTHON" -m flashfusion.eval.benchmark
+CMD=("$PYTHON" -u -m flashfusion.eval.benchmark
     --data          "$DATA_PATH"
     --dataset       "$DATASET"
     --baselines     "$BASELINES"
@@ -637,12 +759,18 @@ CMD=("$PYTHON" -m flashfusion.eval.benchmark
     --output        "$BENCHMARK_DIR"
 )
 [ -n "$MODEL" ] && CMD+=(--model "$MODEL")
-
-# _STEP1_START=$(date +%s)
-# echo "  [DEBUG] Step 1 started at $(date)"
+if [ "$DEBUG_BENCHMARK" = "1" ]; then
+    printf '  [DEBUG] cmd:'
+    printf ' %q' "${CMD[@]}"
+    printf '\n'
+    _STEP1_START=$(date +%s)
+    echo "  [DEBUG] Step 1 started at $(date)"
+fi
 "${CMD[@]}"
-# _STEP1_END=$(date +%s)
-# echo "  [DEBUG] Step 1 finished at $(date)  ($(( _STEP1_END - _STEP1_START ))s)"
+if [ "$DEBUG_BENCHMARK" = "1" ]; then
+    _STEP1_END=$(date +%s)
+    echo "  [DEBUG] Step 1 finished at $(date)  ($(( _STEP1_END - _STEP1_START ))s)"
+fi
 
 echo ""
 echo "  ✓  Benchmark complete → $BENCHMARK_DIR"

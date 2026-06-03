@@ -128,6 +128,12 @@ def _run_single_benchmark_iteration(
             )
             # print(f"  [DEBUG] Starting runner.run() at {time.strftime('%H:%M:%S')}", flush=True)
 
+            # DEBUG: Check df_base before passing to runner
+            import sys
+            print(f"[BENCHMARK DEBUG] df_base len={len(df_base)}, cols={list(df_base.columns)}", file=sys.stderr, flush=True)
+            if len(df_base) > 0:
+                print(f"[BENCHMARK DEBUG] df_base.head(3):\n{df_base.head(3)}", file=sys.stderr, flush=True)
+
             client = LLMClient(model_name=model_name, api_key=api_key)
             runner = BaselineRunner(
                 mode=baseline,
@@ -364,10 +370,15 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     if args.runs < 1:
         sys.exit("Error: --runs must be >= 1")
 
-    # print(f"[DEBUG] Loading dataset from {args.data!r} …", flush=True)
+    print(f"[DEBUG] Loading dataset from {args.data!r} with dataset={args.dataset!r} …", flush=True)
     _t_load = time.time()
     df_base = load_dataset_by_name(args.data, args.dataset)
-    # print(f"[DEBUG] Dataset loaded in {time.time()-_t_load:.2f}s  shape={df_base.shape}", flush=True)
+    print(f"[DEBUG] Dataset loaded in {time.time()-_t_load:.2f}s  shape={df_base.shape}  len={len(df_base)}", flush=True)
+    print(f"[DEBUG] df_base columns: {list(df_base.columns)}", flush=True)
+    if len(df_base) > 0:
+        print(f"[DEBUG] df_base.head(3):\n{df_base.head(3)}", flush=True)
+    else:
+        print(f"[DEBUG] WARNING: df_base is EMPTY after loading!", flush=True)
     os.makedirs(args.output, exist_ok=True)
     if args.runs == 1:
         results, _, _, _ = _run_single_benchmark_iteration(

@@ -408,46 +408,49 @@ def test_hargpt_paper_classification_happy_path() -> None:
 
     with patch.object(
         hargpt_paper,
-        "_invoke",
-        return_value="Step-by-step analysis...\nFinal label: Walking",
+        "_invoke_rewritten",
+        return_value="Step-by-step analysis...\nFinal answer: Walking",
     ):
         out = hargpt_paper.run_hargpt_paper(query, _df(), _client(), r)
 
     assert out.rejected is False
     assert out.executed is False
-    assert "Predicted activity: Walking" == out.answer
-    assert "hargpt_infer" in out.stages_run
-    assert "hargpt_parse" in out.stages_run
+    assert out.answer == "Walking"
+    assert "hargpt_wisdm_window" in out.stages_run
+    assert "hargpt_wisdm_rewrite" in out.stages_run
+    assert "hargpt_wisdm_infer" in out.stages_run
+    assert "hargpt_wisdm_parse" in out.stages_run
     assert out.execution_attempts
 
 
-def test_hargpt_paper_rejects_non_classification_query() -> None:
+def test_hargpt_paper_non_classification_query_uses_best_effort() -> None:
     from flashfusion.baselines import hargpt_paper
 
     query = "What is the maximum recorded x-acceleration for user 15?"
     r = _result("HARGPT_PAPER", query)
 
-    with patch.object(hargpt_paper, "_invoke") as fake_invoke:
+    with patch.object(hargpt_paper, "_invoke_rewritten", return_value="Final answer: 0.2") as fake_invoke:
         out = hargpt_paper.run_hargpt_paper(query, _df(), _client(), r)
 
-    fake_invoke.assert_not_called()
-    assert out.rejected is True
+    fake_invoke.assert_called_once()
+    assert out.rejected is False
     assert out.executed is False
-    assert "classification" in out.rejection_reason.lower()
+    assert out.answer == "0.2"
 
 
-def test_hargpt_paper_rejects_non_imu_schema() -> None:
-    from flashfusion.baselines.hargpt_paper import run_hargpt_paper
+def test_hargpt_paper_non_imu_schema_uses_best_effort() -> None:
+    from flashfusion.baselines import hargpt_paper
 
     query = "What activity is this ECG trace showing?"
     r = _result("HARGPT_PAPER", query)
     ecg_df = pd.DataFrame({"record_id": [101], "MLII": [0.1], "time_s": [0.0]})
 
-    out = run_hargpt_paper(query, ecg_df, _client(), r)
+    with patch.object(hargpt_paper, "_invoke_rewritten", return_value="Final answer: Best effort"):
+        out = hargpt_paper.run_hargpt_paper(query, ecg_df, _client(), r)
 
-    assert out.rejected is True
+    assert out.rejected is False
     assert out.executed is False
-    assert "x, y, z" in out.rejection_reason
+    assert "hargpt_wisdm_rewrite" in out.stages_run
 
 
 def test_runner_dispatches_hargpt_paper_mode() -> None:
@@ -561,7 +564,7 @@ def test_hargpt_paper_ecg_fallback_uses_narrative_path() -> None:
 
     with patch.object(
         hargpt_paper,
-        "_invoke_narrative",
+        "_invoke_rewritten",
         return_value="Step 1: signals appear normal.\nFinal answer: Normal sinus rhythm",
     ):
         out = hargpt_paper.run_hargpt_paper(query, _ecg_df(), _client(), r)
@@ -570,6 +573,7 @@ def test_hargpt_paper_ecg_fallback_uses_narrative_path() -> None:
     assert out.executed is False
     assert out.answer == "Normal sinus rhythm"
     assert "hargpt_ecg_window" in out.stages_run
+    assert "hargpt_ecg_rewrite" in out.stages_run
     assert "hargpt_ecg_infer" in out.stages_run
     assert "hargpt_ecg_parse" in out.stages_run
 
@@ -582,7 +586,7 @@ def test_hargpt_paper_bus_fallback_uses_narrative_path() -> None:
 
     with patch.object(
         hargpt_paper,
-        "_invoke_narrative",
+        "_invoke_rewritten",
         return_value="Step 1: accel variance spikes detected.\nFinal answer: High vibration road segment identified",
     ):
         out = hargpt_paper.run_hargpt_paper(query, _bus_df(), _client(), r)
@@ -591,5 +595,6 @@ def test_hargpt_paper_bus_fallback_uses_narrative_path() -> None:
     assert out.executed is False
     assert out.answer == "High vibration road segment identified"
     assert "hargpt_bus_window" in out.stages_run
+    assert "hargpt_bus_rewrite" in out.stages_run
     assert "hargpt_bus_infer" in out.stages_run
     assert "hargpt_bus_parse" in out.stages_run
