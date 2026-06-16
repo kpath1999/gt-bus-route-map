@@ -22,11 +22,11 @@ from flashfusion.pipeline.runner import LLMClient, RunResult
 
 _INSTRUCTION = "You are an expert on analyzing human activities based on IMU recordings."
 
-_WISDM_MAX_ROWS = 120
-_ECG_MAX_ROWS = 120
-_BUS_MAX_ROWS = 120
-_AXIS_MAX_VALUES = 60
-_CSV_MAX_ROWS = 80
+_WISDM_MAX_ROWS = 1500
+_ECG_MAX_ROWS = 2500
+_BUS_MAX_ROWS = 1000
+_AXIS_MAX_VALUES = 0
+_CSV_MAX_ROWS = 10000
 
 
 _WISDM_CONTENT_TEMPLATE = """\
@@ -185,13 +185,19 @@ def _truncate_for_query(df: pd.DataFrame, dataset: str, query: str) -> tuple[pd.
 	elif dataset == "bus":
 		max_rows = _BUS_MAX_ROWS
 
-	window = ordered.head(max_rows)
+	if len(ordered) > max_rows:
+		stride = max(1, len(ordered) // max_rows)
+		window = ordered.iloc[::stride].head(max_rows)
+	else:
+		window = ordered
+
 	meta = {
 		"rows_total": int(len(df)),
 		"rows_after_target_filter": int(len(work_df)),
 		"rows_used": int(len(window)),
 		"truncated": bool(len(work_df) > len(window)),
 		"target": target,
+		"stride": int(stride) if len(ordered) > max_rows else 1,
 	}
 	return window, meta
 

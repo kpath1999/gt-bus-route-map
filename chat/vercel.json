@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/chat.py": {
+    "chat/api/chat.py": {
       "maxDuration": 60
     },
     "api/health.py": {

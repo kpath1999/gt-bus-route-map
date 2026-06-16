@@ -259,7 +259,7 @@ if [ "$DEBUG_BENCHMARK" = "1" ]; then
         --max-time 20 \
         -H "Authorization: Bearer ${GROQ_API_KEY}" \
         -H "Content-Type: application/json" \
-        -d '{"model":"llama-3.1-8b-instant","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
+        -d '{"model":"llama-3.3-70b-versatile","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
         "https://api.groq.com/openai/v1/chat/completions" 2>/dev/null || true)
     echo "  [curl] chat completion HTTP status: ${_GROQ_CHAT_STATUS}"
     if [[ -f /tmp/flashfusion_groq_probe.json ]]; then
@@ -306,7 +306,7 @@ try:
     print("  [PY] langchain_groq imported OK", flush=True)
     key = os.environ.get("GROQ_API_KEY", "")
     print("  [PY] constructing ChatGroq client...", flush=True)
-    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    llm = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=key, temperature=0)
     print("  [PY] ChatGroq client constructed", flush=True)
     chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
     print("  [PY] invoking LangChain pipeline...", flush=True)
@@ -336,7 +336,7 @@ try:
     print("  [PY] langchain_groq imported OK", flush=True)
     key = os.environ.get("GROQ_API_KEY", "")
     print("  [PY] constructing ChatGroq client...", flush=True)
-    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    llm = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=key, temperature=0)
     print("  [PY] ChatGroq client constructed", flush=True)
     chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
     print("  [PY] invoking LangChain pipeline...", flush=True)
@@ -367,7 +367,7 @@ try:
     print("  [PY] langchain_groq imported OK", flush=True)
     key = os.environ.get("GROQ_API_KEY", "")
     print("  [PY] constructing ChatGroq client...", flush=True)
-    llm = ChatGroq(model="llama-3.1-8b-instant", groq_api_key=key, temperature=0)
+    llm = ChatGroq(model="llama-3.3-70b-versatile", groq_api_key=key, temperature=0)
     print("  [PY] ChatGroq client constructed", flush=True)
     chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
     print("  [PY] invoking LangChain pipeline...", flush=True)
