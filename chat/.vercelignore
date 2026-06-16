@@ -1,6 +1,7 @@
 .git
 .gitignore
 .vercel
+pyproject.toml
 __pycache__
 api/__pycache__
 data/**/*.pyc
