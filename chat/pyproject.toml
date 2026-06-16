@@ -1,0 +1,17 @@
+[project]
+name = "flash-fusion-chat"
+version = "0.1.0"
+description = "Vercel chat frontend and Groq-backed API for Flash-Fusion"
+requires-python = ">=3.12"
+dependencies = [
+  "groq>=0.9.0",
+  "python-dotenv>=1.0.1",
+  "pandas>=2.2.0",
+  "langchain-core>=0.3.0",
+  "langchain-groq>=0.2.0",
+  "langchain-classic>=1.0.0",
+  "langchain-experimental>=0.3.0",
+  "pydantic>=2.0.0",
+  "tabulate>=0.9.0",
+]
+entrypoint = "api.chat:handler"
