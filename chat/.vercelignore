@@ -6,4 +6,8 @@ __pycache__
 api/__pycache__
 data/**/*.pyc
 experiments
-playground
+playground/__pycache__
+playground/chat_public
+playground/exp_plan.md
+playground/fastmcp_run.py
+playground/output

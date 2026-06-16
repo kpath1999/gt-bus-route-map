@@ -13,7 +13,8 @@ from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 # Import chat handler at module level so Vercel bundles chat.py.
-from chat import handler as _ChatHandler  # noqa: E402
+# Vercel sets /var/task = project root (chat/), so api.chat is the correct path.
+from api.chat import handler as _ChatHandler  # noqa: E402
 
 try:
     from dotenv import load_dotenv
