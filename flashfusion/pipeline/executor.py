@@ -19,6 +19,7 @@ import multiprocessing as mp
 import os
 import platform
 import re
+import time
 from queue import Empty
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -77,6 +78,7 @@ class ExecutionDetails:
     final_code: str = ""
     tries: int = 0
     attempts: list[dict] = field(default_factory=list)
+    safe_execution_s: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -627,6 +629,7 @@ class ExecutionLayer:
         trace_steps: list[str] = []
         last_error = "(none)"
         last_code = ""
+        total_safe_exec_s = 0.0
 
         for i in range(1, AGENT_SAFE_MAX_ATTEMPTS + 1):
             code_text = self._client.invoke_chain(
@@ -645,13 +648,17 @@ class ExecutionLayer:
             trace_steps.append("Action: python_exec")
             trace_steps.append(f"Action Input: {code}")
 
+            exec_t0 = time.time()
             ok, exec_out = self._run_safe_code(code)
+            exec_latency_s = time.time() - exec_t0
+            total_safe_exec_s += exec_latency_s
             attempts.append(
                 {
                     "attempt": i,
                     "code": code,
                     "ok": ok,
                     "output": exec_out,
+                    "exec_latency_s": exec_latency_s,
                 }
             )
             trace_steps.append(f"Observation: {exec_out}")
@@ -667,6 +674,7 @@ class ExecutionLayer:
                     final_code=code,
                     tries=i,
                     attempts=attempts,
+                    safe_execution_s=total_safe_exec_s,
                 )
 
             last_error = exec_out
@@ -677,6 +685,7 @@ class ExecutionLayer:
             final_code=last_code,
             tries=AGENT_SAFE_MAX_ATTEMPTS,
             attempts=attempts,
+            safe_execution_s=total_safe_exec_s,
         )
 
     def _extract_python_code(self, text: str) -> str:

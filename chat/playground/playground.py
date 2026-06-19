@@ -124,7 +124,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import pandas as pd
-from langchain_groq import ChatGroq
+from langchain_openrouter import ChatOpenRouter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.callbacks import BaseCallbackHandler
@@ -164,9 +164,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Default model pool for round-robin load spreading during long eval runs.
 DEFAULT_MODEL_POOL = [
-    "llama-3.3-70b-versatile",
+    "meta-llama/llama-3.3-70b-instruct",
     "meta-llama/llama-4-scout-17b-16e-instruct",
-    "groq/compound",
+    "meta-llama/llama-3.1-8b-instruct",
 ]
 
 # Approximate per-1M-token rates in USD. Can be overridden with env vars:
@@ -182,10 +182,9 @@ MODEL_RATE_PER_1M_TOKENS = {
         "input": 0.11,   # as in your original, or adjust from billing
         "output": 0.34,
     },
-    # Very large OpenAI OSS model, 131k context / 65k max output
-    "groq/compound": {
-        "input": 0.15,
-        "output": 0.60,
+    "meta-llama/llama-3.1-8b-instruct": {
+        "input": 0.05,
+        "output": 0.08,
     },
 }
 
@@ -522,7 +521,7 @@ def _compute_cost_usd(model_name: str, input_tokens: int, output_tokens: int) ->
 
 
 class LLMClient:
-    """Thin wrapper around ChatGroq that logs every invocation."""
+    """Thin wrapper around ChatOpenRouter that logs every invocation."""
 
     # you can alternate between models to avoid quota limits
     """    
@@ -544,14 +543,15 @@ class LLMClient:
     openai/gpt-oss-safeguard-20b
     """
     def __init__(self, model: str = "meta-llama/llama-4-scout-17b-16e-instruct"):
-        api_key = os.getenv("GROQ_API_KEY")
+        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY")
         if not api_key:
-            raise ValueError("Missing GROQ_API_KEY")
+            raise ValueError("Missing OPENROUTER_API_KEY (or GROQ_API_KEY for transition)")
         self.model_name = model
-        self.llm = ChatGroq(
-            groq_api_key=api_key,
-            model_name=model,
+        self.llm = ChatOpenRouter(
+            api_key=api_key,
+            model=model,
             temperature=0.0,
+            max_retries=2,
         )
         self.call_log: list[LLMCallLog] = []
 

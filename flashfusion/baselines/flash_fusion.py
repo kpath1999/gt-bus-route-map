@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import sys
+import time
 
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
@@ -79,6 +80,20 @@ def run_flash_fusion(
         r.answer = raw_answer; r.executed = True
     """
     last_stage = "init"
+    stage_latency_s = {
+        "s1": 0.0,
+        "s2": 0.0,
+        "s3": 0.0,
+        "guardrail": 0.0,
+        "agent": 0.0,
+    }
+
+    def record_stage(stage_key: str, start_s: float) -> None:
+        elapsed = max(0.0, time.time() - start_s)
+        stage_latency_s[stage_key] = stage_latency_s.get(stage_key, 0.0) + elapsed
+        r.stage_latency_s = dict(stage_latency_s)
+
+    r.stage_latency_s = dict(stage_latency_s)
     try:
         meta_str = meta_to_str(build_column_metadata(df))
 
@@ -90,7 +105,9 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting S1 for query: {query[:80]}...", file=sys.stderr, flush=True)
         last_stage = "S1"
+        stage_t0 = time.time()
         concepts = stage1.run(query)
+        record_stage("s1", stage_t0)
         r.s1_concepts = concepts
         r.stages_run.append("S1")
         if FF_DEBUG:
@@ -99,7 +116,9 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting S2...", file=sys.stderr, flush=True)
         last_stage = "S2"
+        stage_t0 = time.time()
         grounding = stage2.run(concepts, query, meta_str, df)
+        record_stage("s2", stage_t0)
         r.s2_grounding = grounding["raw_grounding"]
         r.stages_run.append("S2")
         if FF_DEBUG:
@@ -108,7 +127,9 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting S3...", file=sys.stderr, flush=True)
         last_stage = "S3"
+        stage_t0 = time.time()
         sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
+        record_stage("s3", stage_t0)
         r.s3_sub_queries = sub_result["sub_queries"]
         r.s3_synthesis_hint = sub_result["synthesis_hint"]
         r.stages_run.append("S3")
@@ -123,7 +144,9 @@ def run_flash_fusion(
         )
 
         last_stage = "guardrail"
+        stage_t0 = time.time()
         proceed, reason = executor.guardrail(grounded_query)
+        record_stage("guardrail", stage_t0)
         r.stages_run.append("guardrail")
         if not proceed:
             r.rejected = True
@@ -184,7 +207,9 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting agent execution...", file=sys.stderr, flush=True)
         last_stage = "agent"
+        stage_t0 = time.time()
         raw_answer, trace, details = executor.execute_single(grounded_query)
+        record_stage("agent", stage_t0)
         r.trace = trace
         r.executed = True
         r.final_code = details.final_code or ""

@@ -2,7 +2,7 @@
 =================
 Chat interface for Flash-Fusion data exploration.
 
-Serves a web chat UI and uses the Groq LLM with tool-calling to answer
+Serves a web chat UI and uses OpenRouter-backed LLM tool-calling to answer
 data questions through the Flash-Fusion MCP tool layer.
 
 Usage:
@@ -28,7 +28,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from groq import Groq
+from openai import OpenAI
 from pydantic import BaseModel
 
 # Load .env if python-dotenv is available
@@ -88,16 +88,16 @@ app.add_middleware(
 
 CHAT_PUBLIC_DIR = os.path.join(os.path.dirname(__file__), "chat_public")
 
-# ── Groq client ────────────────────────────────────────────
+# ── OpenRouter client ───────────────────────────────────────
 
-def _get_groq_client() -> Groq:
-    api_key = os.environ.get("GROQ_API_KEY")
+def _get_openrouter_client() -> OpenAI:
+    api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
     if not api_key:
-        raise RuntimeError("GROQ_API_KEY environment variable is not set")
-    return Groq(api_key=api_key)
+        raise RuntimeError("OPENROUTER_API_KEY (or GROQ_API_KEY for transition) is not set")
+    return OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
 
 
-# ── Tool definitions for Groq function-calling ─────────────
+# ── Tool definitions for OpenRouter function-calling ─────────
 
 TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
@@ -317,7 +317,7 @@ def detect_domain_from_query(query: str) -> str | None:
 
 def _llm_classify_domain(
     query: str,
-    client: Groq,
+    client: OpenAI,
     model: str,
     recent_history: list[dict[str, Any]] | None = None,
 ) -> str | None:
@@ -566,11 +566,11 @@ def _execute_tool(name: str, arguments: dict[str, Any]) -> str:
 
 
 def _chat_completion(
-    client: Groq,
+    client: OpenAI,
     messages: list[dict[str, Any]],
     model: str,
 ) -> dict[str, Any]:
-    """Run the Groq chat-completion loop with tool calls."""
+    """Run the OpenRouter chat-completion loop with tool calls."""
     for _round in range(MAX_TOOL_ROUNDS):
         response = client.chat.completions.create(
             model=model,
@@ -680,7 +680,7 @@ async def chat(req: ChatRequest):
     conversations[conv_id].append({"role": "user", "content": req.message})
 
     try:
-        client = _get_groq_client()
+        client = _get_openrouter_client()
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 

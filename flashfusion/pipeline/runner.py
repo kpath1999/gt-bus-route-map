@@ -60,7 +60,7 @@ class LLMClient:
     def __init__(self, model_name: str, api_key: str) -> None:
         """
         Args:
-            model_name: Groq model identifier (must be a key in config.MODEL_RATE_PER_1M_TOKENS).
+            model_name: Model identifier (must be a key in config.MODEL_RATE_PER_1M_TOKENS).
             api_key:    Provider API key (OPENROUTER_API_KEY preferred, GROQ_API_KEY fallback).
         """
         self.model_name = model_name
@@ -198,6 +198,9 @@ class RunResult:
     s2_grounding: str = ""                               # Stage 2 raw LLM grounding text
     s3_sub_queries: list = field(default_factory=list)   # Stage 3 concrete sub-questions
     s3_synthesis_hint: str = ""                          # Stage 3 synthesis guidance string
+
+    # Stage latency telemetry (seconds)
+    stage_latency_s: dict = field(default_factory=dict)   # canonical keys: s1,s2,s3,guardrail,agent
 
 
 # ---------------------------------------------------------------------------

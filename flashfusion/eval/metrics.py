@@ -79,6 +79,18 @@ def compute_latency(result: RunResult) -> dict:
     return {"total_s": result.latency_s}
 
 
+def _canonical_stage_latencies_s(result: RunResult) -> dict[str, float]:
+    """Return canonical stage latencies in seconds with stable defaults."""
+    src = result.stage_latency_s if isinstance(result.stage_latency_s, dict) else {}
+    return {
+        "s1": float(src.get("s1", 0.0) or 0.0),
+        "s2": float(src.get("s2", 0.0) or 0.0),
+        "s3": float(src.get("s3", 0.0) or 0.0),
+        "guardrail": float(src.get("guardrail", 0.0) or 0.0),
+        "agent": float(src.get("agent", 0.0) or 0.0),
+    }
+
+
 def compute_cost(result: RunResult) -> dict:
     """
     Extract cost metrics from a RunResult.
@@ -175,6 +187,7 @@ def aggregate_metrics(
     for idx, r in enumerate(results, start=1):
         lat = compute_latency(r)
         cost = compute_cost(r)
+        stage_s = _canonical_stage_latencies_s(r)
         query_id = query_lookup.get(r.query, idx)
 
         score_and_verdict = judgment_by_key.get((r.baseline, query_id))
@@ -218,6 +231,16 @@ def aggregate_metrics(
                     else "N/A"
                 ),
                 "stages_run": ",".join(r.stages_run),
+                "s1_latency_s": stage_s["s1"],
+                "s2_latency_s": stage_s["s2"],
+                "s3_latency_s": stage_s["s3"],
+                "guardrail_latency_s": stage_s["guardrail"],
+                "agent_latency_s": stage_s["agent"],
+                "s1_latency_ms": stage_s["s1"] * 1000.0,
+                "s2_latency_ms": stage_s["s2"] * 1000.0,
+                "s3_latency_ms": stage_s["s3"] * 1000.0,
+                "guardrail_latency_ms": stage_s["guardrail"] * 1000.0,
+                "agent_latency_ms": stage_s["agent"] * 1000.0,
             }
         )
     df = pd.DataFrame(rows)

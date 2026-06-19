@@ -6,18 +6,18 @@ Usage:
 
     # Smoke test (3 queries × default 2 baselines)
     python -m flashfusion.eval.benchmark \\
-        --data chat/data/imu/WISDM_ar_v1.1_raw.txt \\
+        --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt \\
         --queries 1,4,10 \\
         --output flashfusion/eval_results/
 
     # Full benchmark
     python -m flashfusion.eval.benchmark \\
-        --data chat/data/imu/WISDM_ar_v1.1_raw.txt \\
+        --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt \\
         --baselines AGENT_ONLY,FLASH_FUSION \\
         --output flashfusion/eval_results/
 
 Environment:
-    GROQ_API_KEY — required; Groq API key for ChatGroq
+    OPENROUTER_API_KEY — preferred; GROQ_API_KEY accepted during transition
 
 See CLAUDE.md §eval/benchmark.py for the full run_benchmark() algorithm.
 """
@@ -62,8 +62,8 @@ ALL_BASELINES = [
 ]
 
 DEFAULT_DATA_PATHS = {
-    "wisdm": "chat/data/imu/WISDM_ar_v1.1_raw.txt",
-    "mit_ecg": "data/AutoIOT_dataset/ECG.0/",
+    "wisdm": "data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt",
+    "mit_ecg": "data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt",
     "bus": "data/bus/bus_data.csv",
 }
 
@@ -76,6 +76,20 @@ DEFAULT_GROUND_TRUTH_PATHS = {
 
 class QueryTimeoutError(TimeoutError):
     """Raised when a single query run exceeds the configured latency budget."""
+
+
+def _is_forbidden_chat_data_path(path: str) -> bool:
+    """Return True when path points to legacy chat/data content."""
+    normalized = os.path.normpath(path).replace("\\", "/")
+    if normalized == "chat/data" or normalized.startswith("chat/data/"):
+        return True
+    return "/chat/data/" in normalized
+
+
+def _is_under_data_root(path: str) -> bool:
+    """Return True when path resolves under a data/ segment."""
+    normalized = os.path.normpath(path).replace("\\", "/")
+    return normalized.startswith("data/") or "/data/" in normalized
 
 
 def _baseline_summary(metrics_df: pd.DataFrame) -> pd.DataFrame:
@@ -276,7 +290,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
 
     Implementation (see CLAUDE.md §eval/benchmark.py for full algorithm):
 
-        1. Validate GROQ_API_KEY in environment.
+        1. Validate OPENROUTER_API_KEY (or fallback GROQ_API_KEY) in environment.
         2. Resolve baselines list from args.baselines ("all" or comma-separated).
         3. Resolve query_ids list from args.queries ("all" or comma-separated ints).
         4. df_base = load_wisdm(args.data)
@@ -328,6 +342,18 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
                 f"Error: --data not provided and no default path configured for dataset '{args.dataset}'. "
                 f"Please specify --data explicitly."
             )
+
+    if _is_forbidden_chat_data_path(args.data):
+        sys.exit(
+            "Error: dataset path under chat/data is not allowed. "
+            "Use data/AutoIOT_dataset/IMU/ for WISDM, "
+            "data/AutoIOT_dataset/ECG.0/ for ECG, and data/bus/ for bus."
+        )
+    if not _is_under_data_root(args.data):
+        sys.exit(
+            "Error: dataset path must be under data/. "
+            "Use data/AutoIOT_dataset/IMU/, data/AutoIOT_dataset/ECG.0/, or data/bus/."
+        )
 
     # Infer ground truth path from dataset if using default
     if args.ground_truth == "flashfusion/eval/ground_truth/ground_truth_wisdm.json":
@@ -516,7 +542,7 @@ def _build_parser() -> argparse.ArgumentParser:
         --data       (required) Path to WISDM_ar_v1.1_raw.txt
         --baselines  (default "AGENT_ONLY,FLASH_FUSION") "all" or comma-separated baseline names
         --queries    (default "all") "all" or comma-separated 1-indexed query IDs
-        --model      (default config.DEFAULT_MODEL) Groq model identifier
+        --model      (default config.DEFAULT_MODEL) provider model identifier
         --output     (default "flashfusion/eval_results/") Output directory path
     """
     parser = argparse.ArgumentParser(
@@ -528,7 +554,7 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python -m flashfusion.eval.benchmark --data chat/data/imu/WISDM_ar_v1.1_raw.txt "
+            "  python -m flashfusion.eval.benchmark --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt "
             "--baselines AGENT_ONLY,FLASH_FUSION --queries 1,5,9,12\n"
             "  python -m flashfusion.eval.benchmark --data ... --baselines all"
         ),
@@ -564,7 +590,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--model",
         default=DEFAULT_MODEL,
-        help=f"Groq model identifier (default: {DEFAULT_MODEL})",
+        help=f"Model identifier (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--output",

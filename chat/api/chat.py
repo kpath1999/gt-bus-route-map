@@ -1,6 +1,6 @@
 """Vercel serverless handler for /api/chat.
 
-Domain-agnostic data exploration interface backed by Groq and the Flash-Fusion
+Domain-agnostic data exploration interface backed by OpenRouter and the Flash-Fusion
 analysis pipeline.  Loads actual datasets into Pandas DataFrames and drives
 a pandas agent (concept extraction → schema grounding → sub-query generation
 → agent execution → synthesis) for grounded, data-backed responses.
@@ -47,7 +47,7 @@ _PROJECT_ROOT = _CHAT_ROOT.parent
 sys.path.insert(0, str(_CHAT_ROOT / "playground"))
 
 import pandas as pd  # noqa: E402
-from groq import Groq  # noqa: E402
+from langchain_openrouter import ChatOpenRouter  # noqa: E402
 from playground import (  # noqa: E402
     load_data,
     export_ecg_record_to_csv,
@@ -74,7 +74,7 @@ DATASET_REGISTRY: dict[str, str] = {
 
 DEFAULT_ECG_RECORD = "100"
 
-DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "llama-3.1-8b-instant")
+DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
 DOMAIN_ROUTER_MIN_CONF = float(os.environ.get("DOMAIN_ROUTER_MIN_CONF", "0.42"))
 DOMAIN_ROUTER_MIN_MARGIN = float(os.environ.get("DOMAIN_ROUTER_MIN_MARGIN", "0.06"))
 
@@ -122,7 +122,7 @@ def _get_cached_path(domain: str, ecg_record: str | None = None) -> str:
     return _resolve_data_path(domain, ecg_record)
 
 # ── Probabilistic domain routing ────────────────────────────
-# Uses a small Groq model to score domain likelihoods and falls back to
+# Uses a small model to score domain likelihoods and falls back to
 # deterministic token-profile similarity when the router cannot be used.
 _DOMAIN_PROFILES: dict[str, str] = {
     "imu": (
@@ -201,32 +201,33 @@ def _domain_probabilities_llm(query: str, model: str) -> dict[str, float]:
         raise RuntimeError("OPENROUTER_API_KEY (or GROQ_API_KEY for transition) not configured")
 
     domains_json = json.dumps(_DOMAIN_PROFILES, ensure_ascii=True)
-    client = Groq(api_key=api_key)
-    completion = client.chat.completions.create(
+    llm = ChatOpenRouter(
         model=model,
+        api_key=api_key,
         temperature=0,
         max_tokens=180,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a domain intent classifier. "
-                    "Return strict JSON with probabilities for exactly these keys: ecg, imu, bus. "
-                    "Values must be floats in [0,1] and sum to 1."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
+        max_retries=2,
+    )
+    completion = llm.invoke(
+        [
+            (
+                "system",
+                "You are a domain intent classifier. "
+                "Return strict JSON with probabilities for exactly these keys: ecg, imu, bus. "
+                "Values must be floats in [0,1] and sum to 1.",
+            ),
+            (
+                "human",
+                (
                     f"Domain profiles: {domains_json}\n\n"
                     f"Query: {query}\n\n"
                     "Output JSON only, no explanation. "
                     "Preferred format: {\"ecg\": 0.10, \"imu\": 0.20, \"bus\": 0.70}"
                 ),
-            },
-        ],
+            ),
+        ]
     )
-    content = completion.choices[0].message.content if completion.choices else ""
+    content = str(getattr(completion, "content", "") or "")
     parsed = _extract_json_object(content or "")
     if "probabilities" in parsed and isinstance(parsed["probabilities"], dict):
         parsed = parsed["probabilities"]
@@ -383,7 +384,7 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "Empty message"})
             return
 
-        model = req.get("model", "llama-3.3-70b-versatile")
+        model = req.get("model", "meta-llama/llama-3.3-70b-instruct")
         explicit_domain: str | None = req.get("domain")
         ecg_record: str | None = req.get("ecg_record")
         confirmed: bool = req.get("confirmed", False)

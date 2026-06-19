@@ -33,7 +33,7 @@
 # Optional overrides (env vars):
 #   DATASET       wisdm | mit_ecg | bus | all   (default: all)
 #   WISDM_DATA    Path to raw WISDM .txt file
-#                   (default: chat/data/imu/WISDM_ar_v1.1_raw.txt)
+#                   (default: data/imu/WISDM_ar_v1.1_raw.txt)
 #   MIT_ECG_DATA  Path to consolidated MIT ECG txt file
 #                   (default: data/Agent_dataset/ECG.0/MIT_arrythmia_v1.txt)
 #   BUS_DATA      Path to bus telemetry CSV file

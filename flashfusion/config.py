@@ -76,8 +76,8 @@ TOKEN_ESTIMATE_MULTIPLIER: float = 1.3
 # ---------------------------------------------------------------------------
 # Default dataset paths (relative to repo root flash-fusion/)
 # ---------------------------------------------------------------------------
-WISDM_DEFAULT_PATH: str = "chat/data/imu/WISDM_ar_v1.1_raw.txt"
-WISDM_ARFF_DIR: str = "chat/data/imu/wisdm-dataset/arff_files"
+WISDM_DEFAULT_PATH: str = "data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt"
+WISDM_ARFF_DIR: str = "data/AutoIOT_dataset/IMU/wisdm-dataset/arff_files"
 
 # ---------------------------------------------------------------------------
 # AutoIOT paper-faithful baseline defaults

@@ -84,16 +84,21 @@ def load_wisdm(path: str) -> pd.DataFrame:
     return df
 
 
-def load_mit_arrythmia(path: str) -> pd.DataFrame:
+def load_mit_arrythmia(path: str, max_rows: int | None = None) -> pd.DataFrame:
     """
     Load consolidated MIT arrhythmia text into a clean DataFrame.
 
     Expected line format (headerless, semicolon-terminated):
         sample_idx,time_s,MLII,V1,record_id,annotation;
+
+    Args:
+        max_rows: If set, stop after collecting this many valid rows.
     """
     rows: list[list] = []
     with open(path, "r", encoding="utf-8", errors="replace") as fh:
         for line in fh:
+            if max_rows is not None and len(rows) >= max_rows:
+                break
             line = line.strip().rstrip(";").strip()
             if not line:
                 continue
@@ -168,12 +173,19 @@ def load_bus_data(path: str) -> pd.DataFrame:
     return df
 
 
-def load_dataset_by_name(path: str, dataset: str) -> pd.DataFrame:
-    """Load a supported benchmark dataset by identifier."""
+def load_dataset_by_name(
+    path: str, dataset: str, max_rows: int | None = None
+) -> pd.DataFrame:
+    """Load a supported benchmark dataset by identifier.
+
+    Args:
+        max_rows: Optional row cap forwarded to loaders that support it.
+                  Currently honoured by load_mit_arrythmia only.
+    """
     if dataset == DATASET_WISDM:
         return load_wisdm(path)
     if dataset == DATASET_MIT_ECG:
-        return load_mit_arrythmia(path)
+        return load_mit_arrythmia(path, max_rows=max_rows)
     if dataset == DATASET_BUS:
         return load_bus_data(path)
     raise ValueError(f"Unsupported dataset {dataset!r}")

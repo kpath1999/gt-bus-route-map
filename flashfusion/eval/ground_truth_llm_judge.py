@@ -22,7 +22,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.ground_truth import GroundTruthEntry, load_ground_truth
-from flashfusion.eval.ground_truth_builder import build_ground_truth
+from flashfusion.eval.build_groundtruth.ground_truth_builder import build_ground_truth
 from flashfusion.eval.queries import DATASET_WISDM, SUPPORTED_DATASETS, get_queries
 from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name

@@ -51,7 +51,7 @@ python -m flashfusion.llm_only.analyze
 python -m flashfusion.llm_only.plots
 ```
 
-Requires `GROQ_API_KEY` in the environment. Hard cost cap: `$5.00`.
+Requires `OPENROUTER_API_KEY` in the environment (`GROQ_API_KEY` accepted during transition). Hard cost cap: `$5.00`.
 
 ## Outputs
 
