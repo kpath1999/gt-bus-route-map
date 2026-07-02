@@ -26,6 +26,11 @@ python -m flashfusion.miniexp.latencychunks --model meta-llama/llama-3.1-8b-inst
 - Number of rows per chunk
 - Number of LLM calls
 ---
+
+Note!! Accuracy vs query size is run for different dataset sizes.
+It also records the latency stages.
+So you could easily get the latency stage metrics for when dataset size % is at 100.
+That would conclude your latency stage mini-experiment as well! Shooting two birds with one stone.
 ### 2. Dataset Size vs. Query Accuracy (`accuracysize.py`)
 **Purpose:** Investigate how query accuracy changes as we vary the dataset size.
 **Hypothesis:** Accuracy should remain relatively stable across different dataset sizes for well-grounded queries, though latency may increase.

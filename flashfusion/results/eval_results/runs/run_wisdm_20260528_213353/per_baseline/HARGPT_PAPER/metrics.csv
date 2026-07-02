@@ -1,0 +1,4 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run
+HARGPT_PAPER,1,0.0,guardrail_skip_unexpected_rejection,0.0918538570404052,0.0,0,0,False,True,,hargpt_scope
+HARGPT_PAPER,5,0.0,guardrail_skip_unexpected_rejection,0.0882351398468017,0.0,0,0,False,True,,hargpt_scope
+HARGPT_PAPER,9,1.0,guardrail_skip_expected_rejection,0.0903019905090332,0.0,0,0,False,True,,hargpt_scope

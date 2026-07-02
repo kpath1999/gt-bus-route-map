@@ -1,0 +1,4 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,LLMSENSE_PAPER,What is the maximum recorded x-acceleration for user 15?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,LLMSENSE_PAPER,Compare the overall acceleration magnitude between dynamic movements and resting states.,FAIL,0.0,Candidate answer does not provide a correct comparison of acceleration magnitude
+9,LLMSENSE_PAPER,How does the average walking speed in miles per hour correlate with the age of the users?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data

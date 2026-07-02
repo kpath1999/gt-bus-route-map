@@ -42,22 +42,22 @@ def _result(mode: str, query: str) -> RunResult:
 
 
 def test_agent_runs_agent_without_guardrail() -> None:
-    from flashfusion.baselines.agent_only import run_agent_only
+    from flashfusion.baselines.react_only import run_react_only
 
     query = "What is the average x-axis acceleration?"
-    r = _result("AGENT_ONLY", query)
+    r = _result("REACT_ONLY", query)
 
-    with patch("flashfusion.baselines.agent_only.ExecutionLayer") as execution_layer_cls:
+    with patch("flashfusion.baselines.react_only.ExecutionLayer") as execution_layer_cls:
         executor = execution_layer_cls.return_value
         executor.execute_single.return_value = ("answer", "trace", MagicMock(final_code="code", tries=1))
 
-        out = run_agent_only(query, _df(), _client(), r)
+        out = run_react_only(query, _df(), _client(), r)
 
     executor.guardrail.assert_not_called()
     executor.execute_single.assert_called_once_with(query)
     assert out.executed is True
     assert out.rejected is False
-    assert out.stages_run == ["agent"]
+    assert out.stages_run == ["react_agent"]
 
 
 def test_wellmax_executes_grounded_query_without_guardrail() -> None:
@@ -598,3 +598,57 @@ def test_hargpt_paper_bus_fallback_uses_narrative_path() -> None:
     assert "hargpt_bus_rewrite" in out.stages_run
     assert "hargpt_bus_infer" in out.stages_run
     assert "hargpt_bus_parse" in out.stages_run
+
+
+def test_hargpt_paper_records_budget_metadata() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "What activity is user 1600 doing based on these IMU readings?"
+    r = _result("HARGPT_PAPER", query)
+
+    with patch.object(
+        hargpt_paper,
+        "_invoke_rewritten",
+        return_value="Final answer: Walking",
+    ):
+        out = hargpt_paper.run_hargpt_paper(query, _df(), _client(), r)
+
+    assert out.execution_attempts
+    attempt = out.execution_attempts[-1]
+    assert attempt["budget_tokens_est"] > 0
+    assert attempt["est_prompt_tokens"] > 0
+    assert 0 < attempt["context_pct_window"] <= 100
+    assert 0 < attempt["context_pct_budget"] <= 100
+    assert attempt["prefilter_rows"] >= attempt["rows_used"]
+    assert isinstance(attempt["prefilter_applied"], bool)
+
+
+def test_hargpt_paper_prefilter_applies_on_large_input() -> None:
+    from flashfusion.baselines import hargpt_paper
+
+    query = "What activity is user 1600 doing based on these IMU readings?"
+    r = _result("HARGPT_PAPER", query)
+    large_df = pd.DataFrame(
+        {
+            "subject_id": [1600] * 30000,
+            "activity_label": ["A"] * 30000,
+            "timestamp": list(range(30000)),
+            "x": [0.1] * 30000,
+            "y": [0.2] * 30000,
+            "z": [0.3] * 30000,
+            "magnitude": [0.374] * 30000,
+            "activity_name": ["Walking"] * 30000,
+        }
+    )
+
+    with patch.object(
+        hargpt_paper,
+        "_invoke_rewritten",
+        return_value="Final answer: Walking",
+    ):
+        out = hargpt_paper.run_hargpt_paper(query, large_df, _client(), r)
+
+    attempt = out.execution_attempts[-1]
+    assert attempt["prefilter_applied"] is True
+    assert attempt["rows_used"] < len(large_df)
+    assert attempt["prefilter_rows"] < len(large_df)

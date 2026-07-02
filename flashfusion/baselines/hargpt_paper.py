@@ -25,8 +25,17 @@ _INSTRUCTION = "You are an expert on analyzing human activities based on IMU rec
 _WISDM_MAX_ROWS = 1500
 _ECG_MAX_ROWS = 2500
 _BUS_MAX_ROWS = 1000
-_AXIS_MAX_VALUES = 0
+_AXIS_MAX_VALUES = 32
 _CSV_MAX_ROWS = 10000
+
+# Calibrated from latencychunks observations: practical context saturation is
+# reached around ~310 chunks at ~200 tokens/chunk for 128k-window models.
+_CALIBRATION_CONTEXT_WINDOW_TOKENS = 128_000
+_CALIBRATION_EXHAUSTION_CHUNKS = 310
+_CALIBRATION_CHUNK_TOKEN_TARGET = 200
+_CALIBRATION_ACTUAL_TOKEN_RATIO = 1.9
+_CONTEXT_TARGET_SAFETY = 0.97
+_BUDGET_PREFILTER_BUFFER_ROWS = 512
 
 
 _WISDM_CONTENT_TEMPLATE = """\
@@ -140,6 +149,141 @@ def _format_axis(vals: Iterable[float]) -> str:
 	return "[" + " ".join(rounded) + "]"
 
 
+def _estimate_tokens(text: str) -> int:
+	"""Approximate token count with a chars/4 heuristic."""
+	if not text:
+		return 0
+	return max(1, len(text) // 4)
+
+
+def _default_budget_tokens_est() -> int:
+	"""Return calibrated prompt budget in estimator units.
+
+	The latency mini-experiment shows practical exhaustion near 310 chunks. We
+	target slightly under that point using the same correction ratio.
+	"""
+	estimated_window_tokens = _CALIBRATION_CONTEXT_WINDOW_TOKENS / _CALIBRATION_ACTUAL_TOKEN_RATIO
+	empirical_knee_tokens = (
+		_CALIBRATION_EXHAUSTION_CHUNKS * _CALIBRATION_CHUNK_TOKEN_TARGET
+	) / _CALIBRATION_ACTUAL_TOKEN_RATIO
+	target_estimated_tokens = min(estimated_window_tokens, empirical_knee_tokens)
+	return int(target_estimated_tokens * _CONTEXT_TARGET_SAFETY)
+
+
+def _estimate_prompt_overhead_tokens(dataset: str, query: str) -> int:
+	"""Estimate template + instruction overhead using an empty table excerpt."""
+	if dataset == "ecg":
+		dummy = _ECG_CONTENT_TEMPLATE.format(
+			mlii="[]",
+			v1="[]",
+			nrows=0,
+			table="",
+			query=query,
+		)
+		instruction = (
+			"You are an expert on analyzing time-series biosignals from ECG recordings. "
+			"Reason from the provided excerpt only."
+		)
+	elif dataset == "bus":
+		dummy = _BUS_CONTENT_TEMPLATE.format(
+			accel_mean="[]",
+			accel_variance="[]",
+			nrows=0,
+			table="",
+			query=query,
+		)
+		instruction = (
+			"You are an expert on analyzing transport telemetry and road-quality signals. "
+			"Reason from the provided excerpt only."
+		)
+	else:
+		dummy = _WISDM_CONTENT_TEMPLATE.format(
+			x_axis="[]",
+			y_axis="[]",
+			z_axis="[]",
+			labels="[]",
+			nrows=0,
+			table="",
+			query=query,
+		)
+		instruction = _INSTRUCTION
+
+	return _estimate_tokens(instruction) + _estimate_tokens(dummy)
+
+
+def _estimate_avg_row_tokens(df: pd.DataFrame, sample_size: int = 256) -> float:
+	"""Estimate average tokens/row from a small prefix sample."""
+	if df.empty:
+		return 1.0
+	sample = df.head(sample_size)
+	csv_text = sample.to_csv(index=False, float_format="%.4f")
+	lines = csv_text.splitlines()
+	if len(lines) <= 1:
+		return 1.0
+	row_lines = lines[1:]
+	row_token_total = sum(_estimate_tokens(line) for line in row_lines)
+	return max(1.0, row_token_total / max(1, len(row_lines)))
+
+
+def _budget_rows(
+	df: pd.DataFrame,
+	budget_tokens_est: int,
+	overhead_tokens_est: int,
+) -> tuple[pd.DataFrame, dict[str, object]]:
+	"""Select the largest contiguous prefix that fits the estimated prompt budget."""
+	if df.empty:
+		return df, {
+			"prefilter_rows": 0,
+			"available_data_tokens_est": 0,
+			"data_tokens_est": 0,
+			"est_prompt_tokens": overhead_tokens_est,
+			"context_pct_window": 0.0,
+			"context_pct_budget": 0.0,
+			"budget_tokens_est": int(budget_tokens_est),
+			"prefilter_applied": False,
+		}
+
+	available_data_tokens = max(1, budget_tokens_est - overhead_tokens_est)
+	avg_row_tokens = _estimate_avg_row_tokens(df)
+	rough_rows = int(available_data_tokens / avg_row_tokens) + _BUDGET_PREFILTER_BUFFER_ROWS
+	rough_rows = max(1, min(len(df), rough_rows))
+
+	pre_df = df.head(rough_rows)
+	csv_text = pre_df.to_csv(index=False, float_format="%.4f")
+	lines = csv_text.splitlines()
+	if len(lines) <= 1:
+		selected = pre_df.head(1)
+		data_tokens_est = 0
+	else:
+		header_tokens = _estimate_tokens(lines[0])
+		used_tokens = header_tokens
+		selected_rows = 0
+		for line in lines[1:]:
+			line_tokens = _estimate_tokens(line)
+			if selected_rows > 0 and used_tokens + line_tokens > available_data_tokens:
+				break
+			used_tokens += line_tokens
+			selected_rows += 1
+		selected_rows = max(1, selected_rows)
+		selected = pre_df.head(selected_rows)
+		data_tokens_est = used_tokens
+
+	est_prompt_tokens = overhead_tokens_est + data_tokens_est
+	context_pct_window = (est_prompt_tokens / _CALIBRATION_CONTEXT_WINDOW_TOKENS) * 100
+	context_pct_budget = (est_prompt_tokens / max(1, budget_tokens_est)) * 100
+	meta = {
+		"prefilter_rows": int(rough_rows),
+		"available_data_tokens_est": int(available_data_tokens),
+		"data_tokens_est": int(data_tokens_est),
+		"est_prompt_tokens": int(est_prompt_tokens),
+		"context_pct_window": float(context_pct_window),
+		"context_pct_budget": float(context_pct_budget),
+		"budget_tokens_est": int(budget_tokens_est),
+		"prefilter_applied": bool(rough_rows < len(df)),
+	}
+	return selected, meta
+
+
 def _extract_record_id(query: str) -> int | None:
 	m = re.search(r"\brecord[_\s-]*id\s+(\d+)\b", query.lower())
 	if not m:
@@ -179,17 +323,25 @@ def _truncate_for_query(df: pd.DataFrame, dataset: str, query: str) -> tuple[pd.
 				target = f"record_id={record_id}"
 
 	ordered = _sort_for_dataset(work_df)
-	max_rows = _WISDM_MAX_ROWS
+	legacy_max_rows = _WISDM_MAX_ROWS
 	if dataset == "ecg":
-		max_rows = _ECG_MAX_ROWS
+		legacy_max_rows = _ECG_MAX_ROWS
 	elif dataset == "bus":
-		max_rows = _BUS_MAX_ROWS
+		legacy_max_rows = _BUS_MAX_ROWS
 
-	if len(ordered) > max_rows:
-		stride = max(1, len(ordered) // max_rows)
-		window = ordered.iloc[::stride].head(max_rows)
-	else:
-		window = ordered
+	budget_tokens_est = _default_budget_tokens_est()
+	overhead_tokens_est = _estimate_prompt_overhead_tokens(dataset, query)
+	window, budget_meta = _budget_rows(
+		ordered,
+		budget_tokens_est=budget_tokens_est,
+		overhead_tokens_est=overhead_tokens_est,
+	)
+
+	# Keep legacy row caps as a hard stop if calibration over-estimates.
+	stride = 1
+	if len(window) > legacy_max_rows:
+		stride = max(1, len(window) // legacy_max_rows)
+		window = window.iloc[::stride].head(legacy_max_rows)
 
 	meta = {
 		"rows_total": int(len(df)),
@@ -197,7 +349,14 @@ def _truncate_for_query(df: pd.DataFrame, dataset: str, query: str) -> tuple[pd.
 		"rows_used": int(len(window)),
 		"truncated": bool(len(work_df) > len(window)),
 		"target": target,
-		"stride": int(stride) if len(ordered) > max_rows else 1,
+		"stride": int(stride),
+		"budget_tokens_est": int(budget_meta["budget_tokens_est"]),
+		"est_prompt_tokens": int(budget_meta["est_prompt_tokens"]),
+		"context_pct_window": float(budget_meta["context_pct_window"]),
+		"context_pct_budget": float(budget_meta["context_pct_budget"]),
+		"prefilter_rows": int(budget_meta["prefilter_rows"]),
+		"prefilter_applied": bool(budget_meta["prefilter_applied"]),
+		"overhead_tokens_est": int(overhead_tokens_est),
 	}
 	return window, meta
 
@@ -356,6 +515,14 @@ def run_hargpt_paper(query: str, df, client: LLMClient, r: RunResult) -> RunResu
 			"rows_used": meta["rows_used"],
 			"truncated": meta["truncated"],
 			"target": meta["target"],
+			"stride": meta["stride"],
+			"budget_tokens_est": meta["budget_tokens_est"],
+			"est_prompt_tokens": meta["est_prompt_tokens"],
+			"context_pct_window": meta["context_pct_window"],
+			"context_pct_budget": meta["context_pct_budget"],
+			"prefilter_rows": meta["prefilter_rows"],
+			"prefilter_applied": meta["prefilter_applied"],
+			"overhead_tokens_est": meta["overhead_tokens_est"],
 			"query_rewritten": True,
 		}
 	)

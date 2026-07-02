@@ -16,7 +16,7 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.59,
         "output": 0.79,
     },
-    "llama-3.3-70b-versatile": {
+    "meta-llama/llama-3.3-70b-versatile": {
         "input": 0.59,
         "output": 0.79,
     },
@@ -31,6 +31,14 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
     "meta-llama/llama-3.1-8b-instruct": {
         "input": 0.05,
         "output": 0.08,
+    },
+    "google/gemma-4-31b-it": {
+        "input": 0.12,
+        "output": 0.35,
+    },
+    "qwen/qwen-2.5-7b-instruct": {
+        "input": 0.07,
+        "output": 0.07,
     },
 }
 

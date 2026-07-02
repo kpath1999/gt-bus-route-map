@@ -1,0 +1,4 @@
+baseline,query_type,runs_n,accuracy_raw,accuracy_raw_std,latency_s,latency_s_std,input_tokens,input_tokens_std,output_tokens,output_tokens_std,cost_usd,cost_usd_std,accuracy_percent,accuracy_percent_std
+HARGPT_PAPER,Direct,3,0.0,0.0,0.0005889932314554788,0.0009931182325367376,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+HARGPT_PAPER,Reasoning,3,0.0,0.0,1.71661376953125e-05,3.866040150685674e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+HARGPT_PAPER,Out-of-Scope,3,1.0,0.0,1.6371409098307293e-05,1.2407696243918685e-07,0.0,0.0,0.0,0.0,0.0,0.0,100.0,0.0

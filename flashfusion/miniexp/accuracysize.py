@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Mini-experiment: dataset size vs. Flash-Fusion accuracy across datasets.
 
 This runner evaluates FLASH_FUSION on Q1-Q12 for each requested dataset and
@@ -12,7 +14,12 @@ Data policy:
 - Defaults resolve only under data/
 """
 
-from __future__ import annotations
+"""
+python -m flashfusion.miniexp.accuracysize \
+  --jsonl-input flashfusion/miniexp/results/accuracy_vs_size_query_metrics.jsonl \
+  --output-dir flashfusion/miniexp/results \
+  --plot
+"""
 
 import argparse
 import dataclasses
@@ -49,6 +56,43 @@ DEFAULT_DATA_PATHS: dict[str, str] = {
 DEFAULT_FRACTIONS = [0.2, 0.4, 0.6, 0.8, 1.0]
 DEFAULT_GT_ROOT = "flashfusion/eval/ground_truth/by_fraction"
 DEFAULT_OUTPUT_DIR = "flashfusion/miniexp/results"
+
+# ---------------------------------------------------------------------------
+# Visualization constants
+# ---------------------------------------------------------------------------
+_STAGE_KEYS: tuple[str, ...] = ("s1", "s2", "s3", "guardrail", "agent")
+_STAGE_LABELS: dict[str, str] = {
+    "s1": "Stage 1", "s2": "Stage 2", "s3": "Stage 3", "guardrail": "Guardrail", "agent": "Agent",
+}
+_STAGE_COLORS: dict[str, str] = {
+    "s1": "#2c8c4a", "s2": "#2f6ad9", "s3": "#f28e2b",
+    "guardrail": "#d62728", "agent": "#9467bd",
+}
+_DATASET_COLORS: dict[str, str] = {
+    "wisdm": "#2f6ad9", "mit_ecg": "#f28e2b", "bus": "#2c8c4a",
+}
+_QUERY_TYPE_ORDER: tuple[str, ...] = ("direct", "reasoning", "oos")
+_QUERY_TYPE_DISPLAY: dict[str, str] = {
+    "direct": "Direct", "reasoning": "Reasoning", "oos": "Out-of-Scope",
+}
+_PLOT_RCPARAMS: dict[str, Any] = {
+    "font.family": "DejaVu Sans",
+    "figure.facecolor": "#ffffff",
+    "axes.facecolor": "#ffffff",
+    "axes.edgecolor": "#222222",
+    "axes.linewidth": 1.8,
+    "axes.titlesize": 22,
+    "axes.titleweight": "bold",
+    "axes.labelsize": 20,
+    "axes.labelweight": "bold",
+    "xtick.labelsize": 18,
+    "ytick.labelsize": 18,
+    "legend.fontsize": 24,
+    "legend.title_fontsize": 24,
+    "grid.alpha": 0.55,
+    "grid.color": "#cccccc",
+    "grid.linewidth": 1.0,
+}
 
 
 def _is_forbidden_chat_data_path(path: str) -> bool:
@@ -192,6 +236,30 @@ def _count_lines(path: Path) -> int:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             count += chunk.count(b"\n")
     return count
+
+
+def _get_next_run_number(base_output_dir: str) -> int:
+    """Find the next available run number in base_output_dir.
+    
+    Scans for existing run_1/, run_2/, etc., and returns the next available number.
+    If no runs exist, returns 1.
+    """
+    base = Path(base_output_dir)
+    if not base.exists():
+        return 1
+    
+    existing_runs = []
+    for item in base.iterdir():
+        if item.is_dir() and item.name.startswith("run_"):
+            try:
+                run_num = int(item.name.split("_")[1])
+                existing_runs.append(run_num)
+            except (ValueError, IndexError):
+                pass
+    
+    if not existing_runs:
+        return 1
+    return max(existing_runs) + 1
 
 
 def generate_ground_truth(
@@ -377,6 +445,365 @@ def plot_results(summary_df: pd.DataFrame, output_dir: str) -> None:
     print(f"Saved plot to {out_path}")
 
 
+# ---------------------------------------------------------------------------
+# Helpers for JSONL-based plotting
+# ---------------------------------------------------------------------------
+
+def _normalize_query_type(complexity: str) -> str:
+    raw = (complexity or "").strip().lower()
+    if raw == "direct":
+        return "direct"
+    if raw == "intermediate":
+        return "reasoning"
+    if raw == "out_of_scope":
+        return "oos"
+    return "reasoning"
+
+
+def _build_query_type_map() -> dict[tuple[str, int], str]:
+    """Return {(dataset, query_id): query_type} for all supported datasets."""
+    result: dict[tuple[str, int], str] = {}
+    for dataset in SUPPORTED_DATASETS:
+        for q in get_queries(dataset):
+            result[(dataset, int(q["id"]))] = _normalize_query_type(str(q.get("complexity", "")))
+    return result
+
+
+def _load_jsonl(jsonl_path: str) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    with open(jsonl_path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                rows.append(json.loads(line))
+    if not rows:
+        raise ValueError(f"No rows found in {jsonl_path}")
+    return pd.DataFrame(rows)
+
+
+def plot_accuracy_vs_size_from_jsonl(jsonl_path: str, output_dir: str) -> None:
+    """Plot (1): query accuracy vs dataset size across datasets, from JSONL results.
+    
+    Includes confidence bands (±1 std dev) around each line.
+    """
+    df = _load_jsonl(jsonl_path)
+    agg = (
+        df.groupby(["dataset", "fraction"])["gt_score"]
+        .agg(["mean", "std"])
+        .reset_index()
+        .rename(columns={"mean": "avg_accuracy", "std": "std_accuracy"})
+        .sort_values(["dataset", "fraction"])
+    )
+    agg["std_accuracy"] = agg["std_accuracy"].fillna(0.0)
+
+    plt.rcParams.update(_PLOT_RCPARAMS)
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+
+    for dataset in sorted(agg["dataset"].unique()):
+        ds = agg[agg["dataset"] == dataset].sort_values("fraction")
+        x = ds["fraction"] * 100
+        y = ds["avg_accuracy"]
+        yerr = ds["std_accuracy"]
+        color = _DATASET_COLORS.get(dataset)
+        
+        # Plot confidence band (±std) as light semi-transparent fill
+        ax.fill_between(
+            x, y - yerr, y + yerr,
+            alpha=0.2,
+            color=color,
+        )
+        
+        # Plot line and markers
+        ax.plot(
+            x, y,
+            marker="o",
+            linewidth=2.2,
+            markersize=7,
+            color=color,
+            label=dataset.upper().replace("_", "-"),
+        )
+
+    ax.set_xlabel("Dataset Size (%)")
+    ax.set_ylabel("Average Query Accuracy")
+    ax.set_ylim(0, 1.05)
+    ax.set_xticks([20, 40, 60, 80, 100])
+    ax.grid(axis="y")
+    ax.set_axisbelow(True)
+    ax.legend(title="Dataset", loc="lower right")
+    fig.tight_layout()
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_png = os.path.join(output_dir, "accuracy_vs_size.png")
+    out_pdf = os.path.join(output_dir, "accuracy_vs_size.pdf")
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    fig.savefig(out_pdf, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Plot saved to {out_png}")
+    print(f"Plot saved to {out_pdf}")
+
+
+def plot_latency_stages_from_jsonl(jsonl_path: str, output_dir: str) -> None:
+    """Plot (2): Flash-Fusion stage latency swimlanes, averaged by query type at 100% fraction."""
+    df = _load_jsonl(jsonl_path)
+
+    df_full = df[df["fraction"] >= 1.0 - 1e-9].copy()
+    if df_full.empty:
+        print("No 100% fraction rows found; skipping latency-stages plot.")
+        return
+
+    qt_map = _build_query_type_map()
+    df_full["query_type"] = df_full.apply(
+        lambda r: qt_map.get((r["dataset"], int(r["query_id"])), "reasoning"), axis=1
+    )
+
+    stage_cols = [f"{s}_latency_s" for s in _STAGE_KEYS]
+    agg = df_full.groupby("query_type")[stage_cols].mean().reset_index()
+
+    # Ensure all query types are represented
+    for qt in _QUERY_TYPE_ORDER:
+        if qt not in agg["query_type"].values:
+            agg = pd.concat(
+                [agg, pd.DataFrame([{"query_type": qt, **{c: 0.0 for c in stage_cols}}])],
+                ignore_index=True,
+            )
+
+    agg["query_type"] = pd.Categorical(agg["query_type"], categories=list(_QUERY_TYPE_ORDER), ordered=True)
+    agg = agg.sort_values("query_type").reset_index(drop=True)
+
+    plt.rcParams.update({
+        **_PLOT_RCPARAMS,
+        "axes.titlesize": 17,
+        "axes.labelsize": 16,
+        "xtick.labelsize": 22.5,
+        "ytick.labelsize": 19,
+        "legend.fontsize": 19,
+        "legend.title_fontsize": 17,
+    })
+
+    labels = [_QUERY_TYPE_DISPLAY.get(str(q), str(q)) for q in agg["query_type"].tolist()]
+    y_pos = list(range(len(labels)))
+    left = [0.0] * len(labels)
+
+    fig, ax = plt.subplots(figsize=(11, 4.8))
+    for stage in _STAGE_KEYS:
+        values = agg[f"{stage}_latency_s"].astype(float).tolist()
+        ax.barh(
+            y_pos,
+            values,
+            left=left,
+            color=_STAGE_COLORS[stage],
+            edgecolor="white",
+            linewidth=0.8,
+            label=_STAGE_LABELS[stage],
+            height=0.56,
+        )
+        left = [l + v for l, v in zip(left, values)]
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel("Latency (s)")
+    # ax.set_ylabel("Query Type")
+    ax.grid(axis="x", alpha=0.25)
+    ax.set_axisbelow(True)
+    ax.legend(loc="upper right", title=None, ncol=2)
+    fig.tight_layout()
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_png = os.path.join(output_dir, "latency_by_stages.png")
+    out_pdf = os.path.join(output_dir, "latency_by_stages.pdf")
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    fig.savefig(out_pdf, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Plot saved to {out_png}")
+    print(f"Plot saved to {out_pdf}")
+
+
+def _load_jsonl_from_runs(base_output_dir: str) -> pd.DataFrame:
+    """Load and combine JSONL data from all run_N/ subdirectories.
+    
+    Adds a 'run_id' column to track which run each row came from.
+    """
+    all_dfs: list[pd.DataFrame] = []
+    base = Path(base_output_dir)
+    
+    # Scan for run_N directories
+    run_dirs = sorted(
+        [d for d in base.iterdir() if d.is_dir() and d.name.startswith("run_")],
+        key=lambda d: int(d.name.split("_")[1]) if d.name.split("_")[1].isdigit() else 0,
+    )
+    
+    if not run_dirs:
+        raise FileNotFoundError(f"No run_N directories found in {base_output_dir}")
+    
+    for run_dir in run_dirs:
+        jsonl_path = run_dir / "accuracy_vs_size_query_metrics.jsonl"
+        if jsonl_path.exists():
+            df = _load_jsonl(str(jsonl_path))
+            df["run_id"] = run_dir.name  # Add run identifier
+            all_dfs.append(df)
+            print(f"Loaded {len(df)} rows from {jsonl_path}")
+    
+    if not all_dfs:
+        raise FileNotFoundError(
+            f"No accuracy_vs_size_query_metrics.jsonl files found in run_N/ directories"
+        )
+    
+    combined = pd.concat(all_dfs, ignore_index=True)
+    print(f"Combined {len(combined)} total rows from {len(all_dfs)} runs")
+    return combined
+
+
+def plot_accuracy_across_runs(base_output_dir: str, output_dir: str) -> None:
+    """Plot accuracy across runs: one line per dataset, with ±std confidence bands."""
+    df = _load_jsonl_from_runs(base_output_dir)
+    
+    # First: compute average gt_score per (run, dataset, fraction)
+    run_averages = (
+        df.groupby(["run_id", "dataset", "fraction"])["gt_score"]
+        .mean()
+        .reset_index()
+        .rename(columns={"gt_score": "run_avg_accuracy"})
+    )
+    
+    # Second: compute mean and std across runs for each (dataset, fraction)
+    agg = (
+        run_averages.groupby(["dataset", "fraction"])["run_avg_accuracy"]
+        .agg(["mean", "std"])
+        .reset_index()
+        .rename(columns={"mean": "avg_accuracy", "std": "std_accuracy"})
+        .sort_values(["dataset", "fraction"])
+    )
+    agg["std_accuracy"] = agg["std_accuracy"].fillna(0.0)
+
+    plt.rcParams.update(_PLOT_RCPARAMS)
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+
+    for dataset in sorted(agg["dataset"].unique()):
+        ds = agg[agg["dataset"] == dataset].sort_values("fraction")
+        x = ds["fraction"] * 100
+        y = ds["avg_accuracy"]
+        yerr = ds["std_accuracy"]
+        color = _DATASET_COLORS.get(dataset)
+        
+        # Plot confidence band (±std) as light semi-transparent fill
+        ax.fill_between(
+            x, y - yerr, y + yerr,
+            alpha=0.2,
+            color=color,
+        )
+        
+        # Plot line and markers
+        ax.plot(
+            x, y,
+            marker="o",
+            linewidth=2.2,
+            markersize=7,
+            color=color,
+            label=dataset.upper().replace("_", "-"),
+        )
+
+    ax.set_xlabel("Dataset Size (%)")
+    ax.set_ylabel("Avg Query Accuracy (N=3)")
+    ax.set_ylim(0, 1.05)
+    ax.set_xticks([20, 40, 60, 80, 100])
+    ax.grid(axis="y")
+    ax.set_axisbelow(True)
+    ax.legend(title="Dataset", loc="lower right")
+    fig.tight_layout()
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_png = os.path.join(output_dir, "accuracy_across_runs.png")
+    out_pdf = os.path.join(output_dir, "accuracy_across_runs.pdf")
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    fig.savefig(out_pdf, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Plot saved to {out_png}")
+    print(f"Plot saved to {out_pdf}")
+
+
+def plot_latency_stages_across_runs(base_output_dir: str, output_dir: str) -> None:
+    """Plot latency stages across runs: swimlanes by query type at 100% fraction."""
+    df = _load_jsonl_from_runs(base_output_dir)
+
+    df_full = df[df["fraction"] >= 1.0 - 1e-9].copy()
+    if df_full.empty:
+        print("No 100% fraction rows found; skipping latency-stages-across-runs plot.")
+        return
+
+    qt_map = _build_query_type_map()
+    df_full["query_type"] = df_full.apply(
+        lambda r: qt_map.get((r["dataset"], int(r["query_id"])), "reasoning"), axis=1
+    )
+
+    stage_cols = [f"{s}_latency_s" for s in _STAGE_KEYS]
+    
+    # First: compute average per (run, query_type) for each stage
+    run_averages = df_full.groupby(["run_id", "query_type"])[stage_cols].mean().reset_index()
+    
+    # Second: compute mean across runs for each query_type
+    agg = run_averages.groupby("query_type")[stage_cols].mean().reset_index()
+
+    # Ensure all query types are represented
+    for qt in _QUERY_TYPE_ORDER:
+        if qt not in agg["query_type"].values:
+            agg = pd.concat(
+                [agg, pd.DataFrame([{"query_type": qt, **{c: 0.0 for c in stage_cols}}])],
+                ignore_index=True,
+            )
+
+    agg["query_type"] = pd.Categorical(agg["query_type"], categories=list(_QUERY_TYPE_ORDER), ordered=True)
+    agg = agg.sort_values("query_type").reset_index(drop=True)
+
+    plt.rcParams.update({
+        **_PLOT_RCPARAMS,
+        "axes.titlesize": 17,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 17.5,
+        "ytick.labelsize": 19,
+        "legend.fontsize": 17,
+        "legend.title_fontsize": 17,
+    })
+
+    labels = [_QUERY_TYPE_DISPLAY.get(str(q), str(q)) for q in agg["query_type"].tolist()]
+    y_pos = list(range(len(labels)))
+    left = [0.0] * len(labels)
+
+    fig, ax = plt.subplots(figsize=(11, 4.8))
+    for stage in _STAGE_KEYS:
+        values = agg[f"{stage}_latency_s"].astype(float).tolist()
+        ax.barh(
+            y_pos,
+            values,
+            left=left,
+            color=_STAGE_COLORS[stage],
+            edgecolor="white",
+            linewidth=0.8,
+            label=_STAGE_LABELS[stage],
+            height=0.56,
+        )
+        left = [l + v for l, v in zip(left, values)]
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel("Avg Latency (s)")
+    # ax.set_ylabel("Query Type")
+    ax.grid(axis="x", alpha=0.25)
+    ax.set_axisbelow(True)
+    ax.legend(loc="upper right", title=None, ncol=2)
+    fig.tight_layout()
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_png = os.path.join(output_dir, "latency_by_stages_across_runs.png")
+    out_pdf = os.path.join(output_dir, "latency_by_stages_across_runs.pdf")
+    fig.savefig(out_png, dpi=180, bbox_inches="tight")
+    fig.savefig(out_pdf, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Plot saved to {out_png}")
+    print(f"Plot saved to {out_pdf}")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Dataset-size vs query-accuracy experiment for Flash-Fusion.",
@@ -433,9 +860,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output directory",
     )
     parser.add_argument(
+        "--run-number",
+        type=int,
+        default=None,
+        help="Run number (default: auto-detect next available run_N). Results stored in output-dir/run_N/",
+    )
+    parser.add_argument(
         "--plot",
         action="store_true",
         help="Generate the three-line accuracy plot",
+    )
+    parser.add_argument(
+        "--jsonl-input",
+        default=None,
+        help=(
+            "Path to existing accuracy_vs_size_query_metrics.jsonl to plot (skips experiment). "
+            "Requires --plot to generate figures."
+        ),
+    )
+    parser.add_argument(
+        "--run-all",
+        action="store_true",
+        help=(
+            "Aggregate results across all run_N/ directories and generate aggregated plots. "
+            "Results stored in output-dir/run_all/. "
+        ),
     )
     parser.add_argument(
         "--dry-run-check-gt",
@@ -457,6 +906,31 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
+
+    # --run-all: aggregate results across all run_N/ directories
+    if args.run_all:
+        run_all_dir = os.path.join(args.output_dir, "run_all")
+        plot_accuracy_across_runs(args.output_dir, run_all_dir)
+        plot_latency_stages_across_runs(args.output_dir, run_all_dir)
+        print(f"Aggregated results stored in {run_all_dir}")
+        return
+
+    # Determine run number and create run_N subdirectory
+    if args.run_number is None:
+        run_number = _get_next_run_number(args.output_dir)
+    else:
+        run_number = args.run_number
+    
+    actual_output_dir = os.path.join(args.output_dir, f"run_{run_number}")
+
+    # --jsonl-input: plot from pre-existing results and exit (no LLM calls needed).
+    if args.jsonl_input:
+        if args.plot:
+            plot_accuracy_vs_size_from_jsonl(args.jsonl_input, actual_output_dir)
+            plot_latency_stages_from_jsonl(args.jsonl_input, actual_output_dir)
+        else:
+            print(f"Loaded {args.jsonl_input}. Pass --plot to generate figures.")
+        return
 
     fractions = sorted({float(f) for f in args.fractions})
     datasets = list(dict.fromkeys(args.datasets))
@@ -500,7 +974,7 @@ def main() -> None:
         datasets=datasets,
         fractions=fractions,
         gt_root=args.gt_root,
-        output_dir=args.output_dir,
+        output_dir=actual_output_dir,
         model=args.model,
         query_ids=active_query_ids,
         data_paths=data_paths,
@@ -508,10 +982,11 @@ def main() -> None:
 
     print(f"Saved per-query metrics rows: {len(query_metrics_df)}")
     print(f"Saved summary rows: {len(summary_df)}")
-    print(f"Summary CSV: {os.path.join(args.output_dir, 'accuracy_vs_size_summary.csv')}")
+    print(f"Summary CSV: {os.path.join(actual_output_dir, 'accuracy_vs_size_summary.csv')}")
+    print(f"Run directory: {actual_output_dir}")
 
     if args.plot:
-        plot_results(summary_df, args.output_dir)
+        plot_results(summary_df, actual_output_dir)
 
 
 if __name__ == "__main__":

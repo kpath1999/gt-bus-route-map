@@ -1,0 +1,4 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run
+LLMSENSE_PAPER,1,0.0,llm_judge_score,53.26723217964173,0.01194537,13202,5261,False,False,,"S_summarize,R_reason"
+LLMSENSE_PAPER,5,0.0,llm_judge_score,53.13429617881775,0.01216514,13221,5525,False,False,,"S_summarize,R_reason"
+LLMSENSE_PAPER,9,1.0,llm_judge_score,49.90545105934143,0.01185467,13142,5191,False,False,,"S_summarize,R_reason"

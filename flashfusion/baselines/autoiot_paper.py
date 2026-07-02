@@ -14,12 +14,19 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
+import time
 import urllib.error
 import urllib.request
 from typing import Any
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+
+try:
+    from openrouter.errors.responsevalidationerror import ResponseValidationError as _ORResponseValidationError
+except ImportError:
+    _ORResponseValidationError = None  # type: ignore[assignment,misc]
 
 from flashfusion.config import (
     AUTOIOT_PAPER_HTTP_TIMEOUT_S,
@@ -79,6 +86,15 @@ _SELECT_PROMPT = """Choose the single best version number based on quality and q
 Return only the version number as an integer."""
 
 
+AUTOIOT_DEBUG = os.getenv("AUTOIOT_DEBUG", "").lower() in {"1", "true", "yes", "on"}
+_INVOKE_RETRIES = 2
+
+
+def _debug(msg: str) -> None:
+    if AUTOIOT_DEBUG:
+        print(f"[AUTOIOT_DEBUG] {msg}", file=sys.stderr, flush=True)
+
+
 def _invoke(client: LLMClient, stage: str, system_prompt: str, user_input: str) -> str:
     chain = (
         ChatPromptTemplate.from_messages(
@@ -87,7 +103,36 @@ def _invoke(client: LLMClient, stage: str, system_prompt: str, user_input: str) 
         | client.llm
         | StrOutputParser()
     )
-    return client.invoke_chain(chain, {"input": user_input}, stage=stage)
+    last_exc: Exception | None = None
+    for attempt in range(_INVOKE_RETRIES + 1):
+        t0 = time.time()
+        _debug(
+            f"LLM start stage={stage} attempt={attempt + 1}/{_INVOKE_RETRIES + 1} "
+            f"input_chars={len(user_input)}"
+        )
+        try:
+            output = client.invoke_chain(chain, {"input": user_input}, stage=stage)
+            latency = time.time() - t0
+            _debug(
+                f"LLM done  stage={stage} attempt={attempt + 1}/{_INVOKE_RETRIES + 1} "
+                f"latency={latency:.3f}s output_chars={len(output)}"
+            )
+            return output
+        except Exception as exc:
+            latency = time.time() - t0
+            _debug(
+                f"LLM error stage={stage} attempt={attempt + 1}/{_INVOKE_RETRIES + 1} "
+                f"latency={latency:.3f}s error={type(exc).__name__}: {exc}"
+            )
+            is_validation_err = (
+                _ORResponseValidationError is not None
+                and isinstance(exc, _ORResponseValidationError)
+            ) or "EOF while parsing" in str(exc)
+            if is_validation_err and attempt < _INVOKE_RETRIES:
+                last_exc = exc
+                continue
+            raise
+    raise RuntimeError(f"_invoke failed after {_INVOKE_RETRIES} retries") from last_exc
 
 
 def _clean_code_block(text: str) -> str:
@@ -186,6 +231,8 @@ def _tavily_search(
     max_results: int,
     timeout_s: float,
 ) -> list[dict[str, Any]]:
+    _debug(f"Tavily start query={query!r} max_results={max_results}")
+    t0 = time.time()
     payload = {
         "api_key": api_key,
         "query": query,
@@ -202,13 +249,17 @@ def _tavily_search(
         with urllib.request.urlopen(req, timeout=timeout_s) as resp:
             body = resp.read().decode("utf-8", errors="replace")
     except (urllib.error.URLError, TimeoutError, ValueError):
+        _debug(f"Tavily error query={query!r} latency={time.time() - t0:.3f}s")
         return []
     try:
         parsed = json.loads(body)
     except json.JSONDecodeError:
+        _debug(f"Tavily invalid JSON query={query!r} latency={time.time() - t0:.3f}s body_chars={len(body)}")
         return []
     results = parsed.get("results", [])
-    return results if isinstance(results, list) else []
+    results_list = results if isinstance(results, list) else []
+    _debug(f"Tavily done  query={query!r} latency={time.time() - t0:.3f}s results={len(results_list)}")
+    return results_list
 
 
 def _generate_search_queries(
@@ -333,6 +384,8 @@ def run_autoiot_paper(
     r: RunResult,
 ) -> RunResult:
     """Execute the AutoIOT paper baseline with retrieval-guided iterative refinement."""
+    _debug(f"module={__file__}")
+    _debug(f"run start query_chars={len(query)} df_shape={getattr(df, 'shape', None)}")
     tavily_key = os.getenv("TAVILY_API_KEY", "").strip()
     if AUTOIOT_PAPER_REQUIRE_TAVILY and not tavily_key:
         raise RuntimeError(
@@ -351,12 +404,15 @@ def run_autoiot_paper(
     if not terms:
         terms = _fallback_terms(query, AUTOIOT_PAPER_MAX_TERMS)
     r.stages_run.append("autoiot_terms")
+    _debug(f"terms={terms}")
 
     search_queries = _generate_search_queries(client, query, terms)
     r.stages_run.append("autoiot_search_queries")
+    _debug(f"search_queries={search_queries}")
 
     context_text, context_urls, retrieval_provenance = _retrieve_context(search_queries, tavily_key)
     r.stages_run.append("autoiot_retrieval")
+    _debug(f"retrieval context_chars={len(context_text)} urls={len(context_urls)} provenance_items={len(retrieval_provenance)}")
 
     high_level = _invoke(
         client,
@@ -371,17 +427,22 @@ def run_autoiot_paper(
         f"Query: {query}\n\nHigh-level plan:\n{high_level}\n\nContext:\n{context_text}",
     )
     module_steps = _parse_detailed_steps(detailed)
+    _debug(f"design high_chars={len(high_level)} detail_chars={len(detailed)} module_steps={len(module_steps)}")
     module_codes: list[str] = []
     for idx, step in enumerate(module_steps, start=1):
+        _debug(f"module_gen start idx={idx} step_chars={len(step)}")
         module_code_raw = _invoke(
             client,
             f"autoiot_module_gen_{idx}",
             _MODULE_PROMPT,
             f"Query: {query}\n\nSchema:\n{schema}\n\nDetailed step:\n{step}\n\nContext:\n{context_text}",
         )
-        module_codes.append(_clean_code_block(module_code_raw))
+        module_code = _clean_code_block(module_code_raw)
+        module_codes.append(module_code)
+        _debug(f"module_gen done  idx={idx} code_chars={len(module_code)}")
     r.stages_run.extend(["autoiot_design_high", "autoiot_design_detail", "autoiot_module_gen"])
 
+    _debug(f"integration start modules={len(module_codes)} total_module_code_chars={sum(len(code) for code in module_codes)}")
     integrated_raw = _invoke(
         client,
         "autoiot_code_integration",
@@ -393,6 +454,7 @@ def run_autoiot_paper(
     )
     working_code = _clean_code_block(integrated_raw)
     r.stages_run.append("autoiot_code_integration")
+    _debug(f"integration done working_code_chars={len(working_code)}")
 
     executor = ExecutionLayer(df, client)
     records: list[dict[str, Any]] = []
@@ -405,12 +467,14 @@ def run_autoiot_paper(
             f"Relevant context:\n{context_text[:2000]}\n\n"
             f"Current implementation sketch:\n{working_code[:2000]}"
         )
+        _debug(f"agent_round start round={i}/{AUTOIOT_PAPER_ITERATIONS} augmented_query_chars={len(augmented_query)}")
         try:
             answer, trace, details = executor.execute_single(augmented_query)
             final_code = getattr(details, "final_code", "") or ""
             tries = int(getattr(details, "tries", 0) or 0)
             attempts = list(getattr(details, "attempts", []) or [])
         except Exception as exc:
+            _debug(f"agent_round exception round={i} error={type(exc).__name__}: {exc}")
             answer = f"Execution error in round {i}: {type(exc).__name__}: {exc}"
             trace = ""
             final_code = ""
@@ -418,8 +482,16 @@ def run_autoiot_paper(
             attempts = []
 
         feedback = _collect_execution_feedback(answer=answer, trace=trace, attempts=attempts)
+        _debug(
+            f"agent_round done  round={i} status={feedback['status']} tries={tries} "
+            f"attempts={len(attempts)} answer_chars={len(answer)} trace_chars={len(trace)} final_code_chars={len(final_code)}"
+        )
         corrected_code = ""
         if feedback["status"] == "failure":
+            _debug(
+                f"correction start round={i} stderr_chars={len(feedback['stderr'])} "
+                f"stdout_chars={len(feedback['stdout'])} working_code_chars={len(working_code)}"
+            )
             corrected_raw = _invoke(
                 client,
                 f"autoiot_correct_{i}",
@@ -433,6 +505,7 @@ def run_autoiot_paper(
             corrected_code = _clean_code_block(corrected_raw)
             if corrected_code:
                 working_code = corrected_code
+            _debug(f"correction done  round={i} corrected_code_chars={len(corrected_code)}")
 
         record = {
             "version": i,
@@ -455,6 +528,10 @@ def run_autoiot_paper(
             working_code = final_code
 
         if i < AUTOIOT_PAPER_ITERATIONS:
+            _debug(
+                f"improve start round={i} detail_chars={len(detailed)} stderr_chars={len(feedback['stderr'])} "
+                f"stdout_chars={len(feedback['stdout'])} answer_chars={len(answer)}"
+            )
             improvement = _invoke(
                 client,
                 f"autoiot_improve_{i}",
@@ -468,9 +545,12 @@ def run_autoiot_paper(
                 ),
             )
             iter_query = f"{query}\n\nRefinement guidance:\n{improvement}"
+            _debug(f"improve done  round={i} improvement_chars={len(improvement)}")
 
+    _debug(f"select start records={len(records)}")
     best_idx = _select_best_version(client, records)
     best = records[best_idx - 1]
+    _debug(f"select done  best_idx={best_idx}")
 
     r.answer = str(best.get("answer", ""))
     r.trace = str(best.get("trace", "") or latest_trace)
@@ -480,4 +560,8 @@ def run_autoiot_paper(
     r.agent_tries = int(sum(int(rec.get("tries", 0)) for rec in records))
     r.execution_attempts = records
     r.stages_run.extend(["autoiot_agent_loop", "autoiot_select"])
+    _debug(
+        f"run done executed={r.executed} rejected={r.rejected} latency={r.latency_s:.3f}s "
+        f"input_tokens={r.input_tokens} output_tokens={r.output_tokens} cost={r.cost_usd:.6f}"
+    )
     return r

@@ -1,16 +1,16 @@
 """
 baselines/flash_fusion.py — Flash-Fusion baseline (B4).
 
-S1 → S2 → S3 → guardrail(grounded_query) → judge_plan → agent(grounded_query)
+S1 → S2 → guardrail(query + S2 grounding) → judge_plan → S3 → agent(grounded_query)
                                       [one S3 refinement on FAIL]
 
 The stages build a grounded query that maps indirect concepts to exact column
 names and injects sub-task structure. The agent resolves sub-tasks autonomously
-via its ReAct loop. The pre-agent judge verifies that Stage-3 decomposition is
-likely to answer the original intent and can request one Stage-3 refinement.
+via its ReAct loop. The guardrail runs after S2 (before S3) so OOS queries are
+rejected early without wasting S3 + agent cost.
 
 Expected benchmark behaviour:
-  - Q4, Q10: rejected=True (guardrail on grounded_query)
+  - Q4, Q10: rejected=True (guardrail on query + S2 grounding)
     - Q1–Q3, Q5–Q9: executed=True, judge_verdict={"verdict": "PASS"|"FAIL"}
 
 See CLAUDE.md §_run_flash_fusion for the full algorithm.
@@ -69,8 +69,8 @@ def run_flash_fusion(
         Populated RunResult.
 
     Algorithm:
-        S1 → S2 → S3 → build grounded_query
-        guardrail(grounded_query) → reject or proceed
+        S1 → S2 → guardrail(query + S2 grounding) → reject or proceed
+        S3 → build grounded_query
         judge_plan(query, grounding, sub_queries, synthesis_hint) → plan verdict
         if FAIL + suggestion:
             rerun S3 once with correction note appended to query context
@@ -83,8 +83,8 @@ def run_flash_fusion(
     stage_latency_s = {
         "s1": 0.0,
         "s2": 0.0,
-        "s3": 0.0,
         "guardrail": 0.0,
+        "s3": 0.0,
         "agent": 0.0,
     }
 
@@ -124,6 +124,33 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] S2 complete. Grounding: {grounding['raw_grounding'][:100]}...", file=sys.stderr, flush=True)
 
+        # Guardrail runs after S2, before S3.
+        # Pass query + S2 grounding so the guardrail can detect unmappable concepts
+        # (e.g. OOS requests for data not in the schema) before wasting S3 + agent cost.
+        post_s2_query = (
+            f"{query}\n\n"
+            f"Concept-to-column mappings produced by schema grounding:\n{grounding['raw_grounding']}"
+        )
+        last_stage = "guardrail"
+        stage_t0 = time.time()
+        proceed, reason = executor.guardrail(post_s2_query)
+        record_stage("guardrail", stage_t0)
+        r.stages_run.append("guardrail")
+        if not proceed:
+            r.rejected = True
+            r.rejection_reason = reason
+            r.alignment_explanation = (
+                "Rejected after schema grounding because the query cannot be "
+                f"answered from available dataset fields. Reason: {reason}"
+            )
+            r.answer = (
+                "Query rejected. "
+                f"Reason: {reason}. "
+                "This request is not supported by the current dataset schema or task scope."
+            )
+            r.executed = False
+            return r
+
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting S3...", file=sys.stderr, flush=True)
         last_stage = "S3"
@@ -142,26 +169,6 @@ def run_flash_fusion(
             sub_result["sub_queries"],
             sub_result["synthesis_hint"],
         )
-
-        last_stage = "guardrail"
-        stage_t0 = time.time()
-        proceed, reason = executor.guardrail(grounded_query)
-        record_stage("guardrail", stage_t0)
-        r.stages_run.append("guardrail")
-        if not proceed:
-            r.rejected = True
-            r.rejection_reason = reason
-            r.alignment_explanation = (
-                "Rejected before execution because the grounded query cannot be "
-                f"answered from available dataset fields. Reason: {reason}"
-            )
-            r.answer = (
-                "Query rejected. "
-                f"Reason: {reason}. "
-                "This request is not supported by the current dataset schema or task scope."
-            )
-            r.executed = False
-            return r
 
         # TEMPORARILY COMMENTED OUT: Judge plan and refinement loop
         # last_stage = "judge_plan"

@@ -1,0 +1,13 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run
+HARGPT_PAPER,1,0.0,llm_judge_score,1.5837721824645996,0.00041818,366,256,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,2,0.0,llm_judge_score,2.875447988510132,0.00045294,366,300,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,3,0.0,llm_judge_score,2.0032858848571777,0.00044662,366,292,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,4,0.0,llm_judge_score,1.8290822505950928,0.00045629,369,302,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,5,0.0,llm_judge_score,2.8820629119873047,0.00070926,380,614,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,6,0.0,llm_judge_score,1.9316990375518799,0.00048056,378,326,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,7,0.0,llm_judge_score,2.545308828353882,0.00054988,379,413,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,8,0.0,llm_judge_score,2.5496129989624023,0.0005609500000000001,375,430,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,9,1.0,llm_judge_score,3.3806252479553223,0.00056215,369,436,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,10,1.0,llm_judge_score,2.303048849105835,0.0005143600000000001,367,377,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,11,0.0,llm_judge_score,1.953697681427002,0.00043655,365,280,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"
+HARGPT_PAPER,12,0.0,llm_judge_score,2.3556110858917236,0.0006314700000000001,370,523,False,False,N/A,"hargpt_scope,hargpt_bus_window,hargpt_bus_rewrite,hargpt_bus_infer,hargpt_bus_parse"

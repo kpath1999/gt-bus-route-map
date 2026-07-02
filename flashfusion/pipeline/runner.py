@@ -64,7 +64,13 @@ class LLMClient:
             api_key:    Provider API key (OPENROUTER_API_KEY preferred, GROQ_API_KEY fallback).
         """
         self.model_name = model_name
-        self.llm = ChatOpenRouter(model=model_name, api_key=api_key, temperature=0, max_retries=2)
+        self.llm = ChatOpenRouter(
+            model=model_name,
+            api_key=api_key,
+            temperature=0,
+            max_retries=2,
+            request_timeout=240_000,  # 240 s in ms; prevents EOF on large AutoIOT responses
+        )
         self.call_log: list[LLMCallLog] = []
 
     def invoke_chain(self, chain, inputs: dict, stage: str) -> str:
@@ -214,7 +220,7 @@ class BaselineRunner:
     Supported modes (self.MODES):
         "LLM_ONLY"     — B0: raw 20-row CSV + query → single LLM call
         "WELLMAX_ONLY"  — B3: S1 + S2 + S3 → grounded query → pandas agent
-        "AGENT_ONLY"  — Agent: raw query → pandas agent
+        "REACT_ONLY"  — ReAct: raw query → pandas agent (paper-faithful ReAct)
         "LLMSENSE_PAPER" — narration/summarization + reasoning over narrative text
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
@@ -226,7 +232,7 @@ class BaselineRunner:
         {
             "LLM_ONLY",
             "WELLMAX_ONLY",
-            "AGENT_ONLY",
+            "REACT_ONLY",
             "AUTOIOT_PAPER",
             "FLASH_FUSION",
             "HARGPT_PAPER",
@@ -253,9 +259,9 @@ class BaselineRunner:
         """
         # DEBUG: Check what df we receive
         import sys
-        print(f"[RUNNER INIT DEBUG] mode={mode}, df len={len(df)}, df cols={list(df.columns) if hasattr(df, 'columns') else 'N/A'}", file=sys.stderr, flush=True)
-        if len(df) > 0:
-            print(f"[RUNNER INIT DEBUG] df.head(3):\n{df.head(3)}", file=sys.stderr, flush=True)
+        # print(f"[RUNNER INIT DEBUG] mode={mode}, df len={len(df)}, df cols={list(df.columns) if hasattr(df, 'columns') else 'N/A'}", file=sys.stderr, flush=True)
+        # if len(df) > 0:
+        #     print(f"[RUNNER INIT DEBUG] df.head(3):\n{df.head(3)}", file=sys.stderr, flush=True)
         
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}, got {mode!r}")
@@ -337,7 +343,7 @@ class BaselineRunner:
             self.df, _ = self._apply_default_enrichment(self.df)
             self._enrichment_applied = True
 
-        from flashfusion.baselines.agent_only import run_agent_only
+        from flashfusion.baselines.react_only import run_react_only
         from flashfusion.baselines.autoiot_paper import run_autoiot_paper
         from flashfusion.baselines.flash_fusion import run_flash_fusion
         from flashfusion.baselines.hargpt_paper import run_hargpt_paper
@@ -349,8 +355,8 @@ class BaselineRunner:
             run_llm_only(query, self.df, self.client, r)
         elif self.mode == "WELLMAX_ONLY":
             run_wellmax_only(query, self.df, self.client, r)
-        elif self.mode == "AGENT_ONLY":
-            run_agent_only(query, self.df, self.client, r)
+        elif self.mode == "REACT_ONLY":
+            run_react_only(query, self.df, self.client, r)
         elif self.mode == "AUTOIOT_PAPER":
             run_autoiot_paper(query, self.df, self.client, r)
         elif self.mode == "FLASH_FUSION":
@@ -381,10 +387,10 @@ class BaselineRunner:
         from flashfusion.baselines.wellmax_only import run_wellmax_only
         return run_wellmax_only(query, self.df, self.client, r)
 
-    def _run_agent_only(self, query: str, r: RunResult) -> RunResult:
-        """Delegates to baselines.agent_only.run_agent_only."""
-        from flashfusion.baselines.agent_only import run_agent_only
-        return run_agent_only(query, self.df, self.client, r)
+    def _run_react_only(self, query: str, r: RunResult) -> RunResult:
+        """Delegates to baselines.react_only.run_react_only."""
+        from flashfusion.baselines.react_only import run_react_only
+        return run_react_only(query, self.df, self.client, r)
 
     def _run_flash_fusion(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.flash_fusion.run_flash_fusion."""

@@ -297,13 +297,17 @@ class ExecutionLayer:
     or rejected queries) should not import or construct the pandas agent stack.
     """
 
-    def __init__(self, df: pd.DataFrame, client: "LLMClient") -> None:
+    def __init__(self, df: pd.DataFrame, client: "LLMClient", react_faithful: bool = False) -> None:
         """
         Initialise the execution layer with a DataFrame and LLM client.
 
         Args:
-            df:     The WISDM DataFrame (enriched with derived features if adapter applied).
-            client: LLMClient wrapping a chat model client.
+            df:             The WISDM DataFrame (enriched with derived features if adapter applied).
+            client:         LLMClient wrapping a chat model client.
+            react_faithful: When True, constructs a paper-faithful ReAct agent:
+                            uses the default ReActSingleInputOutputParser and omits
+                            handle_parsing_errors.  Flash-Fusion and WellMax-Only
+                            leave this False to retain ResilientReActOutputParser.
 
         Sets up:
             self._original_df — immutable reference copy for reset_agent()
@@ -313,11 +317,13 @@ class ExecutionLayer:
 
         Agent construction notes (see CLAUDE.md §ExecutionLayer):
             - Tool: PythonAstREPLTool(locals={"df": self._df})
-            - Parser: ResilientReActOutputParser() (replace default parser)
-            - Wrap in AgentExecutor(max_iterations=6, handle_parsing_errors=True,
-                                    return_intermediate_steps=True, verbose=False)
+            - Parser: ResilientReActOutputParser() when react_faithful=False (default)
+                      Default ReActSingleInputOutputParser when react_faithful=True
+            - Wrap in AgentExecutor(max_iterations=6, handle_parsing_errors=True, ...)
+                      when react_faithful=False; handle_parsing_errors omitted when True
         """
         self._client = client
+        self._react_faithful = react_faithful
         self._original_df = df.copy()
         self._df = df.copy()
 
@@ -497,20 +503,26 @@ class ExecutionLayer:
 
         self._debug("creating ReAct agent")
         react_agent = create_react_agent(self._client.llm, [tool], prompt)
-        try:
-            react_agent.output_parser = ResilientReActOutputParser()
-        except Exception:
-            pass
+        if not self._react_faithful:
+            # Flash-Fusion / WellMax-Only: replace with hardened resilient parser
+            try:
+                react_agent.output_parser = ResilientReActOutputParser()
+            except Exception:
+                pass
+        # react_faithful=True: keep default ReActSingleInputOutputParser (paper-faithful ReAct)
 
         self._debug("wrapping ReAct agent in AgentExecutor")
-        return AgentExecutor(
+        executor_kwargs: dict = dict(
             agent=react_agent,
             tools=[tool],
             max_iterations=6,
-            handle_parsing_errors=True,
             return_intermediate_steps=True,
             verbose=False,
         )
+        if not self._react_faithful:
+            # Paper-faithful ReAct omits this so parse failures propagate naturally
+            executor_kwargs["handle_parsing_errors"] = True
+        return AgentExecutor(**executor_kwargs)
 
     def _build_prefix(self, df: pd.DataFrame) -> str:
         """

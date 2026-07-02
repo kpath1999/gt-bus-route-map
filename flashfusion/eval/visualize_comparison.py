@@ -26,16 +26,16 @@ QUERY_TYPE_LABELS = {
     "out_of_scope": "Out-of-Scope",
 }
 
-BASELINE_ORDER = ["FLASH_FUSION", "AGENT_ONLY"]
+BASELINE_ORDER = ["FLASH_FUSION", "REACT_ONLY"]
 BASELINE_LABELS = {
     "FLASH_FUSION": "Flash-Fusion",
     "WELLMAX_ONLY": "WellMax + Agent",
-    "AGENT_ONLY": "Agent-Only",
+    "REACT_ONLY": "ReAct-Only",
 }
 BASELINE_COLORS = {
     "FLASH_FUSION": "#2c8c4a",
     "WELLMAX_ONLY": "#2f6ad9",
-    "AGENT_ONLY": "#f28e2b",
+    "REACT_ONLY": "#f28e2b",
 }
 
 ERROR_BAR_METRICS = {"accuracy_percent", "latency_s", "cost_usd"}
@@ -163,7 +163,7 @@ def _resolve_input_df(args: argparse.Namespace) -> pd.DataFrame:
     legacy_candidates = [args.wellmax, args.agent, args.flashfusion]
     if all(Path(x).exists() for x in legacy_candidates):
         df_w = _load_metrics(args.wellmax, "WELLMAX_ONLY")
-        df_a = _load_metrics(args.agent, "AGENT_ONLY")
+        df_a = _load_metrics(args.agent, "REACT_ONLY")
         df_f = _load_metrics(args.flashfusion, "FLASH_FUSION")
         return pd.concat([df_w, df_a, df_f], ignore_index=True)
 

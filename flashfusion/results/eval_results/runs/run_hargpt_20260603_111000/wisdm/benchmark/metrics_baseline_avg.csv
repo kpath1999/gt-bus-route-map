@@ -1,0 +1,2 @@
+baseline,gt_score,latency_s,cost_usd,input_tokens,output_tokens,runs
+HARGPT_PAPER,0.25,5.910685466395485,0.0004385036111111111,132.16666666666666,456.36111111111114,3

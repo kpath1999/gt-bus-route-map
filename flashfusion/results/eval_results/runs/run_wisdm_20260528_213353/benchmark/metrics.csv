@@ -1,0 +1,7 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run
+HARGPT_PAPER,1,0.0,guardrail_skip_unexpected_rejection,0.09185385704040527,0.0,0,0,False,True,N/A,hargpt_scope
+HARGPT_PAPER,5,0.0,guardrail_skip_unexpected_rejection,0.08823513984680176,0.0,0,0,False,True,N/A,hargpt_scope
+HARGPT_PAPER,9,1.0,guardrail_skip_expected_rejection,0.0903019905090332,0.0,0,0,False,True,N/A,hargpt_scope
+LLMSENSE_PAPER,1,0.0,llm_judge_score,53.267232179641724,0.011945370000000005,13202,5261,False,False,N/A,"S_summarize,R_reason"
+LLMSENSE_PAPER,5,0.0,llm_judge_score,53.13429617881775,0.012165140000000001,13221,5525,False,False,N/A,"S_summarize,R_reason"
+LLMSENSE_PAPER,9,1.0,llm_judge_score,49.90545105934143,0.011854670000000003,13142,5191,False,False,N/A,"S_summarize,R_reason"

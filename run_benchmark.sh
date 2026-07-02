@@ -499,7 +499,7 @@ if df.empty:
     print("  Warning: LLM judge summary is empty.")
     sys.exit(0)
 PALETTE = {
-    "AGENT_ONLY": "#f4a259",
+    "REACT_ONLY": "#f4a259",
     "WELLMAX_ONLY": "#136f63",
     "AUTOIOT_PAPER": "#8e5bd9",
     "FLASH_FUSION": "#2d6cdf",
@@ -849,7 +849,7 @@ if df.empty:
     sys.exit(0)
 
 PALETTE = {
-    "AGENT_ONLY": "#f4a259",
+    "REACT_ONLY": "#f4a259",
     "WELLMAX_ONLY":  "#136f63",
     "AUTOIOT_PAPER": "#8e5bd9",
     "FLASH_FUSION":  "#2d6cdf",
