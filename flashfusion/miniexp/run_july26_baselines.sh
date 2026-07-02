@@ -22,7 +22,13 @@ SMOKE_ROOT="${OUTPUT_ROOT}/_smoke/${RUN_TAG}"
 MODEL="${MODEL:-meta-llama/llama-3.3-70b-instruct}"
 RUNS="${RUNS:-1}"
 QUERIES="${QUERIES:-all}"
-MAX_LATENCY="${MAX_LATENCY:-30.0}"
+# Per-baseline query timeouts (seconds). AutoIOT/HARGPT can take 3-5 min per query.
+MAX_LATENCY_FLASH_FUSION="${MAX_LATENCY_FLASH_FUSION:-60.0}"
+MAX_LATENCY_REACT_ONLY="${MAX_LATENCY_REACT_ONLY:-60.0}"
+MAX_LATENCY_HARGPT_PAPER="${MAX_LATENCY_HARGPT_PAPER:-300.0}"
+MAX_LATENCY_AUTOIOT_PAPER="${MAX_LATENCY_AUTOIOT_PAPER:-360.0}"
+# Legacy override: MAX_LATENCY=N applies the same budget to all baselines.
+MAX_LATENCY="${MAX_LATENCY:-}"
 BASELINES="${BASELINES:-FLASH_FUSION,HARGPT_PAPER,REACT_ONLY,AUTOIOT_PAPER}"
 
 # Smoke-test controls (recommended before overnight run).
@@ -53,6 +59,17 @@ require_file() {
     echo "[ERROR] Required file not found: ${path}" >&2
     exit 1
   fi
+}
+
+# Return per-baseline latency budget. MAX_LATENCY (if set) overrides all.
+baseline_max_latency() {
+  local baseline="$1"
+  if [[ -n "${MAX_LATENCY}" ]]; then
+    echo "${MAX_LATENCY}"
+    return
+  fi
+  local varname="MAX_LATENCY_${baseline}"
+  echo "${!varname:-60.0}"
 }
 
 dataset_data_path() {
@@ -138,7 +155,13 @@ run_smoke_tests() {
       smoke_log="${SMOKE_ROOT}/${baseline}_${ds}.log"
       mkdir -p "${smoke_out}"
 
-      log "[SMOKE] baseline=${baseline} dataset=${ds}"
+      local smoke_latency
+      smoke_latency="$(baseline_max_latency "${baseline}")"
+      # For smoke runs, cap at SMOKE_MAX_LATENCY unless per-baseline budget is already higher.
+      if (( $(echo "${SMOKE_MAX_LATENCY} < ${smoke_latency}" | bc -l) )); then
+        smoke_latency="${SMOKE_MAX_LATENCY}"
+      fi
+      log "[SMOKE] baseline=${baseline} dataset=${ds} max_latency=${smoke_latency}s"
       if ! "${PYTHON}" -u -m flashfusion.eval.benchmark \
         --dataset "${ds}" \
         --data "${data_path}" \
@@ -147,7 +170,7 @@ run_smoke_tests() {
         --queries "${SMOKE_QUERIES}" \
         --runs 1 \
         --model "${MODEL}" \
-        --max-query-latency "${SMOKE_MAX_LATENCY}" \
+        --max-query-latency "${smoke_latency}" \
         --ground-truth-measurement llm \
         --output "${smoke_out}" \
         >"${smoke_log}" 2>&1; then
@@ -248,7 +271,11 @@ log "Baselines     : ${BASELINE_LIST[*]}"
 log "Datasets      : ${DATASETS[*]}"
 log "Queries       : ${QUERIES}"
 log "Runs          : ${RUNS}"
-log "Max latency   : ${MAX_LATENCY}s"
+if [[ -n "${MAX_LATENCY}" ]]; then
+  log "Max latency   : ${MAX_LATENCY}s (all baselines, legacy override)"
+else
+  log "Max latency   : FF=${MAX_LATENCY_FLASH_FUSION}s REACT=${MAX_LATENCY_REACT_ONLY}s HARGPT=${MAX_LATENCY_HARGPT_PAPER}s AUTOIOT=${MAX_LATENCY_AUTOIOT_PAPER}s"
+fi
 log "Smoke test    : ${SMOKE_TEST} (queries=${SMOKE_QUERIES}, max_latency=${SMOKE_MAX_LATENCY}s)"
 
 if [[ "${SMOKE_TEST}" == "1" ]]; then
@@ -263,7 +290,9 @@ for baseline in "${BASELINE_LIST[@]}"; do
     TARGET_DIR="${OUTPUT_ROOT}/${baseline}/${ds}/${RUN_TAG}"
     mkdir -p "${TARGET_DIR}"
 
-    log "[Benchmark] baseline=${baseline} dataset=${ds} -> ${TARGET_DIR}"
+    local query_max_latency
+    query_max_latency="$(baseline_max_latency "${baseline}")"
+    log "[Benchmark] baseline=${baseline} dataset=${ds} max_latency=${query_max_latency}s -> ${TARGET_DIR}"
     "${PYTHON}" -u -m flashfusion.eval.benchmark \
       --dataset "${ds}" \
       --data "${DATA_PATH}" \
@@ -272,7 +301,7 @@ for baseline in "${BASELINE_LIST[@]}"; do
       --queries "${QUERIES}" \
       --runs "${RUNS}" \
       --model "${MODEL}" \
-      --max-query-latency "${MAX_LATENCY}" \
+      --max-query-latency "${query_max_latency}" \
       --ground-truth-measurement llm \
       --output "${TARGET_DIR}" \
       2>&1 | tee "${TARGET_DIR}/benchmark.log"
