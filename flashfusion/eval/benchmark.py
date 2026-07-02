@@ -213,6 +213,7 @@ def _run_single_benchmark_iteration(
             print(
                 f"  -> executed={result.executed} rejected={result.rejected} "
                 f"alignment={j} latency={result.latency_s:.1f}s "
+                f"tokens={result.input_tokens}in/{result.output_tokens}out "
                 f"cost=${result.cost_usd:.4f}",
                 flush=True,
             )

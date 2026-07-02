@@ -22,7 +22,37 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openrouter import ChatOpenRouter
 
-from flashfusion.config import MODEL_RATE_PER_1M_TOKENS, TOKEN_ESTIMATE_MULTIPLIER
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
+
+from flashfusion.config import MODEL_RATE_PER_1M_TOKENS
+
+
+# ---------------------------------------------------------------------------
+# _UsageCapture — callback to extract real token counts from API responses
+# ---------------------------------------------------------------------------
+
+class _UsageCapture(BaseCallbackHandler):
+    """LangChain callback that reads token counts from the OpenRouter API response.
+
+    OpenRouter always returns native-tokenizer usage in every response via
+    ``AIMessage.usage_metadata`` (populated by langchain_openrouter).  No
+    heuristics or estimation are used.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.input_tokens: int = 0
+        self.output_tokens: int = 0
+
+    def on_llm_end(self, response: LLMResult, **kwargs: object) -> None:
+        for gen_list in response.generations:
+            for gen in gen_list:
+                msg = getattr(gen, "message", None)
+                um = getattr(msg, "usage_metadata", None) if msg is not None else None
+                if um:
+                    self.input_tokens += int(um.get("input_tokens", 0))
+                    self.output_tokens += int(um.get("output_tokens", 0))
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +99,7 @@ class LLMClient:
             api_key=api_key,
             temperature=0,
             max_retries=2,
-            request_timeout=240_000,  # 240 s in ms; prevents EOF on large AutoIOT responses
+            timeout=480_000,  # 480 s in ms; ChatOpenRouter native param (not request_timeout)
         )
         self.call_log: list[LLMCallLog] = []
 
@@ -95,24 +125,31 @@ class LLMClient:
             7. Return result if str, else str(result)
         """
         import sys as _sys
-        # _sys.stdout.write(
-        #     f"  [DEBUG invoke_chain] stage={stage!r}  model={self.model_name}  "
-        #     f"input_len={len(str(inputs))}  → calling LLM…\n"
-        # )
-        # _sys.stdout.flush()
-        t0 = time.time()
-        result = chain.invoke(inputs)
-        latency = time.time() - t0
-        # _sys.stdout.write(
-        #     f"  [DEBUG invoke_chain] stage={stage!r}  done in {latency:.2f}s\n"
-        # )
-        # _sys.stdout.flush()
+        import httpx as _httpx
+        _max_attempts = 3
+        _last_exc: Exception | None = None
+        capture = _UsageCapture()
+        for _attempt in range(_max_attempts):
+            try:
+                t0 = time.time()
+                result = chain.invoke(inputs, config={"callbacks": [capture]})
+                latency = time.time() - t0
+                break
+            except _httpx.ReadTimeout as _exc:
+                _last_exc = _exc
+                _sys.stdout.write(
+                    f"  [WARN invoke_chain] ReadTimeout on attempt {_attempt + 1}/{_max_attempts}"
+                    f" (stage={stage!r}); retrying…\n"
+                )
+                _sys.stdout.flush()
+        else:
+            raise _last_exc  # type: ignore[misc]
         if isinstance(result, str):
             output_text = result
         else:
             output_text = str(getattr(result, "content", result))
-        in_tok = self._estimate_tokens(str(inputs))
-        out_tok = self._estimate_tokens(output_text)
+        in_tok = capture.input_tokens
+        out_tok = capture.output_tokens
         cost = self._compute_cost(in_tok, out_tok)
         self.call_log.append(
             LLMCallLog(
@@ -125,14 +162,6 @@ class LLMClient:
             )
         )
         return output_text
-
-    def _estimate_tokens(self, text: str) -> int:
-        """
-        Rough token estimation: word count × TOKEN_ESTIMATE_MULTIPLIER.
-        """
-        if not text:
-            return 0
-        return max(1, int(len(text.split()) * TOKEN_ESTIMATE_MULTIPLIER))
 
     def _compute_cost(self, in_tok: int, out_tok: int) -> float:
         """

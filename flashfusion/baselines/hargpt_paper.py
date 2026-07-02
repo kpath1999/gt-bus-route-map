@@ -22,9 +22,13 @@ from flashfusion.pipeline.runner import LLMClient, RunResult
 
 _INSTRUCTION = "You are an expert on analyzing human activities based on IMU recordings."
 
-_WISDM_MAX_ROWS = 1500
-_ECG_MAX_ROWS = 2500
-_BUS_MAX_ROWS = 1000
+# Row caps derived from 80% of the 128k context window (102,400 tokens) minus
+# ~500 tokens of template + instruction overhead ≈ 101,900 tokens for data.
+# Token density measured/estimated with the native (sentencepiece) tokenizer.
+# 80% (not 95%) leaves enough headroom that prefill time stays under the API timeout.
+_WISDM_MAX_ROWS = 5120   # ~20 tok/row → 5,120 × 20 = 102,400 tok (80.0% of 128k)
+_ECG_MAX_ROWS   = 5700   # ~18 tok/row → 5,700 × 18 = 102,600 tok (80.2%) — empirically confirmed
+_BUS_MAX_ROWS   = 1860   # ~55 tok/row → 1,860 × 55 = 102,300 tok (79.9%); total dataset is only 1,219 rows
 _AXIS_MAX_VALUES = 32
 _CSV_MAX_ROWS = 10000
 
@@ -34,7 +38,7 @@ _CALIBRATION_CONTEXT_WINDOW_TOKENS = 128_000
 _CALIBRATION_EXHAUSTION_CHUNKS = 310
 _CALIBRATION_CHUNK_TOKEN_TARGET = 200
 _CALIBRATION_ACTUAL_TOKEN_RATIO = 1.9
-_CONTEXT_TARGET_SAFETY = 0.97
+_CONTEXT_TARGET_SAFETY = 0.80
 _BUDGET_PREFILTER_BUFFER_ROWS = 512
 
 
@@ -157,17 +161,15 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _default_budget_tokens_est() -> int:
-	"""Return calibrated prompt budget in estimator units.
+	"""Return prompt budget in heuristic (chars//4) units.
 
-	The latency mini-experiment shows practical exhaustion near 310 chunks. We
-	target slightly under that point using the same correction ratio.
+	Set to the full 95%-of-128k target so the hard per-dataset row caps
+	(_ECG_MAX_ROWS, _WISDM_MAX_ROWS, _BUS_MAX_ROWS) are always the binding
+	constraint, not this budget.  Previously the empirical knee from
+	latencychunks (~32k heuristic tokens) was limiting ECG to ~4k rows (58%
+	of context); removing that bottleneck allows the hard caps to take effect.
 	"""
-	estimated_window_tokens = _CALIBRATION_CONTEXT_WINDOW_TOKENS / _CALIBRATION_ACTUAL_TOKEN_RATIO
-	empirical_knee_tokens = (
-		_CALIBRATION_EXHAUSTION_CHUNKS * _CALIBRATION_CHUNK_TOKEN_TARGET
-	) / _CALIBRATION_ACTUAL_TOKEN_RATIO
-	target_estimated_tokens = min(estimated_window_tokens, empirical_knee_tokens)
-	return int(target_estimated_tokens * _CONTEXT_TARGET_SAFETY)
+	return int(_CALIBRATION_CONTEXT_WINDOW_TOKENS * _CONTEXT_TARGET_SAFETY / _CALIBRATION_ACTUAL_TOKEN_RATIO)
 
 
 def _estimate_prompt_overhead_tokens(dataset: str, query: str) -> int:
@@ -486,6 +488,14 @@ def run_hargpt_paper(query: str, df, client: LLMClient, r: RunResult) -> RunResu
 
 	window, meta = _truncate_for_query(df, dataset, query)
 	r.stages_run.append(f"hargpt_{dataset}_window")
+
+	_rows_total = meta["rows_total"]
+	_rows_used = meta["rows_used"]
+	_pct_seen = 100.0 * _rows_used / _rows_total if _rows_total > 0 else 0.0
+	print(
+		f"[HARGPT] {dataset.upper()} rows_seen={_rows_used:,}/{_rows_total:,} ({_pct_seen:.4f}%)",
+		flush=True,
+	)
 
 	instruction, content = _rewrite_prompt(query, dataset, window)
 	r.stages_run.append(f"hargpt_{dataset}_rewrite")

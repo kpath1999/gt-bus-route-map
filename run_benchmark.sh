@@ -1,95 +1,73 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run_benchmark.sh
-# End-to-end Flash-Fusion benchmark
+# run_benchmark.sh  —  Flash-Fusion consolidated benchmark
 #
-# DEFAULT (no flags): runs all 3 datasets (wisdm, ecg, bus) sequentially and
-# stores results under:
-#   flashfusion/eval_results/runs/run_all_YYYYMMDD_HHMMSS/
-#     wisdm/   ecg/   bus/         ← per-dataset subdirectories
-#     visuals_all/                 ← cross-dataset balanced charts + tables
+# Runs all 5 baselines (FLASH_FUSION, HARGPT_PAPER, LLMSENSE_PAPER, REACT_ONLY,
+# AUTOIOT_PAPER) across wisdm / mit_ecg / bus with per-baseline latency budgets,
+# optional smoke test, stage-latency export, and cross-dataset aggregation.
 #
-# Each per-dataset subdirectory contains the same layout as a single-dataset run:
-#   benchmark/         metrics.csv, raw_results.jsonl, report.md,
-#                      ground_truth_llm_judge/
-#   per_baseline/      AUTOIOT_PAPER/metrics.csv  FLASH_FUSION/metrics.csv ...
-#   visuals/           per-dataset PNG charts + CSV tables
+# Output layout (nested by baseline -> dataset -> run tag):
+#   OUTPUT_ROOT/<BASELINE>/<dataset>/<RUN_TAG>/
+#     metrics.csv  raw_results.jsonl  benchmark.log  visualize.log
+#     stage_semantic.log  [stage_ff_native.log for FLASH_FUSION]
+#   OUTPUT_ROOT/_aggregate/<RUN_TAG>/
+#     query_metrics_all_datasets.csv
+#     summary_by_dataset_query_type.csv   summary_balanced_by_query_type.csv
+#     summary_by_dataset_overall.csv      summary_balanced_overall.csv
+#   OUTPUT_ROOT/_smoke/<RUN_TAG>/
+#     smoke_status.csv  +  per-baseline x dataset log files
 #
-# Cross-dataset visuals (visuals_all/) show balanced averages across all
-# 3 datasets for each query type (Direct / Reasoning / Out-of-Scope + overall).
-# Balanced means: mean of per-dataset means — no dataset dominates due to size.
+# Usage:
+#   ./run_benchmark.sh [--wisdm|--ecg|--bus|--all] [options]
+#   ./run_benchmark.sh --quick          # RUNS=1, QUERIES=1,5,9, smoke off
+#   ./run_benchmark.sh --help
 #
-# Single-dataset usage (produces run_{dataset}_YYYYMMDD_HHMMSS as before):
-#   ./run_benchmark.sh --wisdm
-#   ./run_benchmark.sh --ecg
-#   ./run_benchmark.sh --bus
-#
-# CLI shortcuts:
-#   --wisdm | --ecg | --bus           Choose a single dataset
-#   --all                             Explicit all-datasets run (also the default)
-#   --quick                           RUNS=1 and QUERIES=1,5,9 for a fast smoke pass
-#   --help                            Show all options
-#
-# Optional overrides (env vars):
-#   DATASET       wisdm | mit_ecg | bus | all   (default: all)
-#   WISDM_DATA    Path to raw WISDM .txt file
-#                   (default: data/imu/WISDM_ar_v1.1_raw.txt)
-#   MIT_ECG_DATA  Path to consolidated MIT ECG txt file
-#                   (default: data/Agent_dataset/ECG.0/MIT_arrythmia_v1.txt)
-#   BUS_DATA      Path to bus telemetry CSV file
-#                   (default: data/bus/bus_data.csv)
-#   GROUND_TRUTH  Override ground-truth JSON (single-dataset mode only)
-#   BASELINES     Comma-separated baselines
-#                   (default: AUTOIOT_PAPER,HARGPT_PAPER,LLMSENSE_PAPER,FLASH_FUSION)
-#   QUERIES       Comma-separated query IDs or "all"  (default: all)
-#   RUNS          Number of repeated benchmark runs      (default: 3)
-#   MAX_LATENCY   Per-query timeout in seconds        (default: 30)
-#   MODEL         Groq model override (empty = benchmark config default)
-#
-# Previous runs are never deleted — each timestamped directory is permanent.
+# Key env overrides:
+#   OUTPUT_ROOT              (default: flashfusion/results/july26)
+#   RUN_TAG                  (default: run_YYYYMMDD_HHMMSS)
+#   MODEL                    (default: meta-llama/llama-3.3-70b-instruct)
+#   BASELINES                comma-separated (default: all 5)
+#   DATASETS                 comma-separated: wisdm,mit_ecg,bus (default: all 3)
+#   QUERIES                  comma-separated IDs or "all" (default: all)
+#   RUNS                     integer (default: 1)
+#   MAX_LATENCY              if set, overrides all per-baseline budgets
+#   MAX_LATENCY_FLASH_FUSION        (default: 60s)
+#   MAX_LATENCY_REACT_ONLY          (default: 60s)
+#   MAX_LATENCY_HARGPT_PAPER        (default: 300s)
+#   MAX_LATENCY_LLMSENSE_PAPER      (default: 300s)
+#   MAX_LATENCY_AUTOIOT_PAPER       (default: 360s)
+#   SMOKE_TEST               1=run smoke tests before main run (default: 1)
+#   SMOKE_QUERIES            (default: 1,5,9)
+#   SMOKE_MAX_LATENCY        (default: 30s)
+#   SMOKE_ABORT_ON_FAIL      1=abort if smoke fails (default: 1)
+#   AUTOIOT_DEBUG            1=enable AutoIOT debug logging (propagated to subprocess)
+#   DEBUG_BENCHMARK          1=verbose debug output + API connectivity probe
 # =============================================================================
-#
-# Output layout (relative to repo root):
-#
-# All-datasets run:
-#   flashfusion/eval_results/runs/
-#     run_all_YYYYMMDD_HHMMSS/
-#       wisdm/benchmark/           ecg/benchmark/       bus/benchmark/
-#       wisdm/per_baseline/        ecg/per_baseline/    bus/per_baseline/
-#       wisdm/visuals/             ecg/visuals/         bus/visuals/
-#       visuals_all/               ← cross-dataset charts (balanced avg)
-#         cross_accuracy_by_query_type.png
-#         cross_latency_by_query_type.png
-#         cross_input_tokens_by_query_type.png
-#         cross_output_tokens_by_query_type.png
-#         cross_cost_by_query_type.png
-#         cross_aggregate_summary.csv
-#         cross_per_dataset_breakdown.csv
-#         cross_*_by_query_type.{csv,md}  ← tables per metric
-#     latest -> run_all_YYYYMMDD_HHMMSS
-#
-# Single-dataset run:
-#   flashfusion/eval_results/runs/
-#     run_{dataset}_YYYYMMDD_HHMMSS/
-#       benchmark/  per_baseline/  visuals/
-#     latest -> run_{dataset}_YYYYMMDD_HHMMSS
-# =============================================================================
+
+"""
+NOTE: commands to run (july 2, 2026) ---
+
+# Run once per baseline — paste into terminal sequentially
+RUN_TAG=july26_full RUNS=3 BASELINES=FLASH_FUSION    ./run_benchmark.sh
+RUN_TAG=july26_full RUNS=3 BASELINES=HARGPT_PAPER    ./run_benchmark.sh
+RUN_TAG=july26_full RUNS=3 BASELINES=LLMSENSE_PAPER  ./run_benchmark.sh
+RUN_TAG=july26_full RUNS=3 BASELINES=REACT_ONLY      ./run_benchmark.sh
+RUN_TAG=july26_full RUNS=3 BASELINES=AUTOIOT_PAPER   ./run_benchmark.sh
+"""
+
 set -euo pipefail
 
-# ── Locate repo root ──────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "${SCRIPT_DIR}"
 
-# ── Load API keys from vault (.env at repo root, never committed) ─────────────
-if [ -f "${SCRIPT_DIR}/.env" ]; then
+if [[ -f "${SCRIPT_DIR}/.env" ]]; then
     set -a; source "${SCRIPT_DIR}/.env"; set +a
 fi
 
 export TOKENIZERS_PARALLELISM="${TOKENIZERS_PARALLELISM:-false}"
 export TRANSFORMERS_NO_ADVISORY_WARNINGS="${TRANSFORMERS_NO_ADVISORY_WARNINGS:-1}"
 
-# ── Detect Python (prefer venv) ───────────────────────────────────────────────
-if [ -f ".venv/bin/python" ]; then
+if [[ -f ".venv/bin/python" ]]; then
     PYTHON=".venv/bin/python"
 elif command -v python3 &>/dev/null; then
     PYTHON="python3"
@@ -97,883 +75,470 @@ else
     PYTHON="python"
 fi
 
-# ── Configuration (overridable via env) ───────────────────────────────────────
-# Default to running all datasets when no --dataset flag is provided
-DATASET="${DATASET:-all}"
-WISDM_DATA="${WISDM_DATA:-chat/data/imu/WISDM_ar_v1.1_raw.txt}"
-MIT_ECG_DATA="${MIT_ECG_DATA:-data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt}"
-BUS_DATA="${BUS_DATA:-data/bus/bus_data.csv}"
-BASELINES="${BASELINES:-AUTOIOT_PAPER,HARGPT_PAPER,LLMSENSE_PAPER,FLASH_FUSION}"
+# ── Default configuration ─────────────────────────────────────────────────────
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/july26}"
+RUN_TAG="${RUN_TAG:-run_$(date +%Y%m%d_%H%M%S)}"
+MODEL="${MODEL:-meta-llama/llama-3.3-70b-instruct}"
+BASELINES="${BASELINES:-FLASH_FUSION,HARGPT_PAPER,LLMSENSE_PAPER,REACT_ONLY,AUTOIOT_PAPER}"
+DATASETS="${DATASETS:-wisdm,mit_ecg,bus}"
 QUERIES="${QUERIES:-all}"
-RUNS="${RUNS:-3}"
-MAX_LATENCY="${MAX_LATENCY:-30.0}"
-MODEL="${MODEL:-}"
-GROUND_TRUTH="${GROUND_TRUTH:-}"
+RUNS="${RUNS:-1}"
+
+MAX_LATENCY_FLASH_FUSION="${MAX_LATENCY_FLASH_FUSION:-60.0}"
+MAX_LATENCY_REACT_ONLY="${MAX_LATENCY_REACT_ONLY:-60.0}"
+MAX_LATENCY_HARGPT_PAPER="${MAX_LATENCY_HARGPT_PAPER:-300.0}"
+MAX_LATENCY_LLMSENSE_PAPER="${MAX_LATENCY_LLMSENSE_PAPER:-300.0}"
+MAX_LATENCY_AUTOIOT_PAPER="${MAX_LATENCY_AUTOIOT_PAPER:-360.0}"
+MAX_LATENCY="${MAX_LATENCY:-}"
+
+SMOKE_TEST="${SMOKE_TEST:-1}"
+SMOKE_QUERIES="${SMOKE_QUERIES:-1,5,9}"
+SMOKE_MAX_LATENCY="${SMOKE_MAX_LATENCY:-30.0}"
+SMOKE_ABORT_ON_FAIL="${SMOKE_ABORT_ON_FAIL:-1}"
+
+AUTOIOT_DEBUG="${AUTOIOT_DEBUG:-0}"
+export AUTOIOT_DEBUG  # propagate into benchmark subprocess
+
 DEBUG_BENCHMARK="${DEBUG_BENCHMARK:-0}"
 
+WISDM_DATA="${WISDM_DATA:-data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt}"
+MIT_ECG_DATA="${MIT_ECG_DATA:-data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt}"
+BUS_DATA="${BUS_DATA:-data/bus/bus_data.csv}"
+GT_WISDM="${GT_WISDM:-flashfusion/eval/ground_truth/ground_truth_wisdm.json}"
+GT_MIT_ECG="${GT_MIT_ECG:-flashfusion/eval/ground_truth/ground_truth_mit_ecg.json}"
+GT_BUS="${GT_BUS:-flashfusion/eval/ground_truth/ground_truth_bus.json}"
+
+# ── CLI parsing ───────────────────────────────────────────────────────────────
 print_help() {
     cat <<'EOF'
-Usage (default — all datasets):
-  ./run_benchmark.sh
+Usage:
+  ./run_benchmark.sh [--wisdm|--ecg|--bus|--all] [options]
 
-Usage (single dataset):
-  ./run_benchmark.sh --wisdm
-  ./run_benchmark.sh --ecg
-  ./run_benchmark.sh --bus
+Dataset selection (default: all three):
+  --all                  wisdm + mit_ecg + bus (default)
+  --wisdm                Only wisdm
+  --ecg                  Only mit_ecg
+  --bus                  Only bus
 
 Options:
-  --all                        Run all 3 datasets (default when no dataset flag given)
-  --wisdm                      Set DATASET=wisdm
-  --ecg                        Set DATASET=mit_ecg
-  --bus                        Set DATASET=bus
-  --dataset <name>             Dataset profile: wisdm | mit_ecg | bus | all
-    --baselines <csv>            Baselines list (default AUTOIOT_PAPER,HARGPT_PAPER,LLMSENSE_PAPER,FLASH_FUSION)
-  --queries <csv|all>          Query IDs, e.g. 1,5,9 or all
-  --runs <n>                   Number of repeated runs
-  --max-latency <seconds>      Per-query timeout
-  --model <name>               Groq model override
-  --ground-truth <path>        Override ground-truth JSON (single-dataset mode only)
-  --quick                      Shortcut for RUNS=1 and QUERIES=1,5,9
-  -h, --help                   Show this help message
+  --baselines <csv>      Comma-separated baselines
+                           (default: FLASH_FUSION,HARGPT_PAPER,LLMSENSE_PAPER,REACT_ONLY,AUTOIOT_PAPER)
+  --queries <csv|all>    Query IDs e.g. 1,5,9 or all (default: all)
+  --runs <n>             Number of repeated runs (default: 1)
+  --max-latency <s>      Single timeout for all baselines (overrides per-baseline)
+  --model <name>         LLM model override
+  --no-smoke             Skip smoke test
+  --quick                RUNS=1, QUERIES=1,5,9, smoke off
+  -h, --help             Show this help
 
-Examples:
-  ./run_benchmark.sh                        # all 3 datasets, full benchmark
-  ./run_benchmark.sh --wisdm                # WISDM only
-  ./run_benchmark.sh --bus --queries 1,2,3 --runs 1
-  ./run_benchmark.sh --ecg --quick
+Output: OUTPUT_ROOT/<BASELINE>/<dataset>/<RUN_TAG>/
+Default OUTPUT_ROOT: flashfusion/results/july26
+
+Debug env vars: AUTOIOT_DEBUG=1, DEBUG_BENCHMARK=1
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --all)
-            DATASET="all"
-            shift
-            ;;
-        --wisdm)
-            DATASET="wisdm"
-            shift
-            ;;
-        --ecg|--mit-ecg|--mit_ecg)
-            DATASET="mit_ecg"
-            shift
-            ;;
-        --bus)
-            DATASET="bus"
-            shift
-            ;;
-        --dataset)
-            DATASET="${2:-}"
-            shift 2
-            ;;
-        --baselines)
-            BASELINES="${2:-}"
-            shift 2
-            ;;
-        --queries)
-            QUERIES="${2:-}"
-            shift 2
-            ;;
-        --runs)
-            RUNS="${2:-}"
-            shift 2
-            ;;
-        --max-latency)
-            MAX_LATENCY="${2:-}"
-            shift 2
-            ;;
-        --model)
-            MODEL="${2:-}"
-            shift 2
-            ;;
-        --ground-truth)
-            GROUND_TRUTH="${2:-}"
-            shift 2
-            ;;
-        --quick)
-            BASELINES="AUTOIOT_PAPER,HARGPT_PAPER,LLMSENSE_PAPER,FLASH_FUSION"
-            RUNS="1"
-            QUERIES="1,5,9"
-            shift
-            ;;
-        -h|--help)
-            print_help
-            exit 0
-            ;;
-        *)
-            echo "ERROR: Unknown option: $1"
-            echo "Run ./run_benchmark.sh --help for usage."
-            exit 1
-            ;;
+        --all)              DATASETS="wisdm,mit_ecg,bus"; shift ;;
+        --wisdm)            DATASETS="wisdm"; shift ;;
+        --ecg|--mit-ecg|--mit_ecg) DATASETS="mit_ecg"; shift ;;
+        --bus)              DATASETS="bus"; shift ;;
+        --baselines)        BASELINES="${2:-}"; shift 2 ;;
+        --queries)          QUERIES="${2:-}"; shift 2 ;;
+        --runs)             RUNS="${2:-}"; shift 2 ;;
+        --max-latency)      MAX_LATENCY="${2:-}"; shift 2 ;;
+        --model)            MODEL="${2:-}"; shift 2 ;;
+        --no-smoke)         SMOKE_TEST="0"; shift ;;
+        --quick)            RUNS="1"; QUERIES="1,5,9"; SMOKE_TEST="0"; shift ;;
+        -h|--help)          print_help; exit 0 ;;
+        *) echo "ERROR: Unknown option: $1"; echo "Run ./run_benchmark.sh --help"; exit 1 ;;
     esac
 done
 
-case "$DATASET" in
-    all|wisdm|mit_ecg|bus)
-        : # valid
-        ;;
-    *)
-        echo "ERROR: Unsupported DATASET '$DATASET'. Use wisdm, mit_ecg, bus, or all."
-        exit 1
-        ;;
-esac
+IFS=',' read -r -a BASELINE_LIST <<< "${BASELINES}"
+IFS=',' read -r -a DATASET_LIST  <<< "${DATASETS}"
 
-# ── Validate common pre-conditions ───────────────────────────────────────────
-if [ -z "${OPENROUTER_API_KEY:-}" ] && [ -z "${GROQ_API_KEY:-}" ]; then
-    echo "ERROR: OPENROUTER_API_KEY (or GROQ_API_KEY for transition) is not set."
-    echo "       Export it with:  export OPENROUTER_API_KEY='sk-or-...'"
-    exit 1
-fi
+# ── Helper functions ──────────────────────────────────────────────────────────
+ts()  { date "+%Y-%m-%d %H:%M:%S"; }
+log() { echo "[$(ts)] $*"; }
 
-if ! "$PYTHON" -c "import matplotlib" >/dev/null 2>&1; then
-    echo "ERROR: matplotlib is not installed in the active Python environment."
-    echo "       Install dependencies with one of:"
-    echo "         $PYTHON -m pip install -r requirements.txt"
-    echo "         $PYTHON -m pip install -e flashfusion/"
-    exit 1
-fi
+require_file() {
+    if [[ ! -f "$1" ]]; then echo "[ERROR] Required file not found: $1" >&2; exit 1; fi
+}
 
-if [ "$DEBUG_BENCHMARK" = "1" ]; then
-    echo ""
-    echo "▶  [DEBUG]  Benchmark debugging enabled"
-    echo "  Python      : $PYTHON"
-    echo "  Working dir : $SCRIPT_DIR"
-    echo "  Dataset     : $DATASET"
-    echo "  Baselines   : $BASELINES"
-    echo "  Queries     : $QUERIES"
-    echo "  Runs        : $RUNS"
-    echo "  Model       : ${MODEL:-<default>}"
-    echo ""
-    echo "▶  [DEBUG]  Probing Groq API connectivity (curl + Python)…"
-    _GROQ_HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-        --max-time 10 \
-        -H "Authorization: Bearer ${OPENROUTER_API_KEY:-${GROQ_API_KEY}}" \
-        "https://openrouter.ai/api/v1/models" 2>/dev/null || true)
-    echo "  curl HTTP status for openrouter.ai/models: ${_GROQ_HTTP_STATUS}"
-    if [[ "$_GROQ_HTTP_STATUS" != "200" ]]; then
-        echo "  WARNING: Groq API probe returned non-200. Network or key issue likely."
+dataset_data_path() {
+    case "$1" in
+        wisdm)   echo "${WISDM_DATA}" ;;
+        mit_ecg) echo "${MIT_ECG_DATA}" ;;
+        bus)     echo "${BUS_DATA}" ;;
+        *) echo "[ERROR] Unknown dataset: $1" >&2; return 1 ;;
+    esac
+}
+
+dataset_gt_path() {
+    case "$1" in
+        wisdm)   echo "${GT_WISDM}" ;;
+        mit_ecg) echo "${GT_MIT_ECG}" ;;
+        bus)     echo "${GT_BUS}" ;;
+        *) echo "[ERROR] Unknown dataset: $1" >&2; return 1 ;;
+    esac
+}
+
+baseline_max_latency() {
+    local baseline="$1"
+    if [[ -n "${MAX_LATENCY}" ]]; then echo "${MAX_LATENCY}"; return; fi
+    local varname="MAX_LATENCY_${baseline}"
+    echo "${!varname:-60.0}"
+}
+
+run_stage_latency_export() {
+    local baseline="$1" ds="$2" target_dir="$3" data_path="$4"
+    local tmp_stage
+    tmp_stage="$(mktemp -d)"
+
+    local qargs=""
+    if [[ "${QUERIES}" != "all" ]]; then
+        IFS=',' read -r -a qids <<< "${QUERIES}"
+        qargs=" --query-ids"
+        for qid in "${qids[@]}"; do
+            qid="$(echo "${qid}" | xargs)"
+            [[ -n "${qid}" ]] && qargs+=" ${qid}"
+        done
     fi
 
-    echo "  [curl] testing chat completion endpoint..."
-    _GROQ_CHAT_STATUS=$(curl -s -o /tmp/flashfusion_groq_probe.json -w "%{http_code}" \
-        --max-time 20 \
-        -H "Authorization: Bearer ${OPENROUTER_API_KEY:-${GROQ_API_KEY}}" \
-        -H "Content-Type: application/json" \
-        -d '{"model":"llama-3.3-70b-versatile","messages":[{"role":"user","content":"Reply with PING"}],"temperature":0}' \
-        "https://openrouter.ai/api/v1/chat/completions" 2>/dev/null || true)
-    echo "  [curl] chat completion HTTP status: ${_GROQ_CHAT_STATUS}"
-    if [[ -f /tmp/flashfusion_groq_probe.json ]]; then
-        echo "  [curl] response preview: $(head -c 160 /tmp/flashfusion_groq_probe.json | tr '\n' ' ')"
+    eval "\"${PYTHON}\" -u flashfusion/miniexp/latencystages.py \
+        --mode semantic_single \
+        --baseline \"${baseline}\" \
+        --datasets \"${ds}\" \
+        --model \"${MODEL}\" \
+        --output-dir \"${tmp_stage}\" \
+        --data-path-wisdm \"${data_path}\" \
+        --data-path-mit-ecg \"${data_path}\" \
+        --data-path-bus \"${data_path}\"${qargs}" \
+        >"${target_dir}/stage_semantic.log" 2>&1 || true
+
+    local baseline_lower
+    baseline_lower="$(echo "${baseline}" | tr '[:upper:]' '[:lower:]')"
+    local src_sem="${tmp_stage}/semantic_single/${baseline_lower}"
+    [[ -d "${src_sem}" ]] && cp -f "${src_sem}"/* "${target_dir}/" 2>/dev/null || true
+
+    if [[ "${baseline}" == "FLASH_FUSION" ]]; then
+        eval "\"${PYTHON}\" -u flashfusion/miniexp/latencystages.py \
+            --mode ff_only \
+            --datasets \"${ds}\" \
+            --model \"${MODEL}\" \
+            --output-dir \"${tmp_stage}\" \
+            --data-path-wisdm \"${data_path}\" \
+            --data-path-mit-ecg \"${data_path}\" \
+            --data-path-bus \"${data_path}\"${qargs}" \
+            >"${target_dir}/stage_ff_native.log" 2>&1 || true
+        local src_ff="${tmp_stage}/flash_fusion_native"
+        [[ -d "${src_ff}" ]] && cp -f "${src_ff}"/* "${target_dir}/" 2>/dev/null || true
     fi
 
-    "$PYTHON" - <<'PYEOF'
-import importlib.metadata as md
-packages = [
-    "langchain-openrouter",
-    "langchain-core",
-    "langchain",
-    "langchain-classic",
-    "transformers",
-    "sentence-transformers",
-    "pydantic",
-    "httpx",
-]
-print("  [PY] Installed package versions:", flush=True)
-for name in packages:
-    try:
-        print(f"    {name}=={md.version(name)}", flush=True)
-    except md.PackageNotFoundError:
-        print(f"    {name}=<not installed>", flush=True)
-PYEOF
+    rm -rf "${tmp_stage}"
+}
 
-    _py_status=0
-    if command -v timeout >/dev/null 2>&1; then
-        timeout 30 "$PYTHON" - <<'PYEOF'
-import os, sys, time
-print("  [PY] Python version:", sys.version.split()[0], flush=True)
-try:
-    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
-    from langchain_core.output_parsers import StrOutputParser
-    print("  [PY] langchain_core imported OK", flush=True)
-except Exception as e:
-    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
-    sys.exit(1)
-try:
-    print("  [PY] importing langchain_openrouter...", flush=True)
-    from langchain_openrouter import ChatOpenRouter
-    from langchain_core.prompts import ChatPromptTemplate
-    print("  [PY] langchain_openrouter imported OK", flush=True)
-    key = os.environ.get("OPENROUTER_API_KEY", "") or os.environ.get("GROQ_API_KEY", "")
-    print("  [PY] constructing ChatOpenRouter client...", flush=True)
-    llm = ChatOpenRouter(model="meta-llama/llama-3.1-8b-instruct", api_key=key, temperature=0, max_retries=2)
-    print("  [PY] ChatOpenRouter client constructed", flush=True)
-    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
-    print("  [PY] invoking LangChain pipeline...", flush=True)
-    t0 = time.time()
-    resp = chain.invoke({})
-    latency = time.time() - t0
-    print(f"  [PY] OpenRouter API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
-except Exception as e:
-    print(f"  [PY] OpenRouter API ping FAILED: {type(e).__name__}: {e}", flush=True)
-PYEOF
-        _py_status=$?
-    elif command -v gtimeout >/dev/null 2>&1; then
-        gtimeout 30 "$PYTHON" - <<'PYEOF'
-import os, sys, time
-print("  [PY] Python version:", sys.version.split()[0], flush=True)
-try:
-    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
-    from langchain_core.output_parsers import StrOutputParser
-    print("  [PY] langchain_core imported OK", flush=True)
-except Exception as e:
-    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
-    sys.exit(1)
-try:
-    print("  [PY] importing langchain_openrouter...", flush=True)
-    from langchain_openrouter import ChatOpenRouter
-    from langchain_core.prompts import ChatPromptTemplate
-    print("  [PY] langchain_openrouter imported OK", flush=True)
-    key = os.environ.get("OPENROUTER_API_KEY", "") or os.environ.get("GROQ_API_KEY", "")
-    print("  [PY] constructing ChatOpenRouter client...", flush=True)
-    llm = ChatOpenRouter(model="meta-llama/llama-3.1-8b-instruct", api_key=key, temperature=0, max_retries=2)
-    print("  [PY] ChatOpenRouter client constructed", flush=True)
-    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
-    print("  [PY] invoking LangChain pipeline...", flush=True)
-    t0 = time.time()
-    resp = chain.invoke({})
-    latency = time.time() - t0
-    print(f"  [PY] OpenRouter API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
-except Exception as e:
-    print(f"  [PY] OpenRouter API ping FAILED: {type(e).__name__}: {e}", flush=True)
-PYEOF
-        _py_status=$?
-    else
-        echo "  [DEBUG] timeout utility not found; Python import probe may block if imports hang."
-        "$PYTHON" - <<'PYEOF'
-import os, sys, time
-print("  [PY] Python version:", sys.version.split()[0], flush=True)
-try:
-    print("  [PY] importing langchain_core StrOutputParser...", flush=True)
-    from langchain_core.output_parsers import StrOutputParser
-    print("  [PY] langchain_core imported OK", flush=True)
-except Exception as e:
-    print(f"  [PY] ERROR during langchain_core import: {type(e).__name__}: {e}", flush=True)
-    sys.exit(1)
-try:
-    print("  [PY] importing langchain_openrouter...", flush=True)
-    from langchain_openrouter import ChatOpenRouter
-    from langchain_core.prompts import ChatPromptTemplate
-    print("  [PY] langchain_openrouter imported OK", flush=True)
-    key = os.environ.get("OPENROUTER_API_KEY", "") or os.environ.get("GROQ_API_KEY", "")
-    print("  [PY] constructing ChatOpenRouter client...", flush=True)
-    llm = ChatOpenRouter(model="meta-llama/llama-3.1-8b-instruct", api_key=key, temperature=0, max_retries=2)
-    print("  [PY] ChatOpenRouter client constructed", flush=True)
-    chain = ChatPromptTemplate.from_template("Say PING") | llm | StrOutputParser()
-    print("  [PY] invoking LangChain pipeline...", flush=True)
-    t0 = time.time()
-    resp = chain.invoke({})
-    latency = time.time() - t0
-    print(f"  [PY] OpenRouter API ping OK ({latency:.2f}s): {resp[:60]!r}", flush=True)
-except Exception as e:
-    print(f"  [PY] OpenRouter API ping FAILED: {type(e).__name__}: {e}", flush=True)
-PYEOF
-        _py_status=$?
-    fi
-    if [ $_py_status -eq 124 ]; then
-        echo "  [PY] Import probe timed out after 30s. This usually indicates a broken or pathological dependency import in the active venv."
-    elif [ $_py_status -ne 0 ]; then
-        echo "  [PY] Import probe exited with status ${_py_status}."
-    fi
-    echo ""
-fi
+run_smoke_tests() {
+    local smoke_root="${OUTPUT_ROOT}/_smoke/${RUN_TAG}"
+    mkdir -p "${smoke_root}"
+    local smoke_csv="${smoke_root}/smoke_status.csv"
+    echo "baseline,dataset,status,reason,rows,error_rows,log_file" > "${smoke_csv}"
 
-# ── Shared helpers ────────────────────────────────────────────────────────────
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-RUNS_BASE="flashfusion/eval_results/runs"
-LATEST_LINK="$RUNS_BASE/latest"
+    local baseline ds data_path gt_path smoke_out smoke_log smoke_latency
+    for baseline in "${BASELINE_LIST[@]}"; do
+        for ds in "${DATASET_LIST[@]}"; do
+            data_path="$(dataset_data_path "${ds}")"
+            gt_path="$(dataset_gt_path "${ds}")"
+            smoke_out="${smoke_root}/${baseline}/${ds}"
+            smoke_log="${smoke_root}/${baseline}_${ds}.log"
+            mkdir -p "${smoke_out}"
 
-# run_single_dataset DATASET DATA_PATH GROUND_TRUTH_PATH OUTPUT_DIR
-# Runs steps 1-4 (benchmark → split → per-dataset visuals → summary)
-# and returns the benchmark dir path via stdout.
-run_single_dataset() {
-    local ds="$1"
-    local data_path="$2"
-    local gt_path="$3"
-    local ds_out="$4"
+            smoke_latency="$(baseline_max_latency "${baseline}")"
+            if (( $(echo "${SMOKE_MAX_LATENCY} < ${smoke_latency}" | bc -l) )); then
+                smoke_latency="${SMOKE_MAX_LATENCY}"
+            fi
+            log "[SMOKE] baseline=${baseline} dataset=${ds} max_latency=${smoke_latency}s"
 
-    local bench_dir="$ds_out/benchmark"
-    local judge_dir="$bench_dir/ground_truth_llm_judge"
-    local per_bl_dir="$ds_out/per_baseline"
-    local vis_dir="$ds_out/visuals"
-    mkdir -p "$bench_dir" "$per_bl_dir" "$vis_dir"
+            if ! "${PYTHON}" -u -m flashfusion.eval.benchmark \
+                --dataset "${ds}" \
+                --data "${data_path}" \
+                --ground-truth "${gt_path}" \
+                --baselines "${baseline}" \
+                --queries "${SMOKE_QUERIES}" \
+                --runs 1 \
+                --model "${MODEL}" \
+                --max-query-latency "${smoke_latency}" \
+                --ground-truth-measurement llm \
+                --output "${smoke_out}" \
+                >"${smoke_log}" 2>&1; then
+                echo "${baseline},${ds},fail,benchmark_command_failed,0,0,${smoke_log}" >> "${smoke_csv}"
+                continue
+            fi
 
-    echo ""
-    echo "  ▷  [DS: $ds]  Step 1/3 — Running benchmark…"
-    if [ "$DEBUG_BENCHMARK" = "1" ]; then
-        echo "  [DEBUG] dataset=$ds data=$data_path gt=$gt_path"
-        echo "  [DEBUG] output=$bench_dir"
-    fi
-
-    local cmd=("$PYTHON" -u -m flashfusion.eval.benchmark
-        --data          "$data_path"
-        --dataset       "$ds"
-        --baselines     "$BASELINES"
-        --queries       "$QUERIES"
-        --runs          "$RUNS"
-        --ground-truth  "$gt_path"
-        --ground-truth-measurement llm
-        --max-query-latency "$MAX_LATENCY"
-        --output        "$bench_dir"
-    )
-    [ -n "$MODEL" ] && cmd+=(--model "$MODEL")
-    if [ "$DEBUG_BENCHMARK" = "1" ]; then
-        printf '  [DEBUG] cmd:'
-        printf ' %q' "${cmd[@]}"
-        printf '\n'
-        local step1_start
-        step1_start=$(date +%s)
-    fi
-    "${cmd[@]}"
-    if [ "$DEBUG_BENCHMARK" = "1" ]; then
-        local step1_end
-        step1_end=$(date +%s)
-        echo "  [DEBUG] benchmark runtime: $(( step1_end - step1_start ))s"
-    fi
-    echo "  ✓  [DS: $ds]  Benchmark → $bench_dir"
-
-    echo ""
-    echo "  ▷  [DS: $ds]  Step 2/3 — Splitting metrics per baseline…"
-    "$PYTHON" - "$bench_dir/metrics.csv" "$per_bl_dir" <<'PYEOF'
-import sys
+            local status_line
+            status_line="$("${PYTHON}" - "${smoke_out}" <<'PYEOF'
+import json, sys
+from pathlib import Path
 import pandas as pd
-from pathlib import Path
-metrics_path = Path(sys.argv[1])
-out_base = Path(sys.argv[2])
-if not metrics_path.exists():
-    print(f"  Warning: metrics file not found at {metrics_path}")
-    sys.exit(0)
-df = pd.read_csv(metrics_path)
-if "baseline" not in df.columns:
-    print("  Warning: metrics.csv has no 'baseline' column; skipping split.")
-    sys.exit(0)
-for baseline, grp in df.groupby("baseline"):
-    dest = out_base / str(baseline)
-    dest.mkdir(parents=True, exist_ok=True)
-    grp.to_csv(dest / "metrics.csv", index=False)
-    print(f"  Wrote {dest / 'metrics.csv'}  ({len(grp)} rows)")
-PYEOF
-    echo "  ✓  [DS: $ds]  Split complete"
-
-    echo ""
-    echo "  ▷  [DS: $ds]  Step 3/3 — Generating per-dataset visualizations…"
-
-    "$PYTHON" -m flashfusion.eval.visualize_comparison \
-        --metrics "$bench_dir/metrics.csv" \
-        --dataset "$ds" \
-        --accuracy-column gt_score \
-        --title "Baseline Comparison ($ds)" \
-        --output "$vis_dir"
-    echo "  ✓  [DS: $ds]  Per-dataset charts → $vis_dir"
-
-    # LLM judge summary chart
-    "$PYTHON" - "$judge_dir" "$vis_dir" <<'PYEOF'
-import sys
-from pathlib import Path
-judge_dir  = Path(sys.argv[1])
-visuals_dir = Path(sys.argv[2])
-summary_path   = judge_dir / "llm_judgments_summary.csv"
-judgments_path = judge_dir / "llm_judgments.csv"
-if not summary_path.exists():
-    print(f"  Warning: {summary_path} not found; skipping LLM judge charts.")
-    sys.exit(0)
-try:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import pandas as pd
-except ImportError as exc:
-    print(f"  Warning: {exc}; skipping LLM judge charts.")
-    sys.exit(0)
-df = pd.read_csv(summary_path)
+out_dir = Path(sys.argv[1])
+metrics = out_dir / "metrics.csv"
+raw = out_dir / "raw_results.jsonl"
+if not metrics.exists():
+    print("fail,missing_metrics,0,0"); raise SystemExit(0)
+df = pd.read_csv(metrics)
 if df.empty:
-    print("  Warning: LLM judge summary is empty.")
-    sys.exit(0)
-PALETTE = {
-    "REACT_ONLY": "#f4a259",
-    "WELLMAX_ONLY": "#136f63",
-    "AUTOIOT_PAPER": "#8e5bd9",
-    "FLASH_FUSION": "#2d6cdf",
-    "HARGPT_PAPER": "#c94f7c",
-}
-colors = [PALETTE.get(str(b), "#999999") for b in df["baseline"]]
-fig, (ax_score, ax_dist) = plt.subplots(1, 2, figsize=(13, 5.2))
-ax_score.bar(df["baseline"], df["pass_rate"], color=colors)
-ax_score.set_title("LLM Judge — Pass Rate", fontweight="bold")
-ax_score.set_ylabel("Rate")
-ax_score.set_ylim(0, 1.15)
-ax_score.tick_params(axis="x", rotation=15)
-for i, v in enumerate(df["pass_rate"]):
-    ax_score.text(i, v + 0.025, f"{v:.3f}", ha="center", fontsize=10, fontweight="bold")
-bar_x = list(range(len(df)))
-pass_vals = df["pass_rate"].tolist()
-fail_vals = df["fail_rate"].tolist()
-ax_dist.bar(bar_x, pass_vals, label="PASS", color="#4caf50")
-ax_dist.bar(bar_x, fail_vals, bottom=pass_vals, label="FAIL", color="#f44336")
-ax_dist.set_xticks(bar_x)
-ax_dist.set_xticklabels(df["baseline"].tolist())
-ax_dist.set_title("LLM Judge — Verdict Distribution", fontweight="bold")
-ax_dist.set_ylabel("Rate")
-ax_dist.set_ylim(0, 1.1)
-ax_dist.tick_params(axis="x", rotation=15)
-ax_dist.legend(loc="upper right")
-fig.suptitle("LLM Judge Results", fontsize=13, fontweight="bold")
-fig.tight_layout()
-out_png = visuals_dir / "llm_judge_bars.png"
-fig.savefig(out_png, dpi=180, bbox_inches="tight")
-plt.close(fig)
-print(f"  Wrote {out_png}")
-if judgments_path.exists():
-    jdf = pd.read_csv(judgments_path)
-    keep = [c for c in ["query_id","baseline","query_text","llm_verdict","llm_score","llm_reason"] if c in jdf.columns]
-    out_q = visuals_dir / "per_query_llm_scores.csv"
-    jdf[keep].sort_values(["query_id","baseline"]).to_csv(out_q, index=False)
-    print(f"  Wrote {out_q}")
+    print("fail,empty_metrics,0,0"); raise SystemExit(0)
+rows = int(len(df))
+processed = bool(((df.get("executed", False) == True) | (df.get("rejected", False) == True)).any())
+if not processed:
+    print(f"fail,no_executed_or_rejected,{rows},0"); raise SystemExit(0)
+err_rows = 0
+if raw.exists():
+    with raw.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if str(obj.get("answer", "")).startswith("[ERROR"):
+                err_rows += 1
+verdict = "fail,all_rows_error" if err_rows >= rows else "pass,ok"
+print(f"{verdict},{rows},{err_rows}")
 PYEOF
+)"
+            IFS=',' read -r smoke_status smoke_reason smoke_rows smoke_err <<< "${status_line}"
+            echo "${baseline},${ds},${smoke_status},${smoke_reason},${smoke_rows},${smoke_err},${smoke_log}" >> "${smoke_csv}"
+        done
+    done
 
-    # Console summary for this dataset
-    "$PYTHON" - "$bench_dir/metrics.csv" "$judge_dir/llm_judgments_summary.csv" "$ds" <<'PYEOF'
-import sys
-from pathlib import Path
-import pandas as pd
-metrics_path = Path(sys.argv[1])
-judge_summary_path = Path(sys.argv[2])
-ds_label = sys.argv[3]
-DIVIDER = "─" * 70
-def _tabulate(df, title):
-    print(f"\n  {title}")
-    print(f"  {DIVIDER}")
-    try:
-        from tabulate import tabulate
-        print(tabulate(df, headers="keys", tablefmt="github", showindex=False, floatfmt=".4f"))
-    except ImportError:
-        print(df.to_string(index=False))
-    print()
-if metrics_path.exists():
-    df = pd.read_csv(metrics_path)
-    agg_cols = [c for c in ["gt_score","latency_s","cost_usd","input_tokens","output_tokens"] if c in df.columns]
-    summary = df.groupby("baseline")[agg_cols].mean().round(4).reset_index()
-    sort_col = "gt_score" if "gt_score" in summary.columns else agg_cols[0]
-    summary = summary.sort_values(sort_col, ascending=False).reset_index(drop=True)
-    _tabulate(summary, f"{ds_label.upper()} — LLM Accuracy Summary")
-if judge_summary_path.exists():
-    jsum = pd.read_csv(judge_summary_path).round(4)
-    jsum = jsum.sort_values("pass_rate", ascending=False).reset_index(drop=True)
-    _tabulate(jsum, f"{ds_label.upper()} — LLM Judge Summary")
-PYEOF
+    log "[SMOKE] Wrote status: ${smoke_csv}"
+    local fail_count
+    fail_count="$(( $(grep -c ',fail,' "${smoke_csv}" || true) ))"
+    if [[ "${fail_count}" -gt 0 ]]; then
+        log "[SMOKE] FAILURES=${fail_count}"
+        if [[ "${SMOKE_ABORT_ON_FAIL}" == "1" ]]; then
+            echo "[ERROR] Smoke test failed. Aborting. See ${smoke_csv}" >&2; exit 1
+        fi
+    else
+        log "[SMOKE] All baseline x dataset checks passed"
+    fi
 }
+
+# ── Validate pre-conditions ───────────────────────────────────────────────────
+if [[ -z "${OPENROUTER_API_KEY:-}" && -z "${GROQ_API_KEY:-}" ]]; then
+    echo "[ERROR] Missing API key. Set OPENROUTER_API_KEY or GROQ_API_KEY." >&2; exit 1
+fi
+
+if [[ "${BASELINES}" == *"AUTOIOT_PAPER"* && -z "${TAVILY_API_KEY:-}" ]]; then
+    echo "[ERROR] AUTOIOT_PAPER requires TAVILY_API_KEY." >&2; exit 1
+fi
+
+if ! "${PYTHON}" -c "import matplotlib" >/dev/null 2>&1; then
+    echo "[ERROR] matplotlib not installed. Run: ${PYTHON} -m pip install -r requirements.txt" >&2; exit 1
+fi
+
+for ds in "${DATASET_LIST[@]}"; do
+    require_file "$(dataset_data_path "${ds}")"
+    require_file "$(dataset_gt_path "${ds}")"
+done
+
+mkdir -p "${OUTPUT_ROOT}" "${OUTPUT_ROOT}/_aggregate/${RUN_TAG}"
+
+# ── Debug probe ───────────────────────────────────────────────────────────────
+if [[ "${DEBUG_BENCHMARK}" == "1" ]]; then
+    log "[DEBUG] Python        : ${PYTHON}"
+    log "[DEBUG] OUTPUT_ROOT   : ${OUTPUT_ROOT}"
+    log "[DEBUG] RUN_TAG       : ${RUN_TAG}"
+    log "[DEBUG] Baselines     : ${BASELINE_LIST[*]}"
+    log "[DEBUG] Datasets      : ${DATASET_LIST[*]}"
+    log "[DEBUG] Queries       : ${QUERIES}  Runs: ${RUNS}"
+    log "[DEBUG] AUTOIOT_DEBUG : ${AUTOIOT_DEBUG}"
+    log "[DEBUG] Probing OpenRouter API..."
+    _HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 \
+        -H "Authorization: Bearer ${OPENROUTER_API_KEY:-${GROQ_API_KEY:-}}" \
+        "https://openrouter.ai/api/v1/models" 2>/dev/null || true)
+    log "[DEBUG] openrouter.ai/models HTTP status: ${_HTTP_STATUS}"
+    [[ "${_HTTP_STATUS}" != "200" ]] && log "[DEBUG] WARNING: non-200 — check key / connectivity"
+fi
 
 # ── Opening banner ────────────────────────────────────────────────────────────
+AGG_ROOT="${OUTPUT_ROOT}/_aggregate/${RUN_TAG}"
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Flash-Fusion  —  End-to-End Benchmark"
-echo "  Timestamp  : $TIMESTAMP"
-echo "  Baselines  : $BASELINES"
-echo "  Queries    : $QUERIES"
-echo "  Dataset    : $DATASET"
-echo "  Runs       : $RUNS"
-echo "  Max latency: ${MAX_LATENCY}s per query"
-if [ "$DATASET" = "all" ]; then
-    echo "  Mode       : All datasets → run_all_${TIMESTAMP}/"
-    echo "               Cross-dataset balanced visuals → visuals_all/"
+echo "================================================================"
+echo "  Flash-Fusion  --  Consolidated Benchmark"
+echo "  Timestamp    : $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  Run tag      : ${RUN_TAG}"
+echo "  Baselines    : ${BASELINES}"
+echo "  Datasets     : ${DATASETS}"
+echo "  Queries      : ${QUERIES}   Runs: ${RUNS}"
+echo "  Output root  : ${OUTPUT_ROOT}"
+if [[ -n "${MAX_LATENCY}" ]]; then
+    echo "  Max latency  : ${MAX_LATENCY}s (all baselines)"
+else
+    echo "  Max latency  : FF=${MAX_LATENCY_FLASH_FUSION}s REACT=${MAX_LATENCY_REACT_ONLY}s HARGPT=${MAX_LATENCY_HARGPT_PAPER}s LLMSENSE=${MAX_LATENCY_LLMSENSE_PAPER}s AUTOIOT=${MAX_LATENCY_AUTOIOT_PAPER}s"
 fi
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Smoke test   : ${SMOKE_TEST} (queries=${SMOKE_QUERIES}, max=${SMOKE_MAX_LATENCY}s, abort=${SMOKE_ABORT_ON_FAIL})"
+echo "  AUTOIOT_DEBUG: ${AUTOIOT_DEBUG}"
+echo "================================================================"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ALL-DATASETS MODE
-# ─────────────────────────────────────────────────────────────────────────────
-if [ "$DATASET" = "all" ]; then
+# ── Smoke tests ───────────────────────────────────────────────────────────────
+if [[ "${SMOKE_TEST}" == "1" ]]; then
+    run_smoke_tests
+fi
 
-    RUN_PREFIX="${RUN_PREFIX:-run_all}"
-    RUN_DIR="$RUNS_BASE/${RUN_PREFIX}_${TIMESTAMP}"
-    VISUALS_ALL_DIR="$RUN_DIR/visuals_all"
-    mkdir -p "$VISUALS_ALL_DIR"
+# ── Main benchmark loop (baseline x dataset) ──────────────────────────────────
+for baseline in "${BASELINE_LIST[@]}"; do
+    for ds in "${DATASET_LIST[@]}"; do
+        DATA_PATH="$(dataset_data_path "${ds}")"
+        GT_PATH="$(dataset_gt_path "${ds}")"
+        TARGET_DIR="${OUTPUT_ROOT}/${baseline}/${ds}/${RUN_TAG}"
+        mkdir -p "${TARGET_DIR}"
 
-    # Dataset data file paths
-    DS_DATA_wisdm="$WISDM_DATA"
-    DS_DATA_mit_ecg="$MIT_ECG_DATA"
-    DS_DATA_bus="$BUS_DATA"
+        QUERY_MAX_LATENCY="$(baseline_max_latency "${baseline}")"
+        log "[Benchmark] baseline=${baseline} dataset=${ds} max_latency=${QUERY_MAX_LATENCY}s -> ${TARGET_DIR}"
 
-    # Dataset ground truth file paths
-    DS_GT_wisdm="flashfusion/eval/ground_truth/ground_truth_wisdm.json"
-    DS_GT_mit_ecg="flashfusion/eval/ground_truth/ground_truth_mit_ecg.json"
-    DS_GT_bus="flashfusion/eval/ground_truth/ground_truth_bus.json"
+        "${PYTHON}" -u -m flashfusion.eval.benchmark \
+            --dataset "${ds}" \
+            --data "${DATA_PATH}" \
+            --ground-truth "${GT_PATH}" \
+            --baselines "${baseline}" \
+            --queries "${QUERIES}" \
+            --runs "${RUNS}" \
+            --model "${MODEL}" \
+            --max-query-latency "${QUERY_MAX_LATENCY}" \
+            --ground-truth-measurement llm \
+            --output "${TARGET_DIR}" \
+            2>&1 | tee "${TARGET_DIR}/benchmark.log"
 
-    DS_LIST=(wisdm mit_ecg bus)
+        log "[Visualize] baseline=${baseline} dataset=${ds}"
+        "${PYTHON}" -m flashfusion.eval.visualize_comparison \
+            --metrics "${TARGET_DIR}/metrics.csv" \
+            --dataset "${ds}" \
+            --accuracy-column gt_score \
+            --title "${baseline} (${ds})" \
+            --output "${TARGET_DIR}" \
+            2>&1 | tee "${TARGET_DIR}/visualize.log" || true
 
-    # Validate all data + GT files before starting
-    for ds in "${DS_LIST[@]}"; do
-        DATA_VAR="DS_DATA_${ds//-/_}"
-        GT_VAR="DS_GT_${ds//-/_}"
-        dp="${!DATA_VAR}"
-        gt="${!GT_VAR}"
-        if [ ! -f "$dp" ]; then
-            echo "ERROR: Data file for $ds not found: $dp"
-            exit 1
-        fi
-        if [ ! -f "$gt" ]; then
-            echo "ERROR: Ground-truth for $ds not found: $gt"
-            exit 1
-        fi
+        log "[Stage latency] baseline=${baseline} dataset=${ds}"
+        run_stage_latency_export "${baseline}" "${ds}" "${TARGET_DIR}" "${DATA_PATH}"
     done
+done
 
-    # Run each dataset and collect benchmark paths
-    echo ""
-    echo "▶  [1/${#DS_LIST[@]}×3+1]  Running all datasets…"
-    STEP=1
-    BENCH_WISDM=""
-    BENCH_ECG=""
-    BENCH_BUS=""
-    for ds in "${DS_LIST[@]}"; do
-        echo ""
-        echo "━━━ Dataset ${STEP}/${#DS_LIST[@]}: $ds ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        DS_OUT_DIR="$RUN_DIR/$ds"
-        DATA_VAR="DS_DATA_${ds//-/_}"
-        GT_VAR="DS_GT_${ds//-/_}"
-        run_single_dataset "$ds" "${!DATA_VAR}" "${!GT_VAR}" "$DS_OUT_DIR"
-        
-        # Store benchmark path in appropriate variable
-        case "$ds" in
-            wisdm)   BENCH_WISDM="$DS_OUT_DIR/benchmark" ;;
-            mit_ecg) BENCH_ECG="$DS_OUT_DIR/benchmark" ;;
-            bus)     BENCH_BUS="$DS_OUT_DIR/benchmark" ;;
-        esac
-        STEP=$(( STEP + 1 ))
-    done
-
-    # Cross-dataset visualization
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "▶  Cross-dataset balanced visualization…"
-    echo "   Balanced mean: average of per-dataset means (no size-bias)"
-    echo ""
-
-    CROSS_CMD=("$PYTHON" -m flashfusion.eval.visualize_cross_dataset
-        --wisdm-metrics "$BENCH_WISDM/metrics.csv"
-        --ecg-metrics   "$BENCH_ECG/metrics.csv"
-        --bus-metrics   "$BENCH_BUS/metrics.csv"
-        --output        "$VISUALS_ALL_DIR"
-        --accuracy-column gt_score
-    )
-    "${CROSS_CMD[@]}"
-    echo "  ✓  Cross-dataset visuals → $VISUALS_ALL_DIR"
-
-    # Update latest symlink
-    rm -f "$LATEST_LINK"
-    ln -s "run_all_${TIMESTAMP}" "$LATEST_LINK"
-
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "  All-datasets run complete!"
-    echo ""
-    echo "  Run directory  : $RUN_DIR"
-    echo "  Latest symlink : $LATEST_LINK  →  run_all_${TIMESTAMP}"
-    echo ""
-    echo "  Per-dataset results:"
-    for ds in "${DS_LIST[@]}"; do
-        printf "    %-10s %s\n" "$ds" "$RUN_DIR/$ds/benchmark/metrics.csv"
-    done
-    echo ""
-    echo "  Cross-dataset visuals:"
-    printf "    %-30s %s\n" "Accuracy (balanced)" "$VISUALS_ALL_DIR/cross_accuracy_by_query_type.png"
-    printf "    %-30s %s\n" "Latency (balanced)"  "$VISUALS_ALL_DIR/cross_latency_by_query_type.png"
-    printf "    %-30s %s\n" "Aggregate summary"   "$VISUALS_ALL_DIR/cross_aggregate_summary.csv"
-    printf "    %-30s %s\n" "Per-dataset detail"  "$VISUALS_ALL_DIR/cross_per_dataset_breakdown.csv"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    exit 0
-fi
-
-# ─────────────────────────────────────────────────────────────────────────────
-# SINGLE-DATASET MODE (original behaviour, preserved exactly)
-# ─────────────────────────────────────────────────────────────────────────────
-case "$DATASET" in
-    wisdm)
-        DATA_PATH="$WISDM_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_wisdm.json"
-        RUN_PREFIX="run_wisdm"
-        ;;
-    mit_ecg)
-        DATA_PATH="$MIT_ECG_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_mit_ecg.json"
-        RUN_PREFIX="run_ecg"
-        ;;
-    bus)
-        DATA_PATH="$BUS_DATA"
-        DEFAULT_GROUND_TRUTH="flashfusion/eval/ground_truth/ground_truth_bus.json"
-        RUN_PREFIX="run_bus"
-        ;;
-esac
-
-GROUND_TRUTH="${GROUND_TRUTH:-$DEFAULT_GROUND_TRUTH}"
-
-if [ ! -f "$DATA_PATH" ]; then
-    echo "ERROR: Dataset file not found for DATASET=$DATASET: $DATA_PATH"
-    exit 1
-fi
-if [ ! -f "$GROUND_TRUTH" ]; then
-    echo "ERROR: Ground-truth file not found: $GROUND_TRUTH"
-    exit 1
-fi
-
-RUN_DIR="$RUNS_BASE/${RUN_PREFIX}_${TIMESTAMP}"
-BENCHMARK_DIR="$RUN_DIR/benchmark"
-JUDGE_DIR="$BENCHMARK_DIR/ground_truth_llm_judge"
-PER_BASELINE_DIR="$RUN_DIR/per_baseline"
-VISUALS_DIR="$RUN_DIR/visuals"
-
-mkdir -p "$BENCHMARK_DIR" "$PER_BASELINE_DIR" "$VISUALS_DIR"
-
-echo ""
-echo "  Data path  : $DATA_PATH"
-echo "  Output dir : $RUN_DIR"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# ── Step 1: Benchmark + integrated LLM judge ─────────────────────────────────
-echo ""
-echo "▶  [1/4]  Running benchmark…"
-echo "          (--ground-truth-measurement llm uses LLM-verdict scoring;"
-echo "           LLM judge artefacts written to $JUDGE_DIR)"
-echo ""
-
-# Build command as array so optional --model flag is handled cleanly
-CMD=("$PYTHON" -u -m flashfusion.eval.benchmark
-    --data          "$DATA_PATH"
-    --dataset       "$DATASET"
-    --baselines     "$BASELINES"
-    --queries       "$QUERIES"
-    --runs          "$RUNS"
-    --ground-truth  "$GROUND_TRUTH"
-    --ground-truth-measurement llm
-    --max-query-latency "$MAX_LATENCY"
-    --output        "$BENCHMARK_DIR"
-)
-[ -n "$MODEL" ] && CMD+=(--model "$MODEL")
-if [ "$DEBUG_BENCHMARK" = "1" ]; then
-    printf '  [DEBUG] cmd:'
-    printf ' %q' "${CMD[@]}"
-    printf '\n'
-    _STEP1_START=$(date +%s)
-    echo "  [DEBUG] Step 1 started at $(date)"
-fi
-"${CMD[@]}"
-if [ "$DEBUG_BENCHMARK" = "1" ]; then
-    _STEP1_END=$(date +%s)
-    echo "  [DEBUG] Step 1 finished at $(date)  ($(( _STEP1_END - _STEP1_START ))s)"
-fi
-
-echo ""
-echo "  ✓  Benchmark complete → $BENCHMARK_DIR"
-
-# ── Step 2: Split metrics.csv per baseline ────────────────────────────────────
-echo ""
-echo "▶  [2/4]  Splitting metrics per baseline…"
-
-"$PYTHON" - "$BENCHMARK_DIR/metrics.csv" "$PER_BASELINE_DIR" <<'PYEOF'
+# ── Cross-dataset aggregation ─────────────────────────────────────────────────
+log "[Summary] Building cross-dataset aggregate tables -> ${AGG_ROOT}"
+"${PYTHON}" - "${OUTPUT_ROOT}" "${RUN_TAG}" "${AGG_ROOT}" <<'PYEOF'
 import sys
+from pathlib import Path
 import pandas as pd
-from pathlib import Path
+from flashfusion.eval.queries import get_queries
 
-metrics_path = Path(sys.argv[1])
-out_base = Path(sys.argv[2])
+output_root = Path(sys.argv[1])
+run_tag     = sys.argv[2]
+out_root    = Path(sys.argv[3])
+out_root.mkdir(parents=True, exist_ok=True)
 
-if not metrics_path.exists():
-    print(f"  Warning: metrics file not found at {metrics_path}")
-    sys.exit(0)
+def to_query_type(c: str) -> str:
+    x = (c or "").strip().lower()
+    if x == "direct":                      return "direct"
+    if x in {"intermediate", "reasoning"}: return "reasoning"
+    return "oos"
 
-df = pd.read_csv(metrics_path)
-if "baseline" not in df.columns:
-    print("  Warning: metrics.csv has no 'baseline' column; skipping split.")
-    sys.exit(0)
+rows = []
+for baseline_dir in sorted(output_root.iterdir()):
+    if not baseline_dir.is_dir() or baseline_dir.name.startswith("_"):
+        continue
+    baseline = baseline_dir.name
+    for ds in ("wisdm", "mit_ecg", "bus"):
+        metrics_path = baseline_dir / ds / run_tag / "metrics.csv"
+        if not metrics_path.exists():
+            continue
+        df = pd.read_csv(metrics_path)
+        if df.empty:
+            continue
+        qmap = {int(q["id"]): str(q.get("complexity", "")) for q in get_queries(ds)}
+        df["dataset"]      = ds
+        df["baseline"]     = baseline
+        df["query_id"]     = df["query_id"].astype(int)
+        df["complexity"]   = df["query_id"].map(qmap).fillna("")
+        df["query_type"]   = df["complexity"].map(to_query_type)
+        df["total_tokens"] = df["input_tokens"].astype(float) + df["output_tokens"].astype(float)
+        rows.append(df)
 
-for baseline, grp in df.groupby("baseline"):
-    dest = out_base / str(baseline)
-    dest.mkdir(parents=True, exist_ok=True)
-    grp.to_csv(dest / "metrics.csv", index=False)
-    print(f"  Wrote {dest / 'metrics.csv'}  ({len(grp)} rows)")
-PYEOF
+if not rows:
+    print("  Warning: no metrics.csv files found; skipping aggregate."); raise SystemExit(0)
 
-echo "  ✓  Split complete"
+combined = pd.concat(rows, ignore_index=True)
+combined.to_csv(out_root / "query_metrics_all_datasets.csv", index=False)
 
-# ── Step 3: Visualizations ────────────────────────────────────────────────────
-echo ""
-echo "▶  [3/4]  Generating visualizations…"
-
-# 3a: Baseline comparison charts/tables grouped by query type.
-"$PYTHON" -m flashfusion.eval.visualize_comparison \
-    --metrics "$BENCHMARK_DIR/metrics.csv" \
-    --dataset "$DATASET" \
-    --accuracy-column gt_score \
-    --title "Baseline Comparison" \
-    --output "$VISUALS_DIR"
-echo "  ✓  Baseline comparison charts written"
-
-# 3b: LLM judge charts — avg score and verdict distribution.
-#     Paths passed as positional args; heredoc is single-quoted (no shell expansion).
-"$PYTHON" - "$JUDGE_DIR" "$VISUALS_DIR" "$TIMESTAMP" <<'PYEOF'
-import sys
-from pathlib import Path
-
-judge_dir  = Path(sys.argv[1])
-visuals_dir = Path(sys.argv[2])
-timestamp  = sys.argv[3]
-
-summary_path   = judge_dir / "llm_judgments_summary.csv"
-judgments_path = judge_dir / "llm_judgments.csv"
-
-if not summary_path.exists():
-    print(f"  Warning: {summary_path} not found; skipping LLM judge charts.")
-    sys.exit(0)
-
-try:
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
-    import pandas as pd
-except ImportError as exc:
-    print(f"  Warning: {exc}; skipping LLM judge charts.")
-    sys.exit(0)
-
-df = pd.read_csv(summary_path)
-if df.empty:
-    print("  Warning: LLM judge summary is empty.")
-    sys.exit(0)
-
-PALETTE = {
-    "REACT_ONLY": "#f4a259",
-    "WELLMAX_ONLY":  "#136f63",
-    "AUTOIOT_PAPER": "#8e5bd9",
-    "FLASH_FUSION":  "#2d6cdf",
-    "HARGPT_PAPER":  "#c94f7c",
+agg_cols = {
+    "accuracy":      ("gt_score",      "mean"),
+    "latency_s":     ("latency_s",     "mean"),
+    "input_tokens":  ("input_tokens",  "mean"),
+    "output_tokens": ("output_tokens", "mean"),
+    "total_tokens":  ("total_tokens",  "mean"),
+    "cost_usd":      ("cost_usd",      "mean"),
+    "executed_rate": ("executed",      "mean"),
+    "rejected_rate": ("rejected",      "mean"),
+    "n":             ("query_id",      "count"),
 }
-colors = [PALETTE.get(str(b), "#999999") for b in df["baseline"]]
 
-fig, (ax_score, ax_dist) = plt.subplots(1, 2, figsize=(13, 5.2))
+by_ds_qt = (combined
+    .groupby(["dataset", "query_type", "baseline"], as_index=False).agg(**agg_cols)
+    .sort_values(["dataset", "query_type", "baseline"]))
+by_ds_qt.to_csv(out_root / "summary_by_dataset_query_type.csv", index=False)
 
-# --- Pass rate bar ---
-ax_score.bar(df["baseline"], df["pass_rate"], color=colors)
-ax_score.set_title("LLM Judge — Pass Rate", fontweight="bold")
-ax_score.set_ylabel("Rate")
-ax_score.set_ylim(0, 1.15)
-ax_score.tick_params(axis="x", rotation=15)
-for i, v in enumerate(df["pass_rate"]):
-    ax_score.text(i, v + 0.025, f"{v:.3f}", ha="center", fontsize=10, fontweight="bold")
+balanced_qt = (by_ds_qt
+    .groupby(["query_type", "baseline"], as_index=False)
+    .agg(accuracy=("accuracy","mean"), latency_s=("latency_s","mean"),
+         input_tokens=("input_tokens","mean"), output_tokens=("output_tokens","mean"),
+         total_tokens=("total_tokens","mean"), cost_usd=("cost_usd","mean"),
+         executed_rate=("executed_rate","mean"), rejected_rate=("rejected_rate","mean"))
+    .sort_values(["query_type", "baseline"]))
+balanced_qt.to_csv(out_root / "summary_balanced_by_query_type.csv", index=False)
 
-# --- Verdict distribution stacked bar ---
-bar_x = list(range(len(df)))
-pass_vals    = df["pass_rate"].tolist()
-fail_vals    = df["fail_rate"].tolist()
+by_ds = (combined
+    .groupby(["dataset", "baseline"], as_index=False).agg(**agg_cols)
+    .sort_values(["dataset", "baseline"]))
+by_ds.to_csv(out_root / "summary_by_dataset_overall.csv", index=False)
 
-ax_dist.bar(bar_x, pass_vals, label="PASS", color="#4caf50")
-ax_dist.bar(bar_x, fail_vals, bottom=pass_vals, label="FAIL", color="#f44336")
-ax_dist.set_xticks(bar_x)
-ax_dist.set_xticklabels(df["baseline"].tolist())
-ax_dist.set_title("LLM Judge — Verdict Distribution", fontweight="bold")
-ax_dist.set_ylabel("Rate")
-ax_dist.set_ylim(0, 1.1)
-ax_dist.tick_params(axis="x", rotation=15)
-ax_dist.legend(loc="upper right")
+overall = (by_ds
+    .groupby(["baseline"], as_index=False)
+    .agg(accuracy=("accuracy","mean"), latency_s=("latency_s","mean"),
+         input_tokens=("input_tokens","mean"), output_tokens=("output_tokens","mean"),
+         total_tokens=("total_tokens","mean"), cost_usd=("cost_usd","mean"),
+         executed_rate=("executed_rate","mean"), rejected_rate=("rejected_rate","mean"))
+    .sort_values(["baseline"]))
+overall.to_csv(out_root / "summary_balanced_overall.csv", index=False)
 
-fig.suptitle(f"LLM Judge Results", fontsize=13, fontweight="bold")
-fig.tight_layout()
+for p in ["query_metrics_all_datasets.csv", "summary_by_dataset_query_type.csv",
+          "summary_balanced_by_query_type.csv", "summary_by_dataset_overall.csv",
+          "summary_balanced_overall.csv"]:
+    print(f"  Wrote {out_root / p}")
 
-out_png = visuals_dir / "llm_judge_bars.png"
-fig.savefig(out_png, dpi=180, bbox_inches="tight")
-plt.close(fig)
-print(f"  Wrote {out_png}")
-
-# Per-query LLM scores CSV (convenience file for further analysis)
-if judgments_path.exists():
-    jdf = pd.read_csv(judgments_path)
-    keep = [c for c in ["query_id", "baseline", "query_text", "llm_verdict", "llm_score", "llm_reason"]
-            if c in jdf.columns]
-    out_q = visuals_dir / "per_query_llm_scores.csv"
-    jdf[keep].sort_values(["query_id", "baseline"]).to_csv(out_q, index=False)
-    print(f"  Wrote {out_q}")
+print()
+try:
+    from tabulate import tabulate
+    print("  Overall balanced summary (mean of per-dataset means):")
+    print(tabulate(overall.round(4), headers="keys", tablefmt="github",
+                   showindex=False, floatfmt=".4f"))
+except ImportError:
+    print(overall.round(4).to_string(index=False))
 PYEOF
 
-echo "  ✓  LLM judge charts written"
-
-# ── Step 4: Console summary tables ───────────────────────────────────────────
+# ── Closing banner ─────────────────────────────────────────────────────────────
 echo ""
-echo "▶  [4/4]  Summary"
+echo "================================================================"
+echo "  Complete!"
 echo ""
-
-"$PYTHON" - "$BENCHMARK_DIR/metrics.csv" "$JUDGE_DIR/llm_judgments_summary.csv" <<'PYEOF'
-import sys
-from pathlib import Path
-import pandas as pd
-
-metrics_path      = Path(sys.argv[1])
-judge_summary_path = Path(sys.argv[2])
-
-DIVIDER = "─" * 74
-
-def _tabulate(df, title):
-    """Print df as a formatted table with optional tabulate dependency."""
-    print(f"\n  {title}")
-    print(f"  {DIVIDER}")
-    try:
-        from tabulate import tabulate
-        print(tabulate(df, headers="keys", tablefmt="github",
-                       showindex=False, floatfmt=".4f"))
-    except ImportError:
-        print(df.to_string(index=False))
-    print()
-
-# --- LLM verdict accuracy summary ---
-if metrics_path.exists():
-    df = pd.read_csv(metrics_path)
-    agg_cols = [c for c in ["gt_score", "latency_s", "cost_usd",
-                             "input_tokens", "output_tokens"]
-                if c in df.columns]
-    summary = df.groupby("baseline")[agg_cols].mean().round(4).reset_index()
-    if "input_tokens" in summary.columns and "output_tokens" in summary.columns:
-        summary["total_tokens"] = (
-            summary["input_tokens"] + summary["output_tokens"]
-        ).astype(int)
-    sort_col = "gt_score" if "gt_score" in summary.columns else agg_cols[0]
-    summary = summary.sort_values(sort_col, ascending=False).reset_index(drop=True)
-    _tabulate(summary, "LLM Verdict Accuracy Summary  (averages per baseline)")
-else:
-    print(f"  Warning: {metrics_path} not found; skipping LLM accuracy summary.")
-
-# --- LLM judge summary ---
-if judge_summary_path.exists():
-    jsum = pd.read_csv(judge_summary_path).round(4)
-    jsum = jsum.sort_values("pass_rate", ascending=False).reset_index(drop=True)
-    _tabulate(jsum, "LLM Judge Summary  (averages per baseline)")
-else:
-    print(f"  Note: {judge_summary_path} not found; LLM judge may not have run.")
-PYEOF
-
-# ── Update "latest" symlink ───────────────────────────────────────────────────
-# Target is relative to RUNS_BASE so the symlink is portable.
-rm -f "$LATEST_LINK"
-ln -s "${RUN_PREFIX}_${TIMESTAMP}" "$LATEST_LINK"
-
-# ── Closing banner ────────────────────────────────────────────────────────────
+echo "  Output root  : ${OUTPUT_ROOT}"
+echo "  Run tag      : ${RUN_TAG}"
 echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Run complete!"
-echo ""
-echo "  Run directory  : $RUN_DIR"
-echo "  Latest symlink : $LATEST_LINK  →  ${RUN_PREFIX}_${TIMESTAMP}"
-echo ""
-echo "  Key artefacts:"
-printf "    %-22s %s\n" "Benchmark report:"  "$BENCHMARK_DIR/report.md"
-printf "    %-22s %s\n" "LLM metrics:"       "$BENCHMARK_DIR/metrics.csv"
-printf "    %-22s %s\n" "LLM judge detail:"  "$JUDGE_DIR/llm_judgments.csv"
-printf "    %-22s %s\n" "LLM judge summary:" "$JUDGE_DIR/llm_judgments_summary.csv"
-printf "    %-22s %s\n" "Visualizations:"    "$VISUALS_DIR/"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Per-run outputs : ${OUTPUT_ROOT}/<BASELINE>/<dataset>/${RUN_TAG}/"
+echo "  Aggregate tables: ${AGG_ROOT}/"
+if [[ "${SMOKE_TEST}" == "1" ]]; then
+    echo "  Smoke report    : ${OUTPUT_ROOT}/_smoke/${RUN_TAG}/smoke_status.csv"
+fi
+echo "================================================================"
 echo ""

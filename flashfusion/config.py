@@ -103,3 +103,16 @@ LLMSENSE_MAX_ROWS_DIRECT: int = 120
 LLMSENSE_SUMMARY_WINDOW_MIN: int = 30
 LLMSENSE_HISTORY_HOURS: int = 6
 LLMSENSE_SENSOR_HZ: float = 20.0
+# Per-dataset row caps for Stage N (direct narration) and Stage S (per-chunk table size).
+# Derived from 80% of the 128k context window (102,400 tokens) — matches HARGPT row caps.
+# 80% leaves headroom so prefill time does not exceed the API read timeout.
+LLMSENSE_ROWS_PER_CHUNK_WISDM: int = 5120   # ~20 tok/row → 102,400 tok (80.0% of 128k)
+LLMSENSE_ROWS_PER_CHUNK_ECG: int = 5700     # ~18 tok/row → 102,600 tok (80.2%)
+LLMSENSE_ROWS_PER_CHUNK_BUS: int = 1860     # ~55 tok/row → 102,300 tok (79.9%); dataset is only 1,219 rows
+# Narrative char cap for Stage R to stay within 80% of the 128k context window.
+# 300k chars ≈ 100k real tokens at ~3 chars/token, leaving ~25k tokens for prompt + query.
+LLMSENSE_NARRATIVE_MAX_CHARS: int = 300_000
+# Max total Stage-S LLM calls per query across all groups/chunks.
+# ECG has 48 record groups × up to 12 sub-chunks = 576 potential calls;
+# capping at 3 keeps benchmark cost and latency manageable.
+LLMSENSE_MAX_SUMMARIZE_CHUNKS: int = 3
