@@ -1,0 +1,7 @@
+chunk_count,effective_chunks,chunk_token_target,context_window_tokens,query,model,success,error,ttft_ms,ttft_ms_std,ttlt_ms,ttlt_ms_std,context_tokens_est,data_tokens_est,prompt_overhead_tokens_est,context_pct_window,crosses_context_window,run_count
+50,50,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,7437.94036099996,2870.2190440105246,25426.434305666666,17430.38894202056,10697,10622,75,8.357031249999999,False,3
+100,100,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,22311.115471999987,19627.777913070116,48863.32565266673,21172.150883252518,21201,21126,75,16.56328125,False,3
+150,150,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,17786.32152800003,5491.762030975854,25036.87512533338,4366.120790344407,31812,31737,75,24.853125,False,3
+200,200,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,17355.333513999958,5266.23929639511,43538.43529199988,21306.900488693344,42370,42295,75,33.1015625,False,3
+250,250,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,13380.865028000168,1912.3043608646208,17122.63540300008,2928.280028717844,52816,52741,75,41.2625,False,3
+300,300,200,128000,What is the average MLII observed in this dataset?,meta-llama/llama-3.3-70b-instruct,True,,32401.16618033346,14648.376346535097,39836.17247200012,21359.935802850272,63276,63201,75,49.434375,False,3

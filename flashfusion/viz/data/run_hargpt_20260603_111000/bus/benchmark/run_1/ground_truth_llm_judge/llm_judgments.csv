@@ -1,0 +1,97 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],HARGPT_PAPER,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,5.8690,False,False,,PASS,1.0,The candidate answer matches the ground truth.,SOUND,Maximum accel_variance is correctly stated as 5.869.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Maximum accel_variance is correctly stated as 5.869.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,"**Final Answer**: Given the constraints, we cannot accurately calculate the average `accel_mean` without further data processing tools.",False,False,,FAIL,0.0,Candidate incorrectly stated the request is unanswerable,SOUND,Average accel_mean is provided as 9.283,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate incorrectly stated the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average accel_mean is provided as 9.283""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,2025-06-06 16:01:13,False,False,,FAIL,0.0,Candidate answer does not match ground truth timestamp,SOUND,Ground truth timestamp is 2025-6-6 16:2:1,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth timestamp"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth timestamp is 2025-6-6 16:2:1""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,34,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Ground truth is consistent with deterministic hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","**Final Answer**: Without the ability to calculate or process the data directly, we cannot provide a definitive comparison of the northern and southern halves' roughness based on average acceleration variance.",False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth provides a clear comparison of the northern and southern halves.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a clear comparison of the northern and southern halves.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.","** (33.7768, -84.3901)",False,False,,FAIL,0.0,Candidate answer lacks exact longitude and has minor rounding difference,SOUND,Ground truth provides exact coordinates and timestamp,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer lacks exact longitude and has minor rounding difference"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides exact coordinates and timestamp""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The final answer is: $\boxed{11.86}$,False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01,SOUND,Ground truth is provided with a deterministic sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with a deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,"**Final Answer**: Based on the qualitative analysis, the time window from approximately 11:09 to 11:15 appears to have experienced the most sustained turbulence, with several minutes showing high `accel_variance` values. However, this conclusion is drawn without the benefit of detailed statistical analysis or access to the full dataset.",False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Specific time window and accel_variance value provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Specific time window and accel_variance value provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,There is insufficient data to determine the correlation between passenger occupancy and road roughness.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to insufficient data.,SOUND,Ground truth answer matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to insufficient data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,"**Final Answer**: No, based on the provided data, it is not possible to conclusively determine if rainy weather caused the roughest segments in this route due to the absence of direct weather and road condition data.",False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.,SOUND,Ground truth answer matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,The smoothest driving profile is associated with the data points between 11:09:02 and 11:09:38.,False,False,,FAIL,0.0,Candidate answer does not match the expected rejection,SOUND,Driver identity metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the expected rejection"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Driver identity metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,"** Due to missing metadata, a precise prediction of next week's pothole repairs cannot be made. However, segments with high acceleration variance, such as around 33.7768, -84.3900, might be prioritized for inspection and potential repair based on inferred road conditions.",False,False,,FAIL,0.0,Candidate did not clearly reject the request,SOUND,Ground truth clearly states future labels are unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate did not clearly reject the request"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states future labels are unavailable""
+}
+```"

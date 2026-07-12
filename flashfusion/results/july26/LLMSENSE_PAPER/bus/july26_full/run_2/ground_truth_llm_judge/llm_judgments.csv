@@ -1,0 +1,97 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],LLMSENSE_PAPER,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Maximum accel_variance is clearly stated as 5.869.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Maximum accel_variance is clearly stated as 5.869.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect because it claims a lack of information.,SOUND,Average accel_mean is provided as 9.283.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect because it claims a lack of information."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average accel_mean is provided as 9.283.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is provided with a specific timestamp and value.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with a specific timestamp and value.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data is insufficient to answer the query.,SOUND,Ground truth provides a clear comparison of acceleration variance between the northern and southern halves.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data is insufficient to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a clear comparison of acceleration variance between the northern and southern halves.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect because it claims a lack of information.,SOUND,Clear and specific coordinates are provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect because it claims a lack of information."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear and specific coordinates are provided.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate rejected the query despite having enough information,SOUND,Ground truth answer is provided and seems plausible,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate rejected the query despite having enough information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is provided and seems plausible""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect because it claims a lack of information when the ground truth provides a specific answer.,SOUND,Ground truth matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect because it claims a lack of information when the ground truth provides a specific answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of information,SOUND,Ground truth correctly identifies unavailable data,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable due to lack of information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies unavailable data""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of information,SOUND,Ground truth correctly identifies unavailable weather metadata,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable due to lack of information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies unavailable weather metadata""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable,SOUND,Ground truth explicitly rejects the query due to missing metadata,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth explicitly rejects the query due to missing metadata""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information.,SOUND,Ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of information."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"

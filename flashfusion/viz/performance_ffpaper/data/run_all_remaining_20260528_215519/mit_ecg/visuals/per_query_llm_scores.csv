@@ -1,0 +1,131 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,AUTOIOT_PAPER,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,The candidate answer matches the ground truth.
+1,AUTOIOT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not provide the minimum MLII value
+1,AUTOIOT_PAPER,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,"Candidate answer is a timeout message, not a numeric value."
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+1,LLMSENSE_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+1,LLMSENSE_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+1,LLMSENSE_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+2,AUTOIOT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,AUTOIOT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer matches ground truth within allowed rounding difference.
+2,AUTOIOT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,LLMSENSE_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+2,LLMSENSE_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+2,LLMSENSE_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+3,AUTOIOT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,Candidate answer matches ground truth
+3,AUTOIOT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth due to execution error.
+3,AUTOIOT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer"
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer"
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,LLMSENSE_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer is incorrect
+3,LLMSENSE_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer is incorrect
+3,LLMSENSE_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer is incorrect
+4,AUTOIOT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer differs from ground truth
+4,AUTOIOT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,LLMSENSE_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+4,LLMSENSE_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+4,LLMSENSE_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,AUTOIOT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer does not match ground truth
+5,AUTOIOT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer does not match ground truth
+5,AUTOIOT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,PASS,1.0,The candidate answer matches the ground truth.
+5,FLASH_FUSION,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,"Candidate answer is a timeout message, not an estimated average heart rate."
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect
+5,LLMSENSE_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,LLMSENSE_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,LLMSENSE_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+6,AUTOIOT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,PASS,1.0,Candidate answer matches ground truth
+6,AUTOIOT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,PASS,1.0,Candidate answer matches ground truth
+6,AUTOIOT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer lacks amplitude value
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,LLMSENSE_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+6,LLMSENSE_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+6,LLMSENSE_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+7,AUTOIOT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",PASS,1.0,The candidate answer matches the ground truth.
+7,AUTOIOT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth due to execution error.
+7,AUTOIOT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match the ground truth interval
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,"Candidate answer is a timeout message, not a factual answer."
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect
+7,LLMSENSE_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+7,LLMSENSE_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+7,LLMSENSE_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+8,AUTOIOT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer does not match ground truth due to execution error.
+8,AUTOIOT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer does not provide the correct RMS value
+8,AUTOIOT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is a timeout message, not a valid RMS value."
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is a timeout message, not a valid RMS value."
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is a timeout message, not a valid RMS value."
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is None, but a numeric value was expected"
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is None, but a numeric value was expected"
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,"Candidate answer is NaN, not the correct RMS value."
+8,LLMSENSE_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+8,LLMSENSE_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+8,LLMSENSE_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+9,AUTOIOT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+9,AUTOIOT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+9,AUTOIOT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable data
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as required.
+9,LLMSENSE_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,LLMSENSE_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,LLMSENSE_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+10,AUTOIOT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate answer correctly states that no statistical correlation can be determined due to missing BMI data.
+10,AUTOIOT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+10,AUTOIOT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable due to missing data
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer does not match the expected rejection reason.
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer does not match the expected rejection reason.
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer does not match the expected rejection reason.
+10,LLMSENSE_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data
+10,LLMSENSE_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data
+10,LLMSENSE_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data
+11,AUTOIOT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+11,AUTOIOT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not match the expected rejection reason.
+11,AUTOIOT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+11,LLMSENSE_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states that the data does not contain enough information to answer the query.
+11,LLMSENSE_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information.
+11,LLMSENSE_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states that the data does not contain enough information to answer the query.
+12,AUTOIOT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer is factually incorrect due to unavailability of hemodynamic variables in the dataset.
+12,AUTOIOT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+12,AUTOIOT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate did not clearly reject the request as unanswerable
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states that blood pressure data is unavailable
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states that blood pressure cannot be estimated
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states that estimation is not possible
+12,LLMSENSE_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate clearly states the request is unanswerable
+12,LLMSENSE_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states that the data does not contain enough information to answer the query.
+12,LLMSENSE_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states the request is unanswerable

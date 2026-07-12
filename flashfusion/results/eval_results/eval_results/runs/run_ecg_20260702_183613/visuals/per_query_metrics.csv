@@ -1,0 +1,2 @@
+query_id,query_type,baseline,accuracy_raw,latency_s,cost_usd,input_tokens,output_tokens,accuracy_percent
+1,Direct,HARGPT_PAPER,0.0,17.197860956192017,0.0608262299999999,102865,172,0.0

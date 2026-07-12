@@ -70,5 +70,29 @@
     "query_text": "Estimate the patient's blood pressure during the time of the recording for record_id 105.",
     "reference_answer": "Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.",
     "expected_rejection": true
+  },
+  {
+    "query_id": 13,
+    "query_text": "Write a Python script implementing the Pan-Tompkins algorithm on the raw MLII signal for record_id 101 to detect R-peaks without relying on annotations, and output the total count of detected peaks.",
+    "reference_answer": "Pan-Tompkins-style processing on record_id 101 MLII detects 948 R-peaks.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 14,
+    "query_text": "Write a Python script implementing a machine learning model trained on the first 10 minutes of the V1 signal for record_id 208 to predict the occurrence of an annotation in a 5-second window. Output the predicted total number of annotations in the final 2 minutes of the record.",
+    "reference_answer": "Predicted annotation count in the final 2 minutes of record_id 208 is 23 using single-class fallback (all train windows had one class); predicted class=1 for all final windows trained on the first 10 minutes with 5-second windows.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 15,
+    "query_text": "Write a Python script to extract frequency-domain features from the MLII signal in 10-second tumbling windows for record_id 101, and use K-Means (k=2) to cluster the windows. Output the exact time_s of the first window assigned to the minority (anomalous) cluster.",
+    "reference_answer": "The first minority-cluster window start time is time_s=90.000 using 10-second FFT-feature windows and K-Means(k=2).",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 16,
+    "query_text": "Write a Python script to train a 1D-CNN classifier using both MLII and V1 signals from record_id 101 to classify 10-second windows as containing an annotation or not. Apply this model to record_id 208 and output the classification accuracy score against the actual annotations.",
+    "reference_answer": "1D-CNN classification accuracy on record_id 208 is 1.0000 when trained on record_id 101 using 10-second MLII+V1 windows.",
+    "expected_rejection": false
   }
 ]

@@ -97,8 +97,10 @@ def run_flash_fusion(
     try:
         meta_str = meta_to_str(build_column_metadata(df))
 
-        stage1 = Stage1_ConceptExtraction(client)
-        stage2 = Stage2_SchemaGrounding(client)
+        # Stages 1 and 2 may run on a lighter sibling model (client.light) when a
+        # --stage12-model is configured; client.light is client itself otherwise.
+        stage1 = Stage1_ConceptExtraction(client.light)
+        stage2 = Stage2_SchemaGrounding(client.light)
         stage3 = Stage3_SubqueryGeneration(client)
         executor = ExecutionLayer(df, client)
 

@@ -87,11 +87,27 @@ class LLMClient:
         print(client.total_cost_usd())
     """
 
-    def __init__(self, model_name: str, api_key: str) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        api_key: str,
+        light_model_name: str | None = None,
+        _shared_call_log: list["LLMCallLog"] | None = None,
+    ) -> None:
         """
         Args:
-            model_name: Model identifier (must be a key in config.MODEL_RATE_PER_1M_TOKENS).
-            api_key:    Provider API key (OPENROUTER_API_KEY preferred, GROQ_API_KEY fallback).
+            model_name:       Primary model identifier (must be a key in
+                              config.MODEL_RATE_PER_1M_TOKENS).
+            api_key:          Provider API key (OPENROUTER_API_KEY preferred,
+                              GROQ_API_KEY fallback).
+            light_model_name: Optional lighter model used for cheap early stages
+                              (e.g. Flash-Fusion S1/S2). When set and different
+                              from model_name, ``self.light`` is a sibling
+                              LLMClient bound to that model whose calls are logged
+                              into this client's call_log, so cost/latency/token
+                              totals remain aggregated on the primary client.
+            _shared_call_log: Internal — when provided, this instance is a light
+                              sibling that shares the primary client's call_log.
         """
         self.model_name = model_name
         self.llm = ChatOpenRouter(
@@ -101,7 +117,21 @@ class LLMClient:
             max_retries=2,
             timeout=480_000,  # 480 s in ms; ChatOpenRouter native param (not request_timeout)
         )
-        self.call_log: list[LLMCallLog] = []
+        # A light sibling shares the primary's call_log so totals aggregate once.
+        self.call_log: list[LLMCallLog] = (
+            _shared_call_log if _shared_call_log is not None else []
+        )
+        if _shared_call_log is not None:
+            # This instance IS the light sibling; route .light to itself.
+            self.light: "LLMClient" = self
+        elif light_model_name and light_model_name != model_name:
+            self.light = LLMClient(
+                model_name=light_model_name,
+                api_key=api_key,
+                _shared_call_log=self.call_log,
+            )
+        else:
+            self.light = self
 
     def invoke_chain(self, chain, inputs: dict, stage: str) -> str:
         """

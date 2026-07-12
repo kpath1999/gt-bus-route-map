@@ -1,0 +1,97 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],HARGPT_PAPER,1,What is the maximum recorded x-acceleration for user 15?,False,Maximum x-acceleration for user 15 is 19.5700.,"The maximum recorded x-acceleration for user 15 is 19.5700, which is the highest value recorded in the dataset. This value is recorded multiple times throughout the dataset, indicating a consistent acceleration pattern. The x-acceleration values range from 0.00 to 19.5700, with the highest value being 19.5700. This suggests that the user 15 is experiencing a high level of acceleration, which could be due to various factors such as movement, activity, or external forces acting on the user.",False,False,,PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,2,How many total samples in the dataset are classified as the Walking activity?,False,Total Walking samples in the dataset: 424397.,"In conclusion, the total number of samples in the dataset that are classified as Walking is unknown due to the lack of information about the exact number of rows with the 'Walking' label.",False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Total Walking samples in the dataset is a specific number.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total Walking samples in the dataset is a specific number.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,3,What is the average y-accel value for user 5 during the Sitting activity?,False,Average y-acceleration for user 5 during Sitting is 3.0414.,"Therefore, the average y-accel value for user 5 during the Sitting activity is not defined, as there is no data for this activity.",False,False,,FAIL,0.0,Candidate answer is factually incorrect,SOUND,Average y-acceleration for user 5 during Sitting is provided as 3.041,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is factually incorrect"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average y-acceleration for user 5 during Sitting is provided as 3.041""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,4,Which user has the highest total number of recorded data samples?,False,User with the highest sample count is 20 with 56632 samples.,The final answer is: User 20.,False,False,,PASS,1.0,Candidate answer matches the user with the highest sample count.,SOUND,Ground truth clearly identifies user 20 as having the highest sample count.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the user with the highest sample count."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly identifies user 20 as having the highest sample count.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,5,Compare the overall acceleration magnitude between dynamic movements and resting states.,False,"Average magnitude for dynamic activities (walking,jogging,upstairs,downstairs) is 11.9625; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.1297.",- The acceleration magnitude of,False,False,,FAIL,0.0,Candidate answer is incomplete and does not provide a comparison of acceleration magnitude,SOUND,Ground truth provides a clear comparison of acceleration magnitude between dynamic and resting states,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incomplete and does not provide a comparison of acceleration magnitude"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a clear comparison of acceleration magnitude between dynamic and resting states""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,6,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,False,"Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).","Therefore, the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin is user 6.",False,False,,FAIL,0.0,Incorrect user identified,SOUND,User 20 has the largest margin,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Incorrect user identified"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""User 20 has the largest margin""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,7,What is the median net acceleration vector length for user 20 while ascending steps?,False,Median net acceleration vector length for user 20 while ascending steps is 9.8931.,The median net acceleration vector length for user 20 while ascending steps is 0.0000.,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Ground truth is supported by deterministic sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is supported by deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,8,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,False,Average z for ascending elevation changes is 0.3235; descending is 0.6841; difference (ascending-descending) is -0.3605.,"Therefore, the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users is 0.0000.",False,False,,FAIL,0.0,Candidate answer does not match the ground truth difference of -0.36,SOUND,Ground truth is consistent with the deterministic sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the ground truth difference of -0.36"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,9,How does the average walking speed in miles per hour correlate with the age of the users?,True,Reject: speed in mph and user age are not available in this dataset.,"This conclusion is based on the provided data, which shows that the average",False,False,,FAIL,0.0,Candidate did not clearly state that the request is unanswerable,SOUND,Ground truth correctly identifies lack of relevant data,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate did not clearly state that the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies lack of relevant data""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,10,"Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",True,Reject: acceleration records do not contain geographic location signals.,"In conclusion, while we can analyze the acceleration data to predict the direction of movement and estimate the distance traveled, predicting the exact geographic location where user 10 was jogging is not possible with the given data.",False,False,,PASS,1.0,Candidate correctly states that predicting the exact geographic location is not possible with the given data.,SOUND,Ground truth correctly indicates that acceleration records do not contain geographic location signals.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that predicting the exact geographic location is not possible with the given data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly indicates that acceleration records do not contain geographic location signals.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,11,Are female subjects more likely to have a higher cadence during stair climbing than male subjects?,True,Reject: sex and cadence attributes are unavailable in this dataset.,"In conclusion, based on the provided data, it is not possible to determine whether female subjects are more likely to have a higher cadence during stair climbing than male subjects. The data does not provide enough information to make this determination.",False,False,,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of data.,SOUND,Ground truth correctly indicates unavailable attributes.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly indicates unavailable attributes.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,12,Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.,True,Reject: future MVPA-guideline compliance cannot be predicted from this dataset and the WHO guideline threshold is not represented in the schema.,"The final answer is: Yes, user 3 will meet the WHO guideline next week.",False,False,,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as required.,SOUND,Ground truth correctly identifies that prediction is not possible from the given dataset.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is factually incorrect and does not reject the request as required."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies that prediction is not possible from the given dataset.""
+}
+```"

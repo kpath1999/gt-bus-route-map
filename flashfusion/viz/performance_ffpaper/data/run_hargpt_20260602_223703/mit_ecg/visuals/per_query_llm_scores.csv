@@ -1,0 +1,37 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the total recording duration in seconds (maximum time_s) for record_id 234?,FAIL,0.0,Candidate answer does not match ground truth
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+3,HARGPT_PAPER,How many samples in record_id 106 have an MLII value greater than 0?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,FAIL,0.0,Candidate answer does not match ground truth
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate incorrectly rejects the estimation
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer does not match ground truth
+5,HARGPT_PAPER,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is incorrect due to sufficient annotation data being provided
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,HARGPT_PAPER,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match the ground truth interval
+7,HARGPT_PAPER,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match the ground truth interval
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,FAIL,0.0,Candidate answer does not match ground truth
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate did not clearly reject the request
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate did not clearly reject the question as unanswerable
+9,HARGPT_PAPER,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states that correlation cannot be determined due to missing BMI data
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states that correlation cannot be determined due to missing BMI data.
+10,HARGPT_PAPER,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states that correlation cannot be determined due to missing BMI data.
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states that family history information is unavailable
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states that family history information is unavailable
+11,HARGPT_PAPER,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states the request is unanswerable due to missing information.
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states the request is unanswerable due to insufficient data.
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of data
+12,HARGPT_PAPER,Estimate the patient's blood pressure during the time of the recording for record_id 105.,PASS,1.0,Candidate correctly states that blood pressure cannot be estimated

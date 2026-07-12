@@ -4,7 +4,7 @@
 >
 > Files that are **complete** (do not modify):
 > - `prompts/templates.py` — all 6 prompt strings
-> - `eval/queries.py` — all 10 benchmark queries
+> - `eval/queries.py` — query definitions (do not modify without re-running the full benchmark and updating this file)
 > - `adapters/wisdm_adapter.py` — `ACTIVITY_CODEBOOK` dict (implement the class stubs)
 > - `config.py` — model rates and constants
 >
@@ -33,7 +33,7 @@ python -m flashfusion.eval.benchmark \
     --baselines all --queries 1,5,12 \
   --output flashfusion/eval_results/
 
-# Full benchmark: 12 queries × 4 baselines (~50 min)
+# Full benchmark: 16 queries × 4 baselines (~65 min)
 python -m flashfusion.eval.benchmark \
   --data chat/data/imu/WISDM_ar_v1.1_raw.txt \
   --baselines all \
@@ -113,10 +113,14 @@ Q=Writing      R=Clapping        S=Folding Clothes
 
 ---
 
-## 12 Evaluation Queries
+## 16 Evaluation Queries
 
 Full definitions with metadata in `eval/queries.py`. These queries are deliberately designed
-to expose capability gaps between baselines.
+to expose capability gaps between baselines. Queries 13-16 in each dataset are **predictive**
+script-generation stress prompts; they do not yet have deterministic ground-truth entries and
+are not scored in the existing benchmark pipeline.
+
+**Query shape per dataset: 4 direct · 4 intermediate · 4 out-of-scope · 4 predictive**
 
 | # | Query | Primary Stress Point |
 |---|-------|---------------------|
@@ -131,7 +135,11 @@ to expose capability gaps between baselines.
 | Q9 | "Walking speed vs age correlation" | Out-of-scope (missing speed/age schema) |
 | Q10 | "Predict exact geographic location for jogging" | Out-of-scope geolocation inference |
 | Q11 | "Female vs male cadence during stair climbing" | Out-of-scope demographic + cadence fields |
-| Q12 | "Personalized workout routine recommendation" | Out-of-scope prescriptive recommendation |
+| Q12 | "Predict WHO physical activity guideline compliance" | Out-of-scope forecasting + external threshold |
+| Q13 | Random Forest with sliding-window features → predict user 33 | Script generation: windowed HAR feature extraction + held-out subject |
+| Q14 | 1D-CNN Jogging/Walking binary classifier → predict user 33 | Script generation: deep model on raw sequences + held-out subject |
+| Q15 | Low-pass filter + variance window → state transition count | Script generation: signal processing chain + semantic state grouping |
+| Q16 | Isolation forest trained on Sitting → flag Jogging anomalies | Script generation: one-class learning + label-based anomaly validation |
 
 ---
 
@@ -161,7 +169,7 @@ flashfusion/
 │   └── flash_fusion.py     ← _run_flash_fusion
 ├── eval/
 │   ├── __init__.py
-│   ├── queries.py          ← WISDM_QUERIES list (COMPLETE — do not modify)
+│   ├── queries.py          ← WISDM_QUERIES, MIT_ECG_QUERIES, BUS_QUERIES (do not modify without updating benchmark)
 │   ├── metrics.py          ← compute_accuracy(), compute_latency(), compute_cost(), aggregate_metrics()
 │   ├── reporter.py         ← save_markdown(), save_csv(), print_table()
 │   └── benchmark.py        ← CLI entry point (__main__)

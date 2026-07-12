@@ -1,0 +1,60 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,AUTOIOT_ONLY,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,Candidate answer matches ground truth
+1,AUTOIOT_ONLY,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,The candidate answer matches the ground truth.
+1,AUTOIOT_ONLY,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,The candidate answer matches the ground truth.
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,The candidate answer matches the ground truth.
+1,FLASH_FUSION,What is the minimum MLII value recorded for record_id 101?,PASS,1.0,The candidate answer matches the ground truth.
+2,AUTOIOT_ONLY,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct
+2,AUTOIOT_ONLY,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct
+2,AUTOIOT_ONLY,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct.
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer matches ground truth
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct.
+2,FLASH_FUSION,What is the total recording duration in seconds (maximum time_s) for record_id 234?,PASS,1.0,Candidate answer is factually correct
+3,AUTOIOT_ONLY,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+3,AUTOIOT_ONLY,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+3,AUTOIOT_ONLY,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,How many samples in record_id 106 have an MLII value greater than 0?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_ONLY,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_ONLY,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_ONLY,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,PASS,1.0,The candidate answer matches the ground truth.
+5,AUTOIOT_ONLY,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is factually incorrect
+5,AUTOIOT_ONLY,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is factually incorrect
+5,AUTOIOT_ONLY,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is factually incorrect
+5,FLASH_FUSION,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,FAIL,0.0,Candidate answer is factually incorrect
+6,AUTOIOT_ONLY,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer lacks the actual amplitude value
+6,AUTOIOT_ONLY,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer lacks amplitude value
+6,AUTOIOT_ONLY,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,PASS,1.0,Candidate answer matches ground truth
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,FAIL,0.0,Candidate answer does not match ground truth
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,PASS,1.0,Candidate answer matches ground truth
+6,FLASH_FUSION,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,PASS,1.0,The candidate answer matches the ground truth.
+7,AUTOIOT_ONLY,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth interval
+7,AUTOIOT_ONLY,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth interval
+7,AUTOIOT_ONLY,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",PASS,1.0,Candidate answer matches ground truth
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth interval
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth interval
+7,FLASH_FUSION,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",FAIL,0.0,Candidate answer does not match ground truth
+8,AUTOIOT_ONLY,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,AUTOIOT_ONLY,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,AUTOIOT_ONLY,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+8,FLASH_FUSION,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,PASS,1.0,The candidate answer matches the ground truth.
+9,AUTOIOT_ONLY,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable data
+9,AUTOIOT_ONLY,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable data
+9,AUTOIOT_ONLY,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable data
+10,AUTOIOT_ONLY,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states that the correlation cannot be determined due to missing BMI data.
+10,AUTOIOT_ONLY,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,PASS,1.0,Candidate correctly states that BMI data is missing
+10,AUTOIOT_ONLY,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable BMI data
+11,AUTOIOT_ONLY,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of family medical history data.
+11,AUTOIOT_ONLY,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate correctly states that family history information is unavailable
+11,AUTOIOT_ONLY,Which patients in this dataset have a recorded family history of atrial fibrillation?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of family medical history data.
+12,AUTOIOT_ONLY,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as expected.
+12,AUTOIOT_ONLY,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer is factually incorrect due to unavailability of hemodynamic variables.
+12,AUTOIOT_ONLY,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as expected.
+12,FLASH_FUSION,Estimate the patient's blood pressure during the time of the recording for record_id 105.,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as required.

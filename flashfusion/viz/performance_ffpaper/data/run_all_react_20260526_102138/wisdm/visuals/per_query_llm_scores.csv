@@ -1,0 +1,61 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,AUTOIOT_ONLY,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,The candidate answer matches the ground truth.
+1,AUTOIOT_ONLY,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,The candidate answer matches the ground truth.
+1,AUTOIOT_ONLY,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,The candidate answer matches the ground truth.
+1,FLASH_FUSION,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,The candidate answer matches the ground truth.
+1,FLASH_FUSION,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the maximum recorded x-acceleration for user 15?,PASS,1.0,The candidate answer matches the ground truth.
+2,AUTOIOT_ONLY,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,The candidate answer matches the ground truth.
+2,AUTOIOT_ONLY,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,Candidate answer matches ground truth
+2,AUTOIOT_ONLY,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,The candidate answer matches the ground truth.
+2,FLASH_FUSION,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,Candidate answer matches ground truth
+2,FLASH_FUSION,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,The candidate answer matches the ground truth.
+2,FLASH_FUSION,How many total samples in the dataset are classified as the Walking activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,AUTOIOT_ONLY,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,AUTOIOT_ONLY,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,AUTOIOT_ONLY,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+3,FLASH_FUSION,What is the average y-accel value for user 5 during the Sitting activity?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_ONLY,Which user has the highest total number of recorded data samples?,PASS,1.0,Candidate answer matches ground truth
+4,AUTOIOT_ONLY,Which user has the highest total number of recorded data samples?,PASS,1.0,Candidate answer matches ground truth
+4,AUTOIOT_ONLY,Which user has the highest total number of recorded data samples?,PASS,1.0,Candidate answer matches ground truth
+4,FLASH_FUSION,Which user has the highest total number of recorded data samples?,PASS,1.0,Candidate answer matches ground truth
+4,FLASH_FUSION,Which user has the highest total number of recorded data samples?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,Which user has the highest total number of recorded data samples?,PASS,1.0,The candidate answer matches the ground truth.
+5,AUTOIOT_ONLY,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,Candidate answer matches ground truth
+5,AUTOIOT_ONLY,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,Candidate answer matches ground truth
+5,AUTOIOT_ONLY,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,The candidate answer correctly states the difference in acceleration magnitude between dynamic and resting states.
+5,FLASH_FUSION,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,Candidate answer matches ground truth
+5,FLASH_FUSION,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,Candidate answer matches ground truth
+5,FLASH_FUSION,Compare the overall acceleration magnitude between dynamic movements and resting states.,PASS,1.0,Candidate answer matches ground truth
+6,AUTOIOT_ONLY,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,PASS,1.0,The candidate answer correctly identifies user 20 as having the largest margin.
+6,AUTOIOT_ONLY,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,FAIL,0.0,Candidate answer does not clearly identify the user
+6,AUTOIOT_ONLY,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,FAIL,0.0,Candidate answer does not match the ground truth user ID
+6,FLASH_FUSION,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,PASS,1.0,The candidate answer matches the ground truth.
+6,FLASH_FUSION,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,PASS,1.0,The candidate answer matches the ground truth answer.
+6,FLASH_FUSION,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,FAIL,0.0,Candidate answer does not match the ground truth user ID
+7,AUTOIOT_ONLY,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,The candidate answer matches the ground truth.
+7,AUTOIOT_ONLY,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,Candidate answer matches ground truth
+7,AUTOIOT_ONLY,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,The candidate answer matches the ground truth.
+7,FLASH_FUSION,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,The candidate answer matches the ground truth.
+7,FLASH_FUSION,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,Candidate answer matches ground truth
+7,FLASH_FUSION,What is the median net acceleration vector length for user 20 while ascending steps?,PASS,1.0,The candidate answer matches the ground truth.
+8,AUTOIOT_ONLY,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,Candidate answer matches ground truth
+8,AUTOIOT_ONLY,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,Candidate answer matches ground truth within minor rounding differences.
+8,AUTOIOT_ONLY,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,Candidate answer matches ground truth within minor rounding difference.
+8,FLASH_FUSION,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,The candidate answer is factually correct.
+8,FLASH_FUSION,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,The candidate answer is factually correct.
+8,FLASH_FUSION,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,PASS,1.0,The candidate answer is factually correct.
+9,AUTOIOT_ONLY,How does the average walking speed in miles per hour correlate with the age of the users?,FAIL,0.0,Candidate answer is factually incorrect due to lack of data on age and speed in mph.
+9,AUTOIOT_ONLY,How does the average walking speed in miles per hour correlate with the age of the users?,FAIL,0.0,Candidate answer is factually incorrect due to lack of age data
+9,AUTOIOT_ONLY,How does the average walking speed in miles per hour correlate with the age of the users?,FAIL,0.0,Candidate answer is factually incorrect due to lack of data on age and speed in mph.
+10,AUTOIOT_ONLY,"Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",PASS,1.0,Candidate clearly states the request is unanswerable
+10,AUTOIOT_ONLY,"Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",PASS,1.0,Candidate clearly states the request is unanswerable
+10,AUTOIOT_ONLY,"Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",PASS,1.0,Candidate clearly states the request is unanswerable
+11,AUTOIOT_ONLY,Are female subjects more likely to have a higher cadence during stair climbing than male subjects?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable attributes
+11,AUTOIOT_ONLY,Are female subjects more likely to have a higher cadence during stair climbing than male subjects?,PASS,1.0,Candidate answer implies unavailability of required attributes
+11,AUTOIOT_ONLY,Are female subjects more likely to have a higher cadence during stair climbing than male subjects?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable attributes
+12,AUTOIOT_ONLY,Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.,FAIL,0.0,Candidate answer is factually incorrect due to predicting future behavior without sufficient data.
+12,AUTOIOT_ONLY,Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.,FAIL,0.0,Candidate answer is factually incorrect because it provides a prediction despite the task being unanswerable
+12,AUTOIOT_ONLY,Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.,FAIL,0.0,Candidate answer is factually incorrect because it provides a prediction despite the task being unanswerable

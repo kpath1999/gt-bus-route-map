@@ -1,0 +1,2 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
+HARGPT_PAPER,1,0.0,llm_judge_score,8.795361995697021,0.0271560099999999,45363,496,False,False,,"hargpt_scope,hargpt_ecg_window,hargpt_ecg_rewrite,hargpt_ecg_infer,hargpt_ecg_parse",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

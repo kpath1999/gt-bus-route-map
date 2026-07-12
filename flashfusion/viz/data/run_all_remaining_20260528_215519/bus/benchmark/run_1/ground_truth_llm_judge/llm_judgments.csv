@@ -1,0 +1,561 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],AUTOIOT_PAPER,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The maximum accel_variance observed in this dataset is **5.869**.,False,True,result = df['accel_variance'].max(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The average accel_mean across all recorded samples is **9.283388022969648**.,False,True,result = df['accel_mean'].mean(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The highest `accel_stats_z_p99` was recorded at **2025-06-06 16:02:01**.,False,True,result = df.loc[df['accel_stats_z_p99'].idxmax()]['timestamp'],PASS,1.0,The candidate answer matches the ground truth timestamp.,SOUND,Ground truth provides a specific timestamp.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth timestamp."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a specific timestamp.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,There are **352** data samples that show an `accel_variance` strictly greater than 0.20.,False,True,result = (df['accel_variance'] > 0.20).sum(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.",Execution error in round 1: QueryTimeoutError: ,False,True,"import pandas as pd
+import numpy as np
+
+def calculate_median_latitude(df):
+    median_latitude = np.median(df['latitude'])
+    return median_latitude
+
+def compare_acceleration_variance(df):
+    median_latitude = calculate_median_latitude(df)
+    northern_half = df[df['latitude'] > median_latitude]
+    southern_half = df[df['latitude'] <= median_latitude]
+    northern_avg_variance = northern_half['accel_variance'].mean()
+    southern_avg_variance = southern_half['accel_variance'].mean()
+    if northern_avg_variance > southern_avg_variance:
+        result = ""The northern half of the route is rougher than the southern half.""
+    else:
+        result = ""The southern half of the route is rougher than or as rough as the northern half.""
+    return result
+
+result = compare_acceleration_variance(df)",FAIL,0.0,Candidate answer does not provide a factual comparison of acceleration variance.,SOUND,Ground truth provides a clear comparison of acceleration variance.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not provide a factual comparison of acceleration variance."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a clear comparison of acceleration variance.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.","The location (latitude, longitude) that recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration is: 
+**(33.776932, -84.391906)**.",False,True,"def find_largest_difference(df):
+    # Calculate the difference between the 99th and 1st percentile of the z-axis acceleration
+    df['z_diff'] = df['accel_stats_z_p99'] - df['accel_stats_z_p1']
+
+    # Find the location with the largest difference
+    max_diff_index = df['z_diff'].idxmax()
+    max_diff_location = (df.loc[max_diff_index, 'latitude'], df.loc[max_diff_index, 'longitude'])
+
+    return max_diff_location
+
+result = find_largest_difference(df)",PASS,1.0,Candidate answer matches ground truth coordinates,SOUND,Ground truth provides exact coordinates and timestamp,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth coordinates"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides exact coordinates and timestamp""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,[ERROR] Safe backend failed after 3 attempts: NameError: name 'pd' is not defined,False,True,"import pandas as pd
+import numpy as np
+
+def calculate_average_magnitude(df):
+    """"""
+    Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing the acceleration data.
+
+    Returns:
+        float: Average overall magnitude of peak acceleration.
+    """"""
+    # Extract the 99th percentiles of the X, Y, and Z axes
+    x_p99 = df['accel_stats_x_p99']
+    y_p99 = df['accel_stats_y_p99']
+    z_p99 = df['accel_stats_z_p99']
+
+    # Calculate the magnitude of peak acceleration for each row
+    magnitudes = np.sqrt(x_p99**2 + y_p99**2 + z_p99**2)
+
+    # Calculate the average overall magnitude of peak acceleration
+    average_magnitude = np.mean(magnitudes)
+
+    return average_magnitude
+
+def main():
+    # Sample data
+    data = [
+        {'timestamp': pd.Timestamp('2025-06-06 16:36:34'), 'latitude': 33.77697, 'longitude': -84.38988, 'accel_mean': 9.344, 'accel_variance': 0.127, 'accel_stats_x_p1': -1.686, 'accel_stats_x_p10': -0.46, 'accel_stats_x_p90': 1.073, 'accel_stats_x_p99': 1.992, 'accel_stats_y_p1': 0.766, 'accel_stats_y_p10': 2.452, 'accel_stats_y_p90': 3.065, 'accel_stats_y_p99': 3.218, 'accel_stats_z_p1': 8.274, 'accel_stats_z_p10': 8.581, 'accel_stats_z_p90': 9.194, 'accel_stats_z_p99': 11.032},
+        {'timestamp': pd.Timestamp('2025-06-06 16:36:31'), 'latitude': 33.776971, 'longitude': -84.389857, 'accel_mean': 9.344, 'accel_variance': 0.127, 'accel_stats_x_p1': -1.686, 'accel_stats_x_p10': -0.46, 'accel_stats_x_p90': 1.073, 'accel_stats_x_p99': 1.992, 'accel_stats_y_p1': 0.766, 'accel_stats_y_p10': 2.452, 'accel_stats_y_p90': 3.065, 'accel_stats_y_p99': 3.218, 'accel_stats_z_p1': 8.274, 'accel_stats_z_p10': 8.581, 'accel_stats_z_p90': 9.194, 'accel_stats_z_p99': 11.032}
+    ]
+
+    # Create a DataFrame
+    df = pd.DataFrame(data)
+
+    # Calculate the average magnitude
+    average_magnitude = calculate_average_magnitude(df)
+
+    result = average_magnitude
+
+main()",FAIL,0.0,Candidate answer contains an error message and does not provide a numerical answer.,SOUND,Ground truth answer is a specific numerical value.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer contains an error message and does not provide a numerical answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is a specific numerical value.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,The time window that experienced the most sustained turbulence is **2025-06-06 16:01:00 - 2025-06-06 16:02:00**.,False,True,"# Group the data into 1-minute intervals
+df_grouped = df.groupby(pd.Grouper(key='timestamp', freq='1min'))
+
+# Calculate the mean acceleration variance for each group
+df_grouped_mean_variance = df_grouped['accel_variance'].mean().reset_index()
+
+# Find the group with the highest mean acceleration variance
+max_variance_group = df_grouped_mean_variance.loc[df_grouped_mean_variance['accel_variance'].idxmax()]
+
+# Return the time window that experienced the most sustained turbulence
+result = max_variance_group['timestamp']",PASS,1.0,The candidate answer matches the ground truth time window.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth time window."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,[ERROR] Safe backend failed after 3 attempts: NameError: name 'np' is not defined,False,True,"import pandas as pd
+import numpy as np
+
+def correlate_passenger_occupancy_with_road_roughness(passenger_occupancy, road_roughness_index):
+    correlation_coefficient = np.corrcoef(passenger_occupancy, road_roughness_index)[0, 1]
+    return correlation_coefficient
+
+# Assuming passenger occupancy is estimated based on acceleration metrics
+# For simplicity, let's use 'accel_mean' as a proxy for passenger occupancy
+passenger_occupancy = df['accel_mean']
+
+# Assuming road roughness index is estimated based on acceleration variance
+road_roughness_index = df['accel_variance']
+
+result = correlate_passenger_occupancy_with_road_roughness(passenger_occupancy, road_roughness_index)",PASS,1.0,Candidate answer indicates the request is unanswerable due to an error,SOUND,Ground truth correctly states passenger occupancy data is unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer indicates the request is unanswerable due to an error"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly states passenger occupancy data is unavailable""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,[ERROR] Safe backend failed after 3 attempts: NameError: name 'get_weather_data' is not defined,False,True,"# Get the weather data for the route
+weather_data = get_weather_data(df['timestamp'].min(), df['timestamp'].max(), df['latitude'].min(), df['longitude'].min(), df['latitude'].max(), df['longitude'].max())
+
+# Merge the weather data with the route data
+merged_data = pd.merge(df, weather_data, left_on='timestamp', right_on='dt', how='left')
+
+# Define a function to determine if it was raining
+def was_raining(row):
+    if row['weather'] is not None and 'rain' in row['weather'].lower():
+        return True
+    return False
+
+# Apply the function to the merged data
+merged_data['was_raining'] = merged_data.apply(was_raining, axis=1)
+
+# Calculate the average acceleration variance for rainy and non-rainy segments
+rainy_accel_variance = merged_data[merged_data['was_raining']]['accel_variance'].mean()
+non_rainy_accel_variance = merged_data[~merged_data['was_raining']]['accel_variance'].mean()
+
+# Determine if rainy weather caused the roughest segments
+if rainy_accel_variance > non_rainy_accel_variance:
+    result = ""Yes, rainy weather caused the roughest segments in this route.""
+else:
+    result = ""No, rainy weather did not cause the roughest segments in this route.""",FAIL,0.0,Candidate failed to reject the question due to lack of weather metadata,SOUND,Weather metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate failed to reject the question due to lack of weather metadata"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Weather metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,The bus driver who generated the smoothest driving profile is **driver_id: 104**.,False,True,"# Step 1: Data Validation
+if 'driver_id' in df.columns and 'accel_variance' in df.columns:
+    # Step 2: Driver Identification and Smoothest Driving Profile
+    try:
+        result = df.groupby('driver_id')['accel_variance'].mean().idxmin()
+    except KeyError as e:
+        print(f""Error: {e}"")
+        # Handle the case where 'driver_id' or 'accel_variance' column does not exist
+        for col in df.columns:
+            if col != 'driver_id' and col != 'accel_variance':
+                print(f""Using '{col}' as the alternative column for analysis."")
+                result = df.groupby('driver_id')[col].mean().idxmin()
+                break
+else:
+    # Handle the case where 'driver_id' or 'accel_variance' column does not exist
+    print(""Error: 'driver_id' or 'accel_variance' column not found in the dataset."")
+    # Attempt to find an alternative unique identifier
+    for col in df.columns:
+        if df[col].nunique() == len(df):
+            print(f""Using '{col}' as the unique identifier."")
+            result = df.groupby(col)['accel_variance'].mean().idxmin() if 'accel_variance' in df.columns else None
+            break",FAIL,0.0,Candidate answer is factually incorrect due to unavailable driver identity metadata,SOUND,Driver identity metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is factually incorrect due to unavailable driver identity metadata"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Driver identity metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,[ERROR] Safe backend failed after 3 attempts: TimeoutError: Safe code execution exceeded 10.0s and was terminated,False,True,"import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
+# Preprocess the data
+def preprocess_data(df):
+    # Convert timestamp to datetime format
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Extract relevant features
+    features = df[['accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 
+                    'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 
+                    'accel_stats_z_p90', 'accel_stats_z_p99']]
+    
+    # Define the target variable (pothole repairs)
+    target = df['accel_mean']  # Assuming accel_mean is a proxy for pothole repairs
+    
+    return features, target
+
+# Train a random forest regressor model
+def train_model(features, target):
+    X_train, X_test, y_train, y_test = train_test_split(features, target, test_size=0.2, random_state=42)
+    
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    print(f'MSE: {mse}')
+    
+    return model
+
+# Predict next week's pothole repairs
+def predict_pothole_repairs(model, features):
+    next_week_features = features  # Assuming we have the same features for next week
+    predictions = model.predict(next_week_features)
+    return predictions
+
+# Main function
+def main():
+    features, target = preprocess_data(df)
+    model = train_model(features, target)
+    predictions = predict_pothole_repairs(model, features)
+    result = predictions
+    return result
+
+result = main()",FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.,SOUND,Ground truth answer correctly rejects the request due to unavailable data.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable or out of scope."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer correctly rejects the request due to unavailable data.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The maximum accel_variance observed in this dataset is 5.869.,False,True,result = df['accel_variance'].max(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The average accel_mean across all recorded samples is 9.283388022969648.,False,True,result = df['accel_mean'].mean(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The highest `accel_stats_z_p99` was recorded at timestamp: 2025-06-06 16:02:01.,False,True,result = df[df['accel_stats_z_p99'].notnull()]['timestamp'].loc[df['accel_stats_z_p99'].idxmax()],PASS,1.0,Candidate answer matches ground truth timestamp,SOUND,Ground truth provides a specific timestamp,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth timestamp"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a specific timestamp""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The number of data samples with `accel_variance` strictly greater than 0.20 is 352.,False,True,result = df[df['accel_variance'] > 0.20].shape[0],PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.",The northern half of the route is rougher than the southern half.,False,True,"result = ""The northern half of the route is rougher than the southern half"" if df[df['latitude'] > df['latitude'].median()]['accel_variance'].mean() > df[df['latitude'] < df['latitude'].median()]['accel_variance'].mean() else ""The southern half of the route is rougher than the northern half"" if df[df['latitude'] < df['latitude'].median()]['accel_variance'].mean() > df[df['latitude'] > df['latitude'].median()]['accel_variance'].mean() else ""Both halves of the route are equally rough""",PASS,1.0,Candidate answer matches ground truth,SOUND,Northern half is indeed rougher,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Northern half is indeed rougher""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.","The location (latitude, longitude) that recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration is: 
+**Latitude: 33.776749, Longitude: -84.390053**.",False,True,"result = df.dropna(subset=['latitude', 'longitude', 'accel_stats_z_p1', 'accel_stats_z_p99']).assign(diff=lambda x: x['accel_stats_z_p99'] - x['accel_stats_z_p1']).sort_values(by='diff', ascending=False).head(1)[['latitude', 'longitude', 'diff']].to_dict(orient='records')[0]",PASS,1.0,Candidate answer matches ground truth coordinates within acceptable tolerance.,SOUND,Ground truth provided with exact coordinates and timestamp.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth coordinates within acceptable tolerance."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provided with exact coordinates and timestamp.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The average overall magnitude of peak acceleration is 11.46.,False,True,"result = df.dropna(subset=['accel_stats_x_p99', 'accel_stats_y_p99', 'accel_stats_z_p99']).assign(overall_magnitude=lambda x: (x['accel_stats_x_p99']**2 + x['accel_stats_y_p99']**2 + x['accel_stats_z_p99']**2)**0.5).overall_magnitude.mean()",PASS,1.0,Candidate answer is factually correct,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer is factually correct"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,"The time window that experienced the most sustained turbulence is from 2025-06-06T16:01:00.000000000, with a maximum average accel_variance of 5.869.",False,True,"# Define the threshold for sustained turbulence
+threshold = 0.5
+
+# Filter rows where accel_variance is above the threshold
+sustained_turbulence_rows = df[df['accel_variance'] > threshold]
+
+# Group by 1-minute intervals and calculate average accel_variance
+df['interval'] = df['timestamp'].dt.floor('min')
+average_accel_variance = df.groupby('interval')['accel_variance'].mean().reset_index()
+
+# Find the maximum average accel_variance
+max_average_accel_variance = average_accel_variance['accel_variance'].max()
+
+# Find the time window with the maximum average accel_variance
+max_interval = average_accel_variance.loc[average_accel_variance['accel_variance'] == max_average_accel_variance, 'interval'].values[0]
+
+# Create a dictionary with the result
+result = {
+    'interval': max_interval,
+    'max_accel_variance': max_average_accel_variance
+}",FAIL,0.0,Candidate answer does not match ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,0.1270,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Maximum accel_variance is 5.869,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Maximum accel_variance is 5.869""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,9.3440,False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01,SOUND,Ground truth is 9.283,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is 9.283""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The final answer is: $\boxed{2025-06-06 16:36:34}$,False,False,,FAIL,0.0,Candidate answer does not match ground truth timestamp,SOUND,Ground truth timestamp is 2025-6-6 16:2:1,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth timestamp"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth timestamp is 2025-6-6 16:2:1""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,0,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Ground truth is consistent with sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","** No, the northern half of the route is not rougher than the southern half based on average acceleration variance, as the acceleration variance remains constant across the entire route in the provided data sample.",False,False,,FAIL,0.0,Candidate answer contradicts ground truth,SOUND,Northern half is rougher by 0.207,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer contradicts ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Northern half is rougher by 0.207""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.","$\boxed{33.7770, -84.3899}$",False,False,,FAIL,0.0,Candidate answer lacks exact longitude and has minor rounding difference in latitude,SOUND,Exact coordinates and timestamp are provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer lacks exact longitude and has minor rounding difference in latitude"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Exact coordinates and timestamp are provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The final answer is: $\boxed{11.66}$,False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01,SOUND,Ground truth is provided with a deterministic sanity hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with a deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,"All time windows experienced similar levels of turbulence, as indicated by constant `accel_variance` and acceleration percentiles.",False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Specific time window and accel_variance value provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Specific time window and accel_variance value provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,"**Final answer**: There is no observable correlation between passenger occupancy and road roughness during this trip, as the acceleration data remains constant throughout.",False,False,,FAIL,0.0,Candidate answer does not match the expected rejection reason,SOUND,Passenger occupancy data is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the expected rejection reason"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Passenger occupancy data is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,"No, the provided data does not allow us to conclude that rainy weather caused the roughest segments in this route.",False,False,,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of data,SOUND,Ground truth correctly identifies unavailable weather metadata,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable due to lack of data"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies unavailable weather metadata""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,The final answer is: There is not enough information to determine which bus driver generated the smoothest driving profile.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information,SOUND,Driver identity metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Driver identity metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,"**Final Answer**: Based on the provided dataset, it is not possible to accurately predict next week's pothole repairs for the road segments. The data lacks direct indicators of pothole presence, road conditions, and maintenance schedules necessary for such predictions.",False,False,,PASS,1.0,Candidate clearly states the request is unanswerable,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Maximum accel_variance is provided as 5.869.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Maximum accel_variance is provided as 5.869.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Average accel_mean is provided as 9.283.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average accel_mean is provided as 9.283.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is specific and well-defined.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is specific and well-defined.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth answer is based on provided data and calculations.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is based on provided data and calculations.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect because it claims a lack of information.,SOUND,Ground truth is provided with specific coordinates and timestamp.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect because it claims a lack of information."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with specific coordinates and timestamp.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate incorrectly states the request is unanswerable,SOUND,Ground truth answer is provided with a clear calculation,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate incorrectly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is provided with a clear calculation""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,The ground truth answer is supported by the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth answer is supported by the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.,SOUND,Ground truth answer is a clear rejection due to unavailable data.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is a clear rejection due to unavailable data.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate clearly states the request is unanswerable,SOUND,Weather metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Weather metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable,SOUND,Driver identity metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Driver identity metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information.,SOUND,Ground truth answer is reasonable and matches the deterministic hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of information."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is reasonable and matches the deterministic hint.""
+}
+```"

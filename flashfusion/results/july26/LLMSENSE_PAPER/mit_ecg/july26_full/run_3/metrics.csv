@@ -1,0 +1,13 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
+LLMSENSE_PAPER,1,0.0,llm_judge_score,216.43066906929016,0.20298244999999998,343394,481,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,2,0.0,llm_judge_score,179.83477115631104,0.20660783,349291,666,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,3,0.0,llm_judge_score,168.6679060459137,0.20296351999999998,343382,466,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,4,0.0,llm_judge_score,171.80625581741333,0.20629729,349082,429,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,5,0.0,llm_judge_score,171.3844621181488,0.20246158999999997,342467,514,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,6,0.0,llm_judge_score,154.19302916526794,0.20294929,343386,445,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,7,0.0,llm_judge_score,194.23228478431702,0.20935969,353994,637,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,8,0.0,llm_judge_score,167.9855580329895,0.20298817999999996,343393,489,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,9,1.0,llm_judge_score,169.11544609069824,0.20295049,343380,451,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,10,1.0,llm_judge_score,209.71473789215088,0.20600640999999997,348277,662,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,11,1.0,llm_judge_score,199.85975193977356,0.20576629,348103,488,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,12,1.0,llm_judge_score,172.6356122493744,0.20305202,343453,525,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

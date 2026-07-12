@@ -527,11 +527,16 @@ class ExecutionLayer:
     def _build_prefix(self, df: pd.DataFrame) -> str:
         """
         Build the agent system prompt prefix injected into the ReAct template.
+
+        When ``react_faithful`` is True (paper-faithful ReAct-Only, which has no
+        separate feasibility guardrail), an out-of-scope abstention clause is
+        appended so the agent can decline queries that cannot be answered from
+        the available columns instead of hallucinating a value.
         """
         col_descriptions = ", ".join(
             f"{c} ({df[c].dtype})" for c in df.columns
         )
-        return (
+        prefix = (
             "You are a data analyst working with a pandas DataFrame named `df`.\n"
             f"Columns: {col_descriptions}\n"
             f"Total rows: {len(df)}\n\n"
@@ -546,6 +551,17 @@ class ExecutionLayer:
             "  the identifier key and the metric key separately\n"
             "  Never return a bare numeric ID — it is indistinguishable from a measurement value.\n"
         )
+        if self._react_faithful:
+            prefix += (
+                "\nSCOPE CHECK (perform before answering):\n"
+                "- If the question depends on information that is NOT derivable from the\n"
+                "  columns listed above (e.g. demographics, weather, geolocation, driver\n"
+                "  identity, medical history), or asks you to forecast future events, then\n"
+                "  do NOT fabricate a value.\n"
+                "- In that case respond exactly with:\n"
+                "  Final Answer: This request is out of scope for the available data because <one-sentence reason>.\n"
+            )
+        return prefix
 
     def guardrail(self, query: str) -> tuple[bool, str]:
         """

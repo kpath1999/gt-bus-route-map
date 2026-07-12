@@ -1,0 +1,97 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],HARGPT_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,-3.0500,False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01,SOUND,Minimum MLII for record_id 101 is -3.175,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII for record_id 101 is -3.175""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,1804.8333,False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01 seconds,SOUND,Ground truth is provided with high precision,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01 seconds"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with high precision""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,"**Final Answer**: Given the constraints, a precise answer cannot be provided in this format.",False,False,,FAIL,0.0,Candidate answer is not factually correct,SOUND,Ground truth answer is provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is not factually correct"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,"**Final Answer**: Given the data provided and the caveat that this might not be the absolute last annotation if more data exists beyond the excerpt, the timestamp of the last annotated beat visible in the provided data is 1804.8333 seconds.",False,False,,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01,SOUND,Last annotated beat in record_id 221 occurs at time_s = 1805.028,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth by more than 0.01"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Last annotated beat in record_id 221 occurs at time_s = 1805.028""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,5,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,False,"record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.",Unable to estimate.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is based on provided data and calculation.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is based on provided data and calculation.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,"**Final Answer**: Given the constraints, we cannot calculate the exact answer without processing the data. The approach involves calculating the peak-to-peak amplitude for each record_id and comparing them to find the largest.",False,False,,FAIL,0.0,Candidate answer is incorrect and does not provide the required information,SOUND,Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not provide the required information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.","**Final Answer**: Due to the absence of explicit beat annotations in the provided data, it's not possible to accurately identify the 10-second interval with the highest number of annotated beats for record_id 101 based solely on the given information.",False,False,,FAIL,0.0,Candidate incorrectly rejects the question,SOUND,Clear interval with highest annotated beats,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate incorrectly rejects the question"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear interval with highest annotated beats""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,"**Final Answer**: Due to the computational nature of the question and the lack of direct calculation capability in this format, I must provide a conceptual answer rather than a numerical value. The RMS calculation requires processing the MLII signal values through squaring, averaging, and then taking the square root, as described.",False,False,,FAIL,0.0,"Candidate answer is conceptual, not numerical.",SOUND,RMS value is provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is conceptual, not numerical."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""RMS value is provided.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,"No, based on the provided data, it is not possible to determine if the patient corresponding to record_id 101 experienced a fatal cardiac event within a year.",False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.,SOUND,Ground truth answer matches deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,"**Best-effort answer**: Due to the lack of necessary metadata (BMI values), it is not possible to provide a statistical correlation analysis based on the provided data.",False,False,,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of necessary metadata,SOUND,Ground truth correctly identifies unavailability of BMI data,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable due to lack of necessary metadata"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies unavailability of BMI data""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,**Final Answer**: It is not possible to determine which patients have a recorded family history of atrial fibrillation based on the provided dataset.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable,SOUND,Family medical history is indeed unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Family medical history is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,**Final Answer**: Cannot be accurately estimated from the provided data.,False,False,,PASS,1.0,Candidate correctly states that blood pressure cannot be estimated from the provided data.,SOUND,Ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that blood pressure cannot be estimated from the provided data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"

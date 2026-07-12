@@ -1,0 +1,122 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],FLASH_FUSION,1,What is the maximum recorded x-acceleration for user 15?,False,Maximum x-acceleration for user 15 is 19.5700.,The maximum recorded x-acceleration for user 15 is 19.57.,False,True,result = df[df['subject_id'] == 15]['x'].max(),PASS,1.0,The candidate answer matches the ground truth exactly.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth exactly."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,2,How many total samples in the dataset are classified as the Walking activity?,False,Total Walking samples in the dataset: 424397.,The total number of samples in the dataset classified as the Walking activity is 424397.,False,True,"# Filter the DataFrame to only include rows where activity_label is 'Walking'
+df_walk = df[df['activity_label'] == 'Walking']
+
+# Calculate the total count of rows in the filtered DataFrame
+result = len(df_walk)",PASS,1.0,The candidate answer matches the ground truth.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,3,What is the average y-accel value for user 5 during the Sitting activity?,False,Average y-acceleration for user 5 during Sitting is 3.0414.,The average y-accel value for user 5 during the Sitting activity is 3.0414423076923076.,False,True,result = df[(df['subject_id'] == 5) & (df['activity_label'] == 'Sitting')]['y'].mean(),PASS,1.0,The candidate answer matches the ground truth exactly.,SOUND,Average y-acceleration value is provided with high precision.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth exactly."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average y-acceleration value is provided with high precision.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,4,Which user has the highest total number of recorded data samples?,False,User with the highest sample count is 20 with 56632 samples.,The user with the highest total number of recorded data samples has a `subject_id` of 20.,False,True,"# Filter the DataFrame to remove rows with missing activity labels
+filtered_df = df[df['activity_label']!= '']
+
+# Group the filtered DataFrame by subject_id and count the number of rows in each group
+grouped_df = filtered_df.groupby('subject_id').size().reset_index(name='total_samples')
+
+# Rank the users by their total number of recorded data samples in descending order
+ranked_df = grouped_df.sort_values(by='total_samples', ascending=False).head(1)
+
+# Get the subject_id and total_samples of the user with the highest total number of recorded data samples
+result = {'subject_id': ranked_df['subject_id'].iloc[0], 'total_samples': ranked_df['total_samples'].iloc[0]}",FAIL,0.0,Candidate answer lacks the total number of samples,SOUND,Clear answer with user ID and sample count,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer lacks the total number of samples"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear answer with user ID and sample count""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,5,Compare the overall acceleration magnitude between dynamic movements and resting states.,False,"Average magnitude for dynamic activities (walking,jogging,upstairs,downstairs) is 11.9625; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.1297.",The overall acceleration magnitude is higher for dynamic movements (mean = 11.962538760453763) compared to resting states (mean = 9.8327917626509).,False,True,"# Filter the DataFrame to include only rows where activity_label is in ['Jogging', 'Walking', 'Upstairs', 'Downstairs']
+df_dynamic = df[df['activity_label'].isin(['Jogging', 'Walking', 'Upstairs', 'Downstairs'])]
+
+# Filter the DataFrame to include only rows where activity_label is in ['Sitting', 'Standing']
+df_resting = df[df['activity_label'].isin(['Sitting', 'Standing'])]
+
+# Calculate the mean of magnitude for both df_dynamic and df_resting
+mean_dynamic = df_dynamic['magnitude'].mean()
+mean_resting = df_resting['magnitude'].mean()
+
+# Form a comparative statement
+if mean_dynamic > mean_resting:
+    result = f""The overall acceleration magnitude is higher for dynamic movements (mean = {mean_dynamic}) compared to resting states (mean = {mean_resting})""
+elif mean_dynamic < mean_resting:
+    result = f""The overall acceleration magnitude is higher for resting states (mean = {mean_resting}) compared to dynamic movements (mean = {mean_dynamic})""
+else:
+    result = f""The overall acceleration magnitude is equal for dynamic movements (mean = {mean_dynamic}) and resting states (mean = {mean_resting})""",PASS,1.0,Candidate answer matches ground truth,SOUND,Ground truth values are consistent with the deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth values are consistent with the deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,6,Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.,False,"Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).","The user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin is subject_id 20.0, with a margin of 54004.33781899999 seconds.",False,True,"# Filter the DataFrame to only include rows where activity_label is in ['Sitting', 'Standing']
+df_stationary = df[df['activity_label'].isin(['Sitting', 'Standing'])]
+
+# Filter the DataFrame to only include rows where activity_label is in ['Jogging', 'Walking', 'Upstairs', 'Downstairs']
+df_locomotion = df[df['activity_label'].isin(['Jogging', 'Walking', 'Upstairs', 'Downstairs'])]
+
+# Calculate the total recorded duration dt_s for each subject_id in both df_stationary and df_locomotion DataFrames
+df_stationary_duration = df_stationary.groupby('subject_id')['dt_s'].sum().reset_index()
+df_locomotion_duration = df_locomotion.groupby('subject_id')['dt_s'].sum().reset_index()
+
+# Merge the two DataFrames on subject_id
+df_merged = df_stationary_duration.merge(df_locomotion_duration, on='subject_id', suffixes=('_stationary', '_locomotion'))
+
+# Calculate the margin for each subject_id
+df_merged['margin'] = df_merged['dt_s_stationary'] - df_merged['dt_s_locomotion']
+
+# Rank the subject_id values based on the margin in descending order
+df_ranked = df_merged.sort_values(by='margin', ascending=False)
+
+# Get the subject_id with the largest margin
+result = {'subject_id': df_ranked.iloc[0]['subject_id'], 'margin': df_ranked.iloc[0]['margin']}",PASS,1.0,The candidate answer correctly identifies user 20 with the largest margin.,SOUND,The ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly identifies user 20 with the largest margin."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,7,What is the median net acceleration vector length for user 20 while ascending steps?,False,Median net acceleration vector length for user 20 while ascending steps is 9.8931.,The median net acceleration vector length for user 20 while ascending steps is 9.893086174221672.,False,True,result = df[(df['subject_id'] == 20) & (df['activity_label'] == 'Upstairs')]['magnitude'].median(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,8,Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.,False,Average z for ascending elevation changes is 0.3235; descending is 0.6841; difference (ascending-descending) is -0.3605.,The difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users is -0.3605453854410954.,False,True,"# Filter the DataFrame to only include rows where activity_label is either 'Upstairs' or 'Downstairs'
+filtered_df = df[(df['activity_label'] == 'Upstairs') | (df['activity_label'] == 'Downstairs')]
+
+# Group the filtered DataFrame by activity_label and calculate the average z for each group
+average_z = filtered_df.groupby('activity_label')['z'].mean()
+
+# Calculate the difference between the average z for 'Upstairs' and 'Downstairs' activities
+result = average_z['Upstairs'] - average_z['Downstairs']",PASS,1.0,The candidate answer is factually correct.,SOUND,Ground truth matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer is factually correct."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches the deterministic sanity hint.""
+}
+```"

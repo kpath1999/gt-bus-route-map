@@ -1,0 +1,97 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],LLMSENSE_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Minimum MLII for record_id 101 is indeed -3.175.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII for record_id 101 is indeed -3.175.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Total recording duration for record_id 234 is provided as 1805.553 seconds.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total recording duration for record_id 234 is provided as 1805.553 seconds.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,The ground truth is supported by the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth is supported by the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,5,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,False,"record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect because it rejects the query without justification.,SOUND,Ground truth is consistent with the provided hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect because it rejects the query without justification."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the provided hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth RMS value is provided as 0.409.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth RMS value is provided as 0.409.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate clearly states the request is unanswerable,SOUND,Ground truth matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data,SOUND,Ground truth properly justifies rejection with specific reason,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth properly justifies rejection with specific reason""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states that the data is insufficient to answer the query.,SOUND,Ground truth explicitly rejects the query due to unavailable family medical history.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that the data is insufficient to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth explicitly rejects the query due to unavailable family medical history.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states that the data is insufficient to answer the query.,SOUND,Ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that the data is insufficient to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"

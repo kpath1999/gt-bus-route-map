@@ -1,0 +1,133 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,AUTOIOT_PAPER,What is the maximum accel_variance observed in this dataset?,PASS,1.0,Candidate answer matches ground truth
+1,AUTOIOT_PAPER,What is the maximum accel_variance observed in this dataset?,PASS,1.0,The candidate answer matches the ground truth.
+1,AUTOIOT_PAPER,What is the maximum accel_variance observed in this dataset?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the maximum accel_variance observed in this dataset?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the maximum accel_variance observed in this dataset?,PASS,1.0,Candidate answer matches ground truth
+1,FLASH_FUSION,What is the maximum accel_variance observed in this dataset?,PASS,1.0,Candidate answer matches ground truth
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+1,LLMSENSE_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+1,LLMSENSE_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+1,LLMSENSE_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+2,AUTOIOT_PAPER,What is the average accel_mean across all recorded samples?,PASS,1.0,Candidate answer matches ground truth
+2,AUTOIOT_PAPER,What is the average accel_mean across all recorded samples?,PASS,1.0,Candidate answer matches ground truth
+2,AUTOIOT_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+2,FLASH_FUSION,What is the average accel_mean across all recorded samples?,PASS,1.0,Candidate answer matches ground truth
+2,FLASH_FUSION,What is the average accel_mean across all recorded samples?,PASS,1.0,Candidate answer matches ground truth
+2,FLASH_FUSION,What is the average accel_mean across all recorded samples?,PASS,1.0,Candidate answer matches ground truth
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+2,LLMSENSE_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+2,LLMSENSE_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+2,LLMSENSE_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate incorrectly states the request is unanswerable
+3,AUTOIOT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,PASS,1.0,The candidate answer matches the ground truth timestamp.
+3,AUTOIOT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer has incorrect timestamp
+3,AUTOIOT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer has incorrect timestamp
+3,FLASH_FUSION,At what exact timestamp was the highest accel_stats_z_p99 recorded?,PASS,1.0,Candidate answer matches ground truth timestamp
+3,FLASH_FUSION,At what exact timestamp was the highest accel_stats_z_p99 recorded?,PASS,1.0,Candidate answer matches ground truth timestamp
+3,FLASH_FUSION,At what exact timestamp was the highest accel_stats_z_p99 recorded?,PASS,1.0,Candidate answer matches ground truth timestamp
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+3,LLMSENSE_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+3,LLMSENSE_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+3,LLMSENSE_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+4,AUTOIOT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,Candidate answer matches ground truth
+4,AUTOIOT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,The candidate answer matches the ground truth.
+4,AUTOIOT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,Candidate answer matches ground truth
+4,FLASH_FUSION,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,The candidate answer matches the ground truth.
+4,FLASH_FUSION,How many data samples show an accel_variance strictly greater than 0.20?,PASS,1.0,The candidate answer matches the ground truth.
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+4,LLMSENSE_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+4,LLMSENSE_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+4,LLMSENSE_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,AUTOIOT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer does not provide a factual comparison of acceleration variance.
+5,AUTOIOT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer does not provide a factual comparison of acceleration variance
+5,AUTOIOT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer contains an error message and does not provide a factual answer.
+5,FLASH_FUSION,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",PASS,1.0,Candidate answer matches ground truth
+5,FLASH_FUSION,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",PASS,1.0,Candidate answer is factually correct
+5,FLASH_FUSION,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",PASS,1.0,Candidate answer matches ground truth
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer contradicts ground truth
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer does not match ground truth
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer does not match ground truth
+5,LLMSENSE_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,LLMSENSE_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+5,LLMSENSE_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+6,AUTOIOT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",PASS,1.0,Candidate answer matches ground truth coordinates
+6,AUTOIOT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer has a minor difference in longitude
+6,AUTOIOT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer does not match ground truth coordinates
+6,FLASH_FUSION,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",PASS,1.0,Candidate answer matches ground truth coordinates within acceptable tolerance.
+6,FLASH_FUSION,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",PASS,1.0,Candidate answer matches ground truth coordinates and difference value within acceptable limits.
+6,FLASH_FUSION,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer lacks exact coordinates and numeric value of the largest vertical shock.
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer lacks exact longitude and has minor rounding difference in latitude
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer has incorrect longitude
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer has incorrect longitude value
+6,LLMSENSE_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer is incorrect because it claims a lack of information.
+6,LLMSENSE_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer is incorrect because it claims a lack of information.
+6,LLMSENSE_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate incorrectly states the request is unanswerable
+7,AUTOIOT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer contains an error message and does not provide a numerical answer.
+7,AUTOIOT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer does not provide the correct numerical value.
+7,AUTOIOT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,"Candidate answer is an execution error, not a factual answer."
+7,FLASH_FUSION,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",PASS,1.0,Candidate answer is factually correct
+7,FLASH_FUSION,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",PASS,1.0,The candidate answer is factually correct.
+7,FLASH_FUSION,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",PASS,1.0,The candidate answer is factually correct.
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+7,LLMSENSE_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate incorrectly states the request is unanswerable
+7,LLMSENSE_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate incorrectly states the request is unanswerable
+7,LLMSENSE_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate incorrectly states the request is unanswerable
+8,AUTOIOT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",PASS,1.0,The candidate answer matches the ground truth time window.
+8,AUTOIOT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer lacks the total accel_variance value
+8,AUTOIOT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match the ground truth.
+8,FLASH_FUSION,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,FLASH_FUSION,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer lacks specific time window
+8,FLASH_FUSION,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,LLMSENSE_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+8,LLMSENSE_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+8,LLMSENSE_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.
+9,AUTOIOT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate answer indicates the request is unanswerable due to an error
+9,AUTOIOT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,FAIL,0.0,Candidate failed to reject the request due to unavailable data
+9,AUTOIOT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,"Candidate clearly states the request is unanswerable or out of scope is not applicable, but the expected rejection is true and the candidate answer is incorrect, however the question asks for a correlation and the candidate provides one, yet the expected rejection is true."
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,FAIL,0.0,Candidate answer does not match the expected rejection reason
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of data
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as required.
+9,LLMSENSE_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,LLMSENSE_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,LLMSENSE_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+10,AUTOIOT_PAPER,Did rainy weather cause the roughest segments in this route?,FAIL,0.0,Candidate failed to reject the question due to lack of weather metadata
+10,AUTOIOT_PAPER,Did rainy weather cause the roughest segments in this route?,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+10,AUTOIOT_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of weather data.
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of data
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,FAIL,0.0,Candidate answer does not match expected rejection
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,FAIL,0.0,Candidate answer does not match the expected rejection
+10,LLMSENSE_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate clearly states the request is unanswerable
+10,LLMSENSE_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of information.
+10,LLMSENSE_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data
+11,AUTOIOT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate answer is factually incorrect due to unavailable driver identity metadata
+11,AUTOIOT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate answer does not match the expected rejection.
+11,AUTOIOT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate answer does not match the expected rejection.
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable
+11,LLMSENSE_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable
+11,LLMSENSE_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable
+11,LLMSENSE_PAPER,Which bus driver generated the smoothest driving profile?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information
+12,AUTOIOT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+12,AUTOIOT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+12,AUTOIOT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate clearly states the request is unanswerable
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate clearly states the request is unanswerable due to insufficient data.
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,FAIL,0.0,Candidate answer is factually incorrect and does not reject the request as expected.
+12,LLMSENSE_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of information.
+12,LLMSENSE_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate correctly states the request is unanswerable
+12,LLMSENSE_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate correctly states the request is unanswerable

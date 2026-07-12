@@ -1,0 +1,40 @@
+# Flash-Fusion Benchmark Report
+
+Generated: 2026-07-02T22:59:16+00:00
+
+## Summary Table
+
+| Baseline       |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
+|:---------------|-------------------:|------------------:|-----------------:|
+| LLMSENSE_PAPER |             0.0000 |           73.4007 |           0.2025 |
+
+## Per-Query Results
+
+### Q1: What is the minimum MLII value recorded for record_id 101?
+
+#### LLMSENSE_PAPER
+
+**Answer:** The available data does not contain enough information to answer this query.
+
+- Executed: False | Rejected: False | Judge: N/A
+- Stages: S_summarize,R_reason
+- Latency: 73.40s | Cost: $0.20250
+
+**Agent Trace**
+
+```
+[Group 101 - chunk 1] The ECG signal shows a predominantly normal sinus rhythm with a few instances of premature ventricular contractions and a couple of beats with a slightly elevated heart rate. The signal is mostly stable with minor fluctuations in the R-R interval, with an average heart rate of approximately 60 beats per minute. There are no significant changes in the ECG morphology, and the signal remains consistent throughout the 30-minute recording period. The MLII and V1 lead amplitudes are relatively stable, with minor variations. The signal has a few isolated beats with slightly higher or lower amplitudes, but these do not affect the overall pattern. The recording does not show any signs of atrial fibrillation or other arrhythmias, and the ventricular rate remains consistent. The ECG signal is mostly free of noise and artifacts, with a few instances of low-amplitude, high-frequency noise. The overall pattern of the ECG signal is consistent with a normal, healthy heart rhythm, with no evidence of any life-threatening conditions or significant arrhythmias.
+
+[Group 101 - chunk 2] The ECG signal exhibits a mix of normal and abnormal patterns, with periods of high and low activity. The dominant activity patterns include periods of high-intensity activity, lasting around 10-30 seconds, and periods of low-intensity activity, lasting around 5-10 seconds. The signal also shows periods of rapid increase and decrease in intensity, with some periods exhibiting a gradual increase or decrease. The signal's amplitude varies, with some peaks reaching 1.2-1.5 millivolts and troughs reaching -0.5 to -1.0 millivolts. The signal's frequency also varies, with some periods showing a frequency of around 60-80 Hz and others showing a frequency of around 20-40 Hz. Anomalies include abrupt transitions from high to low activity and vice versa, with some transitions occurring within 1-2 seconds. Abrupt transitions are often accompanied by a change in signal frequency or amplitude.
+
+[Group 101 - chunk 3] The wearable accelerometer readings show a predominantly low-frequency, high-amplitude oscillation pattern, with a duration of approximately 200 seconds and an intensity range of -0.445 to 0.445. The pattern is interrupted by brief periods of higher-frequency, lower-amplitude oscillations, lasting around 10-20 seconds. The oscillations have a relatively consistent frequency, but the amplitude varies over time, with some segments showing more pronounced peaks and troughs. There are occasional abrupt transitions in the oscillation pattern, where the frequency or amplitude changes suddenly.
+```
+
+---
+
+## Baseline Comparison Notes
+
+- **LLM-Only**: no schema grounding, no execution — may hallucinate.
+- **WellMax-Only**: S1+S2+S3 grounding, then direct grounded execution (no guardrail, no judge).
+- **Agent-Only**: raw-query pandas execution only (no guardrail, no codebook grounding).
+- **Flash-Fusion**: full grounding pipeline + guardrail + pre-agent plan judge (+ one refinement) + grounded execution.

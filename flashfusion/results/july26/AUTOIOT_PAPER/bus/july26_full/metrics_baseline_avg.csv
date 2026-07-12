@@ -1,0 +1,2 @@
+baseline,gt_score,latency_s,cost_usd,input_tokens,output_tokens,runs
+AUTOIOT_PAPER,0.3888888888888889,1002.7648667891821,0.04086272305555556,41571.36111111112,20678.0,3

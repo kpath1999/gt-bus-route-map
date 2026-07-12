@@ -1,0 +1,37 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+1,HARGPT_PAPER,What is the maximum accel_variance observed in this dataset?,FAIL,0.0,Candidate answer does not match ground truth
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,PASS,1.0,The candidate answer is within 0.01 of the ground truth.
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+2,HARGPT_PAPER,What is the average accel_mean across all recorded samples?,PASS,1.0,The candidate answer is within 0.01 of the ground truth.
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+3,HARGPT_PAPER,At what exact timestamp was the highest accel_stats_z_p99 recorded?,FAIL,0.0,Candidate answer does not match ground truth timestamp
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+4,HARGPT_PAPER,How many data samples show an accel_variance strictly greater than 0.20?,FAIL,0.0,Candidate answer does not match ground truth
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer contradicts ground truth
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer is incorrect
+5,HARGPT_PAPER,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",FAIL,0.0,Candidate answer is inconclusive
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer does not match ground truth coordinates
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer does not match ground truth coordinates
+6,HARGPT_PAPER,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",FAIL,0.0,Candidate answer does not match ground truth coordinates
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer does not match ground truth
+7,HARGPT_PAPER,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",FAIL,0.0,Candidate answer differs from ground truth by more than 0.01
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+8,HARGPT_PAPER,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",FAIL,0.0,Candidate answer does not match ground truth
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states that passenger occupancy data is unavailable
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+9,HARGPT_PAPER,How does passenger occupancy correlate with road roughness during this trip?,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate correctly states the request is unanswerable
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,PASS,1.0,Candidate correctly states the request is unanswerable due to missing weather data.
+10,HARGPT_PAPER,Did rainy weather cause the roughest segments in this route?,FAIL,0.0,Candidate answer does not match expected rejection
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate answer does not match the expected rejection.
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate did not clearly reject the request
+11,HARGPT_PAPER,Which bus driver generated the smoothest driving profile?,FAIL,0.0,Candidate did not clearly reject the request
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate clearly states the request is unanswerable due to lack of information.
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate clearly states the request is unanswerable
+12,HARGPT_PAPER,Predict next week's pothole repairs for the road segments in this dataset.,PASS,1.0,Candidate correctly states the request is unanswerable due to insufficient data.

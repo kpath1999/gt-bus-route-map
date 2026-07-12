@@ -22,6 +22,35 @@ Environment:
 See CLAUDE.md §eval/benchmark.py for the full run_benchmark() algorithm.
 """
 
+"""
+Tips:
+
+How to produce the before/after (your run)
+ReAct OOS (Q9–12), before vs after — the prompt change is now live, so "before" = git-stash/revert of the prefix or a prior run; "after" = current:
+```
+python -m flashfusion.eval.benchmark --dataset bus \
+  --data data/bus/bus_data.csv --baselines REACT_ONLY --queries 9,10,11,12 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
+  --output flashfusion/results/react_oos_after/bus
+```
+
+Flash-Fusion SLM, before vs after:
+```
+# before (70B everywhere)
+python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data.csv \
+  --baselines FLASH_FUSION --queries all \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
+  --output flashfusion/results/ff_70b/bus
+
+# after (8B on S1/S2)
+python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data.csv \
+  --baselines FLASH_FUSION --queries all --stage12-model meta-llama/llama-3.1-8b-instruct \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
+  --output flashfusion/results/ff_8b_s12/bus
+```
+
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -124,6 +153,7 @@ def _run_single_benchmark_iteration(
     llm_judge_max_code_chars: int,
     dataset: str,
     query_defs: list[dict],
+    stage12_model: str | None = None,
 ) -> tuple[list[RunResult], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Execute one full baseline x query benchmark run and persist artifacts."""
     os.makedirs(output_dir, exist_ok=True)
@@ -148,7 +178,11 @@ def _run_single_benchmark_iteration(
             if len(df_base) > 0:
                 print(f"[BENCHMARK DEBUG] df_base.head(3):\n{df_base.head(3)}", file=sys.stderr, flush=True)
 
-            client = LLMClient(model_name=model_name, api_key=api_key)
+            client = LLMClient(
+                model_name=model_name,
+                api_key=api_key,
+                light_model_name=stage12_model,
+            )
             runner = BaselineRunner(
                 mode=baseline,
                 df=df_base.copy(),
@@ -422,6 +456,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             max_query_latency=args.max_query_latency,
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
+            stage12_model=args.stage12_model,
         )
         return results
 
@@ -448,6 +483,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             max_query_latency=args.max_query_latency,
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
+            stage12_model=args.stage12_model,
         )
 
         all_results.extend(run_results)
@@ -592,6 +628,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--model",
         default=DEFAULT_MODEL,
         help=f"Model identifier (default: {DEFAULT_MODEL})",
+    )
+    parser.add_argument(
+        "--stage12-model",
+        default=None,
+        help=(
+            "Optional lighter model for Flash-Fusion Stages 1 and 2 only "
+            "(e.g. meta-llama/llama-3.1-8b-instruct). All other stages use --model. "
+            "When omitted, every stage uses --model."
+        ),
     )
     parser.add_argument(
         "--output",

@@ -1,0 +1,13 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run
+FLASH_FUSION,1,1.0,llm_judge_score,17.896788120269775,0.00034884,452,104,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,2,1.0,llm_judge_score,18.14185404777527,0.00042878,550,132,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,3,1.0,llm_judge_score,18.70221495628357,0.00047567,596,157,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,4,1.0,llm_judge_score,18.85781717300415,0.0007756499999999999,921,294,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,5,0.0,llm_judge_score,21.59672975540161,0.00142625,1618,597,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,6,1.0,llm_judge_score,19.81801176071167,0.0007634199999999999,915,283,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,7,0.0,llm_judge_score,18.94631600379944,0.0006828899999999999,816,255,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,8,1.0,llm_judge_score,18.24575686454773,0.00040714000000000006,516,130,True,False,N/A,"S1,S2,S3,guardrail,agent"
+FLASH_FUSION,9,1.0,guardrail_skip_expected_rejection,10.407784938812256,0.00046027000000000004,357,316,False,True,N/A,"S1,S2,S3,guardrail"
+FLASH_FUSION,10,1.0,guardrail_skip_expected_rejection,10.642239093780518,0.00051254,384,362,False,True,N/A,"S1,S2,S3,guardrail"
+FLASH_FUSION,11,1.0,guardrail_skip_expected_rejection,10.894037961959839,0.00051273,387,360,False,True,N/A,"S1,S2,S3,guardrail"
+FLASH_FUSION,12,0.0,llm_judge_score,19.781037092208862,0.00094735,971,474,True,False,N/A,"S1,S2,S3,guardrail,agent"

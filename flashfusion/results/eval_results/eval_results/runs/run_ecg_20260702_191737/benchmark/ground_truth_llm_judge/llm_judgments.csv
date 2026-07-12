@@ -1,0 +1,9 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],AUTOIOT_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,The minimum MLII value recorded for record_id 101 is **-3.175**.,False,True,"result = df.loc[df['record_id'] == 101, 'MLII'].min()",PASS,1.0,The candidate answer matches the ground truth exactly.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth exactly."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"

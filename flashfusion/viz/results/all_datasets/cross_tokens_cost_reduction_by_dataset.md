@@ -1,0 +1,5 @@
+| Dataset | Flash-Fusion_tokens | Flash-Fusion_cost_usd | Flash-Fusion_token_reduction_vs_baseline_pct | Flash-Fusion_cost_reduction_vs_baseline_pct | AutoIOT_tokens | AutoIOT_cost_usd | AutoIOT_token_reduction_vs_baseline_pct | AutoIOT_cost_reduction_vs_baseline_pct | HARGPT_tokens | HARGPT_cost_usd | HARGPT_token_reduction_vs_baseline_pct | HARGPT_cost_reduction_vs_baseline_pct | LLMSense_tokens | LLMSense_cost_usd | LLMSense_token_reduction_vs_baseline_pct | LLMSense_cost_reduction_vs_baseline_pct |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Bus | 663 | $0.000592 | 0.0% | 0.0% | 16234 | $0.015892 | 95.9% | 96.3% | 371 | $0.000517 | -78.8% | -14.5% | 638 | $0.000495 | -3.9% | -19.5% |
+| WISDM | 619 | $0.000577 | 0.0% | 0.0% | 28865 | $0.024251 | 97.9% | 97.6% | 358 | $0.000414 | -73.2% | -39.5% | 13210 | $0.011964 | 95.3% | 95.2% |
+| ECG | 608 | $0.000562 | 0.0% | 0.0% | 16323 | $0.015203 | 96.3% | 96.3% | 270 | $0.000460 | -125.2% | -22.1% | 144050 | $0.138886 | 99.6% | 99.6% |

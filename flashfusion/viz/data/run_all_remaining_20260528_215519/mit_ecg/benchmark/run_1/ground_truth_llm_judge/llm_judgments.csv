@@ -1,0 +1,688 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],AUTOIOT_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,The minimum MLII value recorded for record_id 101 is **-3.175**.,False,True,"import pandas as pd
+import numpy as np
+
+# Step 1: Validate data
+if 'record_id' not in df.columns or 'MLII' not in df.columns:
+    raise ValueError(""Missing required columns"")
+
+# Step 2: Filter data
+filtered_data = df[df['record_id'] == 101]
+
+# Step 3: Extract and convert MLII values
+mlii_values = pd.to_numeric(filtered_data['MLII'], errors='coerce')
+
+# Step 4: Apply Min operator
+min_mlII = mlii_values.min()
+
+# Step 5: Handle potential errors
+try:
+    if min_mlII is None or np.isnan(min_mlII):
+        raise ValueError(""Invalid or missing MLII values"")
+except ValueError as e:
+    print(f""Error: {e}"")
+
+# Step 6: Return the result
+result = min_mlII",PASS,1.0,The candidate answer matches the ground truth.,SOUND,Minimum MLII for record_id 101 is -3.175,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII for record_id 101 is -3.175""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,The total recording duration in seconds (maximum time_s) for record_id 234 is **20.0** seconds.,False,True,"result = df.loc[df['record_id'] == 234, 'time_s'].max()",FAIL,0.0,Candidate answer does not match ground truth,SOUND,Total recording duration for record_id 234 is 1805.553 seconds,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total recording duration for record_id 234 is 1805.553 seconds""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,The number of samples in record_id 106 with an MLII value greater than 0 is **111769**.,False,True,result = df.query('record_id == 106 and MLII > 0').shape[0],PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,The timestamp (time_s) of the very last annotated beat in record_id 221 is **1805.5527777777777**.,False,True,"try:
+    # Step 1: Filter the data
+    filtered_data = df.loc[df['record_id'] == 221]
+    
+    # Step 2: Identify annotated beats
+    annotated_beats = filtered_data.loc[filtered_data['annotation'].notna()]
+    
+    # Step 3: Get the last annotated beat
+    last_annotated_beat = annotated_beats.tail(1)
+    
+    # Step 4: Extract the timestamp
+    timestamp = last_annotated_beat['time_s'].values[0]
+    
+    # Step 5: Return the result
+    if not pd.isnull(timestamp):
+        result = timestamp
+    else:
+        result = None
+except Exception as e:
+    print(f""Error: {e}"")
+    result = None",FAIL,0.0,Candidate answer differs from ground truth,SOUND,Last annotated beat timestamp is 1805.028,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer differs from ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Last annotated beat timestamp is 1805.028""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,5,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,False,"record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.","```python
+import pandas as pd
+import numpy as np
+
+def estimate_average_heart_rate(df, record_id):
+    """"""
+    Estimate the average heart rate in beats per minute for a given record_id.
+
+    Parameters:
+    df (pd.DataFrame): DataFrame containing the ECG data.
+    record_id (int): The ID of the record for which to estimate the heart rate.
+
+    Returns:
+    float: The estimated average heart rate in beats per minute.
+    """"""
+    # Filter the DataFrame to only include rows with the given record_id
+    record_df = df[df['record_id'] == record_id]
+
+    # Check if the record_id exists in the DataFrame
+    if record_df.empty:
+        raise ValueError(f""No data found for record_id {record_id}"")
+
+    # Calculate the total number of annotations for the record
+    total_annotations = record_df['annotation'].notna().sum()
+
+    # Calculate the maximum time_s for the record
+    max_time_s = record_df['time_s'].max()
+
+    # Check for edge cases (e.g., no annotations or extremely long/short duration)
+    if total_annotations == 0 or max_time_s == 0:
+        raise ValueError(f""Invalid data for record_id {record_id}: no annotations or zero duration"")
+
+    # Estimate the average heart rate in beats per minute
+    # Assuming a normal resting heart rate is between 60-100 bpm
+    estimated_heart_rate = (total_annotations / max_time_s) * 60
+
+    return estimated_heart_rate
+
+def main():
+    # Create a sample DataFrame
+    df = pd.DataFrame([
+        {'sample_idx': 0, 'time_s': 0.0, 'MLII': -0.345, 'V1': -0.16, 'record_id': 208, 'annotation': 'N'},
+        {'sample_idx': 1, 'time_s': 0.0027777777777777, 'MLII': -0.345, 'V1': -0.16, 'record_id': 208, 'annotation': 'N'},
+        {'sample_idx': 2, 'time_s': 0.0055555555555556, 'MLII': -0.345, 'V1': -0.16, 'record_id': 208, 'annotation': 'N'}
+    ])
+
+    record_id = 208
+    estimated_heart_rate = estimate_average_heart_rate(df, record_id)
+    print(f""Estimated average heart rate for record_id {record_id}: {estimated_heart_rate} bpm"")
+
+if __name__ == ""__main__"":
+    main()
+```
+
+Output:
+```
+Estimated average heart rate for record_id 208: 2160.0 bpm
+```",False,True,"import pandas as pd
+import numpy as np
+from joblib import Parallel, delayed
+
+def calculate_total_annotations(data):
+    return data['annotation'].notna().sum()
+
+def calculate_max_time_s(data):
+    return data['time_s'].max()
+
+def estimate_average_heart_rate(df, record_id):
+    record_df = df[df['record_id'] == record_id]
+    
+    if record_df.empty:
+        raise ValueError(f""No data found for record_id {record_id}"")
+    
+    results = Parallel(n_jobs=-1)(delayed(func)(record_df) for func in [calculate_total_annotations, calculate_max_time_s])
+    
+    total_annotations = results[0]
+    max_time_s = results[1]
+    
+    if total_annotations == 0 or max_time_s == 0:
+        raise ValueError(f""Invalid data for record_id {record_id}: no annotations or zero duration"")
+    
+    estimated_heart_rate = (total_annotations / max_time_s) * 60
+    
+    return estimated_heart_rate
+
+def main():
+    record_id = 208
+    estimated_heart_rate = estimate_average_heart_rate(df, record_id)
+    result = estimated_heart_rate",FAIL,0.0,Candidate answer does not match ground truth,SOUND,Ground truth is based on provided data,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is based on provided data""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,The record_id that exhibits the largest peak-to-peak MLII amplitude is **116**.,False,True,result = df.groupby('record_id')['MLII'].apply(lambda x: x.max() - x.min()).idxmax(),PASS,1.0,Candidate answer matches ground truth,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",The 10-second interval that contains the highest number of annotated beats for record_id 101 is **110.0-120.0**.,False,True,"import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Filter data
+filtered_data = df[df['record_id'] == 101]
+
+# Input validation
+if filtered_data.empty:
+    raise ValueError(""No data found for record_id 101"")
+
+# Identify annotated beats
+annotated_beats = filtered_data[filtered_data['annotation'] != '']
+
+# Input validation
+if annotated_beats.empty:
+    raise ValueError(""No annotated beats found for record_id 101"")
+
+# Calculate time intervals
+intervals = np.arange(annotated_beats['time_s'].min(), annotated_beats['time_s'].max(), 10)
+
+# Count annotated beats per interval
+counts = annotated_beats.groupby(pd.cut(annotated_beats['time_s'], intervals)).size()
+
+# Find the interval with the most annotated beats
+max_interval = counts.idxmax()
+
+# Verify the result
+if counts.max() < 1:
+    raise ValueError(""No annotated beats found"")
+
+# Plotting enhancements
+plt.plot(annotated_beats['time_s'], annotated_beats['annotation'])
+plt.axvline(max_interval.left, color='r', linestyle='--')
+plt.xlabel('Time (s)')
+plt.ylabel('Annotation')
+plt.title('Annotated Beats per Interval')
+plt.text(max_interval.left, 0.5, f""Max interval: {max_interval}"", ha='center')
+plt.show()
+
+# Return the result
+result = f""{max_interval.left:.1f}-{max_interval.right:.1f}""",PASS,1.0,The candidate answer matches the ground truth.,SOUND,The ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,Execution error in round 1: QueryTimeoutError: ,False,True,"import numpy as np
+import pandas as pd
+
+# Validate import
+assert np is not None, ""Failed to import NumPy""
+
+def calculate_rms(df):
+    # Step 1: Filter the data
+    filtered_data = df[df['record_id'] == 106]
+    
+    # Check if filtered data is not empty
+    if filtered_data.empty:
+        return None
+    
+    # Step 2: Extract MLII values
+    mlII_values = filtered_data['MLII'].values
+    
+    # Step 3: Calculate the mean of the squares
+    mean_of_squares = np.mean(mlII_values ** 2)
+    
+    # Step 4: Calculate the square root
+    rms_value = np.sqrt(mean_of_squares)
+    
+    return rms_value
+
+result = calculate_rms(df)",FAIL,0.0,Candidate answer does not match ground truth due to execution error.,SOUND,RMS value is provided with a clear calculation basis.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth due to execution error."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""RMS value is provided with a clear calculation basis.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,[ERROR] Safe backend failed after 3 attempts: NameError: name 'pd' is not defined,False,True,"import pandas as pd
+
+# Load the data
+def load_data(record_id):
+    # Load data for the given record_id
+    data = [{'sample_idx': 0, 'time_s': 0.0, 'MLII': -0.345, 'V1': -0.16, 'record_id': 101, 'annotation': ''}, 
+            {'sample_idx': 1, 'time_s': 0.0027777777777777, 'MLII': -0.345, 'V1': -0.16, 'record_id': 101, 'annotation': ''}]
+    df = pd.DataFrame(data)
+    return df
+
+# Filter the data for the given record_id
+df = load_data(101)
+
+# Check if the patient experienced a fatal cardiac event within a year
+fatal_event = df[(df['time_s'] <= 31536000) & (df['annotation'] == 'F')]
+
+# Assign the result to a variable
+result = len(fatal_event) > 0",FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.,SOUND,Ground truth correctly states that patient outcome and mortality data are unavailable.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable or out of scope."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly states that patient outcome and mortality data are unavailable.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,"**No statistical correlation can be determined due to missing BMI data.** 
+
+The execution output indicates that the 'BMI' column is not found in the DataFrame, which is necessary to calculate the correlation between patient BMI and their maximum MLII amplitude. To proceed, you would need to add the BMI data to the DataFrame or calculate it from available weight and height data. 
+
+Here is a sample code to calculate BMI and then correlation:
+
+```python
+import pandas as pd
+import numpy as np
+from scipy.stats import pearsonr
+
+# Create a sample DataFrame with weight and height
+df = pd.DataFrame({
+    'record_id': [1, 1, 1, 2, 2, 2],
+    'sample_idx': [0, 1, 2, 0, 1, 2],
+    'time_s': [0.0, 0.0027777777777777, 0.0055555555555556, 0.0, 0.0027777777777777, 0.0055555555555556],
+    'MLII': [-0.345, -0.345, -0.35, -0.4, -0.4, -0.45],
+    'weight': [70, 70, 70, 60, 60, 60],
+    'height': [1.75, 1.75, 1.75, 1.60, 1.60, 1.60]
+})
+
+def calculate_max_mlii_amplitude(df):
+    max_mlii_amplitudes = {}
+    for record_id in df['record_id'].unique():
+        record_df = df[df['record_id'] == record_id]
+        max_mlii_amplitude = np.max(np.abs(record_df['MLII']))
+        max_mlii_amplitudes[record_id] = max_mlii_amplitude
+    return max_mlii_amplitudes
+
+def calculate_bmi(weight, height):
+    return weight / (height ** 2)
+
+def calculate_bmi_values(df):
+    bmi_values = {}
+    for record_id in df['record_id'].unique():
+        record_df = df[df['record_id'] == record_id]
+        weight = record_df['weight'].iloc[0]
+        height = record_df['height'].iloc[0]
+        bmi = calculate_bmi(weight, height)
+        bmi_values[record_id] = bmi
+    return bmi_values
+
+def calculate_correlation(max_mlii_amplitudes, bmi_values):
+    max_mlii_amplitude_list = []
+    bmi_list = []
+    for record_id in max_mlii_amplitudes:
+        if record_id in bmi_values:
+            max_mlii_amplitude_list.append(max_mlii_amplitudes[record_id])
+            bmi_list.append(bmi_values[record_id])
+    correlation_coefficient, _ = pearsonr(max_mlii_amplitude_list, bmi_list)
+    return correlation_coefficient
+
+max_mlii_amplitudes = calculate_max_mlii_amplitude(df)
+bmi_values = calculate_bmi_values(df)
+correlation_coefficient = calculate_correlation(max_mlii_amplitudes, bmi_values)
+
+print(""Correlation Coefficient: "", correlation_coefficient)
+```",False,True,"import pandas as pd
+import numpy as np
+from scipy.stats import pearsonr
+
+def calculate_max_mlii_amplitude(df):
+    max_mlii_amplitudes = {}
+    for record_id in df['record_id'].unique():
+        record_df = df[df['record_id'] == record_id]
+        max_mlii_amplitude = np.max(np.abs(record_df['MLII']))
+        max_mlii_amplitudes[record_id] = max_mlii_amplitude
+    return max_mlii_amplitudes
+
+def calculate_bmi(weight, height):
+    return weight / (height ** 2)
+
+def calculate_correlation(max_mlii_amplitudes, bmi_values):
+    max_mlii_amplitude_list = []
+    bmi_list = []
+    for record_id in max_mlii_amplitudes:
+        if record_id in bmi_values:
+            max_mlii_amplitude_list.append(max_mlii_amplitudes[record_id])
+            bmi_list.append(bmi_values[record_id])
+    correlation_coefficient, _ = pearsonr(max_mlii_amplitude_list, bmi_list)
+    return correlation_coefficient
+
+def main():
+    max_mlii_amplitudes = calculate_max_mlii_amplitude(df)
+    bmi_values = {}  # assuming you have a way to calculate or obtain BMI values for each record_id
+    for record_id in df['record_id'].unique():
+        # calculate or obtain BMI value for this record_id
+        # for demonstration purposes, let's assume BMI is a column in the DataFrame
+        bmi_value = df[df['record_id'] == record_id]['BMI'].mean()  # replace 'BMI' with the actual column name
+        bmi_values[record_id] = bmi_value
+
+    correlation_coefficient = calculate_correlation(max_mlii_amplitudes, bmi_values)
+    result = correlation_coefficient
+
+result = None  # initialize result variable
+if 'BMI' in df.columns:
+    max_mlii_amplitudes = calculate_max_mlii_amplitude(df)
+    bmi_values = {record_id: df[df['record_id'] == record_id]['BMI'].mean() for record_id in df['record_id'].unique()}
+    correlation_coefficient = calculate_correlation(max_mlii_amplitudes, bmi_values)
+    result = correlation_coefficient
+else:
+    print(""BMI column not found in the DataFrame."")",PASS,1.0,Candidate answer correctly states that no statistical correlation can be determined due to missing BMI data.,SOUND,Ground truth answer matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer correctly states that no statistical correlation can be determined due to missing BMI data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,"Based on the execution output, the answer is: 
+
+**No patients in this dataset have a recorded family history of atrial fibrillation.**",False,True,"import pandas as pd
+
+# Define keywords related to family history of atrial fibrillation
+keywords = ['family', 'atrial fibrillation', 'paroxysmal AF', 'persistent AF', 'atrial flutter', 'first-degree relative', 'second-degree relative', 'parental AF', 'sibling AF']
+
+# Search for keywords in the 'annotation' column
+mask = df['annotation'].str.contains('|'.join(keywords), case=False, na=False)
+
+# Filter patient data based on search results
+result = df[mask]['record_id'].unique()",FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.,SOUND,Family medical history is indeed unavailable in the ECG dataset.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable or out of scope."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Family medical history is indeed unavailable in the ECG dataset.""
+}
+```"
+[in_memory_benchmark_run],AUTOIOT_PAPER,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,"The estimated patient's blood pressure during the time of the recording for record_id 105 is -1.4766666666666666 mmHg. However, this value seems incorrect as blood pressure cannot be negative. 
+
+Let's recalculate the blood pressure using the provided formula: MAP = (SBP + 2 × DBP)/3. Assuming the systolic blood pressure (SBP) is 120 mmHg and the diastolic blood pressure (DBP) is 80 mmHg, we can calculate the mean arterial pressure (MAP) as follows:
+
+MAP = (120 + 2 × 80)/3
+MAP = (120 + 160)/3
+MAP = 280/3
+MAP = 93.33 mmHg
+
+So, the estimated patient's blood pressure during the time of the recording for record_id 105 is approximately 93.33 mmHg.",False,True,"def estimate_patient_blood_pressure(record_id, df):
+    record_df = df[df['record_id'] == record_id]
+    sbp = record_df['MLII'].max()  # mmHg
+    dbp = record_df['MLII'].min()  # mmHg
+    map_value = (sbp + 2 * dbp) / 3
+    return map_value
+
+result = estimate_patient_blood_pressure(105, df)",FAIL,0.0,Candidate answer is factually incorrect due to unavailability of hemodynamic variables in the dataset.,SOUND,Hemodynamic variables are indeed unavailable in the ECG dataset.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is factually incorrect due to unavailability of hemodynamic variables in the dataset."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hemodynamic variables are indeed unavailable in the ECG dataset.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a numeric value.",SOUND,Ground truth is a specific numeric value.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a numeric value."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is a specific numeric value.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer.",SOUND,Ground truth is a specific numeric value.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a factual answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is a specific numeric value.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer.",SOUND,Ground truth answer is provided and seems plausible.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a factual answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is provided and seems plausible.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer.",SOUND,Last annotated beat in record_id 221 occurs at time_s = 1805.028.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a factual answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Last annotated beat in record_id 221 occurs at time_s = 1805.028.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer.",SOUND,Ground truth answer is provided with a specific record_id and amplitude.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a factual answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is provided with a specific record_id and amplitude.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a factual answer.",SOUND,Ground truth answer is clear and specific.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a factual answer."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is clear and specific.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,[TIMEOUT] Query exceeded 30.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,"Candidate answer is a timeout message, not a valid RMS value.",SOUND,Ground truth RMS value is provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is a timeout message, not a valid RMS value."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth RMS value is provided.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,** -0.3450,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Minimum MLII for record_id 101 is -3.175,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII for record_id 101 is -3.175""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,$\boxed{0}$,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Total recording duration for record_id 234 is 1805.553 seconds,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total recording duration for record_id 234 is 1805.553 seconds""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,The final answer is: $\boxed{0}$,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Ground truth is consistent with deterministic hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,$\boxed{None}$,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Last annotated beat in record_id 221 occurs at time_s = 1805.028,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Last annotated beat in record_id 221 occurs at time_s = 1805.028""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,5,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,False,"record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.",Cannot be determined from the provided data.,False,False,,FAIL,0.0,Candidate answer is incorrect,SOUND,Clear calculation provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear calculation provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,101,False,False,,FAIL,0.0,Candidate answer does not match ground truth,SOUND,Record id 116 has the largest peak-to-peak MLII amplitude,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Record id 116 has the largest peak-to-peak MLII amplitude""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",The provided data is insufficient to determine the 10-second interval with the highest number of annotated beats for record_id 101.,False,False,,FAIL,0.0,Candidate answer is incorrect,SOUND,Ground truth is consistent with deterministic hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,The final answer is: $\boxed{None}$,False,False,,FAIL,0.0,"Candidate answer is None, but a numeric value was expected",SOUND,Ground truth RMS value is provided,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is None, but a numeric value was expected"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth RMS value is provided""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,"No, the provided ECG signal excerpt does not contain sufficient information to determine if the patient corresponding to record_id 101 experienced a fatal cardiac event within a year.",False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.,SOUND,Ground truth answer matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,$\boxed{No}$,False,False,,FAIL,0.0,Candidate answer does not match the expected rejection reason.,SOUND,Ground truth clearly states BMI data is unavailable.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the expected rejection reason."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states BMI data is unavailable.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,$\boxed{None}$,False,False,,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable,SOUND,Family medical history is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Family medical history is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,Unable to estimate due to record ID mismatch and lack of direct blood pressure measurement data.,False,False,,PASS,1.0,Candidate correctly states that blood pressure data is unavailable,SOUND,Ground truth answer is a clear rejection due to lack of data,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that blood pressure data is unavailable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is a clear rejection due to lack of data""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Minimum MLII for record_id 101 is -3.175,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII for record_id 101 is -3.175""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Total recording duration for record_id 234 is provided as 1805.553 seconds.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total recording duration for record_id 234 is provided as 1805.553 seconds.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,3,How many samples in record_id 106 have an MLII value greater than 0?,False,record_id 106 has 111769 samples with MLII > 0.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect,SOUND,Ground truth is provided with a clear sample count,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is provided with a clear sample count""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,4,What is the timestamp (time_s) of the very last annotated beat in record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Last annotated beat in record_id 221 occurs at time_s = 1805.028.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Last annotated beat in record_id 221 occurs at time_s = 1805.028.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,5,Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.,False,"record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is based on provided data and calculation.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is based on provided data and calculation.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,6,Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Record_id 116 has the largest peak-to-peak MLII amplitude at 10.235.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.,SOUND,Ground truth RMS value is provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is incorrect and does not match the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth RMS value is provided.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data.,SOUND,Ground truth correctly indicates unavailable patient outcome data.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly indicates unavailable patient outcome data.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states the request is unanswerable due to lack of data,SOUND,Ground truth correctly identifies missing BMI data,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states the request is unanswerable due to lack of data"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies missing BMI data""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate correctly states that the data does not contain enough information to answer the query.,SOUND,Ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that the data does not contain enough information to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,The available data does not contain enough information to answer this query.,False,False,,PASS,1.0,Candidate clearly states the request is unanswerable,SOUND,Ground truth correctly indicates blood pressure data is unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly indicates blood pressure data is unavailable""
+}
+```"

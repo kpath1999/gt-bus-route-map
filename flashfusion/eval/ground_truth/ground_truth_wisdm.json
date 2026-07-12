@@ -70,5 +70,29 @@
     "query_text": "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
     "reference_answer": "Reject: future MVPA-guideline compliance cannot be predicted from this dataset and the WHO guideline threshold is not represented in the schema.",
     "expected_rejection": true
+  },
+  {
+    "query_id": 13,
+    "query_text": "Write a Python script that trains a Random Forest classifier using 40-sample sliding-window variance and mean of x, y, z accelerations from users 1 to 20. Output the predicted activity label for user 33 at timestamp 49105962326000.",
+    "reference_answer": "Random Forest prediction for user 33 at timestamp 49105962326000 is 'Upstairs' using 40-sample mean/variance window features over x,y,z.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 14,
+    "query_text": "Write a Python script that trains a 1D-CNN using the x, y, z acceleration data from users 1-20 to classify 'Jogging' vs 'Walking' activities. Output the predicted activity label for user 33 at timestamp 49105962326000.",
+    "reference_answer": "1D-CNN binary prediction for user 33 at timestamp 49105962326000 is 'Jogging' for Jogging vs Walking.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 15,
+    "query_text": "Write a Python script that applies a low-pass filter to user 20's z-axis acceleration and extracts the 20-sample sliding window variance to predict transitions between static and dynamic states. Output the total number of state transitions detected.",
+    "reference_answer": "Predicted number of static/dynamic state transitions for user 20 is 1576 after low-pass filtering z-axis acceleration and using 20-sample variance windows.",
+    "expected_rejection": false
+  },
+  {
+    "query_id": 16,
+    "query_text": "Write a Python script that trains an isolation forest anomaly detection model trained exclusively on user 20's 'Sitting' data using all acceleration axes. Run the model on user 20's entire dataset and output the total number of 'Jogging' samples correctly flagged as anomalies.",
+    "reference_answer": "Isolation Forest (trained on user 20 Sitting samples) flags 12946 Jogging samples as anomalies on user 20's full dataset.",
+    "expected_rejection": false
   }
 ]

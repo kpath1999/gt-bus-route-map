@@ -1,0 +1,2 @@
+query_id,baseline,query_text,llm_verdict,llm_score,llm_reason
+1,LLMSENSE_PAPER,What is the minimum MLII value recorded for record_id 101?,FAIL,0.0,Candidate answer is incorrect and does not match the ground truth.

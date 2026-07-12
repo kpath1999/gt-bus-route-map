@@ -1,0 +1,195 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The maximum accel_variance observed in this dataset is 5.869.,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The average accel_mean across all recorded samples is 9.28.,False,True,result = df['accel_mean'].mean(),PASS,1.0,Candidate answer is numerically equivalent to ground truth.,SOUND,Ground truth matches deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer is numerically equivalent to ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,3,At what exact timestamp was the highest accel_stats_z_p99 recorded?,False,Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.,The highest accel_stats_z_p99 was recorded at 2025-06-06 16:02:01.,False,True,result = df.loc[df['accel_stats_z_p99'].idxmax()]['timestamp'],PASS,1.0,Candidate answer matches ground truth timestamp,SOUND,Matches deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth timestamp"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,352 data samples show an accel_variance strictly greater than 0.20.,False,True,result = (df['accel_variance'] > 0.20).sum(),PASS,1.0,The candidate answer matches the ground truth.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","Yes, the northern half is rougher.",False,True,"# Calculate the median latitude
+median_latitude = df['latitude'].median()
+
+# Split the data into northern and southern halves
+northern_half = df[df['latitude'] > median_latitude]
+southern_half = df[df['latitude'] <= median_latitude]
+
+# Calculate the average acceleration variance for each half
+northern_avg_variance = northern_half['accel_variance'].mean()
+southern_avg_variance = southern_half['accel_variance'].mean()
+
+# Compare the average acceleration variance
+if northern_avg_variance > southern_avg_variance:
+    result = ""Yes, the northern half is rougher.""
+elif northern_avg_variance < southern_avg_variance:
+    result = ""No, the southern half is rougher.""
+else:
+    result = ""Both halves are equally rough.""",PASS,1.0,Candidate answer matches ground truth conclusion,SOUND,Ground truth provides specific values supporting the conclusion,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth conclusion"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides specific values supporting the conclusion""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,6,"Identify the exact coordinates (latitude, longitude) of the largest vertical shock, defined as the difference between the 99th and 1st percentiles of Z-axis acceleration.",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.","The location (33.77697, -84.38988) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration, which is 11.032 - 8.274 = 2.758.",False,True,"result = df.loc[df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].transform(lambda x: x - x.quantile(0.01)).idxmax()]",FAIL,0.0,Candidate answer has incorrect coordinates and value,SOUND,Ground truth matches deterministic hint,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer has incorrect coordinates and value"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches deterministic hint""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,"The average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes is 11.46.",False,True,"import numpy as np
+
+# Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes
+result = np.mean(np.sqrt(df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2))",PASS,1.0,The candidate answer is factually correct with a minor rounding difference.,SOUND,Ground truth value is provided with a clear calculation method.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer is factually correct with a minor rounding difference."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth value is provided with a clear calculation method.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,8,"If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence (highest total accel_variance)?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest total accel_variance of 88.0350.,The 1-minute interval starting at 2025-06-06 16:01:00 experienced the most sustained turbulence.,False,True,"# Group the data into 1-minute intervals
+df['minute'] = df['timestamp'].dt.floor('min')
+
+# Calculate the mean acceleration variance for each minute
+minute_accel_variance = df.groupby('minute')['accel_variance'].mean().reset_index()
+
+# Find the minute with the highest mean acceleration variance
+result = minute_accel_variance.loc[minute_accel_variance['accel_variance'].idxmax()]['minute']",FAIL,0.0,Candidate answer lacks the total accel_variance value.,SOUND,Total accel_variance value is provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer lacks the total accel_variance value."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Total accel_variance value is provided.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,"The correlation between passenger occupancy and road roughness is approximately 0.56, indicating a moderate positive correlation.",False,True,"import numpy as np
+
+# Calculate passenger occupancy
+passenger_occupancy = df['accel_stats_y_p90'] - df['accel_stats_y_p10']
+
+# Calculate road roughness
+road_roughness = df['accel_variance']
+
+# Calculate correlation between passenger occupancy and road roughness
+correlation = np.corrcoef(passenger_occupancy, road_roughness)[0, 1]
+
+result = correlation",FAIL,0.0,Candidate answer is factually incorrect due to unavailable data,SOUND,Passenger occupancy data is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is factually incorrect due to unavailable data"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Passenger occupancy data is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,"No, the impact of rainy weather on the route cannot be determined because weather data is not available.",False,True,"# Check if 'weather' column exists in the DataFrame
+if 'weather' in df.columns:
+    # Filter the DataFrame for rainy weather
+    rainy_df = df[df['weather'] == 'rainy']
+    
+    # Check if 'roughness' column exists in the DataFrame
+    if 'roughness' in df.columns:
+        # Calculate the average roughness for rainy and non-rainy weather
+        avg_roughness_rainy = rainy_df['roughness'].mean()
+        avg_roughness_non_rainy = df[~df['weather'].isin(['rainy'])]['roughness'].mean()
+        
+        # Compare the average roughness
+        if avg_roughness_rainy > avg_roughness_non_rainy:
+            result = ""Yes, rainy weather caused the roughest segments in this route.""
+        else:
+            result = ""No, rainy weather did not cause the roughest segments in this route.""
+    else:
+        result = ""Roughness data is not available.""
+else:
+    result = ""Weather data is not available.""",PASS,1.0,Candidate answer correctly states that weather data is not available.,SOUND,Ground truth answer matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer correctly states that weather data is not available."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth answer matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,[ERROR] Safe backend failed after 3 attempts: KeyError: 'driver_id',False,True,"# Calculate the standard deviation of acceleration for each driver
+std_dev_accel = df.groupby('driver_id')['accel_variance'].std()
+
+# Find the driver with the lowest standard deviation of acceleration
+smoothest_driver = std_dev_accel.idxmin()
+
+result = smoothest_driver",FAIL,0.0,Candidate failed to reject the question due to missing metadata,SOUND,Driver identity metadata is indeed unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate failed to reject the question due to missing metadata"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Driver identity metadata is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,[ERROR] Safe backend failed after 3 attempts: ModuleNotFoundError: No module named 'sklearn',False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from datetime import datetime, timedelta
+
+# Convert timestamp to datetime
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+# Extract week of the year from timestamp
+df['week'] = df['timestamp'].dt.isocalendar().week
+
+# Define features and target
+X = df.drop(['timestamp', 'week'], axis=1)
+y = df['week']
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train a random forest regressor model
+model = RandomForestRegressor()
+model.fit(X_train, y_train)
+
+# Predict next week's pothole repairs
+next_week = df['week'].max() + 1
+next_week_data = X_test.copy()
+next_week_data['week'] = next_week
+
+# Since we don't have data for next week, we'll use the last week's data as a proxy
+next_week_data = X_test.iloc[-1].values.reshape(1, -1)
+
+# Predict next week's pothole repairs
+next_week_prediction = model.predict(next_week_data)
+
+# Assign the final answer to a variable named result
+result = next_week_prediction[0]",FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.,SOUND,Ground truth correctly identifies the limitation of the dataset.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable or out of scope."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies the limitation of the dataset.""
+}
+```"

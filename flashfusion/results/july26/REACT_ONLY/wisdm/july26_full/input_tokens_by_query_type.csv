@@ -1,0 +1,2 @@
+Baseline,Direct_mean,Direct_std,Reasoning_mean,Reasoning_std,Out-of-Scope_mean,Out-of-Scope_std
+ReAct-Only,392.1666666666667,4.509249752822893,403.75,10.615436872781073,513.75,113.9426939298874
