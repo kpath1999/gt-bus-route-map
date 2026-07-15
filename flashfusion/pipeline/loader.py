@@ -154,15 +154,22 @@ def load_bus_data(path: str) -> pd.DataFrame:
         "accel_stats_z_p10",
         "accel_stats_z_p90",
         "accel_stats_z_p99",
+        "extreme_event_magnitude",
+        "instability_score",
+        "behavior",
     ]
     df = pd.read_csv(path)
     missing = [c for c in required_columns if c not in df.columns]
     if missing:
-        raise ValueError(f"Bus dataset missing required columns: {missing}")
+        raise ValueError(
+            "Bus enriched dataset missing required columns: "
+            f"{missing}"
+        )
 
     df = df[required_columns].copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     numeric_columns = [c for c in required_columns if c != "timestamp"]
+    numeric_columns.remove("behavior")
     for col in numeric_columns:
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
@@ -170,6 +177,8 @@ def load_bus_data(path: str) -> pd.DataFrame:
     if not df.empty:
         for col in numeric_columns:
             df[col] = df[col].astype("float64")
+        if "behavior" in df.columns:
+            df["behavior"] = df["behavior"].astype(str).str.strip()
     return df
 
 

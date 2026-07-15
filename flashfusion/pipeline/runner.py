@@ -266,6 +266,7 @@ class RunResult:
 
     # Stage latency telemetry (seconds)
     stage_latency_s: dict = field(default_factory=dict)   # canonical keys: s1,s2,s3,guardrail,agent
+    stage_events: list = field(default_factory=list)       # operation-level stage timing audit trail
 
 
 # ---------------------------------------------------------------------------

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Generate primary latency-stage figures from July26 results.
+"""Generate primary latency-stage figures from benchmark results.
 
 Outputs:
 1) Flash-Fusion native stage latency by query type (N=3)
 2) Semantic-stage comparison across Flash-Fusion, AutoIOT, and ReAct
+
+AutoIOT uses native workflow timings when available. Older artifacts without
+stage telemetry are retained as explicitly estimated summaries.
 """
 
 from __future__ import annotations

@@ -76,10 +76,10 @@ def test_bus_query_bank_has_expected_split() -> None:
 def test_load_bus_data_parses_rows(tmp_path: Path) -> None:
     p = tmp_path / "bus.csv"
     p.write_text(
-        "timestamp,latitude,longitude,accel_mean,accel_variance,accel_stats_x_p1,accel_stats_x_p10,accel_stats_x_p90,accel_stats_x_p99,accel_stats_y_p1,accel_stats_y_p10,accel_stats_y_p90,accel_stats_y_p99,accel_stats_z_p1,accel_stats_z_p10,accel_stats_z_p90,accel_stats_z_p99\n"
-        "2025-06-06 16:36:34,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032\n"
-        "bad_ts,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032\n"
-        "2025-06-06 16:36:31,33.77697,-84.38988,9.344,not_a_number,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032\n",
+        "timestamp,latitude,longitude,accel_mean,accel_variance,accel_stats_x_p1,accel_stats_x_p10,accel_stats_x_p90,accel_stats_x_p99,accel_stats_y_p1,accel_stats_y_p10,accel_stats_y_p90,accel_stats_y_p99,accel_stats_z_p1,accel_stats_z_p10,accel_stats_z_p90,accel_stats_z_p99,extreme_event_magnitude,instability_score,behavior\n"
+        "2025-06-06 16:36:34,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032,0.5,0.2,moderate\n"
+        "bad_ts,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032,0.5,0.2,moderate\n"
+        "2025-06-06 16:36:31,33.77697,-84.38988,9.344,not_a_number,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032,0.5,0.2,moderate\n",
         encoding="utf-8",
     )
 
@@ -87,10 +87,11 @@ def test_load_bus_data_parses_rows(tmp_path: Path) -> None:
     assert len(df) == 1
     assert "timestamp" in df.columns
     assert float(df.iloc[0]["accel_variance"]) == 0.127
+    assert df.iloc[0]["behavior"] == "moderate"
 
 
 def _assert_predictive_metadata(queries: list) -> None:
-    """Verify that every predictive query has no unresolved placeholders."""
+    """Verify that every predictive query is fully specified for baseline execution."""
     predictive = [q for q in queries if q.get("complexity") == "predictive"]
     for q in predictive:
         qid = q["id"]
@@ -114,11 +115,12 @@ def test_bus_predictive_metadata() -> None:
 def test_load_dataset_by_name_dispatches_bus(tmp_path: Path) -> None:
     p = tmp_path / "bus.csv"
     p.write_text(
-        "timestamp,latitude,longitude,accel_mean,accel_variance,accel_stats_x_p1,accel_stats_x_p10,accel_stats_x_p90,accel_stats_x_p99,accel_stats_y_p1,accel_stats_y_p10,accel_stats_y_p90,accel_stats_y_p99,accel_stats_z_p1,accel_stats_z_p10,accel_stats_z_p90,accel_stats_z_p99\n"
-        "2025-06-06 16:36:34,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032\n",
+        "timestamp,latitude,longitude,accel_mean,accel_variance,accel_stats_x_p1,accel_stats_x_p10,accel_stats_x_p90,accel_stats_x_p99,accel_stats_y_p1,accel_stats_y_p10,accel_stats_y_p90,accel_stats_y_p99,accel_stats_z_p1,accel_stats_z_p10,accel_stats_z_p90,accel_stats_z_p99,extreme_event_magnitude,instability_score,behavior\n"
+        "2025-06-06 16:36:34,33.77697,-84.38988,9.344,0.127,-1.686,-0.46,1.073,1.992,0.766,2.452,3.065,3.218,8.274,8.581,9.194,11.032,0.5,0.2,moderate\n",
         encoding="utf-8",
     )
 
     df = load_dataset_by_name(str(p), DATASET_BUS)
     assert len(df) == 1
     assert "accel_mean" in df.columns
+    assert df.iloc[0]["behavior"] == "moderate"

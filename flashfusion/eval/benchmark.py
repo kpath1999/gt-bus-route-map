@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 eval/benchmark.py — CLI entry point for the Flash-Fusion benchmark.
 
@@ -28,30 +30,72 @@ Tips:
 How to produce the before/after (your run)
 ReAct OOS (Q9–12), before vs after — the prompt change is now live, so "before" = git-stash/revert of the prefix or a prior run; "after" = current:
 ```
+
+react before/after QUERIES:
 python -m flashfusion.eval.benchmark --dataset bus \
-  --data data/bus/bus_data.csv --baselines REACT_ONLY --queries 9,10,11,12 \
+    --data data/bus/bus_data_enriched_behavior.csv --baselines REACT_ONLY --queries 9,10,11,12 --runs 3 \
   --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
   --output flashfusion/results/react_oos_after/bus
+
+python -m flashfusion.eval.benchmark --dataset wisdm \
+  --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt --baselines REACT_ONLY --queries 9,10,11,12 --runs 3 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_wisdm.json \
+  --output flashfusion/results/react_oos_after/wisdm
+  
+python -m flashfusion.eval.benchmark --dataset mit_ecg \
+  --data data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt --baselines REACT_ONLY --queries 9,10,11,12 --runs 3 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_mit_ecg.json \
+  --output flashfusion/results/react_oos_after/mit_ecg  
 ```
+
+PREDICTIVE QUERIES:
+
+(i) Bus data
+python -m flashfusion.eval.benchmark \
+    --dataset bus \
+    --data data/bus/bus_data_enriched_behavior.csv \
+    --baselines FLASH_FUSION,REACT_ONLY,AUTOIOT_PAPER \
+    --queries 13,14,15,16 \
+  --runs 3 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
+  --output flashfusion/results/predictive_n3/bus
+
+(ii) WISDM data
+python -m flashfusion.eval.benchmark \
+    --dataset wisdm \
+    --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt \
+    --baselines FLASH_FUSION,REACT_ONLY,AUTOIOT_PAPER \
+    --queries 13,14,15,16 \
+  --runs 3 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_wisdm.json \
+  --output flashfusion/results/predictive_n3/wisdm
+
+(iii) MIT ECG data
+python -m flashfusion.eval.benchmark \
+    --dataset mit_ecg \
+    --data data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt \
+    --baselines FLASH_FUSION,REACT_ONLY,AUTOIOT_PAPER \
+    --queries 13,14,15,16 \
+  --runs 3 \
+  --ground-truth flashfusion/eval/ground_truth/ground_truth_mit_ecg.json \
+  --output flashfusion/results/predictive_n3/mit_ecg
 
 Flash-Fusion SLM, before vs after:
 ```
 # before (70B everywhere)
-python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data.csv \
+python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data_enriched_behavior.csv \
   --baselines FLASH_FUSION --queries all \
   --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
   --output flashfusion/results/ff_70b/bus
 
 # after (8B on S1/S2)
-python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data.csv \
+python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data_enriched_behavior.csv \
   --baselines FLASH_FUSION --queries all --stage12-model meta-llama/llama-3.1-8b-instruct \
   --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
   --output flashfusion/results/ff_8b_s12/bus
 ```
 
 """
-
-from __future__ import annotations
 
 import argparse
 import dataclasses
@@ -93,7 +137,7 @@ ALL_BASELINES = [
 DEFAULT_DATA_PATHS = {
     "wisdm": "data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt",
     "mit_ecg": "data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt",
-    "bus": "data/bus/bus_data.csv",
+    "bus": "data/bus/bus_data_enriched_behavior.csv",
 }
 
 DEFAULT_GROUND_TRUTH_PATHS = {
@@ -101,7 +145,6 @@ DEFAULT_GROUND_TRUTH_PATHS = {
     "mit_ecg": "flashfusion/eval/ground_truth/ground_truth_mit_ecg.json",
     "bus": "flashfusion/eval/ground_truth/ground_truth_bus.json",
 }
-
 
 class QueryTimeoutError(TimeoutError):
     """Raised when a single query run exceeds the configured latency budget."""
@@ -173,10 +216,10 @@ def _run_single_benchmark_iteration(
             # print(f"  [DEBUG] Starting runner.run() at {time.strftime('%H:%M:%S')}", flush=True)
 
             # DEBUG: Check df_base before passing to runner
-            import sys
-            print(f"[BENCHMARK DEBUG] df_base len={len(df_base)}, cols={list(df_base.columns)}", file=sys.stderr, flush=True)
-            if len(df_base) > 0:
-                print(f"[BENCHMARK DEBUG] df_base.head(3):\n{df_base.head(3)}", file=sys.stderr, flush=True)
+            # import sys
+            # print(f"[BENCHMARK DEBUG] df_base len={len(df_base)}, cols={list(df_base.columns)}", file=sys.stderr, flush=True)
+            # if len(df_base) > 0:
+            #     print(f"[BENCHMARK DEBUG] df_base.head(3):\n{df_base.head(3)}", file=sys.stderr, flush=True)
 
             client = LLMClient(
                 model_name=model_name,
@@ -657,7 +700,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-query-latency",
         type=float,
-        default=20.0,
+        default=600.0,
         help="Per-query latency budget in seconds; timed-out queries are skipped",
     )
     parser.add_argument(

@@ -28,6 +28,7 @@ from flashfusion.eval.queries import (
     DATASET_WISDM,
     get_queries,
 )
+from flashfusion.eval.build_groundtruth.simple_pred import MODEL_ORDER, run_prediction_suite
 from flashfusion.pipeline.loader import load_dataset_by_name
 
 RANDOM_SEED = 42
@@ -256,96 +257,12 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
     q8_down_mean = float(df.loc[df["activity_lower"] == "downstairs", "z"].mean())
     q8_diff = q8_up_mean - q8_down_mean
 
-    # Q13: RandomForest on engineered windows
-    train_feat, train_lbl, _ = _wisdm_feature_windows(
-        df=df,
-        user_ids=list(range(1, 21)),
-        window_size=40,
-        step=20,
-        max_windows=50000,
+    suite = run_prediction_suite(
+        df,
+        DATASET_WISDM,
+        train_fraction=0.8,
+        model_names=list(MODEL_ORDER),
     )
-    _require(len(train_feat) > 0, "wisdm Q13: no training windows produced for users 1-20")
-    rf = RandomForestClassifier(n_estimators=300, random_state=RANDOM_SEED, n_jobs=-1)
-    rf.fit(train_feat, train_lbl)
-
-    pred_feat, _, pred_centers = _wisdm_feature_windows(
-        df=df,
-        user_ids=[33],
-        window_size=40,
-        step=20,
-        max_windows=15000,
-    )
-    _require(len(pred_feat) > 0, "wisdm Q13: no candidate windows produced for user 33")
-    target_ts = 49105962326000
-    nearest = int(np.argmin(np.abs(pred_centers - target_ts)))
-    q13_pred = str(rf.predict(pred_feat[nearest].reshape(1, -1))[0])
-
-    # Q14: Torch 1D-CNN binary Jogging vs Walking
-    allowed = {"jogging", "walking"}
-    x_train_raw, y_train_raw, _ = _wisdm_raw_windows(
-        df=df,
-        user_ids=list(range(1, 21)),
-        window_size=40,
-        step=20,
-        max_windows=20000,
-        allowed_labels=allowed,
-    )
-    _require(len(x_train_raw) > 0, "wisdm Q14: no train windows for Jogging/Walking")
-    label_to_idx = {"jogging": 0, "walking": 1}
-    idx_to_label = {0: "Jogging", 1: "Walking"}
-    y_train_idx = np.array([label_to_idx[str(v)] for v in y_train_raw], dtype=np.int64)
-    cnn_wisdm = _train_tiny_cnn(x_train_raw, y_train_idx, num_classes=2, epochs=8)
-
-    x_pred_raw, _, pred_centers_raw = _wisdm_raw_windows(
-        df=df,
-        user_ids=[33],
-        window_size=40,
-        step=20,
-        max_windows=5000,
-        allowed_labels=allowed,
-    )
-    _require(len(x_pred_raw) > 0, "wisdm Q14: no prediction windows for user 33 Jogging/Walking")
-    nearest_raw = int(np.argmin(np.abs(pred_centers_raw - target_ts)))
-    cnn_wisdm.eval()
-    with torch.no_grad():
-        logits = cnn_wisdm(torch.tensor(x_pred_raw[nearest_raw:nearest_raw + 1], dtype=torch.float32))
-        q14_idx = int(torch.argmax(logits, dim=1).item())
-        q14_pred = idx_to_label[q14_idx]
-
-    # Q15: low-pass z-axis + variance state transition count
-    user20 = df.loc[df["subject_id"] == 20].sort_values("timestamp").copy()
-    _require(not user20.empty, "wisdm Q15: user 20 not found")
-    fs = 20.0
-    b, a = butter(3, 3.0 / (fs / 2), btype="low")
-    z_filt = filtfilt(b, a, user20["z"].to_numpy(dtype=np.float64))
-    labels20 = user20["activity_lower"].to_numpy()
-    static_set = {"sitting", "standing"}
-
-    vars20: list[float] = []
-    true_state: list[int] = []
-    for s, e in _sliding_windows(len(user20), window_size=20, step=1):
-        vars20.append(float(np.var(z_filt[s:e])))
-        maj = _majority_label(labels20[s:e])
-        true_state.append(0 if maj in static_set else 1)  # 0 static, 1 dynamic
-
-    _require(len(vars20) > 0, "wisdm Q15: no windows available for user 20")
-    vars20_np = np.array(vars20)
-    state_np = np.array(true_state)
-    static_mean = float(np.mean(vars20_np[state_np == 0])) if np.any(state_np == 0) else float(np.mean(vars20_np))
-    dynamic_mean = float(np.mean(vars20_np[state_np == 1])) if np.any(state_np == 1) else float(np.mean(vars20_np))
-    thr = (static_mean + dynamic_mean) / 2.0
-    pred_state = (vars20_np > thr).astype(int)
-    q15_transitions = int(np.sum(pred_state[1:] != pred_state[:-1]))
-
-    # Q16: IsolationForest trained on user 20 Sitting, evaluated on user 20 full set
-    train_sitting = user20.loc[user20["activity_lower"] == "sitting", ["x", "y", "z"]]
-    _require(len(train_sitting) >= 100, "wisdm Q16: insufficient Sitting samples for user 20")
-    iso_wisdm = IsolationForest(contamination=0.05, random_state=RANDOM_SEED)
-    iso_wisdm.fit(train_sitting.to_numpy(dtype=np.float64))
-    full_xyz = user20[["x", "y", "z"]].to_numpy(dtype=np.float64)
-    pred_iso = iso_wisdm.predict(full_xyz)
-    jogging_mask = user20["activity_lower"].to_numpy() == "jogging"
-    q16_jogging_anom = int(np.sum((pred_iso == -1) & jogging_mask))
 
     entries = [
         {
@@ -439,8 +356,8 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_id": 13,
             "query_text": qmap[13],
             "reference_answer": (
-                f"Random Forest prediction for user 33 at timestamp 49105962326000 is '{q13_pred}' "
-                "using 40-sample mean/variance window features over x,y,z."
+                "Logistic regression predicts activity "
+                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -448,8 +365,8 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_id": 14,
             "query_text": qmap[14],
             "reference_answer": (
-                f"1D-CNN binary prediction for user 33 at timestamp 49105962326000 is '{q14_pred}' "
-                "for Jogging vs Walking."
+                "Random forest predicts activity "
+                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -457,8 +374,8 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_id": 15,
             "query_text": qmap[15],
             "reference_answer": (
-                f"Predicted number of static/dynamic state transitions for user 20 is {q15_transitions} "
-                "after low-pass filtering z-axis acceleration and using 20-sample variance windows."
+                "1-nearest-neighbor predicts activity "
+                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -466,8 +383,8 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_id": 16,
             "query_text": qmap[16],
             "reference_answer": (
-                f"Isolation Forest (trained on user 20 Sitting samples) flags {q16_jogging_anom} "
-                "Jogging samples as anomalies on user 20's full dataset."
+                "Hist gradient boosting predicts activity "
+                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -582,101 +499,13 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
     mlii_106 = df.loc[df["record_id"] == 106, "MLII"]
     q8_rms_106 = float(np.sqrt((mlii_106**2).mean()))
 
-    # Q13 Pan-Tompkins style peak detection
-    rec101_mlii = rec101["MLII"].to_numpy(dtype=np.float64)
-    _require(len(rec101_mlii) > 1000, "mit_ecg Q13: record_id 101 does not have enough samples")
-    fs = 360.0
-    b_bp, a_bp = butter(1, [5.0, 15.0], btype="bandpass", fs=fs)
-    filt = filtfilt(b_bp, a_bp, rec101_mlii)
-    diff = np.diff(filt, prepend=filt[0])
-    sq = diff**2
-    mwi_n = int(0.150 * fs)
-    integ = np.convolve(sq, np.ones(mwi_n) / mwi_n, mode="same")
-    peaks, _ = find_peaks(integ, distance=int(0.2 * fs), height=np.percentile(integ, 95))
-    q13_peak_count = int(len(peaks))
-
-    # Q14 supervised 5s-window annotation occurrence model on record 208
-    rec208s = rec208.sort_values("time_s").copy()
-    feat208, lbl208, st208 = _ecg_window_features(
-        rec208s,
-        signal_col="V1",
-        time_col="time_s",
-        ann_col="annotation",
-        window_s=5.0,
+    suite = run_prediction_suite(
+        df,
+        DATASET_MIT_ECG,
+        train_fraction=0.8,
+        model_names=list(MODEL_ORDER),
+        record_id=101,
     )
-    _require(len(feat208) > 20, "mit_ecg Q14: insufficient 5-second windows for record_id 208")
-    train_mask = st208 < 600.0
-    final_start = float(rec208s["time_s"].max()) - 120.0
-    test_mask = st208 >= final_start
-    _require(np.any(train_mask), "mit_ecg Q14: no train windows in first 10 minutes")
-    _require(np.any(test_mask), "mit_ecg Q14: no test windows in final 2 minutes")
-
-    train_classes = np.unique(lbl208[train_mask])
-    if len(train_classes) < 2:
-        fallback_class = int(train_classes[0])
-        q14_pred_count = int(np.sum(np.full(np.sum(test_mask), fallback_class, dtype=np.int64)))
-        q14_method = (
-            "single-class fallback (all train windows had one class); "
-            f"predicted class={fallback_class} for all final windows"
-        )
-    else:
-        lr_ecg = LogisticRegression(random_state=RANDOM_SEED, max_iter=2000)
-        lr_ecg.fit(feat208[train_mask], lbl208[train_mask])
-        q14_pred_count = int(np.sum(lr_ecg.predict(feat208[test_mask])))
-        q14_method = "logistic regression"
-
-    # Q15 frequency features + KMeans(k=2) on record 101
-    rec101s = rec101.sort_values("time_s").copy()
-    ts = rec101s["time_s"].to_numpy(dtype=np.float64)
-    sig = rec101s["MLII"].to_numpy(dtype=np.float64)
-    starts = np.arange(float(ts.min()), float(ts.max()) - 10.0 + 1e-9, 10.0)
-    ffeat: list[list[float]] = []
-    fstart: list[float] = []
-    for st in starts:
-        en = st + 10.0
-        m = (ts >= st) & (ts < en)
-        if np.sum(m) < 32:
-            continue
-        seg = sig[m]
-        fft_mag = np.abs(np.fft.rfft(seg))
-        freqs = np.fft.rfftfreq(len(seg), d=1.0 / fs)
-        dom_idx = int(np.argmax(fft_mag[1:]) + 1) if len(fft_mag) > 1 else 0
-        dom_freq = float(freqs[dom_idx])
-        power = float(np.mean(fft_mag**2))
-        bw = float(np.sqrt(np.sum(((freqs - dom_freq) ** 2) * fft_mag) / (np.sum(fft_mag) + 1e-12)))
-        ffeat.append([dom_freq, power, bw])
-        fstart.append(float(st))
-
-    _require(len(ffeat) >= 3, "mit_ecg Q15: insufficient windows for KMeans clustering")
-    km_ecg = KMeans(n_clusters=2, random_state=RANDOM_SEED, n_init=10)
-    klabels = km_ecg.fit_predict(np.array(ffeat, dtype=np.float64))
-    uniq, counts = np.unique(klabels, return_counts=True)
-    minority = int(uniq[np.argmin(counts)])
-    first_min_idx = int(np.where(klabels == minority)[0][0])
-    q15_first_time = float(fstart[first_min_idx])
-
-    # Q16 Torch 1D-CNN train record 101 test record 208 (10s windows)
-    train_raw, train_y, _ = _ecg_tumbling_raw(
-        rec101s,
-        channels=["MLII", "V1"],
-        window_s=10.0,
-        ann_col="annotation",
-    )
-    test_raw, test_y, _ = _ecg_tumbling_raw(
-        rec208s,
-        channels=["MLII", "V1"],
-        window_s=10.0,
-        ann_col="annotation",
-    )
-    _require(len(train_raw) > 0, "mit_ecg Q16: no train windows for record_id 101")
-    _require(len(test_raw) > 0, "mit_ecg Q16: no test windows for record_id 208")
-
-    cnn_ecg = _train_tiny_cnn(train_raw, train_y, num_classes=2, epochs=20)
-    cnn_ecg.eval()
-    with torch.no_grad():
-        logits_test = cnn_ecg(torch.tensor(test_raw, dtype=torch.float32))
-        pred_test = torch.argmax(logits_test, dim=1).cpu().numpy().astype(np.int64)
-    q16_acc = float(np.mean(pred_test == test_y))
 
     entries = [
         {
@@ -761,8 +590,8 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 13,
             "query_text": qmap[13],
             "reference_answer": (
-                "Pan-Tompkins-style processing on record_id 101 MLII detects "
-                f"{q13_peak_count} R-peaks."
+                "Logistic regression predicts annotation "
+                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -770,8 +599,8 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 14,
             "query_text": qmap[14],
             "reference_answer": (
-                f"Predicted annotation count in the final 2 minutes of record_id 208 is {q14_pred_count} "
-                f"using {q14_method} trained on the first 10 minutes with 5-second windows."
+                "Random forest predicts annotation "
+                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -779,8 +608,8 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 15,
             "query_text": qmap[15],
             "reference_answer": (
-                "The first minority-cluster window start time is "
-                f"time_s={q15_first_time:.3f} using 10-second FFT-feature windows and K-Means(k=2)."
+                "1-nearest-neighbor predicts annotation "
+                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -788,8 +617,8 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 16,
             "query_text": qmap[16],
             "reference_answer": (
-                "1D-CNN classification accuracy on record_id 208 is "
-                f"{q16_acc:.4f} when trained on record_id 101 using 10-second MLII+V1 windows."
+                "Hist gradient boosting predicts annotation "
+                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -835,59 +664,13 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
     q8_bin = variance_by_minute.index[0]
     q8_total = float(variance_by_minute.iloc[0])
 
-    # Q13 isolation forest split 500/rest
-    _require(len(df) > 500, "bus Q13: dataset must have >500 rows for first-500/remainder split")
-    train_13 = df.loc[:499, ["accel_stats_z_p99", "accel_variance"]].to_numpy(dtype=np.float64)
-    test_13 = df.loc[500:, ["accel_stats_z_p99", "accel_variance"]].to_numpy(dtype=np.float64)
-    _require(len(test_13) > 0, "bus Q13: no remainder rows after first 500")
-    iso_bus = IsolationForest(contamination=0.03, random_state=RANDOM_SEED)
-    iso_bus.fit(train_13)
-    scores = iso_bus.score_samples(test_13)
-    worst_rel = int(np.argmin(scores))
-    worst_abs = 500 + worst_rel
-    q13_ts = df.loc[worst_abs, "timestamp"]
-
-    # Q14 one-step forecast from first 100 to 101st
-    _require(len(df) >= 101, "bus Q14: dataset must have at least 101 rows")
-    y = df["accel_mean"].to_numpy(dtype=np.float64)
-    x_train = y[:99]
-    y_train = y[1:100]
-    _require(len(x_train) > 1, "bus Q14: insufficient accel_mean history")
-    # Simple AR(1): y_t = a*x_{t-1} + b
-    A = np.vstack([x_train, np.ones_like(x_train)]).T
-    a, b = np.linalg.lstsq(A, y_train, rcond=None)[0]
-    q14_pred = float(a * y[99] + b)
-
-    # Q15 logistic classification at fixed timestamp
-    feat_cols = [
-        "accel_stats_x_p1", "accel_stats_x_p10", "accel_stats_x_p90", "accel_stats_x_p99",
-        "accel_stats_y_p1", "accel_stats_y_p10", "accel_stats_y_p90", "accel_stats_y_p99",
-        "accel_stats_z_p1", "accel_stats_z_p10", "accel_stats_z_p90", "accel_stats_z_p99",
-    ]
-    x_all = df[feat_cols].to_numpy(dtype=np.float64)
-    y_all = (df["accel_variance"].to_numpy(dtype=np.float64) > 0.20).astype(int)
-    idx = np.arange(len(df))
-    rng = np.random.default_rng(RANDOM_SEED)
-    rng.shuffle(idx)
-    cut = int(0.8 * len(df))
-    train_idx = idx[:cut]
-    lr_bus = LogisticRegression(random_state=RANDOM_SEED, max_iter=2000)
-    lr_bus.fit(x_all[train_idx], y_all[train_idx])
-
-    target_ts = pd.Timestamp("2025-06-06 16:01:25")
-    hit = df.loc[df["timestamp"] == target_ts]
-    _require(not hit.empty, "bus Q15: timestamp 2025-06-06 16:01:25 not found")
-    q15_label = int(lr_bus.predict(hit[feat_cols].to_numpy(dtype=np.float64))[0])
-    q15_name = "rough" if q15_label == 1 else "not_rough"
-
-    # Q16 kmeans k=3 on accel_variance + accel_mean
-    km_bus = KMeans(n_clusters=3, random_state=RANDOM_SEED, n_init=10)
-    clusters = km_bus.fit_predict(df[["accel_variance", "accel_mean"]].to_numpy(dtype=np.float64))
-    tmp = df.copy()
-    tmp["cluster"] = clusters
-    by_cluster = tmp.groupby("cluster")["accel_variance"].mean().sort_values(ascending=False)
-    rough_cluster = int(by_cluster.index[0])
-    q16_count = int((tmp["cluster"] == rough_cluster).sum())
+    suite = run_prediction_suite(
+        df,
+        DATASET_BUS,
+        train_fraction=0.8,
+        model_names=list(MODEL_ORDER),
+        bus_enriched_output_path=None,
+    )
 
     entries = [
         {
@@ -983,9 +766,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 13,
             "query_text": qmap[13],
             "reference_answer": (
-                "Most anomalous timestamp in rows after the first 500 is "
-                f"{q13_ts.strftime('%Y-%m-%d %H:%M:%S')} using Isolation Forest on "
-                "[accel_stats_z_p99, accel_variance]."
+                "Logistic regression predicts behavior "
+                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -993,8 +775,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 14,
             "query_text": qmap[14],
             "reference_answer": (
-                "Forecasted accel_mean for the 101st timestamp is "
-                f"{q14_pred:.3f} using an AR(1)-style one-step model trained on the first 100 rows."
+                "Random forest predicts behavior "
+                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -1002,8 +784,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 15,
             "query_text": qmap[15],
             "reference_answer": (
-                "Predicted class at timestamp 2025-06-06 16:01:25 is "
-                f"'{q15_name}' (threshold-defined rough label: accel_variance > 0.20)."
+                "1-nearest-neighbor predicts behavior "
+                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -1011,8 +793,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 16,
             "query_text": qmap[16],
             "reference_answer": (
-                "Number of samples in the highest-roughness cluster (highest mean accel_variance) "
-                f"is {q16_count} from K-Means(k=3)."
+                "Hist gradient boosting predicts behavior "
+                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },

@@ -140,9 +140,17 @@ PROCEED if:
 
 REJECT if:
   - The query requires external data columns that do not exist and cannot be derived.
-  - The query requires temporal forecasting or prediction of future events without sequence models.
+  - The query requests a prediction, classification, anomaly detection, clustering, or temporal forecast
+    but the required inputs or target cannot be derived from the available columns and the procedure
+    described in the query.
+  - The query asks for future outcomes that depend on external information not represented in the data.
   - The query requires internet access or domain knowledge not in the dataset or query text.
   - The query asks for personally identifying information beyond identifiers present in the schema.
+
+PROCEED for in-dataset predictive tasks when the available data and the query define a
+computable procedure. This includes training a model on a specified historical or held-out
+subset, predicting a known in-dataset timestamp or record, detecting anomalies, clustering,
+or forecasting the next observed in-dataset value from an ordered sequence.
 
 Output format — output ONLY one of these two options, nothing else:
 PROCEED

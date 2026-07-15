@@ -276,6 +276,19 @@ class TestExecutionLayer:
         assert proceed is False
         assert "heart_rate" in reason
 
+    def test_predictive_queries_are_permitted_by_both_prompt_paths(self, minimal_df, mock_client):
+        """Both feasibility prompts allow computable, in-dataset prediction and forecasting."""
+        from flashfusion.pipeline.executor import ExecutionLayer
+        from flashfusion.prompts.templates import GUARDRAIL_PROMPT
+
+        layer = ExecutionLayer(minimal_df, mock_client, react_faithful=True)
+        react_prefix = layer._build_prefix(minimal_df)
+
+        assert "PROCEED for in-dataset predictive tasks" in GUARDRAIL_PROMPT
+        assert "forecasting the next observed in-dataset value" in GUARDRAIL_PROMPT
+        assert "Do NOT reject in-dataset predictive tasks" in react_prefix
+        assert "forecasting\n  a known next in-dataset value" in react_prefix
+
     def test_reset_agent_creates_fresh_copy(self, minimal_df, mock_client):
         """
         reset_agent() should replace self._df with a fresh copy of the original.

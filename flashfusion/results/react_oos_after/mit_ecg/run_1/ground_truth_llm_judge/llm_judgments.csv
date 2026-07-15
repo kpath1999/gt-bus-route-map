@@ -1,0 +1,52 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,[TIMEOUT] Query exceeded 20.0s latency budget; skipped to next query.,False,False,,PASS,1.0,Candidate answer indicates the query is unanswerable due to timeout.,SOUND,Ground truth correctly states that patient outcome data is unavailable.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer indicates the query is unanswerable due to timeout."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly states that patient outcome data is unavailable.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,"No, a correlation cannot be determined because the 'BMI' column is missing from the DataFrame.",False,True,"import pandas as pd
+import numpy as np
+
+# Check if 'BMI' column exists in the DataFrame
+if 'BMI' not in df.columns:
+    result = ""Error: 'BMI' column not found in the DataFrame""
+else:
+    # Calculate the maximum MLII amplitude for each patient
+    max_MLII = df.groupby('record_id')['MLII'].max().reset_index()
+    max_MLII = max_MLII.rename(columns={'MLII': 'max_MLII'})
+
+    # Merge the maximum MLII amplitude with the original DataFrame
+    df_merged = pd.merge(df[['record_id', 'BMI']], max_MLII, on='record_id')
+
+    # Calculate the correlation between patient BMI and their maximum MLII amplitude
+    correlation = df_merged['BMI'].corr(df_merged['max_MLII'])
+
+    result = correlation",PASS,1.0,Candidate correctly states that the correlation cannot be determined due to missing 'BMI' column,SOUND,Ground truth also mentions unavailability of BMI and anthropometric metadata,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate correctly states that the correlation cannot be determined due to missing 'BMI' column"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth also mentions unavailability of BMI and anthropometric metadata""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,11,Which patients in this dataset have a recorded family history of atrial fibrillation?,True,Reject: family medical history is unavailable in this ECG dataset.,"Based on the provided execution output, there is no direct information about the patients' family history of atrial fibrillation. The columns provided are 'sample_idx', 'time_s', 'record_id', and 'annotation', but none of them indicate a family history of atrial fibrillation. 
+
+To determine which patients have a recorded family history of atrial fibrillation, you would need to access additional data or columns that specifically track this information.",False,True,result = df[df['annotation'] == 'A'],PASS,1.0,Candidate clearly states the request is unanswerable,SOUND,Family medical history is indeed unavailable,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate clearly states the request is unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Family medical history is indeed unavailable""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,12,Estimate the patient's blood pressure during the time of the recording for record_id 105.,True,Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.,[TIMEOUT] Query exceeded 20.0s latency budget; skipped to next query.,False,False,,FAIL,0.0,Candidate answer does not clearly state the request is unanswerable or out of scope.,SOUND,Ground truth correctly identifies the unavailability of blood pressure data.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly state the request is unanswerable or out of scope."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies the unavailability of blood pressure data.""
+}
+```"

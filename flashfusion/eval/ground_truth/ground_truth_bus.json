@@ -73,26 +73,26 @@
   },
   {
     "query_id": 13,
-    "query_text": "Write a Python script that trains an isolation forest anomaly detection model using the accel_stats_z_p99 and accel_variance columns from the first 500 rows. Output the exact timestamp of the single most anomalous event detected in the remainder of the dataset.",
-    "reference_answer": "Most anomalous timestamp in rows after the first 500 is 2025-06-06 15:15:51 using Isolation Forest on [accel_stats_z_p99, accel_variance].",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "reference_answer": "Logistic regression predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 14,
-    "query_text": "Write a Python script that trains a time-series forecasting model on a sequence of accel_mean values for the first 100 rows of the dataset. Output the predicted accel_mean value for the 101st recorded timestamp, rounded to three decimal places.",
-    "reference_answer": "Forecasted accel_mean for the 101st timestamp is 9.322 using an AR(1)-style one-step model trained on the first 100 rows.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "reference_answer": "Random forest predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 15,
-    "query_text": "Write a Python script that performs binary classification on instances where accel_variance > 0.20 is labeled as a 'rough' segment. Train a logistic regression model using all accel_stats percentiles on a random 80% split and output the predicted class for the specific record at timestamp '2025-06-06 16:01:25'.",
-    "reference_answer": "Predicted class at timestamp 2025-06-06 16:01:25 is 'rough' (threshold-defined rough label: accel_variance > 0.20).",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "reference_answer": "1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 16,
-    "query_text": "Write a Python script that uses K-Means clustering (k=3) on the accel_variance and accel_mean columns to group the route into smooth, moderate, and rough profiles. Output the exact number of data samples assigned to the cluster with the highest average accel_variance.",
-    "reference_answer": "Number of samples in the highest-roughness cluster (highest mean accel_variance) is 16 from K-Means(k=3).",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "reference_answer": "Hist gradient boosting predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   }
 ]

@@ -1,0 +1,240 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],FLASH_FUSION,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the behavior for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,"{'entity_id': 0, 'predicted_label': 'moderate'}",False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+# Sort the DataFrame by timestamp in ascending order
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(0.8 * len(df))
+train_df, holdout_df = df[:train_size], df[train_size:]
+
+# Define the features and label
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+
+# Train a logistic regression model
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+first_holdout_row = holdout_df.iloc[0].drop(['timestamp', 'behavior'])
+prediction = model.predict([first_holdout_row])[0]
+
+# Create a dictionary with the entity identifier key and its metric value key
+result = {'entity_id': 0, 'predicted_label': prediction}
+
+print(result)",PASS,1.0,Candidate answer matches the ground truth prediction.,SOUND,Logistic regression predicts 'moderate' behavior.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression predicts 'moderate' behavior.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the behavior for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,"To address the question, we will follow the steps outlined below, given the provided execution output is ""moderate"" and assuming it refers to the predicted behavior label for the first row in the holdout set.
+
+1. **Sorting Operation**: First, sort all bus rows by the `timestamp` column in ascending order.
+2. **Splitting Dataset**: Split the sorted dataset into two parts - the training set (first 80% of rows) and the holdout set (last 20% of rows).
+3. **Training Model**: Train a random forest model using the training set.
+4. **Prediction**: Use the trained random forest model to predict the `behavior` label for the first row in the holdout set.
+
+Given the execution output ""moderate"" as the predicted label, we proceed with the understanding that this is the result of the prediction operation on the first row of the holdout set.
+
+**Answer**: The predicted `behavior` label for the first row in the holdout set is ""moderate"".",False,True,"import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# Sort the DataFrame by the timestamp column in ascending order
+df = df.sort_values(by='timestamp')
+
+# Split the sorted DataFrame into training and holdout sets
+train_size = int(len(df) * 0.8)
+train_df, holdout_df = df[:train_size], df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+
+# Train a random forest model on the training set
+model = RandomForestClassifier(n_estimators=100)
+model.fit(X_train, y_train)
+
+# Select the first row from the holdout set
+first_holdout_row = holdout_df.iloc[0]
+
+# Define the features for the first row in the holdout set
+X_first_holdout_row = first_holdout_row.drop(['timestamp', 'behavior'])
+
+# Use the trained model to predict the behavior label for the first row in the holdout set
+prediction = model.predict([X_first_holdout_row])
+
+# Assign the prediction to the result variable
+result = prediction[0]",PASS,1.0,The candidate answer matches the ground truth prediction.,SOUND,Prediction matches the expected behavior label.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Prediction matches the expected behavior label.""
+}
+```"
+[in_memory_benchmark_run],FLASH_FUSION,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the behavior for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,"Based on the execution output, the predicted label in the 'behavior' column for the first row in the holdout set is: 
+
+```python
+{'behavior': 'moderate'}
+```",False,True,"import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+import numpy as np
+
+# Sort the DataFrame by timestamp in ascending order
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(0.8 * len(df))
+train_df = df[:train_size]
+holdout_df = df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+X_holdout = holdout_df.drop(['timestamp', 'behavior'], axis=1)
+y_holdout = holdout_df['behavior']
+
+# Train a 1-nearest-neighbor model
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+prediction = knn.predict(X_holdout.head(1))
+
+# Get the predicted label
+result = prediction[0]",PASS,1.0,Candidate answer matches ground truth,SOUND,1-nearest-neighbor predicts 'moderate' behavior,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor predicts 'moderate' behavior""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the behavior for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The predicted label for the first row in the holdout set is: moderate.,False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+# Sort the DataFrame by timestamp
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(0.8 * len(df))
+train_df, holdout_df = df[:train_size], df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+
+# Train a logistic regression model
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+X_holdout = holdout_df.drop(['timestamp', 'behavior'], axis=1).iloc[[0]]
+y_pred = model.predict(X_holdout)
+
+result = y_pred[0]",PASS,1.0,Candidate answer matches the ground truth prediction.,SOUND,Logistic regression predicts 'moderate' behavior.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression predicts 'moderate' behavior.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the behavior for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,The predicted label for the first row in the holdout set is: moderate.,False,True,"from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# Sort the DataFrame by timestamp
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(0.8 * len(df))
+train_df, holdout_df = df[:train_size], df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['behavior', 'timestamp'], axis=1)
+y_train = train_df['behavior']
+
+# Train a random forest model
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+first_holdout_row = holdout_df.iloc[0].drop(['behavior', 'timestamp'])
+result = model.predict([first_holdout_row])[0]",PASS,1.0,Candidate answer matches the ground truth prediction.,SOUND,Matches deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the behavior for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The predicted label for the first row in the holdout set is: moderate.,False,True,"import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+
+# Sort the DataFrame by timestamp in ascending order
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(len(df) * 0.8)
+train_df = df[:train_size]
+holdout_df = df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+
+# Train a 1-nearest-neighbor model
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+X_holdout = holdout_df.drop(['timestamp', 'behavior'], axis=1).iloc[[0]]
+y_pred = knn.predict(X_holdout)
+
+result = y_pred[0]",PASS,1.0,The candidate answer matches the ground truth prediction.,SOUND,1-nearest-neighbor predicts 'moderate' behavior.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor predicts 'moderate' behavior.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,16,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the behavior for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The predicted label for the first row in the holdout set is: moderate,False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import HistGradientBoostingClassifier
+
+# Sort the DataFrame by timestamp in ascending order
+df = df.sort_values(by='timestamp')
+
+# Split the data into training and holdout sets
+train_size = int(0.8 * len(df))
+train_df, holdout_df = df[:train_size], df[train_size:]
+
+# Define the features and target
+X_train = train_df.drop(['timestamp', 'behavior'], axis=1)
+y_train = train_df['behavior']
+
+# Train a HistGradientBoostingClassifier model
+model = HistGradientBoostingClassifier()
+model.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+X_holdout = holdout_df.drop(['timestamp', 'behavior'], axis=1).iloc[[0]]
+y_pred = model.predict(X_holdout)
+
+result = y_pred[0]",PASS,1.0,Candidate answer matches the ground truth prediction.,SOUND,Hist gradient boosting predicts 'moderate' behavior.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting predicts 'moderate' behavior.""
+}
+```"

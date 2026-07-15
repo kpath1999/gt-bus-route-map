@@ -521,12 +521,12 @@ def aggregate_accuracy_by_dataset(df: pd.DataFrame) -> pd.DataFrame:
 
 def aggregate_accuracy_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
     per_run_dataset = (
-        df.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=False)
+        df.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)
         .agg(accuracy_percent=("accuracy_percent", "mean"))
         .copy()
     )
     out = (
-        per_run_dataset.groupby(["baseline", "query_type"], as_index=False, observed=False)
+        per_run_dataset.groupby(["baseline", "query_type"], as_index=False, observed=True)
         .agg(
             mean=("accuracy_percent", "mean"),
             std=("accuracy_percent", "std"),
@@ -591,14 +591,31 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
     sem.loc[react_mask, "execution_s"] = sem.loc[react_mask, "latency_s"]
 
     auto_mask = sem["baseline"] == "AUTOIOT_PAPER"
-    auto_latency = sem.loc[auto_mask, "latency_s"]
-    # July26 artifacts do not include per-stage AutoIOT timings; allocate by
-    # semantic bucket cardinality from requested mapping: 1:0:3:2.
-    sem.loc[auto_mask, "grounding_s"] = auto_latency * (1.0 / 6.0)
-    sem.loc[auto_mask, "validation_s"] = 0.0
-    sem.loc[auto_mask, "planning_s"] = auto_latency * (3.0 / 6.0)
-    sem.loc[auto_mask, "execution_s"] = auto_latency * (2.0 / 6.0)
-    sem.loc[auto_mask, "is_estimated"] = True
+    auto_stage_cols = [
+        "s1_latency_s",
+        "s2_latency_s",
+        "s3_latency_s",
+        "guardrail_latency_s",
+        "agent_latency_s",
+    ]
+    auto_has_native_timing = auto_mask & sem[auto_stage_cols].sum(axis=1).gt(0.0)
+    sem.loc[auto_has_native_timing, "grounding_s"] = sem.loc[auto_has_native_timing, "s1_latency_s"]
+    sem.loc[auto_has_native_timing, "validation_s"] = sem.loc[auto_has_native_timing, "guardrail_latency_s"]
+    sem.loc[auto_has_native_timing, "planning_s"] = sem.loc[auto_has_native_timing, "s2_latency_s"]
+    sem.loc[auto_has_native_timing, "execution_s"] = (
+        sem.loc[auto_has_native_timing, "s3_latency_s"]
+        + sem.loc[auto_has_native_timing, "agent_latency_s"]
+    )
+
+    # Historic artifacts predate native AutoIOT telemetry. Keep their chart
+    # data usable, but identify the allocation so it cannot be confused with
+    # timings from instrumented benchmark runs.
+    auto_legacy_timing = auto_mask & ~auto_has_native_timing
+    auto_latency = sem.loc[auto_legacy_timing, "latency_s"]
+    sem.loc[auto_legacy_timing, "grounding_s"] = auto_latency * (1.0 / 6.0)
+    sem.loc[auto_legacy_timing, "planning_s"] = auto_latency * (3.0 / 6.0)
+    sem.loc[auto_legacy_timing, "execution_s"] = auto_latency * (2.0 / 6.0)
+    sem.loc[auto_legacy_timing, "is_estimated"] = True
 
     return sem[["baseline", "dataset", "run_id", "query_type", "grounding_s", "validation_s", "planning_s", "execution_s", "is_estimated"]]
 

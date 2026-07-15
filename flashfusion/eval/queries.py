@@ -170,48 +170,51 @@ WISDM_QUERIES: list[dict] = [
     },
     {
         "id": 13,
-        "text": "Write a Python script that trains a Random Forest classifier using 40-sample sliding-window variance and mean of x, y, z accelerations from users 1 to 20. Output the predicted activity label for user 33 at timestamp 49105962326000.",
-        "complexity": "predictive",
-        "operation": "WINDOW+FEATURES+CLASSIFY",
-        "stress": (
-            "Feature extraction over fixed-width windows followed by multi-class classification across six activity labels. "
-            "Tests whether the model correctly generates sliding-window features (mean, variance per axis), "
-            "handles a held-out subject (user 33) not seen during training, and resolves the non-standard "
-            "nanosecond uptime timestamp to a nearest-window lookup."
+        "text": (
+            "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a logistic regression model using the training rows. "
+            "Predict the activity label for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 activity prediction with deterministic chronological split.",
     },
     {
         "id": 14,
-        "text": "Write a Python script that trains a 1D-CNN using the x, y, z acceleration data from users 1-20 to classify 'Jogging' vs 'Walking' activities. Output the predicted activity label for user 33 at timestamp 49105962326000.",
-        "complexity": "predictive",
-        "operation": "WINDOW+CNN+CLASSIFY",
-        "stress": (
-            "Binary activity classification from raw tri-axial acceleration sequences using a deep model. "
-            "Tests correct windowing, label subset filtering (Jogging/Walking only), and generalisation "
-            "to a held-out subject (user 33). Timestamp lookup semantics are identical to Q13."
+        "text": (
+            "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a random forest model using the training rows. "
+            "Predict the activity label for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 activity prediction with deterministic chronological split.",
     },
     {
         "id": 15,
-        "text": "Write a Python script that applies a low-pass filter to user 20's z-axis acceleration and extracts the 20-sample sliding window variance to predict transitions between static and dynamic states. Output the total number of state transitions detected.",
-        "complexity": "predictive",
-        "operation": "SIGNAL_FILTER+WINDOW+COUNT_TRANSITIONS",
-        "stress": (
-            "Signal preprocessing (low-pass filter), window-based feature extraction, semantic state grouping "
-            "(static: Sitting/Standing; dynamic: Walking/Jogging/Upstairs/Downstairs), and transition counting. "
-            "Tests whether the model chains signal processing with activity-label semantics correctly."
+        "text": (
+            "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a 1-nearest-neighbor model using the training rows. "
+            "Predict the activity label for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 activity prediction with deterministic chronological split.",
     },
     {
         "id": 16,
-        "text": "Write a Python script that trains an isolation forest anomaly detection model trained exclusively on user 20's 'Sitting' data using all acceleration axes. Run the model on user 20's entire dataset and output the total number of 'Jogging' samples correctly flagged as anomalies.",
-        "complexity": "predictive",
-        "operation": "FILTER+ANOMALY_DETECTION+COUNT",
-        "stress": (
-            "One-class learning from a low-variance resting state (Sitting) used to flag high-variance dynamic "
-            "activity (Jogging) as anomalous. Tests correct class-conditional training, label-based anomaly "
-            "validation, and the model's ability to infer that Jogging is behaviorally distant from Sitting."
+        "text": (
+            "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a hist gradient boosting model using the training rows. "
+            "Predict the activity label for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 activity prediction with deterministic chronological split.",
     },
 ]
 
@@ -302,51 +305,51 @@ MIT_ECG_QUERIES: list[dict] = [
     },
     {
         "id": 13,
-        "text": "Write a Python script implementing the Pan-Tompkins algorithm on the raw MLII signal for record_id 101 to detect R-peaks without relying on annotations, and output the total count of detected peaks.",
-        "complexity": "predictive",
-        "operation": "SIGNAL_FILTER+PEAK_DETECTION+COUNT",
-        "stress": (
-            "Algorithmic ECG signal processing requiring correct implementation of differentiation, squaring, "
-            "moving-window integration, and adaptive thresholding steps. Tests that the script operates purely on "
-            "the raw MLII column without referencing the annotation column, and that record_id 101 is correctly "
-            "isolated before processing."
+        "text": (
+            "Filter to record_id 101 and sort its rows by time_s in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a logistic regression model using the training rows. "
+            "Predict whether an annotation is present for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 annotation prediction with deterministic chronological split.",
     },
     {
         "id": 14,
-        "text": "Write a Python script implementing a machine learning model trained on the first 10 minutes of the V1 signal for record_id 208 to predict the occurrence of an annotation in a 5-second window. Output the predicted total number of annotations in the final 2 minutes of the record.",
-        "complexity": "predictive",
-        "operation": "WINDOW+SUPERVISED_MODEL+COUNT",
-        "stress": (
-            "Temporal train/test split (first 10 min / final 2 min) with 5-second window labeling derived from "
-            "the annotation column. Tests correct conversion of time_s to window boundaries, binary label "
-            "generation per window, and annotation-count estimation on held-out data. record_id 208 has high "
-            "annotation density (~101 BPM) providing sufficient positive training examples."
+        "text": (
+            "Filter to record_id 101 and sort its rows by time_s in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a random forest model using the training rows. "
+            "Predict whether an annotation is present for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 annotation prediction with deterministic chronological split.",
     },
     {
         "id": 15,
-        "text": "Write a Python script to extract frequency-domain features from the MLII signal in 10-second tumbling windows for record_id 101, and use K-Means (k=2) to cluster the windows. Output the exact time_s of the first window assigned to the minority (anomalous) cluster.",
-        "complexity": "predictive",
-        "operation": "WINDOW+FFT+CLUSTER+SELECT",
-        "stress": (
-            "Frequency-domain feature extraction (FFT-based) over fixed tumbling windows, followed by unsupervised "
-            "clustering with k=2. Tests correct non-overlapping window boundaries, feature computation, "
-            "minority-cluster identification (the cluster with fewer members), and time_s lookup for the earliest "
-            "window in that cluster."
+        "text": (
+            "Filter to record_id 101 and sort its rows by time_s in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a 1-nearest-neighbor model using the training rows. "
+            "Predict whether an annotation is present for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 annotation prediction with deterministic chronological split.",
     },
     {
         "id": 16,
-        "text": "Write a Python script to train a 1D-CNN classifier using both MLII and V1 signals from record_id 101 to classify 10-second windows as containing an annotation or not. Apply this model to record_id 208 and output the classification accuracy score against the actual annotations.",
-        "complexity": "predictive",
-        "operation": "WINDOW+CNN+CLASSIFY+ACCURACY",
-        "stress": (
-            "Cross-record generalisation: train on record_id 101, evaluate on record_id 208. Tests dual-channel "
-            "input construction (MLII + V1), binary window labeling from annotations, correct accuracy "
-            "computation against actual annotation windows, and that the model does not leak test-record "
-            "annotations during training."
+        "text": (
+            "Filter to record_id 101 and sort its rows by time_s in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a hist gradient boosting model using the training rows. "
+            "Predict whether an annotation is present for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 annotation prediction with deterministic chronological split.",
     },
 ]
 
@@ -437,49 +440,51 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 13,
-        "text": "Write a Python script that trains an isolation forest anomaly detection model using the accel_stats_z_p99 and accel_variance columns from the first 500 rows. Output the exact timestamp of the single most anomalous event detected in the remainder of the dataset.",
-        "complexity": "predictive",
-        "operation": "ANOMALY_DETECTION+RANK+SELECT",
-        "stress": (
-            "One-class anomaly detection trained on baseline trip behaviour (first 500 rows), then applied to "
-            "the remainder to identify the single most anomalous event. Tests correct column selection "
-            "(accel_stats_z_p99 and accel_variance), row-index split logic, anomaly score ranking, and "
-            "timestamp retrieval for the top anomaly."
+        "text": (
+            "Sort all bus rows by timestamp in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a logistic regression model using the training rows. "
+            "Predict the label in the behavior column for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 behavior prediction with deterministic chronological split.",
     },
     {
         "id": 14,
-        "text": "Write a Python script that trains a time-series forecasting model on a sequence of accel_mean values for the first 100 rows of the dataset. Output the predicted accel_mean value for the 101st recorded timestamp, rounded to three decimal places.",
-        "complexity": "predictive",
-        "operation": "TIME_SERIES_FORECAST",
-        "stress": (
-            "Short-sequence forecasting over ordered accel_mean values. Tests that the model correctly treats "
-            "the dataset as a time-ordered sequence, trains a forecasting model on rows 0-99, and produces a "
-            "scalar one-step-ahead prediction for the next in-dataset timestamp."
+        "text": (
+            "Sort all bus rows by timestamp in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a random forest model using the training rows. "
+            "Predict the label in the behavior column for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 behavior prediction with deterministic chronological split.",
     },
     {
         "id": 15,
-        "text": "Write a Python script that performs binary classification on instances where accel_variance > 0.20 is labeled as a 'rough' segment. Train a logistic regression model using all accel_stats percentiles on a random 80% split and output the predicted class for the specific record at timestamp '2025-06-06 16:01:25'.",
-        "complexity": "predictive",
-        "operation": "DERIVE_LABEL+CLASSIFY+SELECT",
-        "stress": (
-            "Synthetic label generation from a numeric threshold (aligns with Q4's accel_variance > 0.20 direct "
-            "query), logistic regression over all 12 accel_stats percentile columns, and point prediction for a "
-            "known high-variance rough segment. Tests correct feature matrix construction, random train/test "
-            "split, and label lookup at the specified timestamp."
+        "text": (
+            "Sort all bus rows by timestamp in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a 1-nearest-neighbor model using the training rows. "
+            "Predict the label in the behavior column for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 behavior prediction with deterministic chronological split.",
     },
     {
         "id": 16,
-        "text": "Write a Python script that uses K-Means clustering (k=3) on the accel_variance and accel_mean columns to group the route into smooth, moderate, and rough profiles. Output the exact number of data samples assigned to the cluster with the highest average accel_variance.",
-        "complexity": "predictive",
-        "operation": "CLUSTER+GROUPBY+COUNT",
-        "stress": (
-            "Unsupervised route segmentation into three ride-quality classes. Tests correct k=3 clustering on "
-            "two feature columns, semantic cluster identification (highest mean accel_variance maps to 'rough'), "
-            "and sample-count retrieval for that cluster."
+        "text": (
+            "Sort all bus rows by timestamp in ascending order. "
+            "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+            "Train a hist gradient boosting model using the training rows. "
+            "Predict the label in the behavior column for the first row in the holdout set."
         ),
+        "complexity": "predictive",
+        "operation": "CHRONO_SPLIT+CLASSIFY",
+        "stress": "Model-specific T+1 behavior prediction with deterministic chronological split.",
     },
 ]
 

@@ -14,6 +14,7 @@ from flashfusion.config import (
 )
 from flashfusion.eval.metrics import aggregate_metrics, compute_accuracy
 from flashfusion.pipeline.runner import RunResult
+from flashfusion.viz.measure import _semantic_stage_frame
 
 
 # ---------------------------------------------------------------------------
@@ -305,3 +306,57 @@ class TestAggregateMetrics:
         q2 = df[df["query_id"] == 2].iloc[0]
         assert float(q1["gt_score"]) == 1.0
         assert float(q2["gt_score"]) == 0.0
+
+
+def test_semantic_stage_frame_uses_native_autoiot_telemetry() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "baseline": "AUTOIOT_PAPER",
+                "dataset": "bus",
+                "run_id": 1,
+                "query_type": "Predictive",
+                "latency_s": 20.0,
+                "s1_latency_s": 2.0,
+                "s2_latency_s": 3.0,
+                "s3_latency_s": 5.0,
+                "guardrail_latency_s": 7.0,
+                "agent_latency_s": 11.0,
+            }
+        ]
+    )
+
+    out = _semantic_stage_frame(df).iloc[0]
+
+    assert float(out["grounding_s"]) == 2.0
+    assert float(out["planning_s"]) == 3.0
+    assert float(out["validation_s"]) == 7.0
+    assert float(out["execution_s"]) == 16.0
+    assert bool(out["is_estimated"]) is False
+
+
+def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "baseline": "AUTOIOT_PAPER",
+                "dataset": "bus",
+                "run_id": 1,
+                "query_type": "Predictive",
+                "latency_s": 12.0,
+                "s1_latency_s": 0.0,
+                "s2_latency_s": 0.0,
+                "s3_latency_s": 0.0,
+                "guardrail_latency_s": 0.0,
+                "agent_latency_s": 0.0,
+            }
+        ]
+    )
+
+    out = _semantic_stage_frame(df).iloc[0]
+
+    assert float(out["grounding_s"]) == 2.0
+    assert float(out["planning_s"]) == 6.0
+    assert float(out["validation_s"]) == 0.0
+    assert float(out["execution_s"]) == 4.0
+    assert bool(out["is_estimated"]) is True

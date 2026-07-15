@@ -340,6 +340,13 @@ def test_autoiot_paper_uses_generated_search_queries_for_tavily() -> None:
     assert "autoiot_search_queries" in out.stages_run
     assert "autoiot_module_gen" in out.stages_run
     assert "autoiot_code_integration" in out.stages_run
+    assert set(out.stage_latency_s) == {"s1", "s2", "s3", "guardrail", "agent"}
+    assert all(value >= 0.0 for value in out.stage_latency_s.values())
+    operations = {event["operation"] for event in out.stage_events}
+    assert {"extract_terms", "generate_search_queries", "retrieve_context"}.issubset(operations)
+    assert {"design_high_level", "design_detail"}.issubset(operations)
+    assert {"integrate_modules", "execute_round_1", "execute_round_2"}.issubset(operations)
+    assert {"collect_feedback_round_1", "refine_round_1", "select_best_version"}.issubset(operations)
 
 
 def test_autoiot_paper_improvement_prompt_uses_execution_feedback() -> None:
@@ -398,6 +405,7 @@ def test_autoiot_paper_improvement_prompt_uses_execution_feedback() -> None:
     assert len(improve_inputs) == 1
     assert "Execution stderr" in improve_inputs[0]
     assert "NameError: x is not defined" in improve_inputs[0]
+    assert any(event["operation"] == "correct_round_1" for event in r.stage_events)
 
 
 def test_hargpt_paper_classification_happy_path() -> None:

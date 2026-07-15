@@ -73,26 +73,26 @@
   },
   {
     "query_id": 13,
-    "query_text": "Write a Python script implementing the Pan-Tompkins algorithm on the raw MLII signal for record_id 101 to detect R-peaks without relying on annotations, and output the total count of detected peaks.",
-    "reference_answer": "Pan-Tompkins-style processing on record_id 101 MLII detects 948 R-peaks.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "reference_answer": "Logistic regression predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 14,
-    "query_text": "Write a Python script implementing a machine learning model trained on the first 10 minutes of the V1 signal for record_id 208 to predict the occurrence of an annotation in a 5-second window. Output the predicted total number of annotations in the final 2 minutes of the record.",
-    "reference_answer": "Predicted annotation count in the final 2 minutes of record_id 208 is 23 using single-class fallback (all train windows had one class); predicted class=1 for all final windows trained on the first 10 minutes with 5-second windows.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "reference_answer": "Random forest predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 15,
-    "query_text": "Write a Python script to extract frequency-domain features from the MLII signal in 10-second tumbling windows for record_id 101, and use K-Means (k=2) to cluster the windows. Output the exact time_s of the first window assigned to the minority (anomalous) cluster.",
-    "reference_answer": "The first minority-cluster window start time is time_s=90.000 using 10-second FFT-feature windows and K-Means(k=2).",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "reference_answer": "1-nearest-neighbor predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 16,
-    "query_text": "Write a Python script to train a 1D-CNN classifier using both MLII and V1 signals from record_id 101 to classify 10-second windows as containing an annotation or not. Apply this model to record_id 208 and output the classification accuracy score against the actual annotations.",
-    "reference_answer": "1D-CNN classification accuracy on record_id 208 is 1.0000 when trained on record_id 101 using 10-second MLII+V1 windows.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "reference_answer": "Hist gradient boosting predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   }
 ]

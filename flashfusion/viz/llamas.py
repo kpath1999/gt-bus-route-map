@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+from __future__ import annotations
+
 """Generate primary accuracy figures from July26 baseline results.
 
 Figures produced:
@@ -12,12 +15,12 @@ How to invoke each comparison:
 ReAct OOS abstention (before = run without the new prompt, after = run with):
 
 ```
-python llamas.py \
-  --before-dir ../../results/react_oos_before/bus \
-  --after-dir  ../../results/react_oos_after/bus \
+cd flashfusion/viz && python llamas.py \
+  --react-oos-after-root ../results/react_oos_after \
   --before-after-baselines REACT_ONLY \
   --before-after-query-types "Out-of-Scope" \
-  --before-after-title "ReAct-Only: OOS Abstention Prompt"
+  --before-after-title "Out-of-Scope Performance" \
+  --output-dir ../results/figures/react_oos
 ```
 
 Flash-Fusion S1/S2 SLM (before = 70B everywhere, after = 8B on S1/S2):
@@ -31,8 +34,6 @@ python llamas.py \
 ```
 
 """
-
-from __future__ import annotations
 
 import argparse
 from pathlib import Path
@@ -338,6 +339,165 @@ def plot_before_after(
     plt.close(fig)
 
 
+def _load_oos_after_all_datasets(react_oos_after_root: Path) -> pd.DataFrame:
+    """Load React-after OOS results from react_oos_after/{bus,mit_ecg,wisdm}/metrics.csv.
+
+    benchmark metrics.csv has no dataset column, so the dataset is injected from
+    the directory name after loading.
+    """
+    # map canonical dataset name -> subdirectory name used by benchmark --output
+    dataset_dirs = {"bus": "bus", "wisdm": "wisdm", "ecg": "mit_ecg"}
+    parts: list[pd.DataFrame] = []
+    for dataset, dir_name in dataset_dirs.items():
+        d = react_oos_after_root / dir_name
+        if not d.exists():
+            continue
+        df = load_metrics_from_dir(
+            d,
+            label="after",
+            baselines=["REACT_ONLY"],
+            query_type_filter=["Out-of-Scope"],
+        )
+        df["dataset"] = dataset
+        df["dataset"] = pd.Categorical(df["dataset"], categories=list(DATASET_ORDER), ordered=True)
+        parts.append(df)
+    if not parts:
+        raise FileNotFoundError(f"No react_oos_after results found under {react_oos_after_root}")
+    return pd.concat(parts, ignore_index=True)
+
+
+def _aggregate_oos_by_dataset(df: pd.DataFrame, series_name: str) -> pd.DataFrame:
+    """Filter to Out-of-Scope queries, group by dataset, return mean/std summary.
+
+    Uses two-stage aggregation (per-run average first, then across runs) to
+    match aggregate_accuracy_by_dataset and avoid inflated std from binary
+    per-query scores.
+    """
+    oos = df[df["query_type"] == "Out-of-Scope"].copy()
+    # Stage 1: average OOS accuracy per (dataset, run_id)
+    per_run = (
+        oos.groupby(["dataset", "run_id"], as_index=False, observed=True)
+        .agg(accuracy_percent=("accuracy_percent", "mean"))
+    )
+    # Stage 2: mean/std across run-level averages
+    agg = (
+        per_run.groupby("dataset", as_index=False, observed=True)
+        .agg(
+            mean=("accuracy_percent", "mean"),
+            std=("accuracy_percent", "std"),
+            n=("accuracy_percent", "count"),
+        )
+    )
+    agg["std"] = agg["std"].fillna(0.0)
+    agg["series"] = series_name
+    return agg
+
+
+# Visual attributes for the three OOS comparison series
+_OOS_SERIES = ["FLASH_FUSION", "REACT_ONLY_AFTER", "REACT_ONLY_BEFORE"]
+_OOS_SERIES_LABELS = {
+    "REACT_ONLY_BEFORE": "ReAct (before)",
+    "REACT_ONLY_AFTER": "ReAct (after)",
+    "FLASH_FUSION": "Flash-Fusion",
+}
+_OOS_SERIES_COLORS = {
+    "REACT_ONLY_BEFORE": BASELINE_COLORS["REACT_ONLY"],
+    "REACT_ONLY_AFTER": BASELINE_COLORS["REACT_ONLY"],
+    "FLASH_FUSION": BASELINE_COLORS["FLASH_FUSION"],
+}
+_OOS_SERIES_ALPHA = {"REACT_ONLY_BEFORE": 1.0, "REACT_ONLY_AFTER": 0.45, "FLASH_FUSION": 1.0}
+_OOS_SERIES_HATCH = {"REACT_ONLY_BEFORE": None, "REACT_ONLY_AFTER": "//", "FLASH_FUSION": None}
+
+
+def plot_oos_abstention_across_datasets(summary: pd.DataFrame, out_path: Path) -> None:
+    """Bar chart: OOS query accuracy for ReAct-before, ReAct-after, Flash-Fusion × dataset.
+
+    summary has columns: series, dataset, mean, std
+    """
+    plt.rcParams.update(RC)
+
+    x_labels = DATASET_ORDER
+    x = list(range(len(x_labels)))
+    width = 0.8 / len(_OOS_SERIES)
+
+    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+
+    handles: list = []
+    handle_labels: list[str] = []
+
+    for i, series in enumerate(_OOS_SERIES):
+        sdf = summary[summary["series"] == series]
+        means: list[float] = []
+        stds: list[float] = []
+        for dataset in x_labels:
+            row = sdf[sdf["dataset"] == dataset]
+            means.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
+            stds.append(float(row["std"].iloc[0]) if not row.empty else 0.0)
+
+        xpos = [p - 0.4 + (i + 0.5) * width for p in x]
+        color = _OOS_SERIES_COLORS[series]
+        alpha = _OOS_SERIES_ALPHA[series]
+        hatch = _OOS_SERIES_HATCH[series]
+
+        means_arr = np.asarray(means, dtype=float)
+        stds_arr = np.asarray(stds, dtype=float)
+        lower_endpoint = np.clip(means_arr - stds_arr, 0.05, 100.0)
+        upper_endpoint = np.clip(means_arr + stds_arr, 0.0, 100.0)
+        bounded_yerr = np.vstack([
+            means_arr - lower_endpoint,
+            upper_endpoint - means_arr,
+        ])
+
+        bars = ax.bar(
+            xpos, means, width,
+            color=color,
+            alpha=alpha,
+            edgecolor="#333333",
+            linewidth=0.9,
+            hatch=hatch,
+            yerr=bounded_yerr,
+            error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+        )
+        for bar, val in zip(bars, means):
+            if val <= 0:
+                continue
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height() + max(abs(val) * 0.02, 0.4) + 1.0 * (i % 2),
+                f"{val:.0f}%",
+                ha="center", va="bottom",
+                fontsize=9.0, fontweight="bold",
+            )
+        proxy = plt.Rectangle(
+            (0, 0), 1, 1,
+            facecolor=color, alpha=alpha,
+            edgecolor="#333333", linewidth=0.9, hatch=hatch,
+        )
+        handles.append(proxy)
+        handle_labels.append(_OOS_SERIES_LABELS[series])
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([DATASET_LABELS[d] for d in x_labels])
+    ax.set_xlabel("Dataset")
+    ax.set_ylabel("Query Accuracy (%)")
+    ax.set_ylim(0, 100)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(
+        handles, handle_labels,
+        ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.20),
+        frameon=False, columnspacing=0.9, handletextpad=0.5,
+    )
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate July26 primary accuracy figures.")
     script_dir = Path(__file__).resolve().parent
@@ -417,6 +577,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="Optional title for the before/after figure.",
     )
+    parser.add_argument(
+        "--react-oos-after-root",
+        default=str(script_dir.parent / "results" / "react_oos_after"),
+        help=(
+            "Root folder containing per-dataset react_oos_after benchmark outputs "
+            "(expects subdirs bus/, wisdm/, mit_ecg/ each with a metrics.csv). "
+            "Used to generate the OOS abstention cross-dataset figure."
+        ),
+    )
     return parser
 
 
@@ -485,6 +654,37 @@ def main() -> None:
 
     print(f"Wrote {fig1}")
     print(f"Wrote {fig2}")
+
+    # --- OOS abstention cross-dataset figure ---
+    react_oos_after_root = Path(args.react_oos_after_root).resolve()
+    if react_oos_after_root.exists():
+        try:
+            react_after_oos = _load_oos_after_all_datasets(react_oos_after_root)
+            react_before_oos = df[
+                (df["baseline"] == "REACT_ONLY") & (df["query_type"] == "Out-of-Scope")
+            ].copy()
+            ff_oos = df[
+                (df["baseline"] == "FLASH_FUSION") & (df["query_type"] == "Out-of-Scope")
+            ].copy()
+
+            oos_summary = pd.concat(
+                [
+                    _aggregate_oos_by_dataset(react_before_oos, "REACT_ONLY_BEFORE"),
+                    _aggregate_oos_by_dataset(react_after_oos, "REACT_ONLY_AFTER"),
+                    _aggregate_oos_by_dataset(ff_oos, "FLASH_FUSION"),
+                ],
+                ignore_index=True,
+            )
+            fig3 = output_dir / "oos_abstention_across_datasets.png"
+            plot_oos_abstention_across_datasets(oos_summary, fig3)
+            oos_summary.to_csv(
+                output_dir / "oos_abstention_across_datasets_summary.csv", index=False
+            )
+            print(f"Wrote {fig3}")
+        except FileNotFoundError as exc:
+            print(f"[WARN] Skipping OOS abstention figure: {exc}")
+    else:
+        print(f"[INFO] --react-oos-after-root {react_oos_after_root} not found; skipping OOS figure.")
 
     # --- Optional before/after comparison figure ---
     if args.before_dir and args.after_dir:

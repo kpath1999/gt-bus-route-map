@@ -288,20 +288,20 @@ def save_markdown(
             lines.append("---")
             lines.append("")
 
-    lines.append("## Baseline Comparison Notes")
-    lines.append("")
-    lines.append(
-        "- **LLM-Only**: no schema grounding, no execution — may hallucinate."
-    )
-    lines.append(
-        "- **WellMax-Only**: S1+S2+S3 grounding, then direct grounded execution (no guardrail, no judge)."
-    )
-    lines.append(
-        "- **Agent-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
-    )
-    lines.append(
-        "- **Flash-Fusion**: full grounding pipeline + guardrail + pre-agent plan judge (+ one refinement) + grounded execution."
-    )
+    # lines.append("## Baseline Comparison Notes")
+    # lines.append("")
+    # lines.append(
+    #     "- **LLM-Only**: no schema grounding, no execution — may hallucinate."
+    # )
+    # lines.append(
+    #     "- **WellMax-Only**: S1+S2+S3 grounding, then direct grounded execution (no guardrail, no judge)."
+    # )
+    # lines.append(
+    #     "- **Agent-Only**: raw-query pandas execution only (no guardrail, no codebook grounding)."
+    # )
+    # lines.append(
+    #     "- **Flash-Fusion**: full grounding pipeline + guardrail + pre-agent plan judge (+ one refinement) + grounded execution."
+    # )
 
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
