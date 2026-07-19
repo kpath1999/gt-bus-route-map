@@ -194,6 +194,42 @@ class Stage2_SchemaGrounding:
         # Note: the chain is built inside run() because SCHEMA_GROUNDING_PROMPT
         # contains {column_metadata} that must be formatted first.
 
+    @staticmethod
+    def _normalize_text(value: str) -> str:
+        """Normalize concept/query text for robust lexical matching."""
+        return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", value.lower())).strip()
+
+    @classmethod
+    def _concept_is_query_critical(cls, concept: str, query: str) -> bool:
+        """Heuristic gate: retain concepts with a direct lexical signal in query."""
+        concept_norm = cls._normalize_text(concept)
+        query_norm = cls._normalize_text(query)
+        if not concept_norm or not query_norm:
+            return False
+        if concept_norm in query_norm:
+            return True
+
+        concept_tokens = [t for t in concept_norm.split() if t not in _STOPWORDS and len(t) > 2]
+        query_tokens = {t for t in query_norm.split() if t not in _STOPWORDS and len(t) > 2}
+        if not concept_tokens or not query_tokens:
+            return False
+
+        overlap = sum(1 for token in concept_tokens if token in query_tokens)
+        return overlap > 0
+
+    @classmethod
+    def _filter_query_critical_concepts(cls, concepts: dict, query: str) -> tuple[list[str], list[str]]:
+        """Drop non-critical concepts but preserve original lists if all are filtered."""
+        data_concepts = concepts.get("DATA", []) or []
+        reasoning_concepts = concepts.get("REASONING", []) or []
+
+        filtered_data = [c for c in data_concepts if cls._concept_is_query_critical(c, query)]
+        filtered_reasoning = [c for c in reasoning_concepts if cls._concept_is_query_critical(c, query)]
+
+        if not filtered_data and not filtered_reasoning:
+            return data_concepts, reasoning_concepts
+        return filtered_data, filtered_reasoning
+
     def run(
         self,
         concepts: dict,
@@ -238,8 +274,7 @@ class Stage2_SchemaGrounding:
             | StrOutputParser()
         )
 
-        data_concepts = concepts.get("DATA", []) or []
-        reasoning_concepts = concepts.get("REASONING", []) or []
+        data_concepts, reasoning_concepts = self._filter_query_critical_concepts(concepts, query)
         input_text = (
             f"DATA concepts: {', '.join(data_concepts) if data_concepts else 'NONE'}\n"
             f"REASONING concepts: {', '.join(reasoning_concepts) if reasoning_concepts else 'NONE'}\n"

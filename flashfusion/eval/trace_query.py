@@ -131,11 +131,16 @@ def main() -> None:
         print("VERDICT: PROCEED (query accepted for S3 + agent execution)")
 
     if not r.rejected:
-        # --- S3: sub-query decomposition ---------------------------------
-        _hr("S3 — SUB-QUERY DECOMPOSITION")
-        for i, sq in enumerate(r.s3_sub_queries or [], start=1):
-            print(f"  {i}. {sq}")
-        print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+        # --- S3: sub-query decomposition (or direct-aggregate bypass) ----
+        if "S3_bypass" in r.stages_run:
+            _hr("S3 — BYPASSED (direct single-column aggregate detected)")
+            print(f"  Expression: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
+            print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+        else:
+            _hr("S3 — SUB-QUERY DECOMPOSITION")
+            for i, sq in enumerate(r.s3_sub_queries or [], start=1):
+                print(f"  {i}. {sq}")
+            print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
 
         # --- Grounded query fed to the pandas agent -----------------------
         _hr("GROUNDED QUERY (agent input)")
@@ -144,8 +149,8 @@ def main() -> None:
         )
         print(grounded_query)
 
-        # --- Agent trace ---------------------------------------------------
-        _hr("AGENT ReAct TRACE")
+        # --- Execution trace ----------------------------------------------
+        _hr("EXECUTION TRACE")
         print(r.trace or "(no trace captured)")
 
         _hr("FINAL EXECUTED CODE")
@@ -155,6 +160,11 @@ def main() -> None:
     # --- Stages run + latency -----------------------------------------------
     _hr("STAGES RUN / LATENCY (s)")
     print("stages_run:", r.stages_run)
+    if "deterministic_fallback" in r.stages_run:
+        print(
+            "deterministic_fallback_reason:",
+            r.deterministic_fallback_reason or "(none captured)",
+        )
     print(json.dumps(r.stage_latency_s, indent=2))
 
     # --- Final answer vs ground truth --------------------------------------

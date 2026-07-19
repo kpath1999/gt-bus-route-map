@@ -22,6 +22,13 @@ You are a concept extraction specialist for time-series and sensor data queries.
 Given the user's natural language query, identify every distinct semantic concept
 and classify each as one of:
 
+CRITICAL minimality rule:
+  - Extract only concepts that are strictly required to answer this specific query.
+  - Do not invent structural or auxiliary concepts (for example identifier,
+    timestamp, or generic measurement labels) unless the query explicitly
+    requires them.
+  - Prefer the smallest sufficient concept set.
+
   DATA     — a measurable quantity that maps directly to a dataset column.
              Examples: "timestamp", "identifier", "measurement value", "location",
              "signal amplitude", "recording duration"
@@ -103,6 +110,7 @@ Each sub-question MUST:
   - Be prefixed with the operation tag in brackets: [OPERATION]
   - Be concrete and unambiguous — avoid vague phrasing.
   - CRITICAL: For every restriction or qualifying clause in the original question, include an explicit [FILTER] sub-question that executes before any [GROUPBY] or [AGGREGATE] step.
+  - CRITICAL: Do NOT add a [FILTER] sub-question to remove null values unless the original query explicitly mentions missing data or data quality. pandas aggregation functions (max, min, mean, etc.) skip nulls by default — a null-filter step is never required and must be omitted.
   - CRITICAL: When generating a [RANK] or argmax sub-question, always ask to return the result as a Python dict containing BOTH the entity identifier key AND its metric value key so synthesis can unambiguously label each number. Example: `result = {{{{'record_id': record_id_value, 'peak_to_peak': amplitude_value}}}}`. Never return a bare scalar for a RANK result.
   - CRITICAL: When generating a [FILTER] for a semantic category, enumerate ALL matching values from the schema's ``values=`` list — never rely solely on examples given in the query text. Check the complete value list in the metadata and include every value that belongs to the category.
 

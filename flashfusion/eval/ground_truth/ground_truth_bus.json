@@ -13,8 +13,8 @@
   },
   {
     "query_id": 3,
-    "query_text": "At what exact timestamp was the highest accel_stats_z_p99 recorded?",
-    "reference_answer": "Highest accel_stats_z_p99 occurs at 2025-06-06 16:02:01 with value 16.7020.",
+    "query_text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+    "reference_answer": "Maximum accel_stats_z_p99 is 16.7020. Timestamps with this value: ['2025-06-06 16:01:13', '2025-06-06 16:01:16', '2025-06-06 16:01:19', '2025-06-06 16:01:22', '2025-06-06 16:01:25', '2025-06-06 16:01:28', '2025-06-06 16:01:31', '2025-06-06 16:01:34', '2025-06-06 16:01:40', '2025-06-06 16:01:43', '2025-06-06 16:01:46', '2025-06-06 16:01:49', '2025-06-06 16:01:52', '2025-06-06 16:01:55', '2025-06-06 16:01:58', '2025-06-06 16:02:01'].",
     "expected_rejection": false
   },
   {
@@ -32,7 +32,7 @@
   {
     "query_id": 6,
     "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
-    "reference_answer": "Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776932, -84.391906), timestamp 2025-06-06 16:02:01.",
+    "reference_answer": "Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.",
     "expected_rejection": false
   },
   {
@@ -73,25 +73,25 @@
   },
   {
     "query_id": 13,
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
     "reference_answer": "Logistic regression predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 14,
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
     "reference_answer": "Random forest predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 15,
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
     "reference_answer": "1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 16,
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the behavior for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
     "reference_answer": "Hist gradient boosting predicts behavior 'moderate' for the first holdout row.",
     "expected_rejection": false
   }

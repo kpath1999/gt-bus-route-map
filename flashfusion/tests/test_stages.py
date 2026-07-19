@@ -18,6 +18,7 @@ from flashfusion.pipeline.stages import (
     Stage2_SchemaGrounding,
     Stage3_SubqueryGeneration,
 )
+from flashfusion.prompts.templates import CONCEPT_EXTRACTION_PROMPT
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +54,11 @@ def minimal_df():
 
 class TestStage1ConceptExtraction:
     """Tests for Stage1_ConceptExtraction.run()."""
+
+    def test_prompt_enforces_minimality(self):
+        """S1 prompt should explicitly require minimal, non-invented concepts."""
+        assert "Extract only concepts that are strictly required" in CONCEPT_EXTRACTION_PROMPT
+        assert "Do not invent structural or auxiliary concepts" in CONCEPT_EXTRACTION_PROMPT
 
     def test_parses_data_and_reasoning(self, mock_client):
         """
@@ -175,6 +181,47 @@ class TestStage2SchemaGrounding:
         concepts = {"DATA": ["subject"], "REASONING": []}
         stage.run(concepts, "samples per subject", meta_str, minimal_df)
         assert mock_client.invoke_chain.call_count == 2
+
+    def test_filters_non_query_critical_concepts(self, mock_client, minimal_df):
+        """S2 should drop concepts with no lexical evidence in the query."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        mock_client.invoke_chain.return_value = (
+            "MAPPINGS:\n  accel_variance → accel_variance\nUNMAPPABLE: NONE"
+        )
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(minimal_df))
+        concepts = {
+            "DATA": ["identifier", "accel_variance", "timestamp", "acceleration"],
+            "REASONING": [],
+        }
+
+        stage.run(
+            concepts,
+            "What is the maximum accel_variance observed in this dataset?",
+            meta_str,
+            minimal_df,
+        )
+
+        sent_input = mock_client.invoke_chain.call_args_list[0].args[1]["input"]
+        assert "accel_variance" in sent_input
+        assert "identifier" not in sent_input
+        assert "timestamp" not in sent_input
+        assert "acceleration" not in sent_input
+
+    def test_filter_fallback_preserves_original_when_all_dropped(self, mock_client, minimal_df):
+        """If filtering removes everything, S2 should keep original concepts."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        mock_client.invoke_chain.return_value = "MAPPINGS:\n  identifier → subject_id\nUNMAPPABLE: NONE"
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(minimal_df))
+        concepts = {"DATA": ["identifier"], "REASONING": []}
+
+        stage.run(concepts, "How many rows are there?", meta_str, minimal_df)
+
+        sent_input = mock_client.invoke_chain.call_args_list[0].args[1]["input"]
+        assert "DATA concepts: identifier" in sent_input
 
 
 # ---------------------------------------------------------------------------

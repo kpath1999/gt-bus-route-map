@@ -1,4 +1,22 @@
-"""Build deterministic ground-truth JSON for supported benchmark datasets."""
+"""Build deterministic ground-truth JSON for supported benchmark datasets.
+
+Usage (run from repo root):
+
+    python -m flashfusion.eval.build_groundtruth.ground_truth_builder \
+      --dataset wisdm \
+      --data data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt \
+      --output flashfusion/eval/ground_truth/ground_truth_wisdm.json
+
+    python -m flashfusion.eval.build_groundtruth.ground_truth_builder \
+      --dataset mit_ecg \
+      --data data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt \
+      --output flashfusion/eval/ground_truth/ground_truth_mit_ecg.json
+
+    python -m flashfusion.eval.build_groundtruth.ground_truth_builder \
+      --dataset bus \
+      --data data/bus/bus_data_enriched_behavior.csv \
+      --output flashfusion/eval/ground_truth/ground_truth_bus.json
+"""
 
 from __future__ import annotations
 
@@ -637,8 +655,10 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
     q1_max_var = float(df["accel_variance"].max())
     q2_mean_accel = float(df["accel_mean"].mean())
 
-    q3_idx = int(df["accel_stats_z_p99"].idxmax())
-    q3_ts = df.loc[q3_idx, "timestamp"]
+    q3_max_z_p99 = float(df["accel_stats_z_p99"].max())
+    q3_ts_list = [
+        str(ts) for ts in df.loc[df["accel_stats_z_p99"] == q3_max_z_p99, "timestamp"].tolist()
+    ]
 
     q4_count = int((df["accel_variance"] > 0.20).sum())
 
@@ -689,8 +709,8 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_id": 3,
             "query_text": qmap[3],
             "reference_answer": (
-                f"Highest accel_stats_z_p99 occurs at {q3_ts.strftime('%Y-%m-%d %H:%M:%S')} "
-                f"with value {float(df.loc[q3_idx, 'accel_stats_z_p99']):.4f}."
+                f"Maximum accel_stats_z_p99 is {q3_max_z_p99:.4f}. "
+                f"Timestamps with this value: {q3_ts_list}."
             ),
             "expected_rejection": False,
         },

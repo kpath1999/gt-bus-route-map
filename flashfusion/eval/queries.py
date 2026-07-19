@@ -370,10 +370,10 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 3,
-        "text": "At what exact timestamp was the highest accel_stats_z_p99 recorded?",
+        "text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
         "complexity": "direct",
-        "operation": "RANK+SELECT",
-        "stress": "Argmax lookup on a single column to return a corresponding timestamp.",
+        "operation": "AGGREGATE+FILTER+SELECT",
+        "stress": "Handles ties: find the max value, then return all timestamps matching that value.",
     },
     {
         "id": 4,

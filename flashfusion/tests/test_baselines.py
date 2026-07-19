@@ -132,11 +132,11 @@ def test_flash_fusion_rejection_sets_explanation() -> None:
     assert out.rejected is True
     assert out.executed is False
     assert "heart_rate is not in schema" in out.rejection_reason
-    assert "Rejected before execution" in out.alignment_explanation
-    assert out.stages_run == ["S1", "S2", "S3", "guardrail"]
+    assert "Rejected after schema grounding" in out.alignment_explanation
+    assert out.stages_run == ["S1", "S2", "guardrail"]
 
 
-def test_flash_fusion_runs_plan_judge_before_agent() -> None:
+def test_flash_fusion_runs_s3_when_direct_bypass_is_not_safe() -> None:
     from flashfusion.baselines.flash_fusion import run_flash_fusion
 
     query = "Compare mean magnitude for walking and jogging."
@@ -165,12 +165,6 @@ def test_flash_fusion_runs_plan_judge_before_agent() -> None:
 
         executor = execution_layer_cls.return_value
         executor.guardrail.return_value = (True, "")
-        executor.judge_plan.return_value = {
-            "verdict": "PASS",
-            "issue": "No alignment issues detected against the original question.",
-            "suggestion": "",
-        }
-        executor.explain_alignment.return_value = "Judge sanity check: PASS."
         executor.execute_single.return_value = (
             "Jogging has higher mean magnitude.",
             "trace",
@@ -179,16 +173,23 @@ def test_flash_fusion_runs_plan_judge_before_agent() -> None:
 
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    executor.judge_plan.assert_called_once()
+    s3_cls.return_value.run.assert_called_once()
     executor.execute_single.assert_called_once()
     assert out.executed is True
-    assert out.stages_run == ["S1", "S2", "S3", "guardrail", "judge_plan", "agent"]
+    assert out.stages_run == [
+        "S1",
+        "S2",
+        "guardrail",
+        "S3",
+        "deterministic_fallback",
+        "agent",
+    ]
 
 
-def test_flash_fusion_refines_plan_once_on_plan_judge_fail() -> None:
+def test_flash_fusion_bypasses_s3_for_direct_single_column_aggregate() -> None:
     from flashfusion.baselines.flash_fusion import run_flash_fusion
 
-    query = "Find users with longer stationary than locomotion durations."
+    query = "What is the maximum x observed in this dataset?"
     r = _result("FLASH_FUSION", query)
 
     with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
@@ -198,65 +199,106 @@ def test_flash_fusion_refines_plan_once_on_plan_judge_fail() -> None:
     ) as s3_cls, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["timestamp"], "REASONING": ["stationary", "locomotion"]}
+        s1_cls.return_value.run.return_value = {"DATA": ["x"], "REASONING": []}
         s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  stationary -> Sitting,Standing\n  locomotion -> Walking,Jogging,Stairs",
-            "mappings": [
-                "stationary -> Sitting,Standing",
-                "locomotion -> Walking,Jogging,Stairs",
-            ],
+            "raw_grounding": "MAPPINGS:\n  measurement value → x\nUNMAPPABLE: NONE",
+            "mappings": ["measurement value → x"],
             "unmappable": [],
         }
-        s3_cls.return_value.run.side_effect = [
-            {
-                "sub_queries": ["[AGGREGATE] Compute total duration overall"],
-                "synthesis_hint": "Return the duration.",
-            },
-            {
-                "sub_queries": [
-                    "[FILTER] Split stationary vs locomotion rows",
-                    "[GROUPBY] Aggregate duration by subject_id and category",
-                    "[RANK] Keep users where stationary total exceeds locomotion total",
-                ],
-                "synthesis_hint": "Report matching users and both totals.",
-            },
-        ]
 
         executor = execution_layer_cls.return_value
         executor.guardrail.return_value = (True, "")
-        executor.judge_plan.side_effect = [
-            {
-                "verdict": "FAIL",
-                "issue": "Plan misses category split before aggregation.",
-                "suggestion": "Add explicit stationary vs locomotion split before per-user aggregation.",
-            },
-            {
-                "verdict": "PASS",
-                "issue": "No alignment issues detected against the original question.",
-                "suggestion": "",
-            },
-        ]
-        executor.explain_alignment.return_value = "Judge sanity check: PASS."
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    s3_cls.return_value.run.assert_not_called()
+    executor.execute_single.assert_not_called()
+    assert out.s3_sub_queries == ["df['x'].max()"]
+    assert out.stages_run == [
+        "S1",
+        "S2",
+        "guardrail",
+        "S3_bypass",
+        "deterministic_exec",
+    ]
+
+
+def test_flash_fusion_does_not_bypass_s3_when_grounding_has_multiple_columns() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "What is the average acceleration?"
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls:
+        s1_cls.return_value.run.return_value = {"DATA": ["acceleration"], "REASONING": []}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": "MAPPINGS:\n  acceleration → x, y, z\nUNMAPPABLE: NONE",
+            "mappings": ["acceleration → x, y, z"],
+            "unmappable": [],
+        }
+        s3_cls.return_value.run.return_value = {
+            "sub_queries": ["[AGGREGATE] Compute the mean of x, y, and z."],
+            "synthesis_hint": "Summarize the aggregate.",
+        }
+
+        executor = execution_layer_cls.return_value
+        executor.guardrail.return_value = (True, "")
         executor.execute_single.return_value = (
-            "Users 1600 and 1601 have longer stationary totals.",
+            "Average acceleration summary.",
             "trace",
             MagicMock(final_code="code", tries=1, attempts=[]),
         )
 
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    assert s3_cls.return_value.run.call_count == 2
-    assert executor.judge_plan.call_count == 2
-    assert out.stages_run == [
-        "S1",
-        "S2",
-        "S3",
-        "guardrail",
-        "judge_plan",
-        "S3_refine",
-        "judge_plan_retry",
-        "agent",
-    ]
+    s3_cls.return_value.run.assert_called_once()
+    assert "S3" in out.stages_run
+    assert "S3_bypass" not in out.stages_run
+
+
+def test_flash_fusion_bypasses_s3_when_multiple_mappings_resolve_to_same_column() -> None:
+    """S2 may emit separate mapping lines for a DATA concept and its REASONING
+    counterpart (e.g. 'average → accel_mean (mean)') that both point to the same
+    column.  The detector should still trigger the bypass in this case."""
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "What is the average magnitude across all recorded samples?"
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls:
+        s1_cls.return_value.run.return_value = {"DATA": ["magnitude"], "REASONING": ["average"]}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": (
+                "MAPPINGS:\n"
+                "  magnitude → magnitude\n"
+                "  average → magnitude (mean)\n"
+                "UNMAPPABLE: NONE"
+            ),
+            "mappings": ["magnitude → magnitude", "average → magnitude (mean)"],
+            "unmappable": [],
+        }
+
+        executor = execution_layer_cls.return_value
+        executor.guardrail.return_value = (True, "")
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    s3_cls.return_value.run.assert_not_called()
+    executor.execute_single.assert_not_called()
+    assert out.s3_sub_queries == ["df['magnitude'].mean()"]
+    assert "S3_bypass" in out.stages_run
+    assert "S3" not in out.stages_run
+    assert "deterministic_exec" in out.stages_run
 
 
 def test_autoiot_paper_requires_tavily_key() -> None:

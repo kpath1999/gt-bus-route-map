@@ -257,6 +257,7 @@ class RunResult:
     final_code: str = ""                             # last successfully executed pandas code
     agent_tries: int = 0                             # total agent iterations across sub-queries
     execution_attempts: list = field(default_factory=list)  # per-attempt stats
+    deterministic_fallback_reason: str = ""         # why deterministic exec fell back to agent
 
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
     s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
