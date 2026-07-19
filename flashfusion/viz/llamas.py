@@ -63,7 +63,7 @@ from measure import (
 )
 
 TOP3_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
-DATASET_FIG_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER", "HARGPT_PAPER", "LLMSENSE_PAPER"]
+DATASET_FIG_BASELINES = TOP3_BASELINES
 
 RC = {
     "font.family": "DejaVu Sans",
@@ -441,7 +441,7 @@ def plot_oos_abstention_across_datasets(summary: pd.DataFrame, out_path: Path) -
 
         means_arr = np.asarray(means, dtype=float)
         stds_arr = np.asarray(stds, dtype=float)
-        lower_endpoint = np.clip(means_arr - stds_arr, 0.05, 100.0)
+        lower_endpoint = np.maximum(0.0, means_arr - stds_arr)
         upper_endpoint = np.clip(means_arr + stds_arr, 0.0, 100.0)
         bounded_yerr = np.vstack([
             means_arr - lower_endpoint,
@@ -503,8 +503,8 @@ def _build_parser() -> argparse.ArgumentParser:
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--results-root",
-        default=str(script_dir.parent / "results" / "july26"),
-        help="Root folder containing baseline result folders for July26.",
+        default=str(script_dir.parent / "results" / "with_slm_predictive"),
+        help="Root folder containing dataset-level metrics.csv files.",
     )
     parser.add_argument(
         "--run-dir",
@@ -529,12 +529,12 @@ def _build_parser() -> argparse.ArgumentParser:
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--ffpaper-data-root",
-        default=str(script_dir / "performance_ffpaper" / "data" / "run_all_remaining_20260528_215519"),
+        default=None,
         help="performance_ffpaper run root used as last-resort fallback (dataset/benchmark/metrics.csv layout).",
     )
     parser.add_argument(
         "--ffpaper-ecg-ff-root",
-        default=str(script_dir / "performance_ffpaper" / "data" / "run_ecg_ff_20260529_115359"),
+        default=None,
         help="performance_ffpaper ECG Flash-Fusion dedicated run root.",
     )
     # --- Before/after comparison args ---

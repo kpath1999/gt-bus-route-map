@@ -175,6 +175,50 @@ def load_metrics_for_baseline_dataset_safe(
         return None
 
 
+def load_metrics_from_dataset_root(
+    results_root: Path,
+    baseline: str,
+    dataset: str,
+) -> pd.DataFrame | None:
+    """Load ``<results_root>/<dataset>/metrics.csv`` for one baseline."""
+    dataset_dir = "mit_ecg" if dataset == "ecg" else dataset
+    path = results_root / dataset_dir / "metrics.csv"
+    if not path.exists():
+        return None
+
+    df = pd.read_csv(path)
+    if "run_id" not in df.columns:
+        raise ValueError(f"{path} must contain run_id for multi-run aggregation")
+    df["baseline"] = df["baseline"].map(normalize_baseline)
+    df = df[df["baseline"] == normalize_baseline(baseline)].copy()
+    if df.empty:
+        return None
+
+    required = {"query_id", "gt_score", "latency_s", "cost_usd", "input_tokens", "output_tokens"}
+    missing = sorted(required - set(df.columns))
+    if missing:
+        raise ValueError(f"{path} missing required columns: {missing}")
+
+    df["dataset"] = _canonical_dataset_name(dataset)
+    df["query_id"] = pd.to_numeric(df["query_id"], errors="coerce").astype("Int64")
+    df["run_id"] = pd.to_numeric(df["run_id"], errors="coerce").astype("Int64")
+    df["gt_score"] = pd.to_numeric(df["gt_score"], errors="coerce")
+    df["accuracy_percent"] = df["gt_score"] * 100.0
+    numeric_cols = [
+        "latency_s", "cost_usd", "input_tokens", "output_tokens",
+        "s1_latency_s", "s2_latency_s", "s3_latency_s",
+        "guardrail_latency_s", "agent_latency_s",
+    ]
+    for col in numeric_cols:
+        if col not in df.columns:
+            df[col] = 0.0
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    if df[["run_id", "query_id", "accuracy_percent"] + numeric_cols].isna().any().any():
+        raise ValueError(f"{path} contains invalid numeric values")
+    df["query_type"] = df["query_id"].map(QUERY_TYPE_BY_ID)
+    return df
+
+
 def load_ffpaper_metrics(
     ffpaper_run_root: Path,
     baseline: str,
@@ -366,6 +410,9 @@ def load_all_metrics(
         for dataset in datasets:
             df = load_metrics_for_baseline_dataset_safe(results_root, baseline, dataset, run_dir=run_dir)
 
+            if df is None:
+                df = load_metrics_from_dataset_root(results_root, baseline, dataset)
+
             if df is None and baseline in fallback_roots:
                 df = load_metrics_for_baseline_dataset_safe(fallback_roots[baseline], baseline, dataset, run_dir=run_dir)
 
@@ -478,34 +525,16 @@ def aggregate_accuracy_before_after(
     out = pd.concat(parts, ignore_index=True)
     out["baseline"] = pd.Categorical(out["baseline"], categories=baselines, ordered=True)
     return out
-    per_run = (
-        df.groupby(["baseline", "dataset", "run_id"], as_index=False, observed=False)
-        .agg(accuracy_percent=("accuracy_percent", "mean"))
-        .copy()
-    )
-    out = (
-        per_run.groupby(["baseline", "dataset"], as_index=False, observed=False)
-        .agg(
-            mean=("accuracy_percent", "mean"),
-            std=("accuracy_percent", "std"),
-            n_runs=("run_id", "nunique"),
-        )
-        .copy()
-    )
-    out["std"] = out["std"].fillna(0.0)
-    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
-    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
-    return out.sort_values(["dataset", "baseline"]).reset_index(drop=True)
 
 
 def aggregate_accuracy_by_dataset(df: pd.DataFrame) -> pd.DataFrame:
     per_run = (
-        df.groupby(["baseline", "dataset", "run_id"], as_index=False, observed=False)
+        df.groupby(["baseline", "dataset", "run_id"], as_index=False, observed=True)
         .agg(accuracy_percent=("accuracy_percent", "mean"))
         .copy()
     )
     out = (
-        per_run.groupby(["baseline", "dataset"], as_index=False, observed=False)
+        per_run.groupby(["baseline", "dataset"], as_index=False, observed=True)
         .agg(
             mean=("accuracy_percent", "mean"),
             std=("accuracy_percent", "std"),
@@ -540,6 +569,43 @@ def aggregate_accuracy_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 
 
+def aggregate_accuracy_by_dataset_query_type(
+    df: pd.DataFrame,
+    baselines: Iterable[str] | None = None,
+) -> pd.DataFrame:
+    """Aggregate accuracy by baseline, dataset, and query type.
+
+    Accuracy is averaged per query type within each run first, then summarized
+    across runs. This prevents repeated query rows from dominating the result
+    and keeps the summary consistent with the other accuracy aggregations.
+    """
+    baseline_order = list(baselines) if baselines is not None else list(BASELINE_ORDER)
+    subset = df[df["baseline"].isin(baseline_order)].copy()
+    per_run = (
+        subset.groupby(
+            ["baseline", "dataset", "run_id", "query_type"],
+            as_index=False,
+            observed=True,
+        )
+        .agg(accuracy_percent=("accuracy_percent", "mean"))
+        .copy()
+    )
+    out = (
+        per_run.groupby(["baseline", "dataset", "query_type"], as_index=False, observed=True)
+        .agg(
+            mean=("accuracy_percent", "mean"),
+            std=("accuracy_percent", "std"),
+            n_runs=("run_id", "nunique"),
+        )
+        .copy()
+    )
+    out["std"] = out["std"].fillna(0.0)
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_order, ordered=True)
+    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    return out.sort_values(["dataset", "query_type", "baseline"]).reset_index(drop=True)
+
+
 def aggregate_flash_fusion_stage_latency_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
     ff = df[df["baseline"] == "FLASH_FUSION"].copy()
     stage_cols = [
@@ -551,7 +617,7 @@ def aggregate_flash_fusion_stage_latency_by_query_type(df: pd.DataFrame) -> pd.D
     ]
 
     per_run = (
-        ff.groupby(["run_id", "query_type"], as_index=False, observed=False)[stage_cols]
+        ff.groupby(["dataset", "run_id", "query_type"], as_index=False, observed=True)[stage_cols]
         .mean(numeric_only=True)
         .copy()
     )
@@ -560,7 +626,7 @@ def aggregate_flash_fusion_stage_latency_by_query_type(df: pd.DataFrame) -> pd.D
     agg_parts = []
     for col in stage_cols + ["total_latency_s"]:
         part = (
-            per_run.groupby("query_type", as_index=False, observed=False)
+            per_run.groupby("query_type", as_index=False, observed=True)
             .agg(mean=(col, "mean"), std=(col, "std"), n_runs=(col, "count"))
             .copy()
         )

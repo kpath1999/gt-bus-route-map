@@ -371,8 +371,8 @@ def _build_parser() -> argparse.ArgumentParser:
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--results-root",
-        default=str(script_dir.parent / "results" / "july26"),
-        help="Root folder containing baseline result folders for July26.",
+        default=str(script_dir.parent / "results" / "with_slm_predictive"),
+        help="Root folder containing dataset-level metrics.csv files.",
     )
     parser.add_argument(
         "--run-dir",
