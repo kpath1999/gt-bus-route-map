@@ -679,10 +679,13 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
     )
     q7_mean_magnitude = float(df["peak_magnitude"].mean())
 
-    df["minute_bin"] = df["timestamp"].dt.floor("min")
-    variance_by_minute = df.groupby("minute_bin")["accel_variance"].sum().sort_values(ascending=False)
-    q8_bin = variance_by_minute.index[0]
-    q8_total = float(variance_by_minute.iloc[0])
+    instability_by_minute = (
+        df.groupby(pd.Grouper(key="timestamp", freq="1min"))["instability_score"]
+        .mean()
+        .dropna()
+    )
+    q8_bin = instability_by_minute.idxmax()
+    q8_mean = float(instability_by_minute.max())
 
     suite = run_prediction_suite(
         df,
@@ -754,7 +757,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[8],
             "reference_answer": (
                 f"The 1-minute window starting at {q8_bin.strftime('%Y-%m-%d %H:%M:%S')} "
-                f"had the highest total accel_variance of {q8_total:.4f}."
+                f"had the highest mean instability_score of {q8_mean:.4f}."
             ),
             "expected_rejection": False,
         },

@@ -13,8 +13,10 @@ from __future__ import annotations
 
 # ---------------------------------------------------------------------------
 # Stage 1 — Concept Extraction
-# Classifies every distinct semantic concept in the user query as either
-# DATA (maps directly to a column) or REASONING (requires a proxy derivation).
+# Classifies every distinct semantic concept in the user query into one of
+# three buckets: COLUMN (literal column), DERIVED_STAT (mechanically computable
+# via a standard operation over one or more columns), or PROXY (qualitative
+# idea requiring a heuristic column substitution).
 # ---------------------------------------------------------------------------
 CONCEPT_EXTRACTION_PROMPT: str = """\
 You are a concept extraction specialist for time-series and sensor data queries.
@@ -29,26 +31,51 @@ CRITICAL minimality rule:
     requires them.
   - Prefer the smallest sufficient concept set.
 
-  DATA     — a measurable quantity that maps directly to a dataset column.
-             Examples: "timestamp", "identifier", "measurement value", "location",
-             "signal amplitude", "recording duration"
+  COLUMN        — a measurable quantity that maps directly, by name or obvious
+                  synonym, to a single dataset column with no computation needed.
+                  Examples: "timestamp", "identifier", "latitude", "acceleration
+                  variance", "signal amplitude"
 
-  REASONING — a qualitative or derived idea that requires computing a proxy from columns,
-             or a semantic grouping that requires codebook resolution.
-             Examples: "intensity", "similarity", "outlier", "unusual",
-             "high values", "low values", "most similar", "predict next",
-             "anomalous patterns"
+  DERIVED_STAT  — a concept computable from column(s) via ONE of a fixed set of
+                  standard statistical/procedural operations. This bucket exists
+                  precisely so operations like "median" or "average" are never
+                  treated as if they were themselves columns needing a lookup.
+                  Standard operations: MEDIAN, MEAN/AVERAGE, SUM/TOTAL, COUNT,
+                  MIN, MAX, STD, VARIANCE, PERCENTILE, THRESHOLD_SPLIT
+                  (above/below/greater-than/less-than a value or a statistic),
+                  DIFFERENCE/DELTA between two quantities, GROUP_COMPARE
+                  (comparing an aggregate between two or more groups).
+                  Examples: "median", "average", "the top half", "northern half
+                  (latitude above median)", "how many are above X", "the
+                  difference between A and B", "is A rougher than B"
 
-Output format — output ONLY these two lines, nothing else:
-DATA: <comma-separated list of data concepts, or NONE>
-REASONING: <comma-separated list of reasoning concepts, or NONE>\
+  PROXY         — a qualitative idea with NO formulaic operation that instead
+                  requires a heuristic column substitution, or a semantic
+                  grouping that requires codebook resolution.
+                  Examples: "intensity", "similarity", "outlier", "unusual",
+                  "roughness" (as a standalone unquantified idea), "most
+                  similar", "predict next", "anomalous patterns"
+
+Disambiguation rule:
+  - If the query already names the metric/column to use for a qualitative idea
+    (e.g. "rougher ... based on average acceleration variance"), classify the
+    named metric as COLUMN, the aggregation word ("average") as DERIVED_STAT,
+    and do NOT additionally emit a PROXY concept for that idea — the metric is
+    already fully specified, no proxy substitution is needed.
+  - Only use PROXY when the query gives no explicit column/metric to ground the
+    qualitative idea to.
+
+Output format — output ONLY these three lines, nothing else:
+COLUMN: <comma-separated list of column concepts, or NONE>
+DERIVED_STAT: <comma-separated list of derived-stat concepts, or NONE>
+PROXY: <comma-separated list of proxy concepts, or NONE>\
 """
 
 # ---------------------------------------------------------------------------
 # Stage 2 — Schema Grounding
-# Maps DATA concepts to actual columns.
-# Maps REASONING concepts to concrete column+operation proxies.
-# Uses semantic activity labels directly from the dataset.
+# Maps COLUMN concepts to actual columns; maps DERIVED_STAT concepts to
+# OPERATION(column) expressions from a fixed operation vocabulary; maps PROXY
+# concepts to concrete column+operation heuristic substitutions.
 # Placeholder: {column_metadata}
 # ---------------------------------------------------------------------------
 # Schema Grounding
@@ -66,16 +93,83 @@ IMPORTANT — reading the metadata:
   include every value that belongs to that group in your mapping. Do NOT infer
   group membership solely from examples given in the query text.
 
-You receive DATA and REASONING concepts extracted from a user query.
+You receive COLUMN, DERIVED_STAT, and PROXY concepts extracted from a user query.
 
-Your tasks:
-1. For each DATA concept, identify the best matching column(s) from the dataset schema.
-2. For each REASONING concept, define a concrete proxy — which column(s) and what
-   operation(s) approximate that concept. Use these heuristics:
-     - Combine raw columns with standard operations where appropriate (e.g. Euclidean distance, root mean square, difference).
-     - Standard aggregations (min, max, count, mean).
-     - Any column not present → UNMAPPABLE, UNLESS the query explicitly provides a mathematical or procedural way to derive it from available columns (e.g., estimating an unknown metric from a count and duration).
-3. If a DATA concept cannot be mapped to any available column and has no explicit derivation, mark it UNMAPPABLE.
+Your tasks and the REQUIRED output grammar for each concept type:
+
+1. COLUMN concepts — identify the best matching column(s) from the dataset schema.
+   Output format (bare column name, no wrapper):
+     <concept> → <column_name>
+   CRITICAL: <column_name> MUST be copied EXACTLY, character-for-character, from
+   the dataset columns and metadata list above. NEVER invent a plausible-looking
+   column name by lightly rewording the concept (e.g. do NOT output
+   "acceleration_variance" if the concept is "acceleration variance" — first
+   search the metadata for the real column, which may be abbreviated (e.g.
+   "accel_variance"). If no real column matches even approximately, mark the
+   concept UNMAPPABLE instead of fabricating a name.
+
+2. DERIVED_STAT concepts — these are standard operations, not columns. NEVER
+   ground a DERIVED_STAT concept to a bare column name and NEVER invent a
+   substitute column merely because its name sounds statistically similar
+   (e.g. a percentile column such as ``foo_p90`` is NEVER a valid stand-in for
+   "median" or "variance" — those are different operations entirely). Ground
+   each DERIVED_STAT concept to an explicit call from this fixed vocabulary,
+   always wrapping the EXACT column the concept refers to:
+     MEDIAN(column), MEAN(column), SUM(column), COUNT(column), MIN(column),
+     MAX(column), STD(column), VARIANCE(column), PERCENTILE(column, p),
+     DIFFERENCE(column_a, column_b)
+   Threshold/split concepts compare a column to a value or to another
+   DERIVED_STAT call, e.g.:
+     <concept> → <column> > MEDIAN(<column>)
+     <concept> → <column> <= MEDIAN(<column>)
+     <concept> → <column> > <value>
+   Group-comparison concepts (e.g. "is A rougher than B") use:
+     <concept> → GROUP_COMPARE(<split_expression>, <metric_column>, <agg>)
+   where <agg> is one of mean/median/sum/count/max/min. GROUP_COMPARE is ONLY
+   for comparing an aggregate between two or more DERIVED groups (e.g. rows
+   split by a median threshold, or split by a categorical label). It is NEVER
+   used for a plain per-record subtraction between two named columns — use
+   DIFFERENCE(column_a, column_b) for that instead.
+   CRITICAL — already-computed column rule (narrows S2's scope): if a single
+   dataset column ALREADY IS the exact statistic the concept names (for
+   example a column literally named/described as a 99th-percentile or
+   1st-percentile value, a precomputed mean/variance column, etc.), ground the
+   concept as a BARE column reference, exactly like a COLUMN concept:
+     <concept> → <column_name>
+   Do NOT re-wrap an already-computed statistic column in PERCENTILE(...),
+   MEDIAN(...), MEAN(...), etc. — that would recompute a statistic of a
+   statistic. Only use the operation vocabulary when the computation still
+   needs to happen over a raw, non-aggregated column. Likewise, when a
+   DERIVED_STAT concept is simply "the difference between" two columns that
+   already independently exist in the schema (no grouping, splitting, or
+   further aggregation implied), ground it directly as
+   DIFFERENCE(column_a, column_b) using those two exact columns — do not
+   route it through GROUP_COMPARE or invent an intermediate split. As soon as
+   a concept can be satisfied by a direct reference or comparison between
+   existing columns, ground it and stop — do not add extra operation layers
+   that aren't required to reach Stage 3.
+   CRITICAL consistency rule: if the query already names a specific column for
+   a metric (e.g. "average acceleration variance" names "acceleration
+   variance"), you MUST reuse that EXACT SAME column in every DERIVED_STAT
+   mapping that refers to it. Do not silently swap in a different column.
+   CRITICAL completeness rule: a DERIVED_STAT concept MUST NOT be marked
+   UNMAPPABLE if any COLUMN concept in this same request is a plausible
+   operand for it — always emit a MAPPINGS line grounding it to that column
+   via the operation vocabulary above. Only mark it UNMAPPABLE if no column,
+   grounded or ungrounded, could serve as its argument.
+
+3. PROXY concepts — define a concrete proxy: which column(s) and what
+   operation(s) approximate the qualitative idea. Output format:
+     <concept> → PROXY(<column>[, <operation>])
+   Heuristics:
+     - Combine raw columns with standard operations where appropriate (e.g.
+       Euclidean distance, root mean square, difference).
+     - Any column not present → UNMAPPABLE, UNLESS the query explicitly
+       provides a mathematical or procedural way to derive it from available
+       columns (e.g., estimating an unknown metric from a count and duration).
+
+4. If any concept cannot be mapped to any available column and has no explicit
+   derivation, mark it UNMAPPABLE.
 
 Output format — output ONLY the following structure, nothing else:
 MAPPINGS:
@@ -102,26 +196,67 @@ Schema grounding (concept → column/operation mappings):
 
 Decompose the original user query into 2–4 concrete sub-questions.
 
-Each sub-question MUST:
-  - Reference exact column names from the dataset schema provided in the metadata above.
-  - Specify exactly ONE analytical operation from this list:
-    [FILTER], [AGGREGATE], [GROUPBY], [CORRELATE], [WINDOW], [RANK]
-  - Be independently answerable by executing pandas code on a DataFrame named `df`.
-  - Be prefixed with the operation tag in brackets: [OPERATION]
-  - Be concrete and unambiguous — avoid vague phrasing.
-  - CRITICAL: For every restriction or qualifying clause in the original question, include an explicit [FILTER] sub-question that executes before any [GROUPBY] or [AGGREGATE] step.
-  - CRITICAL: Do NOT add a [FILTER] sub-question to remove null values unless the original query explicitly mentions missing data or data quality. pandas aggregation functions (max, min, mean, etc.) skip nulls by default — a null-filter step is never required and must be omitted.
-  - CRITICAL: When generating a [RANK] or argmax sub-question, always ask to return the result as a Python dict containing BOTH the entity identifier key AND its metric value key so synthesis can unambiguously label each number. Example: `result = {{{{'record_id': record_id_value, 'peak_to_peak': amplitude_value}}}}`. Never return a bare scalar for a RANK result.
-  - CRITICAL: When generating a [FILTER] for a semantic category, enumerate ALL matching values from the schema's ``values=`` list — never rely solely on examples given in the query text. Check the complete value list in the metadata and include every value that belongs to the category.
+CRITICAL — typed output only, NEVER prose: each sub-question body MUST be a
+single pipe-separated `key=value` list — never a natural-language sentence.
+This lets code generation parse each step deterministically instead of
+re-reading English. Use exact column names from the metadata above as values.
+
+Allowed operation tags and their REQUIRED key=value schema:
+
+  [FILTER]   column=<col> | comparator=<eq|gt|gte|lt|lte|in> | value=<literal, PREV, or comma-list for in>
+             Example: column=accel_stats_z_p99 | comparator=gt | value=5.0
+             Example: column=behavior | comparator=in | value=[walking,running]
+             Example: column=accel_mean | comparator=eq | value=PREV   (PREV = result of the previous sub-query)
+
+  [AGGREGATE] column=<col> | stat=<max|min|mean|median|sum|count>
+             Example: column=accel_variance | stat=max
+
+  [DERIVE]   column_a=<col> | column_b=<col> | op=<subtract|add|multiply|divide> | result=<new_column_name>
+             Use this for any per-record combination of two existing columns
+             (e.g. a difference/delta between two columns). Never express this
+             as prose — always emit column_a/column_b/op/result.
+             Example: column_a=accel_stats_z_p99 | column_b=accel_stats_z_p1 | op=subtract | result=z_p99_p1_diff
+
+  [GROUPBY]  group_column=<col> | value_column=<col> | stat=<max|min|mean|median|sum|count> | freq=<optional pandas offset alias>
+             Use freq=... ONLY when the query asks to bucket/bin a datetime
+             column into fixed-size time windows (e.g. "1-minute intervals",
+             "5-minute windows", "hourly"): group_column MUST then be the
+             datetime column, and freq is a pandas offset alias such as
+             1min, 5min, 1H. Omit freq entirely for a normal categorical groupby.
+             Example: group_column=behavior | value_column=accel_mean | stat=mean
+             Example: group_column=timestamp | value_column=accel_stats_z_p99 | stat=max | freq=1min
+
+  [RANK]     metric=<col_or_prior_result_column> | stat=<max|min> | return=<col1,col2,...>
+             `metric` must be a real column name (either an original dataset
+             column or a `result=` column produced by a prior [DERIVE] step, or
+             the `value_column=` produced by a prior [GROUPBY] step).
+             `return` MUST list every identifier column requested by the
+             original query PLUS the metric column itself, so the result dict
+             carries both the winning entity and the metric value. When ranking
+             a [GROUPBY] result, `return=` should list the `group_column=` used
+             in that step plus the metric column.
+             Example: metric=z_p99_p1_diff | stat=max | return=latitude,longitude,z_p99_p1_diff
+
+  [SELECT]   columns=<col1,col2,...> | as=<list|dict>
+             Example: columns=timestamp | as=list
+
+Rules:
+  - Every sub-question line is exactly one `[OPERATION] key=value | key=value | ...` line — no extra words before or after the key=value pairs.
+  - CRITICAL: For every restriction or qualifying clause in the original question, include an explicit [FILTER] step that executes before any [GROUPBY], [DERIVE], or [AGGREGATE] step.
+  - CRITICAL: Do NOT emit a [FILTER] step unless the original question states a genuine restriction (e.g. a threshold, a category, a time range). Never invent a placeholder/filler filter (such as comparing an identifier or timestamp column to 0) merely to satisfy this rule — if there is no real restriction, omit [FILTER] entirely.
+  - CRITICAL: Do NOT add a [FILTER] step to remove null values unless the original query explicitly mentions missing data or data quality. pandas aggregation functions (max, min, mean, etc.) skip nulls by default.
+  - CRITICAL: When the question asks to group/bin by a time interval (e.g. "1-minute intervals"), use a single [GROUPBY] step with freq=<offset alias> on the datetime column — do not emit a [FILTER] step for this.
+  - CRITICAL: A [RANK] step's `return=` list must include every identifier column the question asks for (e.g. both latitude and longitude) plus the metric column — never a bare scalar.
+  - CRITICAL: When a [FILTER] targets a semantic category, enumerate ALL matching values from the schema's ``values=`` list in the `value=` list — never rely solely on examples given in the query text.
 
 Also provide a one-line SYNTHESIS_HINT: how to combine the sub-answers into a
 final natural-language response to the original query.
 
 Output format — output ONLY the following lines, nothing else:
-SUB_Q1: [OPERATION] <concrete sub-question referencing exact column names>
-SUB_Q2: [OPERATION] <concrete sub-question referencing exact column names>
-[SUB_Q3: [OPERATION] <optional third sub-question>]
-[SUB_Q4: [OPERATION] <optional fourth sub-question>]
+SUB_Q1: [OPERATION] key=value | key=value | ...
+SUB_Q2: [OPERATION] key=value | key=value | ...
+[SUB_Q3: [OPERATION] key=value | key=value | ...]
+[SUB_Q4: [OPERATION] key=value | key=value | ...]
 SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 """
 
@@ -171,19 +306,18 @@ REJECT: <one-sentence explanation of why the query cannot be answered>\
 # All context is passed in the human message at runtime.
 # ---------------------------------------------------------------------------
 SYNTHESIS_PROMPT: str = """\
-You are a precise natural-language synthesiser for data query results.
+You convert machine-style query outputs into a clear human-readable answer.
 
-Your task is to combine the answers to sub-questions into a single, direct response
-to the original user question.
+Task:
+  - Read the original question and the provided sub-answers.
+  - Return a direct response that answers the original question.
 
 Rules:
-  - Answer the original question directly in 1–4 sentences.
-  - Include ALL specific quantitative findings: numbers, counts, labels, percentages.
-  - Use human-readable labels from the dataset — not codes or raw identifiers.
-  - Do NOT mention internal implementation details: no column names, no pandas code,
-    no DataFrames, no sub-question structure.
-  - Do NOT add caveats, disclaimers, or meta-commentary about limitations.
-  - If the sub-answers contain conflicting information, use the most specific one.\
+  - Use 1-3 short sentences.
+  - Preserve important numbers, counts, labels, and comparisons.
+  - Keep it plain and readable.
+  - Do not mention implementation details (columns, pandas, sub-queries, code).
+  - Do not add caveats or extra commentary.\
 """
 
 # ---------------------------------------------------------------------------

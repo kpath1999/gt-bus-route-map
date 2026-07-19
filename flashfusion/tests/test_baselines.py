@@ -183,6 +183,7 @@ def test_flash_fusion_runs_s3_when_direct_bypass_is_not_safe() -> None:
         "S3",
         "deterministic_fallback",
         "agent",
+        "synthesis",
     ]
 
 
@@ -219,6 +220,7 @@ def test_flash_fusion_bypasses_s3_for_direct_single_column_aggregate() -> None:
         "guardrail",
         "S3_bypass",
         "deterministic_exec",
+        "synthesis",
     ]
 
 

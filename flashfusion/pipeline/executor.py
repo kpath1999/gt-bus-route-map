@@ -343,7 +343,7 @@ class ExecutionLayer:
                     ),
                 ]
             )
-            | client.llm
+            | client.light.llm
             | StrOutputParser()
         )
 
@@ -536,7 +536,18 @@ class ExecutionLayer:
         col_descriptions = ", ".join(
             f"{c} ({df[c].dtype})" for c in df.columns
         )
-        prefix = (
+        if self._react_faithful:
+            return (
+                "You are a data analyst working with a pandas DataFrame named `df`.\n"
+                f"Columns: {col_descriptions}\n"
+                f"Total rows: {len(df)}\n"
+                "\nSCOPE CHECK:\n"
+                "- If the question depends on information that is NOT derivable from the columns listed above,\n"
+                "  do NOT fabricate a value.\n"
+                "- In that case, respond exactly with:\n"
+                "  Final Answer: This request is out-of-scope for the available data because <one-sentence reason>.\n"
+            )
+        return (
             "You are a data analyst working with a pandas DataFrame named `df`.\n"
             f"Columns: {col_descriptions}\n"
             f"Total rows: {len(df)}\n\n"
@@ -551,23 +562,6 @@ class ExecutionLayer:
             "  the identifier key and the metric key separately\n"
             "  Never return a bare numeric ID — it is indistinguishable from a measurement value.\n"
         )
-        if self._react_faithful:
-            prefix += (
-                "\nSCOPE CHECK (perform before answering):\n"
-                "- If the question depends on information that is NOT derivable from the\n"
-                "  columns listed above (e.g. demographics, weather, geolocation, driver\n"
-                "  identity, medical history), or asks for future outcomes that depend on\n"
-                "  external information not represented in the data, then\n"
-                "  do NOT fabricate a value.\n"
-                "- Do NOT reject in-dataset predictive tasks solely because they use a model\n"
-                "  or forecast. Execute them when their inputs and target are derivable from\n"
-                "  the listed columns and the question defines a computable procedure. This\n"
-                "  includes classification, anomaly detection, clustering, and forecasting\n"
-                "  a known next in-dataset value from an ordered sequence.\n"
-                "- In that case respond exactly with:\n"
-                "  Final Answer: This request is out of scope for the available data because <one-sentence reason>.\n"
-            )
-        return prefix
 
     def guardrail(self, query: str) -> tuple[bool, str]:
         """
@@ -967,7 +961,7 @@ class ExecutionLayer:
         )
         if not sub_text:
             sub_text = "(no sub-answers produced)"
-        response = self._client.invoke_chain(
+        response = self._client.light.invoke_chain(
             self._synthesizer_chain,
             {
                 "question": question,

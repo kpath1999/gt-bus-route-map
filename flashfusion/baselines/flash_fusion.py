@@ -25,6 +25,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+import pandas as pd
+
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.pipeline.runner import LLMClient, RunResult
@@ -80,8 +82,73 @@ _DIRECT_DISQUALIFIER_PATTERNS: tuple[str, ...] = (
 )
 
 _SUPPORTED_PLAN_OPS: frozenset[str] = frozenset(
-    {"FILTER", "AGGREGATE", "GROUPBY", "COMPARE", "RANK", "SELECT"}
+    {"FILTER", "AGGREGATE", "GROUPBY", "COMPARE", "RANK", "SELECT", "DERIVE"}
 )
+
+
+def _parse_kv_line(text: str) -> dict[str, str] | None:
+    """Parse a typed 'key=value | key=value | ...' sub-query body into a dict.
+
+    Returns None when the text does not look like the typed key=value grammar
+    (e.g. legacy/older prose sub-queries), so callers can fall back gracefully.
+    """
+    if "=" not in text:
+        return None
+    kv: dict[str, str] = {}
+    for part in text.split("|"):
+        part = part.strip()
+        if not part or "=" not in part:
+            return None
+        key, _, value = part.partition("=")
+        key = key.strip().lower()
+        if not key:
+            return None
+        kv[key] = value.strip()
+    return kv or None
+
+
+def _apply_comparator(series, comparator: str, value):
+    """Apply a named comparator between a pandas Series and a value."""
+    comparator = comparator.strip().lower()
+    try:
+        if comparator in ("eq", "=="):
+            return series == value
+        if comparator in ("gt", ">"):
+            return series > value
+        if comparator in ("gte", ">="):
+            return series >= value
+        if comparator in ("lt", "<"):
+            return series < value
+        if comparator in ("lte", "<="):
+            return series <= value
+        if comparator in ("ne", "!="):
+            return series != value
+    except (TypeError, ValueError) as exc:
+        raise _DeterministicPlanUnsupported(
+            f"Invalid comparator/value for column dtype {series.dtype}: "
+            f"{comparator!r} {value!r}"
+        ) from exc
+    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {comparator!r}")
+
+
+def _extract_diff_columns(text: str, df_columns: list[str]) -> tuple[str, str] | None:
+    """Detect 'difference/subtract/minus/delta between COL_A and COL_B' phrasing.
+
+    Used as a legacy-prose fallback so an AGGREGATE step that actually asks
+    for a per-record two-column difference (not a scalar reduction) is routed
+    to a row-wise DERIVE computation instead of raising an ambiguous-aggregate
+    error.
+    """
+    text_l = text.lower()
+    if not re.search(r"\b(difference|subtract|minus|delta)\b", text_l):
+        return None
+    cols = _find_columns_in_text(text, df_columns)
+    if len(cols) < 2:
+        return None
+    ordered = sorted(dict.fromkeys(cols), key=lambda c: text_l.find(c.lower()))
+    if len(ordered) < 2:
+        return None
+    return ordered[0], ordered[1]
 
 
 class _DeterministicPlanUnsupported(ValueError):
@@ -163,10 +230,101 @@ def _extract_eq_filters(text: str, df_columns: list[str]) -> list[tuple[str, Any
     return out
 
 
+def _extract_extremum_filter(text: str, df_columns: list[str]) -> tuple[str, str] | None:
+    """Extract patterns like 'col equals its maximum/minimum value' from FILTER text."""
+    text_l = text.lower()
+    if not re.search(r"\bequals\b", text_l):
+        return None
+    op = None
+    if re.search(r"\b(max|maximum|highest|largest|peak)\b", text_l):
+        op = "max"
+    elif re.search(r"\b(min|minimum|lowest|smallest)\b", text_l):
+        op = "min"
+    if op is None:
+        return None
+
+    cols = _find_columns_in_text(text, df_columns)
+    if len(cols) != 1:
+        return None
+    return cols[0], op
+
+
+def _is_prior_result_placeholder(value: str) -> bool:
+    value_l = value.lower().strip()
+    return any(
+        phrase in value_l
+        for phrase in (
+            "previously computed aggregate result",
+            "previous aggregate result",
+            "aggregate result",
+            "previously computed result",
+            "prior result",
+        )
+    )
+
+
+def _coerce_numeric(value: Any) -> float | int | None:
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if re.fullmatch(r"-?\d+", raw):
+            return int(raw)
+        if re.fullmatch(r"-?\d+(?:\.\d+)?", raw):
+            return float(raw)
+    return None
+
+
+def _coerce_for_column(series: "pd.Series", raw_value: Any) -> Any:
+    """Coerce a raw literal into a value comparable with a Series' own dtype.
+
+    Comparators previously assumed every filter value was numeric, which crashes
+    with a pandas ``TypeError`` when the target column is ``datetime64[ns]``
+    (e.g. ``timestamp > 0``). Dispatching on ``series.dtype`` first means the
+    coercion strategy always matches what the column can actually be compared
+    against, instead of guessing from the literal's own text.
+    """
+    if isinstance(raw_value, str):
+        raw_value = raw_value.strip().strip("'\"")
+
+    if pd.api.types.is_datetime64_any_dtype(series):
+        numeric = _coerce_numeric(raw_value)
+        if numeric is not None:
+            # A bare numeric literal against a datetime column is interpreted
+            # the same way pandas itself would (nanoseconds since epoch), so
+            # e.g. "timestamp > 0" becomes a harmless epoch comparison instead
+            # of raising, matching the common S3 placeholder-filter pattern.
+            return pd.Timestamp(numeric)
+        try:
+            parsed = pd.to_datetime(raw_value)
+        except (ValueError, TypeError) as exc:
+            raise _DeterministicPlanUnsupported(
+                f"Cannot compare datetime64 column against value: {raw_value!r}"
+            ) from exc
+        if parsed is pd.NaT:
+            raise _DeterministicPlanUnsupported(
+                f"Cannot compare datetime64 column against value: {raw_value!r}"
+            )
+        return parsed
+
+    if pd.api.types.is_bool_dtype(series):
+        if isinstance(raw_value, bool):
+            return raw_value
+        if isinstance(raw_value, str) and raw_value.lower() in ("true", "false"):
+            return raw_value.lower() == "true"
+        return raw_value
+
+    if pd.api.types.is_numeric_dtype(series):
+        numeric = _coerce_numeric(raw_value)
+        return numeric if numeric is not None else raw_value
+
+    return raw_value
+
+
 def _run_deterministic_plan(
     query: str,
     df,
-    sub_queries: list[str],
+    sub_queries: list[Any],
 ) -> _DeterministicExecutionResult:
     """Execute an S3 plan with a strict deterministic operator vocabulary."""
     if not sub_queries:
@@ -177,6 +335,31 @@ def _run_deterministic_plan(
     attempts: list[dict[str, Any]] = []
     trace_lines: list[str] = []
     code_lines: list[str] = []
+    # partitions: named DataFrame subsets produced by SPLIT_BY_THRESHOLD, consumed
+    # by GROUP_AGGREGATE. group_agg_result: last GROUP_AGGREGATE output, consumed
+    # by COMPARE_GROUPS. These support two-way median-split comparisons
+    # (e.g. "is the northern half rougher than the southern half") without
+    # falling back to the ReAct agent.
+    partitions: dict[str, Any] = {}
+    group_agg_result: dict[str, Any] | None = None
+    group_agg_column: str = ""
+    group_agg_op: str = ""
+    # last_derived_column/last_derived_label: name and human-readable label of
+    # the most recent per-record column computed by a [DERIVE] step (typed) or
+    # a legacy-prose AGGREGATE step that detected a two-column difference
+    # (e.g. "difference between accel_stats_z_p99 and accel_stats_z_p1").
+    # A following [RANK] step falls back to this when it can't find enough
+    # literal column names mentioned in its own text.
+    last_derived_column: str = ""
+    last_derived_label: str = ""
+    # last_groupby_group_column/last_groupby_value_column: name of the group-key
+    # column and the aggregated value column from the most recent [GROUPBY] step.
+    # A following [RANK] step whose metric matches last_groupby_value_column
+    # ranks the GROUPBY dict result directly (e.g. "which time window") instead
+    # of re-scanning the ungrouped DataFrame, which would ignore the grouping
+    # entirely.
+    last_groupby_group_column: str = ""
+    last_groupby_value_column: str = ""
 
     # Fast path for S3_bypass expression format: df['col'].op()
     if len(sub_queries) == 1:
@@ -209,35 +392,237 @@ def _run_deterministic_plan(
             )
 
     for idx, sq in enumerate(sub_queries, start=1):
-        op, text = _extract_plan_op(sq)
-        text_l = text.lower()
+        typed_op = None
+        typed_step: dict[str, Any] = {}
+        text = ""
+        text_l = ""
+        if isinstance(sq, dict):
+            typed_step = sq
+            typed_op = str(sq.get("op", "")).upper().strip()
+            op = typed_op
+        else:
+            op, text = _extract_plan_op(str(sq))
+            text_l = text.lower()
+
         step_code = ""
         step_obs: Any = ""
 
+        if typed_op:
+            if typed_op == "AGGREGATE_COLUMN":
+                col = str(typed_step.get("column", ""))
+                agg = str(typed_step.get("aggregate", "")).lower()
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
+                if agg not in {"max", "min", "mean", "median", "sum", "count"}:
+                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg}")
+                result = getattr(working_df[col], agg)()
+                observations.append(result)
+                step_code = f"result = df[{col!r}].{agg}()"
+                step_obs = result
+
+            elif typed_op == "FILTER_EQ_PREV":
+                col = str(typed_step.get("column", ""))
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
+                prior_scalars = [v for v in observations if isinstance(v, (int, float))]
+                if not prior_scalars:
+                    raise _DeterministicPlanUnsupported("FILTER_EQ_PREV requires prior scalar observation")
+                cast_value = prior_scalars[-1]
+                working_df = working_df[working_df[col] == cast_value]
+                step_code = f"df = df[df[{col!r}] == {cast_value!r}]"
+                step_obs = f"rows={len(working_df)} (filtered by prior aggregate result {cast_value})"
+
+            elif typed_op == "FILTER_COMPARE":
+                col = str(typed_step.get("column", ""))
+                cmp = str(typed_step.get("comparator", "")).lower()
+                raw_val = typed_step.get("value")
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
+                cast_value = _coerce_for_column(working_df[col], raw_val)
+                op_symbol_by_cmp = {
+                    "gt": ">",
+                    "gte": ">=",
+                    "lt": "<",
+                    "lte": "<=",
+                    "eq": "==",
+                }
+                if cmp not in op_symbol_by_cmp:
+                    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {cmp!r}")
+                mask = _apply_comparator(working_df[col], cmp, cast_value)
+                working_df = working_df[mask]
+                op_txt = op_symbol_by_cmp[cmp]
+                step_code = f"df = df[df[{col!r}] {op_txt} {cast_value!r}]"
+                step_obs = f"rows={len(working_df)}"
+
+            elif typed_op == "AGGREGATE_COUNT_ROWS":
+                result = int(len(working_df))
+                observations.append(result)
+                step_code = "result = len(df)"
+                step_obs = result
+
+            elif typed_op == "SELECT_LIST":
+                col = str(typed_step.get("column", ""))
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown SELECT column: {col}")
+                result = working_df[col].tolist()
+                observations.append(result)
+                step_code = f"result = df[{col!r}].tolist()"
+                step_obs = result
+
+            elif typed_op == "SPLIT_BY_THRESHOLD":
+                col = str(typed_step.get("column", ""))
+                cmp = str(typed_step.get("comparator", "")).lower()
+                label = str(typed_step.get("label", ""))
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown SPLIT column: {col}")
+                if not label:
+                    raise _DeterministicPlanUnsupported("SPLIT_BY_THRESHOLD requires a label")
+                threshold = working_df[col].median()
+                if cmp == "gt":
+                    subset = working_df[working_df[col] > threshold]
+                    op_txt = ">"
+                elif cmp == "gte":
+                    subset = working_df[working_df[col] >= threshold]
+                    op_txt = ">="
+                elif cmp == "lt":
+                    subset = working_df[working_df[col] < threshold]
+                    op_txt = "<"
+                elif cmp == "lte":
+                    subset = working_df[working_df[col] <= threshold]
+                    op_txt = "<="
+                else:
+                    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {cmp!r}")
+                partitions[label] = subset
+                step_code = (
+                    f"_median = df[{col!r}].median(); "
+                    f"{label} = df[df[{col!r}] {op_txt} _median]"
+                )
+                step_obs = f"{label}: rows={len(subset)} ({col} {op_txt} median={threshold})"
+
+            elif typed_op == "GROUP_AGGREGATE":
+                col = str(typed_step.get("column", ""))
+                agg = str(typed_step.get("aggregate", "")).lower()
+                groups = typed_step.get("groups") or []
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown GROUP_AGGREGATE column: {col}")
+                if agg not in {"max", "min", "mean", "median", "sum", "count"}:
+                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg}")
+                missing = [g for g in groups if g not in partitions]
+                if missing:
+                    raise _DeterministicPlanUnsupported(f"Unknown partition(s) for GROUP_AGGREGATE: {missing}")
+                result = {g: getattr(partitions[g][col], agg)() for g in groups}
+                observations.append(result)
+                group_agg_result = result
+                group_agg_column = col
+                group_agg_op = agg
+                step_code = (
+                    "result = {" + ", ".join(f"{g!r}: {g}[{col!r}].{agg}()" for g in groups) + "}"
+                )
+                step_obs = result
+
+            elif typed_op == "COMPARE_GROUPS":
+                if not group_agg_result or len(group_agg_result) < 2:
+                    raise _DeterministicPlanUnsupported("COMPARE_GROUPS requires a prior GROUP_AGGREGATE result")
+                (label_a, value_a), (label_b, value_b) = list(group_agg_result.items())[:2]
+                if value_a >= value_b:
+                    higher_label, higher_val = label_a, value_a
+                    lower_label, lower_val = label_b, value_b
+                else:
+                    higher_label, higher_val = label_b, value_b
+                    lower_label, lower_val = label_a, value_a
+                delta = higher_val - lower_val
+                metric_desc = f"{group_agg_op} {group_agg_column}" if group_agg_column else "metric"
+                result = (
+                    f"{higher_label} has the higher {metric_desc} ({higher_val}) versus "
+                    f"{lower_label} ({lower_val}); difference={delta}"
+                )
+                observations.append(result)
+                step_code = "result = compare(" + ", ".join(group_agg_result.keys()) + ")"
+                step_obs = result
+
+            else:
+                raise _DeterministicPlanUnsupported(f"Unsupported typed operation {typed_op!r}")
+
+            attempts.append({
+                "attempt": idx,
+                "op": op,
+                "ok": True,
+                "output": str(step_obs),
+            })
+            code_lines.append(step_code)
+            trace_lines.append(f"Thought: Deterministic step {idx} ({op})")
+            trace_lines.append("Action: deterministic_exec")
+            trace_lines.append(f"Action Input: {step_code}")
+            trace_lines.append(f"Observation: {step_obs}")
+            continue
+
         if op == "FILTER":
+            kv = _parse_kv_line(text)
+            if kv is not None and "column" in kv:
+                col = kv["column"].strip().strip("'\"")
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
+                comparator = kv.get("comparator", "eq").strip().lower()
+                raw_value = kv.get("value", "").strip()
+                if comparator == "in":
+                    vals_raw = raw_value.strip("[]")
+                    raw_vals = [v.strip().strip("'\"") for v in vals_raw.split(",") if v.strip()]
+                    coerced_vals = [
+                        (_coerce_numeric(v) if _coerce_numeric(v) is not None else v) for v in raw_vals
+                    ]
+                    working_df = working_df[working_df[col].isin(coerced_vals)]
+                    step_code = f"df = df[df[{col!r}].isin({coerced_vals!r})]"
+                else:
+                    if raw_value.upper() in ("PREV", "PREVIOUS", "PREVIOUS_RESULT") or _is_prior_result_placeholder(raw_value):
+                        prior_scalars = [v for v in observations if isinstance(v, (int, float))]
+                        if not prior_scalars:
+                            raise _DeterministicPlanUnsupported("FILTER value references prior result, but none exists")
+                        cast_value = prior_scalars[-1]
+                    else:
+                        cast_value = _coerce_for_column(working_df[col], raw_value)
+                    mask = _apply_comparator(working_df[col], comparator, cast_value)
+                    working_df = working_df[mask]
+                    step_code = f"df = df[df[{col!r}] {comparator} {cast_value!r}]"
+                step_obs = f"rows={len(working_df)}"
             # Avoid unnecessary non-null filters; pandas aggregations skip nulls.
-            if "not null" in text_l or "is not null" in text_l:
+            elif "not null" in text_l or "is not null" in text_l:
                 step_code = "# skipped no-op null filter"
                 step_obs = f"rows={len(working_df)} (null-filter omitted as no-op)"
             else:
                 eq_filters = _extract_eq_filters(text, list(working_df.columns))
                 if not eq_filters:
-                    # Cross-step pattern: FILTER where col == <prior aggregate result>.
-                    # Detect a column name in the text and use the most recent scalar
-                    # observation as the filter value.
+                    inline_extreme = _extract_extremum_filter(text, list(working_df.columns))
+                    if inline_extreme is not None:
+                        col, ext_op = inline_extreme
+                        extreme_value = (
+                            working_df[col].max() if ext_op == "max" else working_df[col].min()
+                        )
+                        working_df = working_df[working_df[col] == extreme_value]
+                        step_code = (
+                            f"_v = df[{col!r}].{ext_op}(); "
+                            f"df = df[df[{col!r}] == _v]"
+                        )
+                        step_obs = f"rows={len(working_df)} ({col} == {ext_op}={extreme_value})"
+                    else:
+                        # Cross-step pattern: FILTER where col == <prior aggregate result>.
+                        # Detect a column name in the text and use the most recent scalar
+                        # observation as the filter value.
+                        prior_scalars = [
+                            v for v in observations if isinstance(v, (int, float))
+                        ]
+                        mentioned_cols = _find_columns_in_text(text, list(working_df.columns))
+                        if prior_scalars and len(mentioned_cols) == 1:
+                            col = mentioned_cols[0]
+                            cast_value = prior_scalars[-1]
+                            working_df = working_df[working_df[col] == cast_value]
+                            step_code = f"df = df[df[{col!r}] == {cast_value!r}]"
+                            step_obs = f"rows={len(working_df)} (filtered by prior aggregate result {cast_value})"
+                        else:
+                            raise _DeterministicPlanUnsupported(f"Unsupported FILTER pattern: {text!r}")
+                else:
                     prior_scalars = [
                         v for v in observations if isinstance(v, (int, float))
                     ]
-                    mentioned_cols = _find_columns_in_text(text, list(working_df.columns))
-                    if prior_scalars and len(mentioned_cols) == 1:
-                        col = mentioned_cols[0]
-                        cast_value = prior_scalars[-1]
-                        working_df = working_df[working_df[col] == cast_value]
-                        step_code = f"df = df[df[{col!r}] == {cast_value!r}]"
-                        step_obs = f"rows={len(working_df)} (filtered by prior aggregate result {cast_value})"
-                    else:
-                        raise _DeterministicPlanUnsupported(f"Unsupported FILTER pattern: {text!r}")
-                else:
                     for col, value in eq_filters:
                         if col not in working_df.columns:
                             raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
@@ -247,7 +632,13 @@ def _run_deterministic_plan(
                             )
                         # Keep values as string match first; if numeric cast succeeds, use numeric compare.
                         cast_value = value
-                        if value.isdigit():
+                        if _is_prior_result_placeholder(value):
+                            if not prior_scalars:
+                                raise _DeterministicPlanUnsupported(
+                                    "FILTER references prior aggregate result, but none exists"
+                                )
+                            cast_value = prior_scalars[-1]
+                        elif value.isdigit():
                             cast_value = int(value)
                         else:
                             try:
@@ -260,100 +651,259 @@ def _run_deterministic_plan(
                     )
                     step_obs = f"rows={len(working_df)}"
 
-        elif op == "AGGREGATE":
-            agg_op = _extract_aggregate_op(text)
-            cols = _find_columns_in_text(text, list(working_df.columns))
-            if not cols:
-                raise _DeterministicPlanUnsupported(f"No known column found in AGGREGATE: {text!r}")
-
-            # Handle argmax/argmin-style "corresponding timestamp" pattern.
-            if "corresponding" in text_l and agg_op in {"max", "min"} and len(cols) >= 2:
-                metric_col = cols[-1]
-                target_col = cols[0]
-                if metric_col not in working_df.columns or target_col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported("Unknown column in corresponding-value aggregate")
-                idx_val = working_df[metric_col].idxmax() if agg_op == "max" else working_df[metric_col].idxmin()
-                result = working_df.loc[idx_val, target_col]
-                step_code = (
-                    f"idx = df[{metric_col!r}].idx{'max' if agg_op == 'max' else 'min'}(); "
-                    f"result = df.loc[idx, {target_col!r}]"
-                )
+        elif op == "DERIVE":
+            kv = _parse_kv_line(text)
+            if kv is None:
+                raise _DeterministicPlanUnsupported(f"DERIVE requires typed key=value form: {text!r}")
+            col_a = kv.get("column_a", "").strip().strip("'\"")
+            col_b = kv.get("column_b", "").strip().strip("'\"")
+            derive_op = kv.get("op", "subtract").strip().lower()
+            result_name = kv.get("result", "").strip().strip("'\"") or "_derived_value"
+            if col_a not in working_df.columns or col_b not in working_df.columns:
+                raise _DeterministicPlanUnsupported(f"Unknown DERIVE column(s): {col_a!r}, {col_b!r}")
+            working_df = working_df.copy()
+            if derive_op in ("subtract", "diff", "difference"):
+                working_df[result_name] = working_df[col_a] - working_df[col_b]
+                op_symbol = "-"
+            elif derive_op == "add":
+                working_df[result_name] = working_df[col_a] + working_df[col_b]
+                op_symbol = "+"
+            elif derive_op == "multiply":
+                working_df[result_name] = working_df[col_a] * working_df[col_b]
+                op_symbol = "*"
+            elif derive_op == "divide":
+                working_df[result_name] = working_df[col_a] / working_df[col_b]
+                op_symbol = "/"
             else:
-                if len(cols) != 1:
-                    raise _DeterministicPlanUnsupported(f"Ambiguous AGGREGATE columns: {cols}")
-                col = cols[0]
+                raise _DeterministicPlanUnsupported(f"Unsupported DERIVE op: {derive_op!r}")
+            last_derived_column = result_name
+            last_derived_label = kv.get("label", result_name).strip() or result_name
+            step_code = f"df[{result_name!r}] = df[{col_a!r}] {op_symbol} df[{col_b!r}]"
+            step_obs = f"computed '{result_name}' column (rows={len(working_df)})"
+
+        elif op == "AGGREGATE":
+            kv = _parse_kv_line(text)
+            if kv is not None and "column" in kv and "stat" in kv:
+                col = kv["column"].strip().strip("'\"")
+                alias_map = {
+                    "average": "mean", "maximum": "max", "highest": "max",
+                    "minimum": "min", "lowest": "min", "total": "sum",
+                }
+                agg_op = alias_map.get(kv["stat"].strip().lower(), kv["stat"].strip().lower())
                 if col not in working_df.columns:
                     raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
-                series = working_df[col]
-                result = getattr(series, agg_op)()
+                if agg_op not in {"max", "min", "mean", "median", "sum", "count"}:
+                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg_op}")
+                result = getattr(working_df[col], agg_op)()
                 step_code = f"result = df[{col!r}].{agg_op}()"
+                observations.append(result)
+                step_obs = result
+            else:
+                diff_cols = _extract_diff_columns(text, list(working_df.columns))
+                if diff_cols is not None:
+                    col_a, col_b = diff_cols
+                    working_df = working_df.copy()
+                    working_df["_derived_diff"] = working_df[col_a] - working_df[col_b]
+                    last_derived_column = "_derived_diff"
+                    last_derived_label = f"difference between {col_a} and {col_b}"
+                    step_code = f"df['_derived_diff'] = df[{col_a!r}] - df[{col_b!r}]"
+                    step_obs = f"computed per-record '_derived_diff' column (rows={len(working_df)})"
+                else:
+                    agg_op = _extract_aggregate_op(text)
+                    cols = _find_columns_in_text(text, list(working_df.columns))
+                    if not cols:
+                        raise _DeterministicPlanUnsupported(f"No known column found in AGGREGATE: {text!r}")
 
-            observations.append(result)
-            step_obs = result
+                    # Handle argmax/argmin-style "corresponding timestamp" pattern.
+                    if "corresponding" in text_l and agg_op in {"max", "min"} and len(cols) >= 2:
+                        metric_col = cols[-1]
+                        target_col = cols[0]
+                        if metric_col not in working_df.columns or target_col not in working_df.columns:
+                            raise _DeterministicPlanUnsupported("Unknown column in corresponding-value aggregate")
+                        idx_val = working_df[metric_col].idxmax() if agg_op == "max" else working_df[metric_col].idxmin()
+                        result = working_df.loc[idx_val, target_col]
+                        step_code = (
+                            f"idx = df[{metric_col!r}].idx{'max' if agg_op == 'max' else 'min'}(); "
+                            f"result = df.loc[idx, {target_col!r}]"
+                        )
+                    else:
+                        if len(cols) != 1:
+                            raise _DeterministicPlanUnsupported(f"Ambiguous AGGREGATE columns: {cols}")
+                        col = cols[0]
+                        if col not in working_df.columns:
+                            raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
+                        series = working_df[col]
+                        result = getattr(series, agg_op)()
+                        step_code = f"result = df[{col!r}].{agg_op}()"
+
+                    observations.append(result)
+                    step_obs = result
 
         elif op == "GROUPBY":
-            group_col = _extract_groupby_column(text, list(working_df.columns))
-            agg_op = _extract_aggregate_op(text)
-            cols = _find_columns_in_text(text, list(working_df.columns))
-            value_cols = [c for c in cols if c != group_col]
-            if len(value_cols) != 1:
-                raise _DeterministicPlanUnsupported(f"Ambiguous GROUPBY value column in: {text!r}")
-            value_col = value_cols[0]
-            grouped = working_df.groupby(group_col)[value_col]
-            result = getattr(grouped, agg_op)().to_dict()
-            observations.append(result)
-            step_code = (
-                f"result = df.groupby({group_col!r})[{value_col!r}].{agg_op}().to_dict()"
-            )
-            step_obs = result
+            kv = _parse_kv_line(text)
+            if kv is not None and "group_column" in kv:
+                group_col = kv["group_column"].strip().strip("'\"")
+                value_col = kv.get("value_column", "").strip().strip("'\"")
+                agg_op = kv.get("stat", "").strip().lower()
+                freq = kv.get("freq", "").strip()
+                if group_col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown GROUPBY group column: {group_col}")
+                if value_col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown GROUPBY value column: {value_col}")
+                if agg_op not in {"max", "min", "mean", "median", "sum", "count"}:
+                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg_op!r}")
+                if freq:
+                    # Time-bin grouping (e.g. "1-minute intervals") requires a
+                    # real datetime column; pd.Grouper does the bucketing.
+                    if not pd.api.types.is_datetime64_any_dtype(working_df[group_col]):
+                        raise _DeterministicPlanUnsupported(
+                            f"GROUPBY freq={freq!r} requires a datetime64 column; "
+                            f"{group_col} has dtype {working_df[group_col].dtype}"
+                        )
+                    grouped = working_df.groupby(pd.Grouper(key=group_col, freq=freq))[value_col]
+                    step_code = (
+                        f"result = df.groupby(pd.Grouper(key={group_col!r}, freq={freq!r}))"
+                        f"[{value_col!r}].{agg_op}().to_dict()"
+                    )
+                else:
+                    grouped = working_df.groupby(group_col)[value_col]
+                    step_code = (
+                        f"result = df.groupby({group_col!r})[{value_col!r}].{agg_op}().to_dict()"
+                    )
+                raw_result = getattr(grouped, agg_op)()
+                result = {str(k): v for k, v in raw_result.to_dict().items()}
+                observations.append(result)
+                last_groupby_group_column = group_col
+                last_groupby_value_column = value_col
+                step_obs = result
+            else:
+                group_col = _extract_groupby_column(text, list(working_df.columns))
+                agg_op = _extract_aggregate_op(text)
+                cols = _find_columns_in_text(text, list(working_df.columns))
+                value_cols = [c for c in cols if c != group_col]
+                if len(value_cols) != 1:
+                    raise _DeterministicPlanUnsupported(f"Ambiguous GROUPBY value column in: {text!r}")
+                value_col = value_cols[0]
+                grouped = working_df.groupby(group_col)[value_col]
+                result = getattr(grouped, agg_op)().to_dict()
+                observations.append(result)
+                last_groupby_group_column = group_col
+                last_groupby_value_column = value_col
+                step_code = (
+                    f"result = df.groupby({group_col!r})[{value_col!r}].{agg_op}().to_dict()"
+                )
+                step_obs = result
 
         elif op == "RANK":
             # RANK: find the row with the max/min of a metric column and return
-            # a dict containing both the entity identifier and the metric value,
-            # matching the S3 prompt convention for [RANK] sub-questions.
-            rank_agg = _extract_aggregate_op(text)
-            if rank_agg not in {"max", "min"}:
-                raise _DeterministicPlanUnsupported(
-                    f"RANK only supports max/min ranking; got: {rank_agg!r}"
+            # a dict containing both the entity identifier(s) and the metric
+            # value, matching the S3 prompt convention for [RANK] sub-questions.
+            kv = _parse_kv_line(text)
+            if kv is not None and "metric" in kv:
+                metric_col = kv["metric"].strip().strip("'\"")
+                rank_agg = kv.get("stat", "max").strip().lower()
+                if rank_agg not in {"max", "min"}:
+                    raise _DeterministicPlanUnsupported(f"RANK stat must be max/min; got {rank_agg!r}")
+                if metric_col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown RANK metric column: {metric_col}")
+                return_cols = [c.strip() for c in kv.get("return", "").split(",") if c.strip()]
+                return_cols = [c for c in return_cols if c in working_df.columns]
+                if (
+                    observations
+                    and isinstance(observations[-1], dict)
+                    and last_groupby_value_column
+                    and metric_col == last_groupby_value_column
+                ):
+                    # metric refers to the value aggregated by the immediately
+                    # preceding [GROUPBY] step: rank the grouped dict itself
+                    # (e.g. "which time window") rather than re-scanning the
+                    # ungrouped DataFrame, which would silently ignore the grouping.
+                    grouped_result = observations[-1]
+                    numeric_items = {
+                        k: v for k, v in grouped_result.items() if isinstance(v, (int, float))
+                    }
+                    if not numeric_items:
+                        raise _DeterministicPlanUnsupported(
+                            "RANK over GROUPBY result requires numeric aggregate values"
+                        )
+                    best_key = (
+                        max(numeric_items, key=lambda k: numeric_items[k])
+                        if rank_agg == "max"
+                        else min(numeric_items, key=lambda k: numeric_items[k])
+                    )
+                    group_label = last_groupby_group_column or "group"
+                    result = {group_label: best_key, metric_col: numeric_items[best_key]}
+                    step_code = (
+                        f"best_key = {'max' if rank_agg == 'max' else 'min'}(result_groupby, key=result_groupby.get); "
+                        f"result = {{{group_label!r}: best_key, {metric_col!r}: result_groupby[best_key]}}"
+                    )
+                    observations.append(result)
+                    step_obs = result
+                else:
+                    if not return_cols:
+                        raise _DeterministicPlanUnsupported("RANK requires a valid 'return' column list")
+                    idx_val = (
+                        working_df[metric_col].idxmax() if rank_agg == "max" else working_df[metric_col].idxmin()
+                    )
+                    result = {c: working_df.loc[idx_val, c] for c in return_cols}
+                    if metric_col not in result:
+                        result[metric_col] = working_df.loc[idx_val, metric_col]
+                    step_code = (
+                        f"idx = df[{metric_col!r}].idx{'max' if rank_agg == 'max' else 'min'}(); "
+                        f"result = {{{', '.join(f'{c!r}: df.loc[idx, {c!r}]' for c in result)}}}"
+                    )
+                    observations.append(result)
+                    step_obs = result
+            else:
+                rank_agg = _extract_aggregate_op(text)
+                if rank_agg not in {"max", "min"}:
+                    raise _DeterministicPlanUnsupported(
+                        f"RANK only supports max/min ranking; got: {rank_agg!r}"
+                    )
+                if last_derived_column and last_derived_column in working_df.columns:
+                    metric_col = last_derived_column
+                    metric_label = last_derived_label or metric_col
+                    identifier_cols = _find_columns_in_text(text, list(df.columns))
+                else:
+                    cols = _find_columns_in_text(text, list(working_df.columns))
+                    if len(cols) < 2:
+                        raise _DeterministicPlanUnsupported(
+                            f"RANK requires at least two columns (identifier + metric); found: {cols}"
+                        )
+                    metric_col = cols[-1]
+                    metric_label = metric_col
+                    identifier_cols = cols[:-1]
+                if not identifier_cols:
+                    raise _DeterministicPlanUnsupported("RANK requires at least one identifier column")
+                if metric_col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown column in RANK: metric={metric_col!r}")
+                idx_val = (
+                    working_df[metric_col].idxmax()
+                    if rank_agg == "max"
+                    else working_df[metric_col].idxmin()
                 )
-            cols = _find_columns_in_text(text, list(working_df.columns))
-            if len(cols) < 2:
-                raise _DeterministicPlanUnsupported(
-                    f"RANK requires at least two columns (identifier + metric); found: {cols}"
+                result = {c: working_df.loc[idx_val, c] for c in identifier_cols}
+                result[metric_label] = working_df.loc[idx_val, metric_col]
+                step_code = (
+                    f"idx = df[{metric_col!r}].idx{'max' if rank_agg == 'max' else 'min'}(); "
+                    f"result = {{{', '.join(f'{c!r}: df.loc[idx, {c!r}]' for c in identifier_cols)}, "
+                    f"{metric_label!r}: df.loc[idx, {metric_col!r}]}}"
                 )
-            # Heuristic: the metric column is the last one mentioned in the text
-            # (S3 typically writes "return X for the row with highest/lowest Y").
-            metric_col = cols[-1]
-            identifier_col = cols[0]
-            if metric_col not in working_df.columns or identifier_col not in working_df.columns:
-                raise _DeterministicPlanUnsupported(
-                    f"Unknown column in RANK: metric={metric_col!r}, identifier={identifier_col!r}"
-                )
-            idx_val = (
-                working_df[metric_col].idxmax()
-                if rank_agg == "max"
-                else working_df[metric_col].idxmin()
-            )
-            result = {
-                identifier_col: working_df.loc[idx_val, identifier_col],
-                metric_col: working_df.loc[idx_val, metric_col],
-            }
-            observations.append(result)
-            step_code = (
-                f"idx = df[{metric_col!r}].idx{'max' if rank_agg == 'max' else 'min'}(); "
-                f"result = {{{identifier_col!r}: df.loc[idx, {identifier_col!r}], "
-                f"{metric_col!r}: df.loc[idx, {metric_col!r}]}}"
-            )
-            step_obs = result
+                observations.append(result)
+                step_obs = result
 
         elif op == "SELECT":
             # SELECT: return specified column(s) from the current working DataFrame.
             cols = _find_columns_in_text(text, list(working_df.columns))
             if not cols:
                 raise _DeterministicPlanUnsupported(f"No known column found in SELECT: {text!r}")
-            result = working_df[cols].to_dict(orient="list")
+            if len(cols) == 1 and "list" in text.lower():
+                result = working_df[cols[0]].tolist()
+                step_code = f"result = df[{cols[0]!r}].tolist()"
+            else:
+                result = working_df[cols].to_dict(orient="list")
+                step_code = f"result = df[{cols!r}].to_dict(orient='list')"
             observations.append(result)
-            step_code = f"result = df[{cols!r}].to_dict(orient='list')"
             step_obs = result
 
         elif op == "COMPARE":
@@ -423,8 +973,13 @@ def _extract_single_grounded_column(raw_grounding: str) -> str | None:
     if unmappable or not mappings:
         return None
 
-    # Hard-disqualify any RHS that references multiple columns or operators.
-    _MULTI_COL_CHARS = {",", "+", "-", "*", "/", "=", "[", "]"}
+    # Hard-disqualify any RHS that references multiple columns, comparisons, or
+    # multi-arg operators (e.g. "latitude > MEDIAN(latitude)", "GROUP_COMPARE(...)").
+    _MULTI_COL_CHARS = {",", "+", "-", "*", "/", "=", "[", "]", ">", "<"}
+    # Single-argument derived-stat operations whose wrapped column should be
+    # unwrapped rather than mistaken for a literal column name (e.g. the "MEDIAN"
+    # in "MEDIAN(latitude)" is an operation, not a column called "MEDIAN").
+    _UNARY_OPS = {"MEDIAN", "MEAN", "SUM", "COUNT", "MIN", "MAX", "STD", "VARIANCE", "PROXY"}
     columns: set[str] = set()
     for mapping in mappings:
         rhs = mapping.split("→", 1)[1].strip()
@@ -435,6 +990,13 @@ def _extract_single_grounded_column(raw_grounding: str) -> str | None:
         # Take the first token before any space or parenthetical descriptor
         # (e.g. "accel_mean (mean)" → "accel_mean").
         first_token = re.split(r"[\s(]", rhs)[0].strip("`\"'")
+        if first_token.upper() in _UNARY_OPS:
+            arg_match = re.match(
+                rf"{re.escape(first_token)}\(\s*([A-Za-z_][A-Za-z0-9_]*)", rhs
+            )
+            if not arg_match:
+                return None
+            first_token = arg_match.group(1)
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", first_token):
             return None
         columns.add(first_token)
@@ -474,11 +1036,19 @@ def _build_grounded_query(
     sub_queries: list,
     synthesis_hint: str,
 ) -> str:
-    """Construct an enriched agent prompt from S2 grounding and S3 decomposition."""
+    """Construct the agent prompt from the S3 decomposition.
+
+    ``raw_grounding`` is accepted for backward-compatible call signatures
+    (e.g. eval/trace_query.py) but intentionally NOT included in the output:
+    S3 sub-queries are now typed, self-contained key=value steps (exact
+    column names baked in already), so re-including the raw S2 mapping text
+    here only added noise/redundant, sometimes-misleading concept mappings
+    without helping the ReAct agent execute the plan.
+    """
+    del raw_grounding  # unused: see docstring
     sub_tasks = "\n".join(f"- {sq}" for sq in sub_queries) if sub_queries else "(none)"
     return (
         f"{query}\n\n"
-        f"Concept-to-column mappings (use these exactly):\n{raw_grounding}\n\n"
         f"Sub-tasks to address:\n{sub_tasks}\n\n"
         f"Hint: {synthesis_hint}"
     )
@@ -519,7 +1089,9 @@ def run_flash_fusion(
         "s2": 0.0,
         "guardrail": 0.0,
         "agent": 0.0,
+        "synthesis": 0.0,
     }
+    deterministic_plan_input: list[Any] = []
 
     def record_stage(stage_key: str, start_s: float) -> None:
         elapsed = max(0.0, time.time() - start_s)
@@ -555,6 +1127,7 @@ def run_flash_fusion(
         grounding = stage2.run(concepts, query, meta_str, df)
         record_stage("s2", stage_t0)
         r.s2_grounding = grounding["raw_grounding"]
+        r.s2_filtered_concepts = grounding.get("filtered_concepts", {})
         r.stages_run.append("S2")
         if FF_DEBUG:
             print(f"[FF_DEBUG] S2 complete. Grounding: {grounding['raw_grounding'][:100]}...", file=sys.stderr, flush=True)
@@ -598,6 +1171,7 @@ def run_flash_fusion(
             )
             r.s3_sub_queries = [f"df[{column!r}].{operation}()"]
             r.s3_synthesis_hint = "Return the result of the single aggregate."
+            deterministic_plan_input = list(r.s3_sub_queries)
             r.stages_run.append("S3_bypass")
             if FF_DEBUG:
                 print(
@@ -614,7 +1188,11 @@ def run_flash_fusion(
             record_stage("s3", stage_t0)
             r.s3_sub_queries = sub_result["sub_queries"]
             r.s3_synthesis_hint = sub_result["synthesis_hint"]
-            r.stages_run.append("S3")
+            deterministic_plan_input = sub_result.get("typed_sub_queries") or list(r.s3_sub_queries)
+            if sub_result.get("compiled_plan"):
+                r.stages_run.append("S3_compiled")
+            else:
+                r.stages_run.append("S3")
             if FF_DEBUG:
                 print(
                     f"[FF_DEBUG] S3 complete. Sub-queries: {str(r.s3_sub_queries)[:200]}...",
@@ -677,7 +1255,7 @@ def run_flash_fusion(
         try:
             last_stage = "deterministic_exec"
             stage_t0 = time.time()
-            det = _run_deterministic_plan(query, df, r.s3_sub_queries)
+            det = _run_deterministic_plan(query, df, deterministic_plan_input)
             record_stage("agent", stage_t0)
             deterministic_ok = True
             r.answer = det.answer
@@ -713,6 +1291,29 @@ def run_flash_fusion(
             r.execution_attempts = list(details.attempts)
             r.stages_run.append("agent")
             r.answer = raw_answer
+
+        # Final conversion/review layer: turn the raw machine answer (a Python
+        # dict/scalar repr from deterministic_exec, or the agent's raw output)
+        # into a direct, user-friendly natural-language response, checked
+        # against the original question and Stage-3 synthesis guidance. The
+        # pre-synthesis value is preserved in r.raw_answer for debugging/trace
+        # inspection; r.answer becomes the user-facing text.
+        if r.executed and r.answer:
+            try:
+                last_stage = "synthesis"
+                stage_t0 = time.time()
+                synthesized = executor.synthesize(query, [r.answer], r.s3_synthesis_hint)
+                record_stage("synthesis", stage_t0)
+                if synthesized:
+                    r.raw_answer = r.answer
+                    r.answer = synthesized
+                r.stages_run.append("synthesis")
+                if FF_DEBUG:
+                    print(f"[FF_DEBUG] Synthesis complete: {r.answer[:100]}...", file=sys.stderr, flush=True)
+            except Exception as synth_err:
+                # Non-fatal: keep the raw machine answer if synthesis fails.
+                if FF_DEBUG:
+                    print(f"[FF_DEBUG] Synthesis step failed ({synth_err}); keeping raw answer.", file=sys.stderr, flush=True)
 
         if FF_DEBUG:
             print(f"[FF_DEBUG] Flash-Fusion complete. Answer: {r.answer[:100]}...", file=sys.stderr, flush=True)

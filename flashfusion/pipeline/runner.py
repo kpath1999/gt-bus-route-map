@@ -237,6 +237,7 @@ class RunResult:
 
     # Outputs
     answer: str = ""                                 # final natural-language answer
+    raw_answer: str = ""                             # pre-synthesis machine answer (dict/scalar repr), "" if synthesis wasn't run or made no change
     trace: str = ""                                  # agent ReAct trace (if executed)
 
     # Metrics (populated after run completes)
@@ -262,6 +263,7 @@ class RunResult:
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
     s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
     s2_grounding: str = ""                               # Stage 2 raw LLM grounding text
+    s2_filtered_concepts: dict = field(default_factory=dict)  # concepts sent to S2 grounding LLM after the query-critical filter (pre-repair/pre-validation view)
     s3_sub_queries: list = field(default_factory=list)   # Stage 3 concrete sub-questions
     s3_synthesis_hint: str = ""                          # Stage 3 synthesis guidance string
 

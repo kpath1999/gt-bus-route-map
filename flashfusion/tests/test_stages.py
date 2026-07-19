@@ -60,54 +60,78 @@ class TestStage1ConceptExtraction:
         assert "Extract only concepts that are strictly required" in CONCEPT_EXTRACTION_PROMPT
         assert "Do not invent structural or auxiliary concepts" in CONCEPT_EXTRACTION_PROMPT
 
-    def test_parses_data_and_reasoning(self, mock_client):
+    def test_parses_three_buckets(self, mock_client):
         """
-        Given a well-formed LLM response, run() should parse DATA and REASONING lists.
+        Given a well-formed LLM response, run() should parse COLUMN, DERIVED_STAT,
+        and PROXY lists.
 
         Mock invoke_chain to return:
-            "DATA: activity_label, x, y, z\nREASONING: magnitude, sedentary"
+            "COLUMN: activity_label, x, y, z\nDERIVED_STAT: NONE\nPROXY: magnitude, sedentary"
 
         Assert:
-            - result["DATA"] == ["activity_label", "x", "y", "z"]
-            - result["REASONING"] == ["magnitude", "sedentary"]
+            - result["COLUMN"] == ["activity_label", "x", "y", "z"]
+            - result["PROXY"] == ["magnitude", "sedentary"]
         """
         mock_client.invoke_chain.return_value = (
-            "DATA: activity_label, x, y, z\nREASONING: magnitude, sedentary"
+            "COLUMN: activity_label, x, y, z\nDERIVED_STAT: NONE\nPROXY: magnitude, sedentary"
         )
         stage = Stage1_ConceptExtraction(mock_client)
         result = stage.run("Which activities have the highest magnitude?")
-        assert "activity_label" in result["DATA"]
-        assert "magnitude" in result["REASONING"]
+        assert "activity_label" in result["COLUMN"]
+        assert "magnitude" in result["PROXY"]
+        assert result["DERIVED_STAT"] == []
+
+    def test_parses_derived_stat_bucket(self, mock_client):
+        """DERIVED_STAT concepts (median, average, threshold splits) parse separately."""
+        mock_client.invoke_chain.return_value = (
+            "COLUMN: latitude, acceleration variance\n"
+            "DERIVED_STAT: median, average, northern half, southern half\n"
+            "PROXY: NONE"
+        )
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run(
+            "Is the northern half of the route rougher than the southern half, "
+            "based on average acceleration variance?"
+        )
+        assert "median" not in result["COLUMN"]
+        assert "median" in result["DERIVED_STAT"]
+        assert "average" in result["DERIVED_STAT"]
+        assert "northern half" in result["DERIVED_STAT"]
 
     def test_filters_none_values(self, mock_client):
         """
-        If LLM returns "REASONING: NONE", that list should be empty.
+        If LLM returns "DERIVED_STAT: NONE" / "PROXY: NONE", those lists should be empty.
 
-        Mock response: "DATA: subject_id\nREASONING: NONE"
-        Assert: result["REASONING"] == []
+        Mock response: "COLUMN: subject_id\nDERIVED_STAT: NONE\nPROXY: NONE"
+        Assert: result["DERIVED_STAT"] == [] and result["PROXY"] == []
         """
-        mock_client.invoke_chain.return_value = "DATA: subject_id\nREASONING: NONE"
+        mock_client.invoke_chain.return_value = (
+            "COLUMN: subject_id\nDERIVED_STAT: NONE\nPROXY: NONE"
+        )
         stage = Stage1_ConceptExtraction(mock_client)
         result = stage.run("How many samples per subject?")
-        assert result["REASONING"] == []
-        assert "subject_id" in result["DATA"]
+        assert result["DERIVED_STAT"] == []
+        assert result["PROXY"] == []
+        assert "subject_id" in result["COLUMN"]
 
     def test_keyword_fallback_on_empty_response(self, mock_client):
         """
-        If LLM returns empty lists for both DATA and REASONING, the stage should
+        If LLM returns empty lists for all three buckets, the stage should
         fall back to keyword extraction from the query.
 
-        Mock invoke_chain to return "DATA: NONE\nREASONING: NONE" for all calls.
+        Mock invoke_chain to return all-NONE for all calls.
 
-        Assert: result["DATA"] is non-empty (keyword fallback activated).
+        Assert: result["COLUMN"] is non-empty (keyword fallback activated).
         """
-        mock_client.invoke_chain.return_value = "DATA: NONE\nREASONING: NONE"
+        mock_client.invoke_chain.return_value = (
+            "COLUMN: NONE\nDERIVED_STAT: NONE\nPROXY: NONE"
+        )
         stage = Stage1_ConceptExtraction(mock_client)
         result = stage.run("What is the average acceleration during jogging activities?")
-        # Keyword fallback should populate DATA with tokens from the query
-        assert len(result["DATA"]) > 0
+        # Keyword fallback should populate COLUMN with tokens from the query
+        assert len(result["COLUMN"]) > 0
 
-    def test_retry_on_both_empty(self, mock_client):
+    def test_retry_on_all_empty(self, mock_client):
         """
         If first call returns empty and query is > 20 chars, should retry once.
 
@@ -115,13 +139,13 @@ class TestStage1ConceptExtraction:
         Assert invoke_chain called exactly twice.
         """
         mock_client.invoke_chain.side_effect = [
-            "DATA: NONE\nREASONING: NONE",
-            "DATA: x, y\nREASONING: NONE",
+            "COLUMN: NONE\nDERIVED_STAT: NONE\nPROXY: NONE",
+            "COLUMN: x, y\nDERIVED_STAT: NONE\nPROXY: NONE",
         ]
         stage = Stage1_ConceptExtraction(mock_client)
         result = stage.run("Compare acceleration across activities for each subject")
         assert mock_client.invoke_chain.call_count == 2
-        assert "x" in result["DATA"]
+        assert "x" in result["COLUMN"]
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +172,7 @@ class TestStage2SchemaGrounding:
         )
         stage = Stage2_SchemaGrounding(mock_client)
         meta_str = meta_to_str(build_column_metadata(minimal_df))
-        concepts = {"DATA": ["activity"], "REASONING": []}
+        concepts = {"COLUMN": ["activity"], "DERIVED_STAT": [], "PROXY": []}
         result = stage.run(concepts, "heart rate during activity", meta_str, minimal_df)
         assert any("activity_label" in m for m in result["mappings"])
         assert "heart_rate" in result["unmappable"]
@@ -159,7 +183,7 @@ class TestStage2SchemaGrounding:
         mock_client.invoke_chain.return_value = "MAPPINGS:\n  walking → activity_label == 'Walking'\nUNMAPPABLE: NONE"
         stage = Stage2_SchemaGrounding(mock_client)
         meta_str = meta_to_str(build_column_metadata(minimal_df))
-        concepts = {"DATA": ["walking"], "REASONING": []}
+        concepts = {"COLUMN": ["walking"], "DERIVED_STAT": [], "PROXY": []}
         result = stage.run(concepts, "walking stats", meta_str, minimal_df)
         assert any("activity_label" in m for m in result["mappings"])
         assert mock_client.invoke_chain.call_count >= 1
@@ -178,7 +202,7 @@ class TestStage2SchemaGrounding:
         ]
         stage = Stage2_SchemaGrounding(mock_client)
         meta_str = meta_to_str(build_column_metadata(minimal_df))
-        concepts = {"DATA": ["subject"], "REASONING": []}
+        concepts = {"COLUMN": ["subject"], "DERIVED_STAT": [], "PROXY": []}
         stage.run(concepts, "samples per subject", meta_str, minimal_df)
         assert mock_client.invoke_chain.call_count == 2
 
@@ -192,8 +216,9 @@ class TestStage2SchemaGrounding:
         stage = Stage2_SchemaGrounding(mock_client)
         meta_str = meta_to_str(build_column_metadata(minimal_df))
         concepts = {
-            "DATA": ["identifier", "accel_variance", "timestamp", "acceleration"],
-            "REASONING": [],
+            "COLUMN": ["identifier", "accel_variance", "timestamp", "acceleration"],
+            "DERIVED_STAT": [],
+            "PROXY": [],
         }
 
         stage.run(
@@ -216,12 +241,91 @@ class TestStage2SchemaGrounding:
         mock_client.invoke_chain.return_value = "MAPPINGS:\n  identifier → subject_id\nUNMAPPABLE: NONE"
         stage = Stage2_SchemaGrounding(mock_client)
         meta_str = meta_to_str(build_column_metadata(minimal_df))
-        concepts = {"DATA": ["identifier"], "REASONING": []}
+        concepts = {"COLUMN": ["identifier"], "DERIVED_STAT": [], "PROXY": []}
 
         stage.run(concepts, "How many rows are there?", meta_str, minimal_df)
 
         sent_input = mock_client.invoke_chain.call_args_list[0].args[1]["input"]
-        assert "DATA concepts: identifier" in sent_input
+        assert "COLUMN concepts: identifier" in sent_input
+
+    def test_derived_stat_grounds_to_operation_not_bare_column(self, mock_client, minimal_df):
+        """DERIVED_STAT concepts (e.g. 'median') should ground to OPERATION(column),
+        never to a bare unrelated column such as a percentile column."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        mock_client.invoke_chain.return_value = (
+            "MAPPINGS:\n"
+            "  latitude → latitude\n"
+            "  median → MEDIAN(latitude)\n"
+            "UNMAPPABLE: NONE"
+        )
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(minimal_df))
+        concepts = {"COLUMN": ["latitude"], "DERIVED_STAT": ["median"], "PROXY": []}
+        result = stage.run(
+            concepts, "latitude above the median", meta_str, minimal_df
+        )
+        assert any("MEDIAN(latitude)" in m for m in result["mappings"])
+        # "MEDIAN" itself must never be flagged as an invalid/unknown column.
+        assert not any("INVALID(MEDIAN" in m for m in result["mappings"])
+
+    def test_repair_derived_stat_column_drift(self):
+        """Regression test for the accel_variance -> accel_stats_y_p90 drift bug:
+        a DERIVED_STAT mapping whose concept text overlaps an already-grounded
+        COLUMN concept must be forced to reuse that same column."""
+        valid_cols = {"latitude", "accel_variance", "accel_stats_y_p90"}
+        mappings = [
+            "acceleration variance → accel_variance",
+            "average acceleration variance → MEAN(accel_stats_y_p90)",
+        ]
+        repaired = Stage2_SchemaGrounding._repair_derived_stat_column_drift(mappings, valid_cols)
+        assert "average acceleration variance → MEAN(accel_variance)" in repaired
+        assert not any("accel_stats_y_p90" in m for m in repaired)
+
+    def test_repair_unresolved_column_reference_fuzzy_matches_real_column(self):
+        """Regression test: the LLM inventing 'acceleration_variance' (a plausible
+        but non-existent column) instead of the real abbreviated column
+        'accel_variance' must be auto-corrected before invalid-column validation."""
+        valid_cols = {"latitude", "accel_variance"}
+        mappings = ["acceleration variance → acceleration_variance"]
+        repaired = Stage2_SchemaGrounding._repair_unresolved_column_reference(mappings, valid_cols)
+        assert repaired == ["acceleration variance → accel_variance"]
+
+    def test_run_repairs_fuzzy_column_before_invalid_check(self, mock_client, minimal_df):
+        """End-to-end: run() should repair a near-miss invented column name so it
+        never gets flagged INVALID, using a df that has an abbreviated column."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        df = minimal_df.copy()
+        df["accel_variance"] = [0.1, 0.2, 0.3, 0.4, 0.5]
+        mock_client.invoke_chain.return_value = (
+            "MAPPINGS:\n"
+            "  acceleration variance → acceleration_variance\n"
+            "UNMAPPABLE: NONE"
+        )
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(df))
+        concepts = {"COLUMN": ["acceleration variance"], "DERIVED_STAT": [], "PROXY": []}
+        result = stage.run(concepts, "acceleration variance", meta_str, df)
+        assert any("accel_variance" in m and "INVALID" not in m for m in result["mappings"])
+        assert not any("acceleration_variance" in m for m in result["mappings"])
+
+    def test_run_retries_when_derived_stat_left_unmappable(self, mock_client, minimal_df):
+        """If DERIVED_STAT concepts are dumped into UNMAPPABLE despite a grounded
+        COLUMN concept existing, S2 should retry once with a stricter instruction."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        mock_client.invoke_chain.side_effect = [
+            "MAPPINGS:\n  latitude → latitude\nUNMAPPABLE: median",
+            "MAPPINGS:\n  latitude → latitude\n  median → MEDIAN(latitude)\nUNMAPPABLE: NONE",
+        ]
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(minimal_df))
+        concepts = {"COLUMN": ["latitude"], "DERIVED_STAT": ["median"], "PROXY": []}
+        result = stage.run(concepts, "latitude above the median", meta_str, minimal_df)
+        assert mock_client.invoke_chain.call_count == 2
+        assert any("MEDIAN(latitude)" in m for m in result["mappings"])
+        assert "median" not in result["unmappable"]
 
 
 # ---------------------------------------------------------------------------
@@ -269,3 +373,43 @@ class TestStage3SubqueryGeneration:
         stage = Stage3_SubqueryGeneration(mock_client)
         result = stage.run("Count samples per activity", "", "")
         assert result["raw_subqueries"] == raw
+
+    def test_compiles_group_median_split_plan(self, mock_client):
+        """Regression test for bus query 5: a median-split group comparison should
+        be compiled deterministically into typed sub-queries (no ReAct fallback),
+        reusing the exact column named in the grounding (accel_variance), never
+        an unrelated percentile column."""
+        mock_client.invoke_chain.return_value = (
+            "SUB_Q1: [FILTER] irrelevant free-text plan\nSYNTHESIS_HINT: n/a"
+        )
+        stage = Stage3_SubqueryGeneration(mock_client)
+        grounding_raw = (
+            "MAPPINGS:\n"
+            "  latitude → latitude\n"
+            "  acceleration variance → accel_variance\n"
+            "  median → MEDIAN(latitude)\n"
+            "  northern half → latitude > MEDIAN(latitude)\n"
+            "  southern half → latitude <= MEDIAN(latitude)\n"
+            "  average acceleration variance → MEAN(accel_variance)\n"
+            "UNMAPPABLE: NONE"
+        )
+        meta_str = "latitude (float64): min=0 max=1\naccel_variance (float64): min=0 max=1"
+        result = stage.run(
+            "Is the northern half of the route (latitude above median) rougher "
+            "than the southern half, based on average acceleration variance?",
+            grounding_raw=grounding_raw,
+            meta_str=meta_str,
+        )
+        assert result["compiled_plan"] is True
+        typed = result["typed_sub_queries"]
+        ops = [step["op"] for step in typed]
+        assert ops == [
+            "SPLIT_BY_THRESHOLD",
+            "SPLIT_BY_THRESHOLD",
+            "GROUP_AGGREGATE",
+            "COMPARE_GROUPS",
+        ]
+        split_steps = [s for s in typed if s["op"] == "SPLIT_BY_THRESHOLD"]
+        assert all(s["column"] == "latitude" for s in split_steps)
+        group_agg = next(s for s in typed if s["op"] == "GROUP_AGGREGATE")
+        assert group_agg["column"] == "accel_variance"

@@ -78,6 +78,11 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument("--max-rows", type=int, default=None, help="Row cap forwarded to mit_ecg loader")
+    p.add_argument(
+        "--react",
+        action="store_true",
+        help="Run REACT_ONLY baseline trace instead of FLASH_FUSION",
+    )
     return p.parse_args()
 
 
@@ -104,58 +109,83 @@ def main() -> None:
 
     api_key = _resolve_api_key()
     client = LLMClient(model_name=args.model, api_key=api_key, light_model_name=args.stage12_model)
-    runner = BaselineRunner(mode="FLASH_FUSION", df=df, client=client)
+    baseline_mode = "REACT_ONLY" if args.react else "FLASH_FUSION"
+    runner = BaselineRunner(mode=baseline_mode, df=df, client=client)
 
     s12_model = client.light.model_name
-    print(
-        f"Models: S1/S2 (client.light) = {s12_model!r}   |   S3/agent (client) = {client.model_name!r}",
-        file=sys.stderr,
-    )
+    if args.react:
+        print(
+            f"Mode: REACT_ONLY   |   Model: {client.model_name!r}",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"Mode: FLASH_FUSION | Models: S1/S2 (client.light) = {s12_model!r}   |   S3/agent (client) = {client.model_name!r}",
+            file=sys.stderr,
+        )
 
     print("\nRunning Flash-Fusion pipeline...", file=sys.stderr)
     r = runner.run(query_text)
 
-    # --- S1: concept extraction ---------------------------------------
-    _hr(f"S1 — CONCEPT EXTRACTION  (model={s12_model})")
-    print(json.dumps(r.s1_concepts, indent=2))
-
-    # --- S2: schema grounding -------------------------------------------
-    _hr(f"S2 — SCHEMA GROUNDING (model={s12_model}, raw LLM output)")
-    print(r.s2_grounding or "(not reached)")
-
-    # --- Guardrail --------------------------------------------------------
-    _hr("GUARDRAIL (post-S2)")
-    if r.rejected:
-        print(f"VERDICT: REJECTED\nREASON: {r.rejection_reason}")
-    else:
-        print("VERDICT: PROCEED (query accepted for S3 + agent execution)")
-
-    if not r.rejected:
-        # --- S3: sub-query decomposition (or direct-aggregate bypass) ----
-        if "S3_bypass" in r.stages_run:
-            _hr("S3 — BYPASSED (direct single-column aggregate detected)")
-            print(f"  Expression: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
-            print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
-        else:
-            _hr("S3 — SUB-QUERY DECOMPOSITION")
-            for i, sq in enumerate(r.s3_sub_queries or [], start=1):
-                print(f"  {i}. {sq}")
-            print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
-
-        # --- Grounded query fed to the pandas agent -----------------------
-        _hr("GROUNDED QUERY (agent input)")
-        grounded_query = _build_grounded_query(
-            query_text, r.s2_grounding, r.s3_sub_queries, r.s3_synthesis_hint
-        )
-        print(grounded_query)
-
-        # --- Execution trace ----------------------------------------------
+    if args.react:
+        _hr("REACT_ONLY EXECUTION")
+        print("Guardrail/Stage 1/2/3 are skipped in this mode.")
         _hr("EXECUTION TRACE")
         print(r.trace or "(no trace captured)")
-
         _hr("FINAL EXECUTED CODE")
         print(r.final_code or "(none)")
         print(f"\nagent_tries={r.agent_tries}")
+    else:
+        # --- S1: concept extraction ---------------------------------------
+        _hr(f"S1 — CONCEPT EXTRACTION  (model={s12_model})")
+        print(json.dumps(r.s1_concepts, indent=2))
+
+        # --- S2 concepts as sent to grounding, pre-mapping -------------------
+        # _hr("S2 — CONCEPTS PASSED TO GROUNDING (post query-critical filter, pre-mapping)")
+        # print(json.dumps(r.s2_filtered_concepts, indent=2) if r.s2_filtered_concepts else "(not reached)")
+
+        # --- S2: schema grounding -------------------------------------------
+        _hr(f"S2 — SCHEMA GROUNDING (model={s12_model}, raw LLM output)")
+        print(r.s2_grounding or "(not reached)")
+
+        # --- Guardrail --------------------------------------------------------
+        _hr("GUARDRAIL (post-S2)")
+        if r.rejected:
+            print(f"VERDICT: REJECTED\nREASON: {r.rejection_reason}")
+        else:
+            print("VERDICT: PROCEED (query accepted for S3 + agent execution)")
+
+        if not r.rejected:
+            # --- S3: sub-query decomposition (or direct-aggregate bypass) ----
+            if "S3_bypass" in r.stages_run:
+                _hr("S3 — BYPASSED (direct single-column aggregate detected)")
+                print(f"  Expression: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
+                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+            elif "S3_compiled" in r.stages_run:
+                _hr("S3 — COMPILED EXECUTABLE PLAN")
+                for i, sq in enumerate(r.s3_sub_queries or [], start=1):
+                    print(f"  {i}. {sq}")
+                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+            else:
+                _hr("S3 — SUB-QUERY DECOMPOSITION")
+                for i, sq in enumerate(r.s3_sub_queries or [], start=1):
+                    print(f"  {i}. {sq}")
+                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+
+            # --- Grounded query fed to the pandas agent -----------------------
+            _hr("GROUNDED QUERY (agent input)")
+            grounded_query = _build_grounded_query(
+                query_text, r.s2_grounding, r.s3_sub_queries, r.s3_synthesis_hint
+            )
+            print(grounded_query)
+
+            # --- Execution trace ----------------------------------------------
+            _hr("EXECUTION TRACE")
+            print(r.trace or "(no trace captured)")
+
+            _hr("FINAL EXECUTED CODE")
+            print(r.final_code or "(none)")
+            print(f"\nagent_tries={r.agent_tries}")
 
     # --- Stages run + latency -----------------------------------------------
     _hr("STAGES RUN / LATENCY (s)")
@@ -168,6 +198,10 @@ def main() -> None:
     print(json.dumps(r.stage_latency_s, indent=2))
 
     # --- Final answer vs ground truth --------------------------------------
+    if r.raw_answer:
+        _hr("RAW ANSWER (pre-synthesis, machine output)")
+        print(r.raw_answer)
+
     _hr("FINAL ANSWER")
     print(r.answer)
 
