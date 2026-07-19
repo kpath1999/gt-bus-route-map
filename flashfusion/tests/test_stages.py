@@ -147,6 +147,52 @@ class TestStage1ConceptExtraction:
         assert mock_client.invoke_chain.call_count == 2
         assert "x" in result["COLUMN"]
 
+    def test_schema_validation_fast_path_no_extra_call(self, mock_client, minimal_df):
+        """When df is passed and every COLUMN concept matches a real column,
+        no corrective retry should be issued (only the initial S1 call)."""
+        mock_client.invoke_chain.return_value = (
+            "COLUMN: activity_label, x\nDERIVED_STAT: NONE\nPROXY: NONE"
+        )
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run("Which activity has the highest x?", minimal_df)
+        assert mock_client.invoke_chain.call_count == 1
+        assert result["COLUMN"] == ["activity_label", "x"]
+
+    def test_schema_validation_drops_unresolved_via_retry(self, mock_client):
+        """A COLUMN concept with no matching real column (e.g. "label" when the
+        real target column is "behavior") should be dropped after a corrective
+        retry that re-grounds the concepts."""
+        bus_df = pd.DataFrame({"timestamp": [1, 2, 3], "behavior": ["a", "b", "c"]})
+        mock_client.invoke_chain.side_effect = [
+            "COLUMN: timestamp, behavior, label\nDERIVED_STAT: NONE\nPROXY: NONE",
+            "COLUMN: timestamp, behavior\nDERIVED_STAT: NONE\nPROXY: NONE",
+        ]
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run(
+            "Predict the label in the behavior column for the first holdout row.",
+            bus_df,
+        )
+        assert mock_client.invoke_chain.call_count == 2
+        assert "label" not in result["COLUMN"]
+        assert "behavior" in result["COLUMN"]
+
+    def test_schema_validation_deterministic_fallback_drop(self, mock_client):
+        """If the corrective retry still fails to resolve an unmatched concept,
+        it must be dropped deterministically rather than left in COLUMN."""
+        bus_df = pd.DataFrame({"timestamp": [1, 2, 3], "behavior": ["a", "b", "c"]})
+        mock_client.invoke_chain.side_effect = [
+            "COLUMN: timestamp, behavior, label\nDERIVED_STAT: NONE\nPROXY: NONE",
+            "COLUMN: timestamp, behavior, label\nDERIVED_STAT: NONE\nPROXY: NONE",
+        ]
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run(
+            "Predict the label in the behavior column for the first holdout row.",
+            bus_df,
+        )
+        assert mock_client.invoke_chain.call_count == 2
+        assert "label" not in result["COLUMN"]
+        assert "behavior" in result["COLUMN"]
+
 
 # ---------------------------------------------------------------------------
 # Stage 2 tests

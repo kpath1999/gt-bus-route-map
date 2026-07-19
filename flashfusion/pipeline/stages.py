@@ -108,6 +108,65 @@ _INNERMOST_STAT_CALL_RE = re.compile(
 )
 
 
+def _closest_valid_column(candidate: str, valid_cols: set[str]) -> str | None:
+    """Fuzzy-match an invented/abbreviated column reference to a real column.
+
+    Handles the class of bug where an LLM invents a plausible-looking but
+    non-existent column name by lightly rewording a concept — e.g. emitting
+    "acceleration_variance" when the real (abbreviated) column is
+    "accel_variance". Requires the same number of underscore-separated
+    tokens, with each token pair being a prefix of one another (so
+    "accel"/"acceleration" matches but unrelated columns do not), then
+    breaks ties with a string-similarity ratio. Shared by both Stage1's
+    column-concept validation and Stage2's grounding-mapping repair.
+    """
+    if candidate in valid_cols:
+        return candidate
+    cand_tokens = [t for t in candidate.lower().split("_") if t]
+    if not cand_tokens:
+        return None
+
+    best: tuple[float, str] | None = None
+    for col in valid_cols:
+        col_tokens = [t for t in col.lower().split("_") if t]
+        if not col_tokens or len(col_tokens) != len(cand_tokens):
+            continue
+        if not all(
+            a == b or a.startswith(b) or b.startswith(a)
+            for a, b in zip(cand_tokens, col_tokens)
+        ):
+            continue
+        ratio = difflib.SequenceMatcher(None, candidate.lower(), col.lower()).ratio()
+        if best is None or ratio > best[0]:
+            best = (ratio, col)
+
+    if best and best[0] >= 0.6:
+        return best[1]
+    return None
+
+
+def _column_concept_matches_schema(concept: str, valid_cols: set[str]) -> str | None:
+    """Return the real column a S1 COLUMN concept refers to, or None if none does.
+
+    Used by Stage1 to double-check that every concept it classifies as COLUMN
+    ("maps directly to an existing dataset column") actually corresponds to a
+    real column header, instead of trusting the LLM's classification blindly.
+    A concept like "label" that names no real column and only fuzzy-matches
+    nothing should NOT be treated as resolvable — it should not silently match
+    an unrelated column either, so normalization is conservative (exact or
+    near-exact token match only).
+    """
+    if concept in valid_cols:
+        return concept
+    normalized = re.sub(r"[^a-z0-9]+", "_", concept.strip().lower()).strip("_")
+    if not normalized:
+        return None
+    for col in valid_cols:
+        if re.sub(r"[^a-z0-9]+", "_", col.strip().lower()).strip("_") == normalized:
+            return col
+    return _closest_valid_column(normalized, valid_cols)
+
+
 class Stage1_ConceptExtraction:
     """
     Stage 1: Classify every query concept into one of three buckets.
@@ -137,12 +196,20 @@ class Stage1_ConceptExtraction:
             | StrOutputParser()
         )
 
-    def run(self, query: str) -> dict:
+    def run(self, query: str, df: "pd.DataFrame | None" = None) -> dict:
         """
         Extract and classify concepts from the user query.
 
         Args:
             query: Raw natural language query string.
+            df:    Optional dataset DataFrame. When provided, every concept
+                   classified as COLUMN is double-checked against the real
+                   `df.columns` header (see `_validate_columns_against_schema`)
+                   so generic role-words the LLM mistakes for columns (e.g.
+                   "label", "identifier") don't silently flow downstream into
+                   S2/guardrail as unresolvable concepts. Defaults to None to
+                   keep this call backward compatible for callers that don't
+                   have a DataFrame handy.
 
         Returns:
             dict with keys:
@@ -195,6 +262,66 @@ class Stage1_ConceptExtraction:
             ]
             parsed["COLUMN"] = tokens[:5]
 
+        if df is not None:
+            parsed = self._validate_columns_against_schema(parsed, query, df)
+
+        return parsed
+
+    def _validate_columns_against_schema(
+        self, parsed: dict, query: str, df: "pd.DataFrame"
+    ) -> dict:
+        """Double-check that every COLUMN concept matches a real dataset column.
+
+        Fixes the class of bug where S1 classifies a generic role-word (e.g.
+        "label" in "predict the label in the behavior column") as its own
+        COLUMN concept even though no such column exists — that concept then
+        reaches S2 as UNMAPPABLE and can trip a false-positive guardrail
+        rejection, even though the query's real target column ("behavior") was
+        already correctly extracted.
+
+        Fast path: if every COLUMN concept matches schema (exact/fuzzy), return
+        `parsed` unchanged with no extra LLM call. Otherwise issue one
+        corrective retry showing the LLM the real column list and the specific
+        unresolved concept(s); if concepts are still unresolved afterwards,
+        deterministically drop them from COLUMN rather than let them pass
+        through unresolved.
+        """
+        valid_cols = set(df.columns) | _KNOWN_COLUMNS
+        unresolved = [
+            c for c in parsed["COLUMN"]
+            if _column_concept_matches_schema(c, valid_cols) is None
+        ]
+        if not unresolved:
+            return parsed
+
+        retry_input = (
+            f"Query: {query}\n\n"
+            f"You previously classified these as COLUMN concepts: "
+            f"{', '.join(parsed['COLUMN'])}\n\n"
+            f"The dataset's ACTUAL columns are: {', '.join(sorted(df.columns))}\n\n"
+            f"These concepts do not match any real column, even approximately: "
+            f"{', '.join(unresolved)}. For each one: replace it with the exact "
+            "real column name it refers to if there is one, move it to "
+            "DERIVED_STAT or PROXY if it's actually an operation or "
+            "qualitative idea rather than a literal column, or drop it "
+            "entirely if it's a generic descriptor already covered by another "
+            "concept (e.g. drop \"label\" when the target column, such as "
+            "\"behavior\", is already listed). Re-output the full "
+            "COLUMN/DERIVED_STAT/PROXY block."
+        )
+        response = self.client.invoke_chain(
+            self._chain, {"input": retry_input}, stage="S1-validate"
+        )
+        revalidated = self._parse_concepts(response)
+        if revalidated["COLUMN"] or revalidated["DERIVED_STAT"] or revalidated["PROXY"]:
+            parsed = revalidated
+
+        # Deterministic safety net: never let an unresolved COLUMN concept
+        # survive to S2, even if the corrective retry didn't fully fix it.
+        parsed["COLUMN"] = [
+            c for c in parsed["COLUMN"]
+            if _column_concept_matches_schema(c, valid_cols) is not None
+        ]
         return parsed
 
     @staticmethod
@@ -427,37 +554,12 @@ class Stage2_SchemaGrounding:
     def _closest_valid_column(candidate: str, valid_cols: set[str]) -> str | None:
         """Fuzzy-match an invented/abbreviated column reference to a real column.
 
-        Handles the class of bug where the LLM invents a plausible-looking but
-        non-existent column name by lightly rewording a concept — e.g. emitting
-        "acceleration_variance" when the real (abbreviated) column is
-        "accel_variance". Requires the same number of underscore-separated
-        tokens, with each token pair being a prefix of one another (so
-        "accel"/"acceleration" matches but unrelated columns do not), then
-        breaks ties with a string-similarity ratio.
+        Thin wrapper around the module-level `_closest_valid_column` (shared
+        with Stage1's column-concept validation) — kept as a method so
+        existing internal call sites (`cls._closest_valid_column(...)`) don't
+        need to change.
         """
-        if candidate in valid_cols:
-            return candidate
-        cand_tokens = [t for t in candidate.lower().split("_") if t]
-        if not cand_tokens:
-            return None
-
-        best: tuple[float, str] | None = None
-        for col in valid_cols:
-            col_tokens = [t for t in col.lower().split("_") if t]
-            if not col_tokens or len(col_tokens) != len(cand_tokens):
-                continue
-            if not all(
-                a == b or a.startswith(b) or b.startswith(a)
-                for a, b in zip(cand_tokens, col_tokens)
-            ):
-                continue
-            ratio = difflib.SequenceMatcher(None, candidate.lower(), col.lower()).ratio()
-            if best is None or ratio > best[0]:
-                best = (ratio, col)
-
-        if best and best[0] >= 0.6:
-            return best[1]
-        return None
+        return _closest_valid_column(candidate, valid_cols)
 
     @classmethod
     def _repair_unresolved_column_reference(
@@ -537,20 +639,29 @@ class Stage2_SchemaGrounding:
         Known operation keywords (MEDIAN, MEAN, VARIANCE, PROXY, ...) are
         stripped out first so an operation name is never mistaken for an
         invalid column reference — only its arguments are validated.
+
+        Every identifier-like RHS token is checked (not just ones containing
+        "_"): a class of bug let bare single-word fake columns like "rows" or
+        "order" slip through unflagged when a weak/light grounding model
+        invents them (e.g. for a procedural/predictive query it doesn't
+        understand), because the previous check only validated tokens that
+        happened to contain an underscore.
         """
         rhs = mapping.split("→", 1)[1] if "→" in mapping else mapping
         tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", rhs)
+        allowlist = {
+            "subject_id", "activity_label", "activity_name",
+            "z_score", "z_scores", "groupby_column", "n_unique",
+        }
         invalid: list[str] = []
         for token in tokens:
             if token.upper() in _DERIVED_STAT_OPERATIONS:
                 continue
             if token in valid_cols:
                 continue
-            if "_" in token and token.lower() not in {
-                "subject_id", "activity_label", "activity_name",
-                "z_score", "z_scores", "groupby_column", "n_unique",
-            }:
-                invalid.append(token)
+            if token.lower() in allowlist:
+                continue
+            invalid.append(token)
         return list(dict.fromkeys(invalid))
 
     @staticmethod

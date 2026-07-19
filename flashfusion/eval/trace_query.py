@@ -157,7 +157,16 @@ def main() -> None:
 
         if not r.rejected:
             # --- S3: sub-query decomposition (or direct-aggregate bypass) ----
-            if "S3_bypass" in r.stages_run:
+            if "S3_bypass_predictive" in r.stages_run:
+                _hr("S3 — BYPASSED (predictive CHRONO_SPLIT+CLASSIFY template detected)")
+                print(
+                    "  S1/S2 ran normally (grounding context is still needed by the "
+                    "guardrail); only S3's FILTER/AGGREGATE/RANK decomposition was "
+                    "skipped in favor of the deterministic PREDICTIVE_PIPELINE executor."
+                )
+                print(f"  Plan: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
+                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+            elif "S3_bypass" in r.stages_run:
                 _hr("S3 — BYPASSED (direct single-column aggregate detected)")
                 print(f"  Expression: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
                 print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
@@ -171,6 +180,19 @@ def main() -> None:
                 for i, sq in enumerate(r.s3_sub_queries or [], start=1):
                     print(f"  {i}. {sq}")
                 print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+
+            # --- Deterministic predictive pipeline outcome ---------------------
+            if "S3_bypass_predictive" in r.stages_run:
+                _hr("PREDICTIVE PIPELINE EXECUTION")
+                if "deterministic_exec" in r.stages_run:
+                    print("Executed deterministically (no ReAct agent code-gen needed).")
+                elif "deterministic_fallback" in r.stages_run:
+                    print(
+                        "Deterministic predictive execution FAILED and fell back to the "
+                        f"ReAct agent. Reason: {r.deterministic_fallback_reason or '(none captured)'}"
+                    )
+                else:
+                    print("(predictive plan detected, but execution stage unclear — see stages_run below)")
 
             # --- Grounded query fed to the pandas agent -----------------------
             _hr("GROUNDED QUERY (agent input)")

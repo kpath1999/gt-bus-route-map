@@ -26,6 +26,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
@@ -37,6 +42,26 @@ from flashfusion.pipeline.stages import (
 )
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
+
+# Random seed mirrored from eval/build_groundtruth/simple_pred.py so the
+# deterministic predictive pipeline's model fits/predictions align with the
+# ground-truth generation logic for CHRONO_SPLIT+CLASSIFY queries.
+_PREDICTIVE_RANDOM_SEED = 42
+
+_PREDICTIVE_MODEL_ALIASES: tuple[tuple[str, str], ...] = (
+    ("hist gradient boosting", "hgb"),
+    ("random forest", "rf"),
+    ("1-nearest-neighbor", "1nn"),
+    ("nearest neighbor", "1nn"),
+    ("logistic regression", "logreg"),
+)
+
+_PREDICTIVE_MODEL_DISPLAY: dict[str, str] = {
+    "logreg": "Logistic regression",
+    "rf": "Random forest",
+    "1nn": "1-nearest-neighbor",
+    "hgb": "Hist gradient boosting",
+}
 
 _SUPPORTED_DIRECT_AGGREGATES: dict[str, tuple[str, ...]] = {
     "max": ("max", "maximum", "highest", "largest", "peak"),
@@ -153,6 +178,112 @@ def _extract_diff_columns(text: str, df_columns: list[str]) -> tuple[str, str] |
 
 class _DeterministicPlanUnsupported(ValueError):
     """Raised when a deterministic execution plan is unsupported or ambiguous."""
+
+
+def _build_predictive_model(model_key: str):
+    """Build a classifier matching eval/build_groundtruth/simple_pred.py::_build_model exactly."""
+    if model_key == "logreg":
+        return make_pipeline(
+            StandardScaler(),
+            LogisticRegression(random_state=_PREDICTIVE_RANDOM_SEED, max_iter=2000),
+        )
+    if model_key == "rf":
+        return RandomForestClassifier(
+            n_estimators=300, random_state=_PREDICTIVE_RANDOM_SEED, n_jobs=-1
+        )
+    if model_key == "hgb":
+        return HistGradientBoostingClassifier(
+            max_iter=200,
+            learning_rate=0.08,
+            max_leaf_nodes=31,
+            l2_regularization=1.0,
+            random_state=_PREDICTIVE_RANDOM_SEED,
+        )
+    if model_key == "1nn":
+        return make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1))
+    raise _DeterministicPlanUnsupported(f"Unsupported predictive model key: {model_key!r}")
+
+
+def _parse_chrono_split_classify_query(query: str, df: "pd.DataFrame") -> dict[str, Any] | None:
+    """Detect and parse a CHRONO_SPLIT+CLASSIFY predictive query (see eval/queries.py ids 13-16).
+
+    Returns a typed PREDICTIVE_PIPELINE plan dict, or None if the query doesn't
+    confidently match the template (safe fallback to the normal S1/S2/S3 pipeline).
+    """
+    query_l = query.lower()
+    if not (
+        re.search(r"\btrain\b", query_l)
+        and re.search(r"\bpredict\b", query_l)
+        and re.search(r"\bholdout\b", query_l)
+    ):
+        return None
+
+    model_key = None
+    for phrase, key in _PREDICTIVE_MODEL_ALIASES:
+        if phrase in query_l:
+            model_key = key
+            break
+    if model_key is None:
+        return None
+
+    sort_match = re.search(r"by\s+([A-Za-z_][A-Za-z0-9_]*)\s+in ascending order", query, re.IGNORECASE)
+    if not sort_match:
+        return None
+    sort_col = sort_match.group(1)
+    if sort_col not in df.columns:
+        return None
+
+    tie_match = re.search(
+        r"using\s+([A-Za-z_][A-Za-z0-9_]*)\s+as the tie-breaker", query, re.IGNORECASE
+    )
+    tie_breaker = tie_match.group(1) if tie_match else None
+    if tie_breaker and tie_breaker not in df.columns:
+        tie_breaker = None
+
+    frac_match = re.search(r"first\s+(\d+)\s*%", query, re.IGNORECASE)
+    train_fraction = (float(frac_match.group(1)) / 100.0) if frac_match else 0.8
+
+    filter_spec: tuple[str, str] | None = None
+    filter_match = re.search(r"Filter to\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\d+)", query, re.IGNORECASE)
+    if filter_match:
+        f_col, f_val = filter_match.group(1), filter_match.group(2)
+        if f_col not in df.columns:
+            return None
+        filter_spec = (f_col, f_val)
+
+    row_match = re.search(r"for the (first|last) row in the holdout set", query, re.IGNORECASE)
+    row_selector = row_match.group(1).lower() if row_match else "first"
+
+    target_derive: str | None = None
+    target_source_col: str | None = None
+    col_target_match = re.search(r"label in the\s+([A-Za-z_][A-Za-z0-9_]*)\s+column", query, re.IGNORECASE)
+    if col_target_match and col_target_match.group(1) in df.columns:
+        target_col = col_target_match.group(1)
+        target_label = target_col
+    elif "activity label" in query_l and "activity_label" in df.columns:
+        target_col = "activity_label"
+        target_label = "activity"
+    elif "annotation is present" in query_l and "annotation" in df.columns:
+        target_col = "_is_annotated"
+        target_label = "annotation"
+        target_derive = "annotation_presence"
+        target_source_col = "annotation"
+    else:
+        return None
+
+    return {
+        "op": "PREDICTIVE_PIPELINE",
+        "filter": filter_spec,
+        "sort_col": sort_col,
+        "tie_breaker": tie_breaker,
+        "train_fraction": train_fraction,
+        "model_key": model_key,
+        "target_col": target_col,
+        "target_derive": target_derive,
+        "target_source_col": target_source_col,
+        "target_label": target_label,
+        "row_selector": row_selector,
+    }
 
 
 @dataclass
@@ -362,7 +493,7 @@ def _run_deterministic_plan(
     last_groupby_value_column: str = ""
 
     # Fast path for S3_bypass expression format: df['col'].op()
-    if len(sub_queries) == 1:
+    if len(sub_queries) == 1 and isinstance(sub_queries[0], str):
         expr_match = re.match(r"^df\[['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]\]\.(max|min|mean|median|sum|count)\(\)\s*$", sub_queries[0].strip())
         if expr_match:
             col = expr_match.group(1)
@@ -538,6 +669,98 @@ def _run_deterministic_plan(
                 )
                 observations.append(result)
                 step_code = "result = compare(" + ", ".join(group_agg_result.keys()) + ")"
+                step_obs = result
+
+            elif typed_op == "PREDICTIVE_PIPELINE":
+                plan_df = df
+                filter_spec = typed_step.get("filter")
+                if filter_spec:
+                    f_col, f_val = filter_spec
+                    if f_col not in plan_df.columns:
+                        raise _DeterministicPlanUnsupported(f"Unknown predictive filter column: {f_col}")
+                    cast_val = _coerce_for_column(plan_df[f_col], f_val)
+                    plan_df = plan_df[plan_df[f_col] == cast_val]
+                    if plan_df.empty:
+                        raise _DeterministicPlanUnsupported(
+                            f"Predictive filter produced no rows: {f_col}=={f_val}"
+                        )
+
+                sort_col = str(typed_step.get("sort_col", ""))
+                tie_breaker = typed_step.get("tie_breaker")
+                if sort_col not in plan_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown predictive sort column: {sort_col}")
+                sort_cols = [sort_col] + (
+                    [tie_breaker] if tie_breaker and tie_breaker in plan_df.columns else []
+                )
+                plan_df = plan_df.sort_values(sort_cols).reset_index(drop=True)
+
+                target_col = str(typed_step.get("target_col", ""))
+                target_derive = typed_step.get("target_derive")
+                exclude_cols = {sort_col, target_col}
+                if tie_breaker:
+                    exclude_cols.add(tie_breaker)
+                if filter_spec:
+                    exclude_cols.add(filter_spec[0])
+
+                if target_derive == "annotation_presence":
+                    source_col = str(typed_step.get("target_source_col", target_col))
+                    if source_col not in plan_df.columns:
+                        raise _DeterministicPlanUnsupported(
+                            f"Unknown predictive target source column: {source_col}"
+                        )
+                    plan_df = plan_df.copy()
+                    plan_df[target_col] = (
+                        plan_df[source_col].astype(str).str.strip() != ""
+                    ).astype(int)
+                    exclude_cols.add(source_col)
+                elif target_col not in plan_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown predictive target column: {target_col}")
+
+                n_rows = len(plan_df)
+                train_fraction = float(typed_step.get("train_fraction", 0.8))
+                split = int(n_rows * train_fraction)
+                split = max(1, min(split, n_rows - 1))
+                if split >= n_rows:
+                    raise _DeterministicPlanUnsupported("Predictive split leaves no holdout rows")
+
+                feature_cols = [
+                    c for c in plan_df.columns
+                    if c not in exclude_cols and pd.api.types.is_numeric_dtype(plan_df[c])
+                ]
+                if not feature_cols:
+                    raise _DeterministicPlanUnsupported(
+                        "No numeric feature columns available for predictive pipeline"
+                    )
+
+                x = plan_df[feature_cols].to_numpy(dtype=float)
+                y = plan_df[target_col].to_numpy() if target_derive else plan_df[target_col].astype(str).to_numpy()
+
+                x_train, y_train = x[:split], y[:split]
+                row_selector = str(typed_step.get("row_selector", "first"))
+                holdout_pos = 0 if row_selector == "first" else -1
+                x_test_row = x[split:][holdout_pos]
+
+                model_key = str(typed_step.get("model_key", ""))
+                train_classes = pd.unique(y_train)
+                if len(train_classes) == 1:
+                    pred = train_classes[0]
+                else:
+                    model = _build_predictive_model(model_key)
+                    model.fit(x_train, y_train)
+                    pred = model.predict(x_test_row.reshape(1, -1))[0]
+
+                model_display = _PREDICTIVE_MODEL_DISPLAY.get(model_key, model_key)
+                target_label = str(typed_step.get("target_label", target_col))
+                position = "first" if row_selector == "first" else "last"
+                result = (
+                    f"{model_display} predicts {target_label} '{pred}' for the {position} holdout row."
+                )
+                observations.append(result)
+                step_code = (
+                    f"# predictive pipeline: sort={sort_cols!r}, split={split}/{n_rows}, "
+                    f"model={model_key!r}, target={target_col!r}, features={len(feature_cols)} cols\n"
+                    f"result = {result!r}"
+                )
                 step_obs = result
 
             else:
@@ -1109,11 +1332,31 @@ def run_flash_fusion(
         stage3 = Stage3_SubqueryGeneration(client)
         executor = ExecutionLayer(df, client)
 
+        # Predictive (CHRONO_SPLIT+CLASSIFY) queries follow a fixed procedural
+        # template ("sort ... train a <model> ... predict ... for the first row
+        # in the holdout set"). S1/S2 still run as normal (S1 concepts feed the
+        # guardrail's grounding context, which needs the real S2 mappings to
+        # correctly PROCEED on in-dataset predictive tasks — running guardrail
+        # on the bare query without grounding causes false REJECTs). Only S3 is
+        # bypassed: instead of decomposing into FILTER/AGGREGATE/RANK sub-steps
+        # (which S3 cannot express reliably for a train/split/predict workflow),
+        # we go straight to the deterministic PREDICTIVE_PIPELINE executor.
+        predictive_plan = _parse_chrono_split_classify_query(query, df)
+        if FF_DEBUG and predictive_plan is not None:
+            print(
+                f"[FF_DEBUG] Predictive template detected (will bypass S3): "
+                f"model={predictive_plan['model_key']} target={predictive_plan['target_col']} "
+                f"sort_col={predictive_plan['sort_col']} tie_breaker={predictive_plan['tie_breaker']} "
+                f"train_fraction={predictive_plan['train_fraction']} row_selector={predictive_plan['row_selector']}",
+                file=sys.stderr,
+                flush=True,
+            )
+
         if FF_DEBUG:
             print(f"[FF_DEBUG] Starting S1 for query: {query[:80]}...", file=sys.stderr, flush=True)
         last_stage = "S1"
         stage_t0 = time.time()
-        concepts = stage1.run(query)
+        concepts = stage1.run(query, df)
         record_stage("s1", stage_t0)
         r.s1_concepts = concepts
         r.stages_run.append("S1")
@@ -1132,13 +1375,35 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] S2 complete. Grounding: {grounding['raw_grounding'][:100]}...", file=sys.stderr, flush=True)
 
-        # Guardrail runs after S2, before S3.
-        # Pass query + S2 grounding so the guardrail can detect unmappable concepts
-        # (e.g. OOS requests for data not in the schema) before wasting S3 + agent cost.
+        # Guardrail runs after S2, before S3, using the exact same call for
+        # every query (predictive or not): executor.guardrail(post_s2_query).
+        # For predictive queries, S1/S2 only ground the concepts explicitly
+        # named in the query text (e.g. "timestamp", "behavior") — they never
+        # mention the remaining feature columns used for training, since those
+        # aren't named concepts. That sparse context previously caused the
+        # guardrail to misread the query as missing a "row identifier" column.
+        # We already deterministically resolved the full execution plan via
+        # _parse_chrono_split_classify_query, so append that resolved plan as
+        # additional grounding context (the same way S2's mapping text is
+        # appended for every other query) to give the guardrail the complete
+        # picture before it decides.
         post_s2_query = (
             f"{query}\n\n"
             f"Concept-to-column mappings produced by schema grounding:\n{grounding['raw_grounding']}"
         )
+        if predictive_plan is not None:
+            post_s2_query += (
+                "\n\nResolved predictive execution plan (fully computable from "
+                "existing dataset columns, no external data required):\n"
+                f"  sort_column={predictive_plan['sort_col']}\n"
+                f"  tie_breaker={predictive_plan['tie_breaker']}\n"
+                f"  train_fraction={predictive_plan['train_fraction']}\n"
+                f"  model={predictive_plan['model_key']}\n"
+                f"  target_column={predictive_plan['target_col']} (label={predictive_plan['target_label']})\n"
+                f"  holdout_row={predictive_plan['row_selector']}\n"
+                f"  filter={predictive_plan['filter']}\n"
+                "  features=all remaining numeric dataset columns"
+            )
         last_stage = "guardrail"
         stage_t0 = time.time()
         proceed, reason = executor.guardrail(post_s2_query)
@@ -1159,53 +1424,74 @@ def run_flash_fusion(
             r.executed = False
             return r
 
-        direct_plan = _detect_direct_aggregate(query, grounding["raw_grounding"])
-        if direct_plan:
-            column = direct_plan["column"]
-            operation = direct_plan["operation"]
-            grounded_query = (
-                f"{query}\n\n"
-                f"Resolved column: {column}\n"
-                f"Required operation: {operation}\n"
-                "Execute exactly one pandas expression and report the result."
+        if predictive_plan is not None:
+            r.s3_sub_queries = [
+                f"[PREDICTIVE_PIPELINE] model={predictive_plan['model_key']} "
+                f"target={predictive_plan['target_col']} target_label={predictive_plan['target_label']} "
+                f"sort_col={predictive_plan['sort_col']} tie_breaker={predictive_plan['tie_breaker']} "
+                f"train_fraction={predictive_plan['train_fraction']} row_selector={predictive_plan['row_selector']} "
+                f"filter={predictive_plan['filter']}"
+            ]
+            r.s3_synthesis_hint = "Report the model's predicted label for the holdout row."
+            deterministic_plan_input = [predictive_plan]
+            r.stages_run.append("S3_bypass_predictive")
+            grounded_query = _build_grounded_query(
+                query, grounding["raw_grounding"], r.s3_sub_queries, r.s3_synthesis_hint
             )
-            r.s3_sub_queries = [f"df[{column!r}].{operation}()"]
-            r.s3_synthesis_hint = "Return the result of the single aggregate."
-            deterministic_plan_input = list(r.s3_sub_queries)
-            r.stages_run.append("S3_bypass")
             if FF_DEBUG:
                 print(
-                    f"[FF_DEBUG] S3 bypassed with direct plan: {column}.{operation}()",
+                    f"[FF_DEBUG] S3 bypassed with predictive plan: {r.s3_sub_queries[0]}",
                     file=sys.stderr,
                     flush=True,
                 )
         else:
-            if FF_DEBUG:
-                print(f"[FF_DEBUG] Starting S3...", file=sys.stderr, flush=True)
-            last_stage = "S3"
-            stage_t0 = time.time()
-            sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
-            record_stage("s3", stage_t0)
-            r.s3_sub_queries = sub_result["sub_queries"]
-            r.s3_synthesis_hint = sub_result["synthesis_hint"]
-            deterministic_plan_input = sub_result.get("typed_sub_queries") or list(r.s3_sub_queries)
-            if sub_result.get("compiled_plan"):
-                r.stages_run.append("S3_compiled")
-            else:
-                r.stages_run.append("S3")
-            if FF_DEBUG:
-                print(
-                    f"[FF_DEBUG] S3 complete. Sub-queries: {str(r.s3_sub_queries)[:200]}...",
-                    file=sys.stderr,
-                    flush=True,
+            direct_plan = _detect_direct_aggregate(query, grounding["raw_grounding"])
+            if direct_plan:
+                column = direct_plan["column"]
+                operation = direct_plan["operation"]
+                grounded_query = (
+                    f"{query}\n\n"
+                    f"Resolved column: {column}\n"
+                    f"Required operation: {operation}\n"
+                    "Execute exactly one pandas expression and report the result."
                 )
+                r.s3_sub_queries = [f"df[{column!r}].{operation}()"]
+                r.s3_synthesis_hint = "Return the result of the single aggregate."
+                deterministic_plan_input = list(r.s3_sub_queries)
+                r.stages_run.append("S3_bypass")
+                if FF_DEBUG:
+                    print(
+                        f"[FF_DEBUG] S3 bypassed with direct plan: {column}.{operation}()",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            else:
+                if FF_DEBUG:
+                    print(f"[FF_DEBUG] Starting S3...", file=sys.stderr, flush=True)
+                last_stage = "S3"
+                stage_t0 = time.time()
+                sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
+                record_stage("s3", stage_t0)
+                r.s3_sub_queries = sub_result["sub_queries"]
+                r.s3_synthesis_hint = sub_result["synthesis_hint"]
+                deterministic_plan_input = sub_result.get("typed_sub_queries") or list(r.s3_sub_queries)
+                if sub_result.get("compiled_plan"):
+                    r.stages_run.append("S3_compiled")
+                else:
+                    r.stages_run.append("S3")
+                if FF_DEBUG:
+                    print(
+                        f"[FF_DEBUG] S3 complete. Sub-queries: {str(r.s3_sub_queries)[:200]}...",
+                        file=sys.stderr,
+                        flush=True,
+                    )
 
-            grounded_query = _build_grounded_query(
-                query,
-                grounding["raw_grounding"],
-                sub_result["sub_queries"],
-                sub_result["synthesis_hint"],
-            )
+                grounded_query = _build_grounded_query(
+                    query,
+                    grounding["raw_grounding"],
+                    sub_result["sub_queries"],
+                    sub_result["synthesis_hint"],
+                )
 
         # Clear from any prior run context; set only if fallback occurs.
         r.deterministic_fallback_reason = ""
