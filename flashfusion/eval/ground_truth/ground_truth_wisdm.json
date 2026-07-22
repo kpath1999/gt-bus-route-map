@@ -7,13 +7,13 @@
   },
   {
     "query_id": 2,
-    "query_text": "How many total samples in the dataset are classified as the Walking activity?",
+    "query_text": "How many users have the activity label walking?",
     "reference_answer": "Total Walking samples in the dataset: 424397.",
     "expected_rejection": false
   },
   {
     "query_id": 3,
-    "query_text": "What is the average y-accel value for user 5 during the Sitting activity?",
+    "query_text": "What is the average y-acceleration of user 5 with activity label Sitting?",
     "reference_answer": "Average y-acceleration for user 5 during Sitting is 3.0414.",
     "expected_rejection": false
   },
@@ -31,20 +31,20 @@
   },
   {
     "query_id": 6,
-    "query_text": "Identify the user whose total recorded duration of stationary activities exceeds their duration of active locomotion by the largest margin.",
+    "query_text": "Identify the user whose total recorded duration of resting states exceeds their duration of dynamic movements by the largest margin.",
     "reference_answer": "Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).",
     "expected_rejection": false
   },
   {
     "query_id": 7,
-    "query_text": "What is the median net acceleration vector length for user 20 while ascending steps?",
+    "query_text": "What is the median acceleration magnitude for user 20 while ascending steps?",
     "reference_answer": "Median net acceleration vector length for user 20 while ascending steps is 9.8931.",
     "expected_rejection": false
   },
   {
     "query_id": 8,
-    "query_text": "Calculate the difference between the average z-axis acceleration between Upstairs and Downstairs activities for all users.",
-    "reference_answer": "Average z for ascending elevation changes is 0.3235; descending is 0.6841; difference (ascending-descending) is -0.3605.",
+    "query_text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+    "reference_answer": "Average z for ascending elevation changes is 0.3235; descending is 0.6841; absolute difference (ascending-descending) is 0.3605.",
     "expected_rejection": false
   },
   {
@@ -74,7 +74,7 @@
   {
     "query_id": 13,
     "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the activity label for the first row in the holdout set.",
-    "reference_answer": "Logistic regression predicts activity 'Sitting' for the first holdout row.",
+    "reference_answer": "Logistic regression predicts activity 'Jogging' for the first holdout row.",
     "expected_rejection": false
   },
   {

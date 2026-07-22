@@ -48,14 +48,6 @@ _STOPWORDS: frozenset[str] = frozenset(
     }
 )
 
-
-_KNOWN_COLUMNS: frozenset[str] = frozenset(
-    {
-        "subject_id", "activity_label", "timestamp",
-        "x", "y", "z", "magnitude", "activity_name",
-    }
-)
-
 _OPERATION_TOKENS: frozenset[str] = frozenset(
     {
         "max",
@@ -81,6 +73,7 @@ _DERIVED_STAT_OPERATIONS: frozenset[str] = frozenset(
     {
         "MEDIAN", "MEAN", "SUM", "COUNT", "MIN", "MAX", "STD", "VARIANCE",
         "PERCENTILE", "GROUP_COMPARE", "PROXY", "DIFFERENCE",
+        "VECTOR_MAGNITUDE", "INTER_SAMPLE_SECONDS",
     }
 )
 
@@ -165,6 +158,41 @@ def _column_concept_matches_schema(concept: str, valid_cols: set[str]) -> str | 
         if re.sub(r"[^a-z0-9]+", "_", col.strip().lower()).strip("_") == normalized:
             return col
     return _closest_valid_column(normalized, valid_cols)
+
+
+def _concept_has_query_signal(concept: str, query: str) -> bool:
+    """Return True when a concept has direct lexical support in the query."""
+    concept_norm = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", concept.lower())).strip()
+    query_norm = re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", query.lower())).strip()
+    if not concept_norm or not query_norm:
+        return False
+    if concept_norm in query_norm:
+        return True
+
+    concept_tokens = [t for t in concept_norm.split() if t not in _STOPWORDS and len(t) > 2]
+    query_tokens = {t for t in query_norm.split() if t not in _STOPWORDS and len(t) > 2}
+    if not concept_tokens or not query_tokens:
+        return False
+    return any(token in query_tokens for token in concept_tokens)
+
+
+def _exact_column_concept_matches_schema(concept: str, valid_cols: set[str]) -> str | None:
+    """Return a real column only for exact/normalized header matches.
+
+    Used as a conservative safety net when S1 places a literal field name under
+    DERIVED_STAT or PROXY. Unlike ``_column_concept_matches_schema``, this does
+    not fuzzy-match abbreviations because a non-COLUMN bucket may legitimately
+    contain concepts whose wording merely resembles a column name.
+    """
+    if concept in valid_cols:
+        return concept
+    normalized = re.sub(r"[^a-z0-9]+", "_", concept.strip().lower()).strip("_")
+    if not normalized:
+        return None
+    for col in valid_cols:
+        if re.sub(r"[^a-z0-9]+", "_", col.strip().lower()).strip("_") == normalized:
+            return col
+    return None
 
 
 class Stage1_ConceptExtraction:
@@ -286,9 +314,38 @@ class Stage1_ConceptExtraction:
         deterministically drop them from COLUMN rather than let them pass
         through unresolved.
         """
-        valid_cols = set(df.columns) | _KNOWN_COLUMNS
+        # Only headers present in this DataFrame are literal columns. This
+        # prevents a derived feature (such as WISDM magnitude) from passing as
+        # a physical column when it is absent from df.columns.
+        valid_cols = set(df.columns)
+        parsed_columns = [str(c) for c in (parsed.get("COLUMN", []) or [])]
+        parsed_derived = [str(c) for c in (parsed.get("DERIVED_STAT", []) or [])]
+        parsed_proxy = [str(c) for c in (parsed.get("PROXY", []) or [])]
+        parsed["COLUMN"] = parsed_columns
+        parsed["DERIVED_STAT"] = parsed_derived
+        parsed["PROXY"] = parsed_proxy
+
+        promoted_columns: list[str] = []
+        bucket_values: dict[str, list[str]] = {
+            "DERIVED_STAT": parsed_derived,
+            "PROXY": parsed_proxy,
+        }
+        for bucket in ("DERIVED_STAT", "PROXY"):
+            kept: list[str] = []
+            for concept in bucket_values[bucket]:
+                matched = _exact_column_concept_matches_schema(concept, valid_cols)
+                if matched is not None and _concept_has_query_signal(concept, query):
+                    promoted_columns.append(matched)
+                else:
+                    kept.append(concept)
+            bucket_values[bucket] = kept
+            parsed[bucket] = kept
+        if promoted_columns:
+            parsed_columns = list(dict.fromkeys([*parsed_columns, *promoted_columns]))
+            parsed["COLUMN"] = parsed_columns
+
         unresolved = [
-            c for c in parsed["COLUMN"]
+            c for c in parsed_columns
             if _column_concept_matches_schema(c, valid_cols) is None
         ]
         if not unresolved:
@@ -297,7 +354,7 @@ class Stage1_ConceptExtraction:
         retry_input = (
             f"Query: {query}\n\n"
             f"You previously classified these as COLUMN concepts: "
-            f"{', '.join(parsed['COLUMN'])}\n\n"
+            f"{', '.join(parsed_columns)}\n\n"
             f"The dataset's ACTUAL columns are: {', '.join(sorted(df.columns))}\n\n"
             f"These concepts do not match any real column, even approximately: "
             f"{', '.join(unresolved)}. For each one: replace it with the exact "
@@ -315,11 +372,12 @@ class Stage1_ConceptExtraction:
         revalidated = self._parse_concepts(response)
         if revalidated["COLUMN"] or revalidated["DERIVED_STAT"] or revalidated["PROXY"]:
             parsed = revalidated
+            parsed_columns = [str(c) for c in revalidated.get("COLUMN", []) or []]
 
         # Deterministic safety net: never let an unresolved COLUMN concept
         # survive to S2, even if the corrective retry didn't fully fix it.
         parsed["COLUMN"] = [
-            c for c in parsed["COLUMN"]
+            c for c in parsed_columns
             if _column_concept_matches_schema(c, valid_cols) is not None
         ]
         return parsed
@@ -448,11 +506,9 @@ class Stage2_SchemaGrounding:
             If len(mappings) == 0 after parsing, retry once with a stricter instruction.
 
         Column validation:
-            For each mapping line, detect words that look like column names
-            (contain "_" or match a known column). Flag as "INVALID(col): " prefix
-            if the word is not in df.columns.
-            Known columns: subject_id, activity_label, timestamp, x, y, z,
-                           magnitude, activity_name.
+            For each mapping line, detect identifier-like column references.
+            Flag each reference with "INVALID(col): " when it is not in
+            df.columns.
         """
         system_prompt = SCHEMA_GROUNDING_PROMPT.format(column_metadata=meta_str)
         chain = (
@@ -519,7 +575,7 @@ class Stage2_SchemaGrounding:
             if retried_mappings:
                 mappings, unmappable = retried_mappings, retried_unmappable
 
-        valid_cols = set(df.columns) | _KNOWN_COLUMNS
+        valid_cols = set(df.columns)
         mappings = [self._repair_operation_misgrounding(m, valid_cols) for m in mappings]
         mappings = self._repair_unresolved_column_reference(mappings, valid_cols)
         mappings = [self._collapse_redundant_stat_wrapping(m) for m in mappings]
@@ -959,6 +1015,13 @@ class Stage3_SubqueryGeneration:
                 f"[SPLIT_BY_THRESHOLD] column={step.get('column', '')} | comparator={step.get('comparator', '')} "
                 f"| threshold=MEDIAN(column) | label={step.get('label', '')}"
             )
+        if op == "SPLIT_BY_VALUES":
+            values = step.get("values") or []
+            values_txt = ",".join(str(v) for v in values)
+            return (
+                f"[SPLIT_BY_VALUES] column={step.get('column', '')} | values={values_txt} "
+                f"| label={step.get('label', '')}"
+            )
         if op == "GROUP_AGGREGATE":
             groups = step.get("groups") or []
             groups_txt = ",".join(str(g) for g in groups)
@@ -1171,6 +1234,155 @@ class Stage3_SubqueryGeneration:
             "typed_sub_queries": typed_steps,
         }
 
+    @staticmethod
+    def _parse_filter_in_step(sub_query: str) -> tuple[str, list[str]] | None:
+        """Parse '[FILTER] column=X | comparator=in | value=a,b,c' -> (X, [a,b,c])."""
+        match = re.match(r"^\s*\[FILTER\]\s*(.+)$", sub_query.strip(), flags=re.IGNORECASE)
+        if not match:
+            return None
+        kv: dict[str, str] = {}
+        for part in match.group(1).split("|"):
+            part = part.strip()
+            if not part:
+                continue
+            if "=" not in part:
+                return None
+            key, _, value = part.partition("=")
+            kv[key.strip().lower()] = value.strip()
+        if kv.get("comparator", "").lower() != "in":
+            return None
+        column = kv.get("column", "").strip()
+        values = [v.strip() for v in kv.get("value", "").split(",") if v.strip()]
+        if not column or not values:
+            return None
+        return column, values
+
+    @staticmethod
+    def _parse_aggregate_metric_step(sub_query: str) -> tuple[str, str] | None:
+        """Parse '[AGGREGATE] column=Y | stat=Z' -> (Y, Z)."""
+        match = re.match(r"^\s*\[AGGREGATE\]\s*(.+)$", sub_query.strip(), flags=re.IGNORECASE)
+        if not match:
+            return None
+        kv: dict[str, str] = {}
+        for part in match.group(1).split("|"):
+            part = part.strip()
+            if not part:
+                continue
+            if "=" not in part:
+                return None
+            key, _, value = part.partition("=")
+            kv[key.strip().lower()] = value.strip()
+        column = kv.get("column", "").strip()
+        stat = kv.get("stat", "").strip().lower()
+        if not column or not stat:
+            return None
+        return column, stat
+
+    @staticmethod
+    def _parse_groupby_metric_step(sub_query: str) -> tuple[str, str, str] | None:
+        """Parse '[GROUPBY] group_column=X | value_column=Y | stat=Z' -> (X, Y, Z)."""
+        match = re.match(r"^\s*\[GROUPBY\]\s*(.+)$", sub_query.strip(), flags=re.IGNORECASE)
+        if not match:
+            return None
+        kv: dict[str, str] = {}
+        for part in match.group(1).split("|"):
+            part = part.strip()
+            if not part:
+                continue
+            if "=" not in part:
+                return None
+            key, _, value = part.partition("=")
+            kv[key.strip().lower()] = value.strip()
+        group_col = kv.get("group_column", "").strip()
+        value_col = kv.get("value_column", "").strip()
+        stat = kv.get("stat", "").strip().lower()
+        if not group_col or not value_col or not stat:
+            return None
+        return group_col, value_col, stat
+
+    @classmethod
+    def _compile_category_group_compare_plan(cls, sub_queries: list[str]) -> dict | None:
+        """Rewrite sequential disjoint categorical FILTERs into independent splits.
+
+        The freeform LLM sub-query path sometimes decomposes a "compare metric
+        between group A and group B" query (where the groups are two or more
+        disjoint sets of categorical values, e.g. dynamic vs resting activity
+        labels) into SEQUENTIAL ``[FILTER] column=X | comparator=in | value=...``
+        steps on the same column. The deterministic executor applies every
+        FILTER against the same working DataFrame in sequence, so the second
+        filter intersects with (rather than starts fresh from) the first —
+        collapsing disjoint groups to zero rows. This detects that shape and
+        rewrites it into independent SPLIT_BY_VALUES partitions + a
+        GROUP_AGGREGATE + (when there are exactly two groups) COMPARE_GROUPS,
+        mirroring the numeric median-split plan above.
+        """
+        filter_steps: list[tuple[str, list[str]]] = []
+        for sq in sub_queries:
+            parsed = cls._parse_filter_in_step(sq)
+            if parsed is not None:
+                filter_steps.append(parsed)
+
+        if len(filter_steps) < 2:
+            return None
+
+        split_column = filter_steps[0][0]
+        same_col_steps = [values for col, values in filter_steps if col == split_column]
+        if len(same_col_steps) < 2:
+            return None
+
+        # Require pairwise-disjoint value sets — otherwise this isn't a
+        # group-vs-group partition and shouldn't be rewritten.
+        seen: set[str] = set()
+        for values in same_col_steps:
+            value_set = set(values)
+            if seen & value_set:
+                return None
+            seen |= value_set
+
+        metric_col = None
+        stat = None
+        for sq in sub_queries:
+            agg = cls._parse_aggregate_metric_step(sq)
+            if agg is not None:
+                metric_col, stat = agg
+                break
+        if metric_col is None:
+            for sq in sub_queries:
+                groupby = cls._parse_groupby_metric_step(sq)
+                if groupby is not None and groupby[0] == split_column:
+                    metric_col, stat = groupby[1], groupby[2]
+                    break
+        if metric_col is None or stat is None:
+            return None
+
+        labels = [f"group_{i + 1}" for i in range(len(same_col_steps))]
+        typed_steps: list[dict] = [
+            {"op": "SPLIT_BY_VALUES", "column": split_column, "values": values, "label": label}
+            for values, label in zip(same_col_steps, labels)
+        ]
+        typed_steps.append({
+            "op": "GROUP_AGGREGATE",
+            "column": metric_col,
+            "aggregate": stat,
+            "groups": labels,
+        })
+        if len(labels) == 2:
+            typed_steps.append({"op": "COMPARE_GROUPS"})
+
+        group_desc = "; ".join(
+            f"{label}={values}" for values, label in zip(same_col_steps, labels)
+        )
+        return {
+            "sub_queries": cls._typed_steps_to_display(typed_steps),
+            "synthesis_hint": (
+                f"State which group ({group_desc}, split by {split_column}) has the "
+                f"higher {stat} {metric_col}, and report both group values."
+            ),
+            "raw_subqueries": "COMPILED_CATEGORY_GROUP_COMPARE_PLAN",
+            "compiled_plan": True,
+            "typed_sub_queries": typed_steps,
+        }
+
     def __init__(self, client: "LLMClient") -> None:
         """
         Args:
@@ -1250,6 +1462,10 @@ class Stage3_SubqueryGeneration:
             grounding_raw=grounding_raw,
             meta_cols=self._extract_meta_columns(meta_str),
         )
+        if compiled is not None:
+            return compiled
+
+        compiled = self._compile_category_group_compare_plan(sub_queries)
         if compiled is not None:
             return compiled
 

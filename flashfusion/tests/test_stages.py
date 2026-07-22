@@ -59,6 +59,7 @@ class TestStage1ConceptExtraction:
         """S1 prompt should explicitly require minimal, non-invented concepts."""
         assert "Extract only concepts that are strictly required" in CONCEPT_EXTRACTION_PROMPT
         assert "Do not invent structural or auxiliary concepts" in CONCEPT_EXTRACTION_PROMPT
+        assert "literally matches a dataset field/header token" in CONCEPT_EXTRACTION_PROMPT
 
     def test_parses_three_buckets(self, mock_client):
         """
@@ -157,6 +158,56 @@ class TestStage1ConceptExtraction:
         result = stage.run("Which activity has the highest x?", minimal_df)
         assert mock_client.invoke_chain.call_count == 1
         assert result["COLUMN"] == ["activity_label", "x"]
+
+    def test_schema_validation_reclassifies_absent_derived_feature(self, mock_client, minimal_df):
+        """A derived feature absent from the DataFrame cannot remain a COLUMN.
+
+        WISDM stores x/y/z axes but no physical magnitude column, so an LLM
+        classification of ``magnitude`` as COLUMN must trigger corrective
+        reclassification.
+        """
+        mock_client.invoke_chain.side_effect = [
+            "COLUMN: magnitude\nDERIVED_STAT: NONE\nPROXY: acceleration",
+            "COLUMN: NONE\nDERIVED_STAT: magnitude\nPROXY: acceleration",
+        ]
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run(
+            "Compare the overall acceleration magnitude between dynamic movements and resting states.",
+            minimal_df,
+        )
+        assert mock_client.invoke_chain.call_count == 2
+        assert result["COLUMN"] == []
+        assert result["DERIVED_STAT"] == ["magnitude"]
+
+    def test_schema_validation_promotes_exact_column_from_derived_stat(self, mock_client):
+        """A literal schema column must not remain in DERIVED_STAT.
+
+        Reproduces the ECG failure mode where S1 emitted ``annotation`` under
+        DERIVED_STAT even though ``annotation`` is an exact dataset column.
+        """
+        ecg_df = pd.DataFrame(
+            {
+                "sample_idx": [0, 1],
+                "time_s": [0.0, 0.003],
+                "MLII": [0.96, 0.97],
+                "V1": [0.01, 0.02],
+                "record_id": [208, 208],
+                "annotation": ["N", "N"],
+            }
+        )
+        mock_client.invoke_chain.return_value = (
+            "COLUMN: record_id\nDERIVED_STAT: annotation, average\nPROXY: time_s"
+        )
+        stage = Stage1_ConceptExtraction(mock_client)
+        result = stage.run(
+            "For record_id 208, what is the average annotation count every minute?",
+            ecg_df,
+        )
+        assert mock_client.invoke_chain.call_count == 1
+        assert "annotation" in result["COLUMN"]
+        assert "annotation" not in result["DERIVED_STAT"]
+        assert "average" in result["DERIVED_STAT"]
+        assert "time_s" in result["PROXY"]
 
     def test_schema_validation_drops_unresolved_via_retry(self, mock_client):
         """A COLUMN concept with no matching real column (e.g. "label" when the
@@ -372,6 +423,23 @@ class TestStage2SchemaGrounding:
         assert mock_client.invoke_chain.call_count == 2
         assert any("MEDIAN(latitude)" in m for m in result["mappings"])
         assert "median" not in result["unmappable"]
+
+    def test_marks_columns_absent_from_active_dataframe_invalid(self, mock_client, minimal_df):
+        """Stage 2 must not accept a cross-dataset column compatibility list."""
+        from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+
+        mock_client.invoke_chain.return_value = (
+            "MAPPINGS:\n  magnitude → magnitude\nUNMAPPABLE: NONE"
+        )
+        stage = Stage2_SchemaGrounding(mock_client)
+        meta_str = meta_to_str(build_column_metadata(minimal_df))
+        result = stage.run(
+            {"COLUMN": [], "DERIVED_STAT": ["magnitude"], "PROXY": []},
+            "Compare acceleration magnitude.",
+            meta_str,
+            minimal_df,
+        )
+        assert result["mappings"] == ["INVALID(magnitude): magnitude → magnitude"]
 
 
 # ---------------------------------------------------------------------------

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import os
 import re
+import signal
 import sys
 import time
 from dataclasses import dataclass
@@ -32,7 +33,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S
 from flashfusion.pipeline.executor import ExecutionLayer
+from flashfusion.pipeline.features import resolve_grounded_features
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.pipeline.runner import LLMClient, RunResult
 from flashfusion.pipeline.stages import (
@@ -42,6 +45,37 @@ from flashfusion.pipeline.stages import (
 )
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+class _FlashFusionTimeoutError(TimeoutError):
+    """Raised when a Flash-Fusion execution path exceeds its allotted time."""
+
+
+def _run_with_timeout(
+    fn: Any,
+    timeout_s: float,
+    *,
+    timeout_message: str = "Operation timed out",
+    args: tuple[Any, ...] = (),
+    kwargs: dict[str, Any] | None = None,
+) -> Any:
+    """Run a callable with a hard timeout and raise a structured timeout error."""
+    if kwargs is None:
+        kwargs = {}
+
+    def _handle_timeout(signum: int, frame: Any) -> None:  # pragma: no cover - defensive
+        raise _FlashFusionTimeoutError(timeout_message)
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _handle_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout_s)
+    try:
+        return fn(*args, **kwargs)
+    except _FlashFusionTimeoutError:
+        raise
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 # Random seed mirrored from eval/build_groundtruth/simple_pred.py so the
 # deterministic predictive pipeline's model fits/predictions align with the
@@ -71,6 +105,20 @@ _SUPPORTED_DIRECT_AGGREGATES: dict[str, tuple[str, ...]] = {
     "sum": ("sum", "total"),
     "count": ("count", "number of"),
 }
+
+_DETERMINISTIC_DERIVED_STAT_ALIASES: dict[str, str] = {
+    "AVERAGE": "MEAN",
+    "AVG": "MEAN",
+    "MAXIMUM": "MAX",
+    "HIGHEST": "MAX",
+    "MINIMUM": "MIN",
+    "LOWEST": "MIN",
+    "TOTAL": "SUM",
+}
+
+_DETERMINISTIC_DERIVED_STATS: frozenset[str] = frozenset(
+    {"MAX", "MIN", "MEAN", "MEDIAN", "SUM", "COUNT"}
+)
 
 _DIRECT_DISQUALIFIER_PATTERNS: tuple[str, ...] = (
     r"\bfor\b",
@@ -122,7 +170,11 @@ def _parse_kv_line(text: str) -> dict[str, str] | None:
     kv: dict[str, str] = {}
     for part in text.split("|"):
         part = part.strip()
-        if not part or "=" not in part:
+        # LLM-generated plans occasionally leave a trailing separator. It does
+        # not change the meaning of an otherwise valid typed step.
+        if not part:
+            continue
+        if "=" not in part:
             return None
         key, _, value = part.partition("=")
         key = key.strip().lower()
@@ -466,11 +518,13 @@ def _run_deterministic_plan(
     attempts: list[dict[str, Any]] = []
     trace_lines: list[str] = []
     code_lines: list[str] = []
-    # partitions: named DataFrame subsets produced by SPLIT_BY_THRESHOLD, consumed
-    # by GROUP_AGGREGATE. group_agg_result: last GROUP_AGGREGATE output, consumed
-    # by COMPARE_GROUPS. These support two-way median-split comparisons
-    # (e.g. "is the northern half rougher than the southern half") without
-    # falling back to the ReAct agent.
+    # partitions: named DataFrame subsets produced by SPLIT_BY_THRESHOLD or
+    # SPLIT_BY_VALUES, consumed by GROUP_AGGREGATE. group_agg_result: last
+    # GROUP_AGGREGATE output, consumed by COMPARE_GROUPS. These support
+    # two-way group comparisons split either by a numeric median threshold
+    # (e.g. "is the northern half rougher than the southern half") or by
+    # disjoint categorical value sets (e.g. "dynamic vs resting activities")
+    # without falling back to the ReAct agent.
     partitions: dict[str, Any] = {}
     group_agg_result: dict[str, Any] | None = None
     group_agg_column: str = ""
@@ -521,6 +575,10 @@ def _run_deterministic_plan(
                 tries=1,
                 attempts=attempts,
             )
+
+    # (NOTE): To Franky and Kausar: this is what's handling deterministic execution, typed_op
+    # we could run ReAct directly with the s1 and s2 outputs if the number of sub-queries >= 4
+    # because we often run out of typed ops
 
     for idx, sq in enumerate(sub_queries, start=1):
         typed_op = None
@@ -629,6 +687,50 @@ def _run_deterministic_plan(
                     f"{label} = df[df[{col!r}] {op_txt} _median]"
                 )
                 step_obs = f"{label}: rows={len(subset)} ({col} {op_txt} median={threshold})"
+
+            elif typed_op == "SPLIT_BY_VALUES":
+                col = str(typed_step.get("column", ""))
+                values = typed_step.get("values") or []
+                label = str(typed_step.get("label", ""))
+                if col not in working_df.columns:
+                    raise _DeterministicPlanUnsupported(f"Unknown SPLIT column: {col}")
+                if not label:
+                    raise _DeterministicPlanUnsupported("SPLIT_BY_VALUES requires a label")
+                if not values:
+                    raise _DeterministicPlanUnsupported("SPLIT_BY_VALUES requires a non-empty value list")
+                # Splits are drawn independently from the ORIGINAL df (not the
+                # possibly-narrowed working_df) so that multiple disjoint
+                # category groups (e.g. dynamic vs resting activities) never
+                # collapse to zero rows the way sequential [FILTER] steps do
+                # when applied one after another to the same working frame.
+                subset = df[df[col].isin(values)]
+                partitions[label] = subset
+                step_code = f"{label} = df[df[{col!r}].isin({values!r})]"
+                step_obs = f"{label}: rows={len(subset)} ({col} in {values})"
+            
+            elif typed_op == "VECTOR_MAGNITUDE":
+                columns = list(typed_step.get("columns") or [])
+                result_name = str(typed_step.get("result", "_vector_magnitude"))
+
+                if len(columns) != 3 or any(column not in working_df.columns for column in columns):
+                    raise _DeterministicPlanUnsupported(
+                        "VECTOR_MAGNITUDE requires exactly three existing numeric columns"
+                    )
+
+                working_df = working_df.copy()
+                working_df[result_name] = (
+                    working_df[columns[0]].pow(2)
+                    + working_df[columns[1]].pow(2)
+                    + working_df[columns[2]].pow(2)
+                ).pow(0.5)
+
+                last_derived_column = result_name
+                last_derived_label = "vector magnitude"
+                step_code = (
+                    f"df[{result_name!r}] = (df[{columns[0]!r}]**2 + "
+                    f"df[{columns[1]!r}]**2 + df[{columns[2]!r}]**2)**0.5"
+                )
+                step_obs = f"computed '{result_name}' vector-magnitude column (rows={len(working_df)})"
 
             elif typed_op == "GROUP_AGGREGATE":
                 col = str(typed_step.get("column", ""))
@@ -1065,6 +1167,8 @@ def _run_deterministic_plan(
                 else:
                     if not return_cols:
                         raise _DeterministicPlanUnsupported("RANK requires a valid 'return' column list")
+                    if working_df.empty:
+                        raise _DeterministicPlanUnsupported("RANK received no rows after filtering")
                     idx_val = (
                         working_df[metric_col].idxmax() if rank_agg == "max" else working_df[metric_col].idxmin()
                     )
@@ -1100,6 +1204,8 @@ def _run_deterministic_plan(
                     raise _DeterministicPlanUnsupported("RANK requires at least one identifier column")
                 if metric_col not in working_df.columns:
                     raise _DeterministicPlanUnsupported(f"Unknown column in RANK: metric={metric_col!r}")
+                if working_df.empty:
+                    raise _DeterministicPlanUnsupported("RANK received no rows after filtering")
                 idx_val = (
                     working_df[metric_col].idxmax()
                     if rank_agg == "max"
@@ -1253,6 +1359,34 @@ def _detect_direct_aggregate(query: str, raw_grounding: str) -> dict[str, str] |
     return {"column": column, "operation": next(iter(matched_ops))}
 
 
+def _unsupported_grounded_derived_stats(
+    concepts: dict,
+    grounding: dict[str, Any],
+) -> list[str]:
+    """Return unsupported S1 derived stats only when S2 resolved every concept."""
+    derived_stats = concepts.get("DERIVED_STAT") or []
+    unmappable = grounding.get("unmappable")
+    if unmappable is None:
+        unmappable_match = re.search(
+            r"^\s*UNMAPPABLE:\s*(.*)$", grounding.get("raw_grounding", ""), re.MULTILINE | re.IGNORECASE
+        )
+        unmappable = (
+            []
+            if unmappable_match and unmappable_match.group(1).strip().upper() in ("", "NONE")
+            else ["unverified"]
+        )
+    if unmappable or not derived_stats:
+        return []
+
+    unsupported: list[str] = []
+    for stat in derived_stats:
+        normalized = re.sub(r"\s+", " ", str(stat).strip()).upper()
+        normalized = _DETERMINISTIC_DERIVED_STAT_ALIASES.get(normalized, normalized)
+        if normalized not in _DETERMINISTIC_DERIVED_STATS:
+            unsupported.append(str(stat))
+    return unsupported
+
+
 def _build_grounded_query(
     query: str,
     raw_grounding: str,
@@ -1277,11 +1411,104 @@ def _build_grounded_query(
     )
 
 
+# Typed operations the deterministic executor (_run_deterministic_plan) can run
+# directly. Kept in sync with the ``typed_op ==`` branches above; consumed by
+# the pre-flight delegation gate to decide, BEFORE execution, whether an S3 plan
+# is fully expressible deterministically or must be handed to the ReAct agent.
+_DETERMINISTIC_TYPED_OPS: frozenset[str] = frozenset(
+    {
+        "AGGREGATE_COLUMN", "FILTER_EQ_PREV", "FILTER_COMPARE",
+        "AGGREGATE_COUNT_ROWS", "SELECT_LIST", "SPLIT_BY_THRESHOLD",
+        "SPLIT_BY_VALUES", "VECTOR_MAGNITUDE", "GROUP_AGGREGATE",
+        "COMPARE_GROUPS", "PREDICTIVE_PIPELINE",
+    }
+)
+
+
+def _plan_is_deterministic(plan_steps: list[Any], concepts: dict) -> tuple[bool, str]:
+    """Pre-flight coverage gate: can this S3 plan run on the typed executor?
+
+    Returns ``(True, "")`` when every step is expressible in the deterministic
+    operator vocabulary; otherwise ``(False, reason)`` so the caller can hand
+    the query + S2 grounding to the ReAct agent instead of committing to a
+    deterministic plan it cannot faithfully execute. The decision is made
+    BEFORE execution — unlike the reactive ``_DeterministicPlanUnsupported``
+    fallback — so ReAct receives the grounding and no partially-executed plan
+    can silently return a wrong answer.
+
+    Note: queries with a PROXY concept never reach this gate at all — they are
+    short-circuited earlier in ``run_flash_fusion`` (S3 is skipped entirely and
+    the query is delegated straight to ReAct), so ``concepts`` is accepted here
+    only for signature stability and isn't inspected for PROXY concepts.
+
+    Op-coverage is necessary but not sufficient: a step may pass op-membership
+    here yet still fail on its argument shape at execution time — the
+    exception fallback remains the net for that residual.
+    """
+    if not plan_steps:
+        return False, "empty_plan"
+
+    for step in plan_steps:
+        if isinstance(step, dict):
+            op = str(step.get("op", "")).upper().strip()
+            if op not in _DETERMINISTIC_TYPED_OPS:
+                return False, f"unsupported_typed_op={op!r}"
+            continue
+        if isinstance(step, str):
+            stripped = step.strip()
+            # Direct-aggregate bypass expression form: df['col'].op()
+            if stripped.startswith("df["):
+                continue
+            match = re.match(r"^\s*\[([A-Za-z_]+)\]", stripped)
+            if not match:
+                return False, f"untyped_sub_query={stripped[:60]!r}"
+            op = match.group(1).upper().strip()
+            if op not in _SUPPORTED_PLAN_OPS:
+                return False, f"unsupported_plan_op={op!r}"
+            continue
+        return False, f"unrecognized_step_type={type(step).__name__}"
+
+    return True, ""
+
+
+def _build_react_query(
+    query: str,
+    raw_grounding: str,
+    sub_queries: list,
+    synthesis_hint: str,
+    derived_stats: list[str] | None = None,
+) -> str:
+    """Build the agent prompt for a ReAct delegation, INCLUDING S2 grounding.
+
+    Unlike ``_build_grounded_query`` (which deliberately drops the raw S2
+    mappings because typed sub-queries already bake exact column names in), a
+    ReAct delegation happens precisely when the deterministic plan was
+    insufficient — so the agent benefits from the concept→column grounding as
+    scaffolding to reason over the raw DataFrame itself. The sub-queries are
+    passed as non-binding guidance rather than a plan to follow verbatim.
+    """
+    grounding = (raw_grounding or "").strip() or "(no grounding available)"
+    derived_stat_context = (
+        f"\n\nDerived statistics required by the query: {', '.join(derived_stats)}"
+        if derived_stats
+        else ""
+    )
+    return (
+        f"{query}\n\n"
+        f"Concept-to-column grounding produced by schema analysis "
+        f"(use these exact column names; derive anything else from them):\n{grounding}"
+        f"{derived_stat_context}\n\n"
+        # f"Suggested sub-tasks (guidance only — refine as needed):\n{sub_tasks}\n\n"
+        # f"Hint: {synthesis_hint}"
+    )
+
+
 def run_flash_fusion(
     query: str,
     df,
     client: LLMClient,
     r: RunResult,
+    timeout_s: float | None = None,
 ) -> RunResult:
     """
     Execute the full Flash-Fusion pipeline.
@@ -1315,6 +1542,9 @@ def run_flash_fusion(
         "synthesis": 0.0,
     }
     deterministic_plan_input: list[Any] = []
+    # Bypasses (predictive template, direct single-column aggregate) build a
+    # pre-validated deterministic plan and skip the pre-flight coverage gate.
+    skip_deterministic_gate = False
 
     def record_stage(stage_key: str, start_s: float) -> None:
         elapsed = max(0.0, time.time() - start_s)
@@ -1375,24 +1605,30 @@ def run_flash_fusion(
         if FF_DEBUG:
             print(f"[FF_DEBUG] S2 complete. Grounding: {grounding['raw_grounding'][:100]}...", file=sys.stderr, flush=True)
 
+        unsupported_derived_stats = _unsupported_grounded_derived_stats(concepts, grounding)
+
+        df, derived_features = resolve_grounded_features(df, grounding["raw_grounding"])
+        if derived_features:
+            meta_str = meta_to_str(build_column_metadata(df))
+            executor = ExecutionLayer(df, client)
+            if FF_DEBUG:
+                print(f"[FF_DEBUG] Derived features materialized: {derived_features}", file=sys.stderr, flush=True)
+
         # Guardrail runs after S2, before S3, using the exact same call for
-        # every query (predictive or not): executor.guardrail(post_s2_query).
+        # every query (predictive or not): executor.guardrail(query, grounding_context).
         # For predictive queries, S1/S2 only ground the concepts explicitly
         # named in the query text (e.g. "timestamp", "behavior") — they never
         # mention the remaining feature columns used for training, since those
         # aren't named concepts. That sparse context previously caused the
         # guardrail to misread the query as missing a "row identifier" column.
         # We already deterministically resolved the full execution plan via
-        # _parse_chrono_split_classify_query, so append that resolved plan as
-        # additional grounding context (the same way S2's mapping text is
-        # appended for every other query) to give the guardrail the complete
-        # picture before it decides.
-        post_s2_query = (
-            f"{query}\n\n"
-            f"Concept-to-column mappings produced by schema grounding:\n{grounding['raw_grounding']}"
-        )
+        # _parse_chrono_split_classify_query, so append that resolved plan to
+        # the grounding context (the same way S2's mapping text is passed for
+        # every other query) to give the guardrail's {grounding} slot the
+        # complete picture before it decides.
+        grounding_context = grounding["raw_grounding"]
         if predictive_plan is not None:
-            post_s2_query += (
+            grounding_context += (
                 "\n\nResolved predictive execution plan (fully computable from "
                 "existing dataset columns, no external data required):\n"
                 f"  sort_column={predictive_plan['sort_col']}\n"
@@ -1404,9 +1640,21 @@ def run_flash_fusion(
                 f"  filter={predictive_plan['filter']}\n"
                 "  features=all remaining numeric dataset columns"
             )
+        r.guardrail_input = (
+            f"{query}\n\n"
+            f"Concept-to-column mappings produced by schema grounding:\n{grounding_context}"
+        )
+        if unsupported_derived_stats and FF_DEBUG:
+            print(
+                f"[FF_DEBUG] Unsupported derived stat(s) {unsupported_derived_stats}; "
+                "still running guardrail before delegating to ReAct.",
+                file=sys.stderr,
+                flush=True,
+            )
+
         last_stage = "guardrail"
         stage_t0 = time.time()
-        proceed, reason = executor.guardrail(post_s2_query)
+        proceed, reason = executor.guardrail(query, grounding_context)
         record_stage("guardrail", stage_t0)
         r.stages_run.append("guardrail")
         if not proceed:
@@ -1424,7 +1672,50 @@ def run_flash_fusion(
             r.executed = False
             return r
 
-        if predictive_plan is not None:
+        # PROXY-concept short-circuit: a PROXY concept means S1 could only
+        # ground a qualitative idea (e.g. "roughness") to a column via a
+        # heuristic substitution, which has no faithful typed/deterministic
+        # representation. In that case skip S3 (and the predictive/direct
+        # bypasses) entirely — no sub-queries are generated at all — and hand
+        # the raw query plus S2 grounding straight to the ReAct agent so it can
+        # reason over the actual columns instead of following a decomposed
+        # plan built on a shaky concept mapping.
+        proxy_concepts = concepts.get("PROXY") or []
+        has_proxy_concepts = bool(proxy_concepts)
+
+        if unsupported_derived_stats:
+            r.s3_sub_queries = []
+            r.s3_synthesis_hint = (
+                "Compute the requested derived statistic directly from the S2-grounded columns."
+            )
+            deterministic_plan_input = []
+            r.stages_run.append("S3_skipped_unsupported_derived_stat")
+            grounded_query = _build_react_query(
+                query,
+                grounding["raw_grounding"],
+                r.s3_sub_queries,
+                r.s3_synthesis_hint,
+                unsupported_derived_stats,
+            )
+        elif has_proxy_concepts:
+            r.s3_sub_queries = []
+            r.s3_synthesis_hint = (
+                "Answer directly from the S2 concept-to-column grounding; no "
+                "sub-task plan was generated because a PROXY concept was detected."
+            )
+            deterministic_plan_input = []
+            r.stages_run.append("S3_skipped_proxy")
+            grounded_query = _build_react_query(
+                query, grounding["raw_grounding"], r.s3_sub_queries, r.s3_synthesis_hint
+            )
+            if FF_DEBUG:
+                print(
+                    f"[FF_DEBUG] PROXY concept(s) detected ({proxy_concepts}); "
+                    "skipping S3 and routing directly to ReAct with S2 grounding.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        elif predictive_plan is not None:
             r.s3_sub_queries = [
                 f"[PREDICTIVE_PIPELINE] model={predictive_plan['model_key']} "
                 f"target={predictive_plan['target_col']} target_label={predictive_plan['target_label']} "
@@ -1434,6 +1725,7 @@ def run_flash_fusion(
             ]
             r.s3_synthesis_hint = "Report the model's predicted label for the holdout row."
             deterministic_plan_input = [predictive_plan]
+            skip_deterministic_gate = True
             r.stages_run.append("S3_bypass_predictive")
             grounded_query = _build_grounded_query(
                 query, grounding["raw_grounding"], r.s3_sub_queries, r.s3_synthesis_hint
@@ -1458,6 +1750,7 @@ def run_flash_fusion(
                 r.s3_sub_queries = [f"df[{column!r}].{operation}()"]
                 r.s3_synthesis_hint = "Return the result of the single aggregate."
                 deterministic_plan_input = list(r.s3_sub_queries)
+                skip_deterministic_gate = True
                 r.stages_run.append("S3_bypass")
                 if FF_DEBUG:
                     print(
@@ -1493,8 +1786,44 @@ def run_flash_fusion(
                     sub_result["synthesis_hint"],
                 )
 
+        r.grounded_query = grounded_query
+
         # Clear from any prior run context; set only if fallback occurs.
         r.deterministic_fallback_reason = ""
+
+        # Pre-flight delegation gate: decide deterministic-vs-ReAct BEFORE
+        # executing. Bypasses are pre-validated plans, so they always take the
+        # deterministic path; a freeform S3 plan is delegated to the ReAct agent
+        # (with S2 grounding as scaffolding) when it isn't fully expressible in
+        # the typed operator vocabulary. A PROXY concept forces ReAct delegation
+        # unconditionally (S3 was already skipped above, so there is no plan to
+        # gate on in the first place).
+        if unsupported_derived_stats:
+            attempt_deterministic = False
+            r.stages_run.append("react_delegate")
+            r.deterministic_fallback_reason = (
+                f"unsupported_derived_stats={unsupported_derived_stats}"
+            )
+        elif has_proxy_concepts:
+            attempt_deterministic = False
+            r.stages_run.append("react_delegate")
+            r.deterministic_fallback_reason = f"proxy_concepts={proxy_concepts}"
+        elif skip_deterministic_gate:
+            attempt_deterministic = True
+        else:
+            attempt_deterministic, gate_reason = _plan_is_deterministic(
+                deterministic_plan_input, concepts
+            )
+            if not attempt_deterministic:
+                r.stages_run.append("react_delegate")
+                r.deterministic_fallback_reason = f"pre-flight delegate: {gate_reason}"
+                if FF_DEBUG:
+                    print(
+                        f"[FF_DEBUG] Pre-flight delegate to ReAct ({gate_reason}); "
+                        "skipping deterministic execution.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
 
         # TEMPORARILY COMMENTED OUT: Judge plan and refinement loop
         # last_stage = "judge_plan"
@@ -1537,46 +1866,109 @@ def run_flash_fusion(
         # r.judge_verdict = plan_verdict
         # r.alignment_explanation = executor.explain_alignment(query, plan_verdict)
 
+        effective_timeout = (
+            timeout_s if timeout_s is not None else FLASH_FUSION_PREDICTIVE_TIMEOUT_S
+        )
+        # ReAct-facing query, built WITH the S2 grounding so any delegated agent
+        # run — the pre-flight delegate above OR a reactive
+        # _DeterministicPlanUnsupported fallback below — reasons over the
+        # concept→column mappings, not the bare query.
+        react_query = _build_react_query(
+            query,
+            grounding["raw_grounding"],
+            r.s3_sub_queries,
+            r.s3_synthesis_hint,
+            unsupported_derived_stats,
+        )
+        r.react_query = react_query
+
         deterministic_ok = False
-        try:
-            last_stage = "deterministic_exec"
-            stage_t0 = time.time()
-            det = _run_deterministic_plan(query, df, deterministic_plan_input)
-            record_stage("agent", stage_t0)
-            deterministic_ok = True
-            r.answer = det.answer
-            r.trace = det.trace
-            r.executed = True
-            r.final_code = det.final_code
-            r.agent_tries = det.tries
-            r.execution_attempts = list(det.attempts)
-            r.stages_run.append("deterministic_exec")
-            if FF_DEBUG:
-                print("[FF_DEBUG] Deterministic execution succeeded.", file=sys.stderr, flush=True)
-        except _DeterministicPlanUnsupported as det_err:
-            r.stages_run.append("deterministic_fallback")
-            r.deterministic_fallback_reason = str(det_err)
-            if FF_DEBUG:
-                print(
-                    f"[FF_DEBUG] Deterministic execution unsupported ({det_err}); falling back to agent.",
-                    file=sys.stderr,
-                    flush=True,
-                )
+        if attempt_deterministic:
+            try:
+                last_stage = "deterministic_exec"
+                stage_t0 = time.time()
+                try:
+                    det = _run_with_timeout(
+                        lambda: _run_deterministic_plan(query, df, deterministic_plan_input),
+                        timeout_s=effective_timeout,
+                        timeout_message=(
+                            f"Flash-Fusion execution exceeded {effective_timeout:.0f}s timeout"
+                        ),
+                    )
+                except _FlashFusionTimeoutError as det_err:
+                    r.stages_run.append("deterministic_timeout")
+                    r.deterministic_fallback_reason = str(det_err)
+                    r.answer = str(det_err)
+                    r.trace = (
+                        f"Timed out after {effective_timeout:.0f}s while running "
+                        "Flash-Fusion deterministic execution."
+                    )
+                    r.executed = False
+                    r.final_code = ""
+                    r.agent_tries = 0
+                    r.execution_attempts = []
+                    deterministic_ok = False
+                    if FF_DEBUG:
+                        print(f"[FF_DEBUG] {det_err}", file=sys.stderr, flush=True)
+                else:
+                    record_stage("agent", stage_t0)
+                    deterministic_ok = True
+                    r.answer = det.answer
+                    r.trace = det.trace
+                    r.executed = True
+                    r.final_code = det.final_code
+                    r.agent_tries = det.tries
+                    r.execution_attempts = list(det.attempts)
+                    r.stages_run.append("deterministic_exec")
+                    if FF_DEBUG:
+                        print("[FF_DEBUG] Deterministic execution succeeded.", file=sys.stderr, flush=True)
+            except _DeterministicPlanUnsupported as det_err:
+                r.stages_run.append("deterministic_fallback")
+                r.deterministic_fallback_reason = str(det_err)
+                if FF_DEBUG:
+                    print(
+                        f"[FF_DEBUG] Deterministic execution unsupported ({det_err}); falling back to agent.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
 
         if not deterministic_ok:
             if FF_DEBUG:
                 print(f"[FF_DEBUG] Starting agent execution...", file=sys.stderr, flush=True)
             last_stage = "agent"
             stage_t0 = time.time()
-            raw_answer, trace, details = executor.execute_single(grounded_query)
-            record_stage("agent", stage_t0)
-            r.trace = trace
-            r.executed = True
-            r.final_code = details.final_code or ""
-            r.agent_tries = details.tries
-            r.execution_attempts = list(details.attempts)
-            r.stages_run.append("agent")
-            r.answer = raw_answer
+            try:
+                raw_answer, trace, details = _run_with_timeout(
+                    executor.execute_single,
+                    effective_timeout,
+                    args=(react_query,),
+                    timeout_message=(
+                        f"Flash-Fusion execution exceeded {effective_timeout:.0f}s timeout"
+                    ),
+                )
+            except _FlashFusionTimeoutError as agent_err:
+                r.stages_run.append("agent_timeout")
+                r.deterministic_fallback_reason = str(agent_err)
+                r.answer = str(agent_err)
+                r.trace = (
+                    f"Timed out after {effective_timeout:.0f}s while running "
+                    "Flash-Fusion agent execution."
+                )
+                r.executed = False
+                r.final_code = ""
+                r.agent_tries = 0
+                r.execution_attempts = []
+                if FF_DEBUG:
+                    print(f"[FF_DEBUG] {agent_err}", file=sys.stderr, flush=True)
+            else:
+                record_stage("agent", stage_t0)
+                r.trace = trace
+                r.executed = True
+                r.final_code = details.final_code or ""
+                r.agent_tries = details.tries
+                r.execution_attempts = list(details.attempts)
+                r.stages_run.append("agent")
+                r.answer = raw_answer
 
         # Final conversion/review layer: turn the raw machine answer (a Python
         # dict/scalar repr from deterministic_exec, or the agent's raw output)

@@ -7,6 +7,7 @@ Run with: pytest flashfusion/tests/test_baselines.py -v
 from __future__ import annotations
 
 import os
+import time
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -39,6 +40,221 @@ def _client() -> MagicMock:
 
 def _result(mode: str, query: str) -> RunResult:
     return RunResult(baseline=mode, model="llama-3.3-70b-versatile", query=query)
+
+
+def test_runner_does_not_precompute_derived_features() -> None:
+    """BaselineRunner must hand the pipeline the raw schema unmodified; any
+    derived feature (e.g. magnitude) is now materialized only after Stage 2
+    grounding explicitly requires it, not speculatively for every query."""
+    raw_df = _df().drop(columns=["magnitude", "activity_name"])
+    runner = BaselineRunner(mode="FLASH_FUSION", df=raw_df, client=_client())
+
+    with patch("flashfusion.baselines.flash_fusion.run_flash_fusion"):
+        runner.run("Compare acceleration magnitude.")
+
+    assert list(runner.df.columns) == list(raw_df.columns)
+
+
+def test_flash_fusion_timeout_helper_raises_for_slow_call() -> None:
+    """The Flash-Fusion timeout helper must raise when a call exceeds the budget."""
+    from flashfusion.baselines.flash_fusion import _FlashFusionTimeoutError, _run_with_timeout
+
+    def slow_callable() -> None:
+        time.sleep(0.05)
+
+    with pytest.raises(_FlashFusionTimeoutError):
+        _run_with_timeout(slow_callable, timeout_s=0.01)
+
+
+def test_flash_fusion_timeout_applies_to_non_predictive_queries() -> None:
+    """Flash-Fusion should enforce the configured timeout for all query types."""
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "What is the average x observed in this dataset?"
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls, patch(
+        "flashfusion.baselines.flash_fusion._run_with_timeout"
+    ) as timeout_mock:
+        s1_cls.return_value.run.return_value = {"DATA": ["x"], "REASONING": []}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": "MAPPINGS:\n  x -> x\nUNMAPPABLE: NONE",
+            "mappings": ["x -> x"],
+            "unmappable": [],
+        }
+        s3_cls.return_value.run.return_value = {
+            "sub_queries": ["df['x'].mean()"],
+            "synthesis_hint": "Return the result",
+        }
+
+        executor = execution_layer_cls.return_value
+        executor.guardrail.return_value = (True, "")
+        executor.synthesize.return_value = "The average is 0.15"
+        timeout_mock.return_value = MagicMock(
+            answer="0.15",
+            trace="trace",
+            final_code="code",
+            tries=1,
+            attempts=[],
+        )
+
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    assert timeout_mock.called
+    assert out.executed is True
+
+
+def test_deterministic_rank_with_empty_filter_falls_back_cleanly() -> None:
+    """An empty filter must not leak pandas' idxmax ValueError from RANK."""
+    from flashfusion.baselines.flash_fusion import (
+        _DeterministicPlanUnsupported,
+        _run_deterministic_plan,
+    )
+
+    with pytest.raises(_DeterministicPlanUnsupported, match="RANK received no rows"):
+        _run_deterministic_plan(
+            "Rank after an empty filter.",
+            _df(),
+            [
+                "[FILTER] column=activity_label | comparator=eq | value=Missing",
+                "[RANK] metric=x | stat=max | return=timestamp",
+            ],
+        )
+
+
+def test_plan_gate_accepts_supported_typed_and_prose_steps() -> None:
+    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
+
+    ok, reason = _plan_is_deterministic(
+        [
+            {"op": "SPLIT_BY_VALUES", "column": "activity_label", "values": ["A"], "label": "g1"},
+            "[AGGREGATE] column=x | stat=mean",
+            "df['x'].max()",
+        ],
+        {"COLUMN": ["x"], "DERIVED_STAT": ["mean"], "PROXY": []},
+    )
+    assert ok is True
+    assert reason == ""
+
+
+def test_unsupported_grounded_derived_stat_requires_react_delegation() -> None:
+    from flashfusion.baselines.flash_fusion import _unsupported_grounded_derived_stats
+
+    assert _unsupported_grounded_derived_stats(
+        {"DERIVED_STAT": ["RMS", "MEAN"]},
+        {"unmappable": [], "raw_grounding": "MAPPINGS:\n  RMS -> MLII\nUNMAPPABLE: NONE"},
+    ) == ["RMS"]
+    assert _unsupported_grounded_derived_stats(
+        {"DERIVED_STAT": ["RMS"]},
+        {"unmappable": ["RMS"], "raw_grounding": "MAPPINGS:\nUNMAPPABLE: RMS"},
+    ) == []
+
+
+def test_flash_fusion_routes_grounded_unsupported_derived_stat_to_react() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "Calculate the root mean square (RMS) of x."
+    r = _result("FLASH_FUSION", query)
+
+    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
+    ) as s2_cls, patch(
+        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
+    ) as s3_cls, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls, patch(
+        "flashfusion.baselines.flash_fusion._run_with_timeout",
+        side_effect=lambda fn, timeout_s, **kwargs: fn(*kwargs.get("args", ())),
+    ):
+        s1_cls.return_value.run.return_value = {"COLUMN": ["x"], "DERIVED_STAT": ["RMS"], "PROXY": []}
+        s2_cls.return_value.run.return_value = {
+            "raw_grounding": "MAPPINGS:\n  RMS -> MLII\nUNMAPPABLE: NONE",
+            "mappings": ["RMS -> MLII"],
+            "unmappable": [],
+        }
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = ("0.15", "trace", MagicMock(final_code="code", tries=1, attempts=[]))
+        executor.synthesize.return_value = "The RMS is 0.15."
+
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    executor.guardrail.assert_not_called()
+    s3_cls.return_value.run.assert_not_called()
+    agent_query = executor.execute_single.call_args.args[0]
+    assert "Derived statistics required by the query: RMS" in agent_query
+    assert "S3_skipped_unsupported_derived_stat" in out.stages_run
+    assert "react_delegate" in out.stages_run
+    assert out.executed is True
+
+
+def test_plan_gate_rejects_unsupported_typed_op() -> None:
+    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
+
+    ok, reason = _plan_is_deterministic(
+        [{"op": "USER_ACTIVITY_DURATION_MARGIN"}],
+        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+    )
+    assert ok is False
+    assert "unsupported_typed_op" in reason
+
+
+def test_plan_gate_rejects_untyped_prose_and_proxy() -> None:
+    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
+
+    ok_prose, reason_prose = _plan_is_deterministic(
+        ["[FILTER] keep the rows that look interesting"],
+        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+    )
+    # A recognized [OP] tag passes op-coverage; arg-shape is the exception net's
+    # job — so this stays deterministic-eligible.
+    assert ok_prose is True
+
+    ok_bad_tag, reason_bad_tag = _plan_is_deterministic(
+        ["[WINDOW] column=x | size=10"],
+        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+    )
+    assert ok_bad_tag is False
+    assert "unsupported_plan_op" in reason_bad_tag
+
+    ok_proxy, reason_proxy = _plan_is_deterministic(
+        ["[AGGREGATE] column=x | stat=mean"],
+        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": ["roughness"]},
+    )
+    assert ok_proxy is False
+    assert "proxy_concepts" in reason_proxy
+
+
+def test_build_react_query_includes_s2_grounding() -> None:
+    from flashfusion.baselines.flash_fusion import _build_react_query
+
+    out = _build_react_query(
+        "Which user is roughest?",
+        "MAPPINGS:\n  roughness → PROXY(accel_variance, mean)\nUNMAPPABLE: NONE",
+        ["[AGGREGATE] column=accel_variance | stat=mean"],
+        "Report the roughest user.",
+    )
+    assert "Which user is roughest?" in out
+    assert "PROXY(accel_variance, mean)" in out
+    assert "accel_variance" in out
+
+
+def test_groupby_plan_with_trailing_separator_is_parsed_as_typed_kv() -> None:
+    """A trailing pipe must not force GROUPBY into ambiguous prose parsing."""
+    from flashfusion.baselines.flash_fusion import _run_deterministic_plan
+
+    result = _run_deterministic_plan(
+        "Sum timestamps by subject.",
+        _df(),
+        ["[GROUPBY] group_column=subject_id | value_column=timestamp | stat=sum |"],
+    )
+
+    assert result.answer == "{'1600': 1000, '1601': 2000}"
 
 
 def test_agent_runs_agent_without_guardrail() -> None:
@@ -531,7 +747,7 @@ def test_llmsense_paper_short_trace_uses_narration_path() -> None:
     query = "What activities appear in this trace?"
     r = _result("LLMSENSE_PAPER", query)
 
-    with patch("flashfusion.baselines.llmsense_paper._stage_narrate", return_value="narrative") as narrate_fn, patch(
+    with patch("flashfusion.baselines.llmsense_paper._stage_narrate", return_value=("narrative", 2)) as narrate_fn, patch(
         "flashfusion.baselines.llmsense_paper._stage_summarize"
     ) as summarize_fn, patch(
         "flashfusion.baselines.llmsense_paper._stage_reason", return_value="answer"
@@ -567,7 +783,7 @@ def test_llmsense_paper_long_trace_uses_summarization_path() -> None:
     )
 
     with patch("flashfusion.baselines.llmsense_paper._stage_narrate") as narrate_fn, patch(
-        "flashfusion.baselines.llmsense_paper._stage_summarize", return_value="summary"
+        "flashfusion.baselines.llmsense_paper._stage_summarize", return_value=("summary", 130)
     ) as summarize_fn, patch(
         "flashfusion.baselines.llmsense_paper._stage_reason", return_value="answer"
     ) as reason_fn:

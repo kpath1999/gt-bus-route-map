@@ -25,7 +25,7 @@ from langchain_openrouter import ChatOpenRouter
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
-from flashfusion.config import MODEL_RATE_PER_1M_TOKENS
+from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S, MODEL_RATE_PER_1M_TOKENS
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +259,9 @@ class RunResult:
     agent_tries: int = 0                             # total agent iterations across sub-queries
     execution_attempts: list = field(default_factory=list)  # per-attempt stats
     deterministic_fallback_reason: str = ""         # why deterministic exec fell back to agent
+    guardrail_input: str = ""                         # exact post-S2 prompt sent to guardrail
+    grounded_query: str = ""                         # S3-oriented prompt constructed by Flash-Fusion
+    react_query: str = ""                            # exact prompt sent to the ReAct agent, if delegated
 
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
     s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
@@ -287,8 +290,8 @@ class BaselineRunner:
         "LLMSENSE_PAPER" — narration/summarization + reasoning over narrative text
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
 
-    For rewriting baselines (WellMax/Flash-Fusion), derived features are applied
-    internally before dispatch: magnitude and activity_name.
+    Rewriting baselines derive features only after schema grounding explicitly
+    identifies a computation supported by the raw dataset columns.
     """
 
     MODES: frozenset = frozenset(
@@ -309,6 +312,7 @@ class BaselineRunner:
         df: pd.DataFrame,
         client: LLMClient,
         data_path: str = "WISDM",
+        predictive_timeout_s: float | None = None,
     ) -> None:
         """
         Args:
@@ -332,48 +336,7 @@ class BaselineRunner:
         self.df = df.copy()
         self.client = client
         self.data_path = data_path
-        self._enrichment_applied = False
-
-    @staticmethod
-    def _apply_default_enrichment(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
-        """
-        Add deterministic derived columns used by rewriting baselines.
-
-        Returns:
-            (enriched_df, provenance)
-        """
-        enriched = df.copy()
-        provenance: dict[str, str] = {}
-
-        if all(col in enriched.columns for col in ("x", "y", "z")) and "magnitude" not in enriched.columns:
-            enriched["magnitude"] = (enriched["x"] ** 2 + enriched["y"] ** 2 + enriched["z"] ** 2) ** 0.5
-            provenance["magnitude"] = "sqrt(x^2 + y^2 + z^2)"
-
-        # dt_s: inter-sample recording time in seconds for each row.
-        # Computed as the consecutive timestamp difference within each subject,
-        # clipped to 0 (removes session-boundary negatives), then converted from
-        # nanoseconds to seconds.  Use dt_s to measure activity duration by summing
-        # rows for a given activity group — never use max-min timestamp span.
-        if "timestamp" in enriched.columns and "subject_id" in enriched.columns and "dt_s" not in enriched.columns:
-            _sorted = enriched.sort_values(["subject_id", "timestamp"])
-            _diffs = (
-                _sorted.groupby("subject_id")["timestamp"]
-                .diff()
-                .clip(lower=0)
-                .fillna(0)
-                / 1e9
-            )
-            enriched["dt_s"] = _diffs.reindex(enriched.index).fillna(0)
-            provenance["dt_s"] = "inter-sample time in seconds: diff(timestamp).clip(0).fillna(0)/1e9 within subject_id"
-
-        if "activity_label" in enriched.columns and "activity_name" not in enriched.columns:
-            labels = enriched["activity_label"]
-            if pd.api.types.is_string_dtype(labels) or labels.dtype == object:
-                labels = labels.astype(str).str.strip()
-            enriched["activity_name"] = labels
-            provenance["activity_name"] = "copied from activity_label"
-
-        return enriched, provenance
+        self.predictive_timeout_s = predictive_timeout_s
 
     def run(self, query: str) -> RunResult:
         """
@@ -389,22 +352,17 @@ class BaselineRunner:
         Implementation:
             1. r = RunResult(baseline=self.mode, model=self.client.model_name, query=query)
             2. t0 = time.time()
-            3. Apply deterministic enrichment once for rewriting baselines.
-            4. Dispatch to _run_<mode>(query, r)
-            5. r.latency_s = time.time() - t0
-            6. r.input_tokens  = self.client.total_input_tokens()
-            7. r.output_tokens = self.client.total_output_tokens()
-            8. r.cost_usd      = self.client.total_cost_usd()
-            9. return r
+            3. Dispatch to _run_<mode>(query, r)
+            4. r.latency_s = time.time() - t0
+            5. r.input_tokens  = self.client.total_input_tokens()
+            6. r.output_tokens = self.client.total_output_tokens()
+            7. r.cost_usd      = self.client.total_cost_usd()
+            8. return r
         """
         r = RunResult(
             baseline=self.mode, model=self.client.model_name, query=query
         )
         t0 = time.time()
-
-        if not self._enrichment_applied and self.mode in {"WELLMAX_ONLY", "FLASH_FUSION", "LLMSENSE_PAPER"}:
-            self.df, _ = self._apply_default_enrichment(self.df)
-            self._enrichment_applied = True
 
         from flashfusion.baselines.react_only import run_react_only
         from flashfusion.baselines.autoiot_paper import run_autoiot_paper
@@ -423,7 +381,13 @@ class BaselineRunner:
         elif self.mode == "AUTOIOT_PAPER":
             run_autoiot_paper(query, self.df, self.client, r)
         elif self.mode == "FLASH_FUSION":
-            run_flash_fusion(query, self.df, self.client, r)
+            run_flash_fusion(
+                query,
+                self.df,
+                self.client,
+                r,
+                timeout_s=self.predictive_timeout_s,
+            )
         elif self.mode == "HARGPT_PAPER":
             # DEBUG: Check dataframe before calling HARGPT
             import sys

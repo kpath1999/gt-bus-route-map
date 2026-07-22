@@ -633,17 +633,24 @@ self._agent_executor = AgentExecutor(
 In `chat/playground/playground.py` this is done by directly setting
 `react_agent.output_parser = ResilientReActOutputParser()` after `create_react_agent()`.
 
-#### `ExecutionLayer.guardrail(query) -> tuple[bool, str]`
+#### `ExecutionLayer.guardrail(query, grounding="") -> tuple[bool, str]`
 
 ```
 1. Build meta_str from current df
-2. Format GUARDRAIL_PROMPT.format(column_metadata=meta_str)
-3. Build chain: ChatPromptTemplate.from_messages([("system", formatted_prompt), ("human", query)])
-4. Invoke (stage="guardrail")
-5. response = response.strip()
-6. if response.startswith("PROCEED"): return True, ""
-7. else: return False, response.replace("REJECT:", "").strip()
+2. grounding_str = grounding.strip() or "No schema grounding available for this query."
+3. Format GUARDRAIL_PROMPT.format(column_metadata=meta_str, grounding=grounding_str)
+4. Build chain: ChatPromptTemplate.from_messages([("system", formatted_prompt), ("human", query)])
+5. Invoke (stage="guardrail")
+6. response = response.strip()
+7. if response.startswith("PROCEED"): return True, ""
+8. else: return False, response.replace("REJECT:", "").strip()
 ```
+
+`grounding` should be the raw S1/S2 concept-to-column mapping text for this
+exact query (e.g. `grounding["raw_grounding"]`, optionally with resolved
+predictive-plan context appended) so the guardrail can distinguish grounded
+concepts from UNMAPPABLE ones instead of re-deriving that from column
+metadata alone.
 
 #### `ExecutionLayer.execute_single(query) -> tuple[str, str, ExecutionDetails]`
 
@@ -813,7 +820,7 @@ def total_cost_usd(self) -> float: return sum(c.cost_usd for c in self.call_log)
 6. sub_result = stage3.run(query, grounding["raw_grounding"], meta_str); r.stages_run.append("S3")
 
 7. grounded_query = _build_grounded_query(query, grounding, sub_result)
-8. proceed, reason = executor.guardrail(grounded_query); r.stages_run.append("guardrail")
+8. proceed, reason = executor.guardrail(query, grounding["raw_grounding"]); r.stages_run.append("guardrail")
    if not proceed:
        r.rejected = True; r.rejection_reason = reason
        r.answer = f"Query rejected: {reason}"
@@ -1077,4 +1084,4 @@ print(df.groupby('baseline')[['accuracy_score','latency_s','cost_usd']].mean())
 7. **Plan judge is pre-execution only**: In Flash-Fusion, `judge_verdict` now reflects plan-gate quality (not post-answer grading).
 8. **LLMClient per benchmark run**: Create a **new** `LLMClient` for each `(baseline, query)` pair so `call_log` is isolated and `total_cost_usd()` reflects only that one run.
 9. **`PrivateAttr` in Pydantic models**: `ResilientReActOutputParser` inherits from a Pydantic model. Use `_output_history: list = PrivateAttr(default_factory=list)` — not a regular class attribute.
-10. **Guardrail prompt formatting**: GUARDRAIL_PROMPT contains `{column_metadata}`. Format it at call time: `GUARDRAIL_PROMPT.format(column_metadata=meta_str)` — then use the formatted string as system message.
+10. **Guardrail prompt formatting**: GUARDRAIL_PROMPT contains `{column_metadata}` and `{grounding}`. Format it at call time: `GUARDRAIL_PROMPT.format(column_metadata=meta_str, grounding=grounding_str)` — then use the formatted string as system message. Always pass the S2 `raw_grounding` text (or a neutral fallback string) so the guardrail can reason about UNMAPPABLE concepts instead of column metadata alone.

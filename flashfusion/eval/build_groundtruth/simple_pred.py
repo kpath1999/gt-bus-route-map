@@ -269,9 +269,8 @@ def run_prediction_suite(
 def _wisdm_activity_prediction(df: pd.DataFrame, train_fraction: float, model_names: list[str]) -> dict:
 	_progress(f"Starting WISDM activity classification with {len(df)} loaded rows.")
 	wisdm = df.copy()
-	_progress("Normalizing activity labels and computing acceleration magnitude...")
+	_progress("Normalizing activity labels...")
 	wisdm["activity_label"] = wisdm["activity_label"].astype(str).str.strip()
-	wisdm["magnitude"] = np.sqrt(wisdm["x"] ** 2 + wisdm["y"] ** 2 + wisdm["z"] ** 2)
 	wisdm = wisdm.sort_values(["timestamp", "subject_id"]).reset_index(drop=True)
 
 	split = _split_index(len(wisdm), train_fraction)
@@ -279,7 +278,7 @@ def _wisdm_activity_prediction(df: pd.DataFrame, train_fraction: float, model_na
 		f"WISDM rows sorted by timestamp; train rows={split}, "
 		f"test rows={len(wisdm) - split}, T+1 timestamp={int(wisdm.loc[split, 'timestamp'])}."
 	)
-	x = wisdm[["x", "y", "z", "magnitude"]].to_numpy(dtype=np.float64)
+	x = wisdm[["x", "y", "z"]].to_numpy(dtype=np.float64)
 	y = wisdm["activity_label"].astype(str).to_numpy()
 	t_plus_one = str(int(wisdm.loc[split, "timestamp"]))
 	model_results = _run_model_suite(x, y, split, model_names, t_plus_one)

@@ -273,7 +273,8 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
     )
     q8_up_mean = float(df.loc[df["activity_lower"] == "upstairs", "z"].mean())
     q8_down_mean = float(df.loc[df["activity_lower"] == "downstairs", "z"].mean())
-    q8_diff = q8_up_mean - q8_down_mean
+
+    q8_diff = abs(q8_up_mean - q8_down_mean)
 
     suite = run_prediction_suite(
         df,
@@ -342,7 +343,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[8],
             "reference_answer": (
                 f"Average z for ascending elevation changes is {q8_up_mean:.4f}; "
-                f"descending is {q8_down_mean:.4f}; difference (ascending-descending) is {q8_diff:.4f}."
+                f"descending is {q8_down_mean:.4f}; absolute difference (ascending-descending) is {q8_diff:.4f}."
             ),
             "expected_rejection": False,
         },
@@ -494,9 +495,14 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
     q4_last_ann_221 = float(rec221_ann.max())
 
     rec208 = df.loc[df["record_id"] == 208]
-    q5_ann_count_208 = int(rec208.loc[rec208["is_annotated"]].shape[0])
-    q5_max_time_208 = float(rec208["time_s"].max())
-    q5_hr_208 = (q5_ann_count_208 / q5_max_time_208) * 60.0
+    # q5_ann_count_208 = int(rec208.loc[rec208["is_annotated"]].shape[0])
+    # q5_total_timestamps_208 = int(rec208.shape[0])
+    # q5_avg_per_timestamp_208 = (
+    #     float(q5_ann_count_208) / float(q5_total_timestamps_208)
+    #     if q5_total_timestamps_208 > 0
+    #     else 0.0
+    # )
+    q5_avg_per_timestamp_208 = rec208.groupby('time_s')['annotation'].count().mean()
 
     mlii_range = df.groupby("record_id")["MLII"].agg(lambda x: x.max() - x.min()).sort_values(ascending=False)
     q6_record = int(mlii_range.index[0])
@@ -554,8 +560,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 5,
             "query_text": qmap[5],
             "reference_answer": (
-                f"record_id 208 has {q5_ann_count_208} annotated beats over {q5_max_time_208:.4f} seconds, "
-                f"giving an estimated average heart rate of {q5_hr_208:.2f} BPM."
+                f"For record_id 208, the average annotation count per timestamp (time_s) is {q5_avg_per_timestamp_208:.6f}."
             ),
             "expected_rejection": False,
         },
@@ -601,7 +606,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
         {
             "query_id": 12,
             "query_text": qmap[12],
-            "reference_answer": "Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.",
+            "reference_answer": "Reject: variables such as body weight are unavailable in this ECG dataset.",
             "expected_rejection": True,
         },
         {

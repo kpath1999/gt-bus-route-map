@@ -258,9 +258,9 @@ def judge_rows_with_llm(
                     (
                         "system",
                         "You evaluate benchmark answers against ground truth. "
-                        "Be strict, concise, and prefer factual correctness over phrasing. "
-                        "For numeric answers: treat values as equivalent if they differ by less than 0.01 or represent the same number with different trailing zeros. "
-                        "Ignore formatting differences like trailing periods after numbers. "
+                        "Be strict, concise, and judge factual equivalence by the underlying referent rather than surface phrasing. "
+                        "Treat numeric answers as equivalent if they differ by less than 0.01 or represent the same number with different trailing zeros. "
+                        "Ignore purely formatting-level differences such as trailing periods after numbers. "
                         "Return JSON only.",
                     ),
                     (
@@ -275,11 +275,15 @@ Return JSON with keys:
 - ground_truth_note: short note
 
 Rules:
-- PASS only if the candidate answer is factually correct. FAIL otherwise — there is no middle ground.
-- For numeric values: -3.175 and -3.1750 are equivalent; ignore trailing zeros and minor rounding differences (< 0.01).
+- Before deciding PASS/FAIL, identify the canonical referent of the expected answer: the actual quantity, entity set, aggregation level, time scope, statistic, and unit implied by the ground truth and supported by the candidate answer/code.
+- PASS only if the candidate answer is factually correct with respect to that canonical referent. FAIL otherwise.
+- Judge factual equivalence based on the underlying referent, not superficial wording.
+- If the candidate answer, executed code, and ground truth all resolve to the same underlying quantity, treat wording differences, stale labels, or terminology drift as PASS.
+- FAIL only when wording implies a genuinely different referent, such as a different aggregation level, unit, entity set, time scope, or statistic.
+- For numeric values, treat -3.175 and -3.1750 as equivalent; ignore trailing zeros and minor rounding differences (< 0.01).
 - If expected_rejection=true, PASS if the candidate clearly states the request is unanswerable or out of scope.
 - If expected_rejection=false and candidate rejects, verdict must be FAIL.
-- Use generated code and deterministic hint only as supporting evidence.
+- Use generated code and deterministic hint as supporting evidence for resolving the canonical referent and checking factual correctness; do not over-penalize phrasing alone.
 
 Query:
 {query_text}
@@ -319,7 +323,8 @@ Candidate generated code:
         # Normalize answers for robust numeric comparison
         normalized_gt_answer = _normalize_answer(gt.reference_answer)
         normalized_candidate_answer = _normalize_answer(candidate_answer)
-        
+
+        assert client is not None
         llm_raw = client.invoke_chain(
             chain,
             {

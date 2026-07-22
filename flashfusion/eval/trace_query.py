@@ -30,7 +30,6 @@ import json
 import os
 import sys
 
-from flashfusion.baselines.flash_fusion import _build_grounded_query
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.benchmark import DEFAULT_DATA_PATHS, DEFAULT_GROUND_TRUTH_PATHS
 from flashfusion.eval.ground_truth import load_ground_truth
@@ -149,6 +148,9 @@ def main() -> None:
         print(r.s2_grounding or "(not reached)")
 
         # --- Guardrail --------------------------------------------------------
+        _hr("GUARDRAIL INPUT (exact post-S2 prompt)")
+        print(r.guardrail_input or "(not captured)")
+
         _hr("GUARDRAIL (post-S2)")
         if r.rejected:
             print(f"VERDICT: REJECTED\nREASON: {r.rejection_reason}")
@@ -175,6 +177,10 @@ def main() -> None:
                 for i, sq in enumerate(r.s3_sub_queries or [], start=1):
                     print(f"  {i}. {sq}")
                 print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+            elif "S3_skipped_proxy" in r.stages_run:
+                _hr("S3 — SKIPPED (PROXY concept detected)")
+                print("No S3 sub-query plan was generated.")
+                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
             else:
                 _hr("S3 — SUB-QUERY DECOMPOSITION")
                 for i, sq in enumerate(r.s3_sub_queries or [], start=1):
@@ -194,12 +200,19 @@ def main() -> None:
                 else:
                     print("(predictive plan detected, but execution stage unclear — see stages_run below)")
 
-            # --- Grounded query fed to the pandas agent -----------------------
-            _hr("GROUNDED QUERY (agent input)")
-            grounded_query = _build_grounded_query(
-                query_text, r.s2_grounding, r.s3_sub_queries, r.s3_synthesis_hint
-            )
-            print(grounded_query)
+            # --- Prompts constructed for deterministic/ReAct execution --------
+            _hr("GROUNDED QUERY (S3-oriented prompt)")
+            print(r.grounded_query or "(not captured)")
+
+            _hr("REACT QUERY (exact agent input)")
+            if "agent" in r.stages_run or "agent_timeout" in r.stages_run or "react_delegate" in r.stages_run:
+                print(r.react_query or "(not captured)")
+            else:
+                print("ReAct was not invoked; deterministic execution handled the plan.")
+
+            if "react_delegate" in r.stages_run or "deterministic_fallback" in r.stages_run:
+                _hr("REACT DELEGATION REASON")
+                print(r.deterministic_fallback_reason or "(no reason captured)")
 
             # --- Execution trace ----------------------------------------------
             _hr("EXECUTION TRACE")

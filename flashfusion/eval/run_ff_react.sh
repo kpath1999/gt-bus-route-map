@@ -12,11 +12,14 @@ if [[ -f "${REPO_ROOT}/.venv/bin/activate" ]]; then
 fi
 
 PYTHON="${PYTHON:-python}"
-BASELINES="AUTOIOT_PAPER,REACT_ONLY,FLASH_FUSION"
+BASELINES="REACT_ONLY,FLASH_FUSION"
+# BASELINES="FLASH_FUSION"
 MODEL="${MODEL:-meta-llama/llama-3.3-70b-instruct}"
 STAGE12_MODEL="${STAGE12_MODEL:-meta-llama/llama-3.1-8b-instruct}"
 RUNS="${RUNS:-3}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/with_slm_predictive}"
+# RUNS="${RUNS:-1}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_newlook_with_react}"
+# OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/trial_ff}"
 
 run_dataset() {
     local dataset="$1"

@@ -44,10 +44,24 @@ CRITICAL minimality rule:
                   MIN, MAX, STD, VARIANCE, PERCENTILE, THRESHOLD_SPLIT
                   (above/below/greater-than/less-than a value or a statistic),
                   DIFFERENCE/DELTA between two quantities, GROUP_COMPARE
-                  (comparing an aggregate between two or more groups).
+                  (comparing an aggregate between two or more groups),
+                  VECTOR_MAGNITUDE (combining two or more raw axis/component
+                  columns into a single scalar via the Euclidean norm, e.g. a
+                  3-axis acceleration/velocity/field "magnitude" or "overall
+                  strength" derived from its x/y/z or similarly-named
+                  component columns).
                   Examples: "median", "average", "the top half", "northern half
                   (latitude above median)", "how many are above X", "the
-                  difference between A and B", "is A rougher than B"
+                  difference between A and B", "is A rougher than B",
+                  "acceleration magnitude", "overall vibration strength"
+
+  Generalization rule for VECTOR_MAGNITUDE: whenever a concept names a single
+  combined quantity that is formulaically derivable by taking the Euclidean
+  norm of two or more raw per-axis/per-component columns already in the
+  schema (regardless of the exact wording — "magnitude", "overall
+  acceleration", "total force", "combined signal strength", etc.), classify
+  it as DERIVED_STAT, never PROXY. Use PROXY only when no such formulaic
+  combination of existing columns is evident.
 
   PROXY         — a qualitative idea with NO formulaic operation that instead
                   requires a heuristic column substitution, or a semantic
@@ -57,6 +71,11 @@ CRITICAL minimality rule:
                   similar", "predict next", "anomalous patterns"
 
 Disambiguation rule:
+  - If a concept literally matches a dataset field/header token named in the
+    query, classify that concept as COLUMN, not DERIVED_STAT or PROXY. Keep
+    any surrounding operation words separate (for example, in "average
+    annotation count", classify "annotation" as COLUMN and "average"/"count"
+    as DERIVED_STAT as needed).
   - If the query already names the metric/column to use for a qualitative idea
     (e.g. "rougher ... based on average acceleration variance"), classify the
     named metric as COLUMN, the aggregation word ("average") as DERIVED_STAT,
@@ -117,7 +136,15 @@ Your tasks and the REQUIRED output grammar for each concept type:
    always wrapping the EXACT column the concept refers to:
      MEDIAN(column), MEAN(column), SUM(column), COUNT(column), MIN(column),
      MAX(column), STD(column), VARIANCE(column), PERCENTILE(column, p),
-     DIFFERENCE(column_a, column_b)
+     DIFFERENCE(column_a, column_b), VECTOR_MAGNITUDE(column_a, column_b[, column_c, ...])
+   VECTOR_MAGNITUDE grounds any "magnitude"/"overall strength"/"combined
+   signal" concept to the Euclidean norm of its exact raw axis/component
+   columns (e.g. VECTOR_MAGNITUDE(x, y, z) for a 3-axis acceleration
+   magnitude). List EVERY component column that exists in the schema for
+   that quantity — never fewer, never a placeholder. Do NOT wrap a
+   VECTOR_MAGNITUDE result in another VECTOR_MAGNITUDE call, and never mark
+   such a concept UNMAPPABLE or PROXY when its component columns are present
+   in the schema.
    Threshold/split concepts compare a column to a value or to another
    DERIVED_STAT call, e.g.:
      <concept> → <column> > MEDIAN(<column>)
@@ -263,7 +290,7 @@ SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 # ---------------------------------------------------------------------------
 # Guardrail — Pre-execution Feasibility Gate
 # Decides whether a query can be answered using available columns.
-# Placeholder: {column_metadata}
+# Placeholders: {column_metadata}, {grounding}
 # The query is passed as the human message at runtime.
 # ---------------------------------------------------------------------------
 GUARDRAIL_PROMPT: str = """\
@@ -272,7 +299,25 @@ You are a strict query feasibility gatekeeper for time-series and sensor dataset
 Available columns and metadata:
 {column_metadata}
 
+Schema grounding produced by upstream concept-extraction and schema-grounding
+stages for THIS query (concept → column/operation mappings, plus any concepts
+that could not be mapped):
+{grounding}
+
 Decide whether the user's query can be answered using ONLY the available columns.
+
+How to use the schema grounding above:
+  - Treat any concept that was grounded to a real column, a derived-statistic
+    operation, or a proxy substitution as available for this query.
+  - Treat any concept listed as unmappable as NOT available, UNLESS the query
+    text itself explicitly supplies a computable derivation for that concept
+    from columns that ARE available.
+  - If the query's core intent depends on one or more unmappable concepts with
+    no explicit in-query derivation, REJECT — do not attempt to invent a
+    substitute mapping yourself.
+  - The grounding section is advisory context, not a hard override: if it is
+    empty, missing, or does not cover a concept, fall back to reasoning
+    directly over the column metadata above.
 
 PROCEED if:
   - All required data can be derived from available columns.
@@ -283,6 +328,9 @@ PROCEED if:
 
 REJECT if:
   - The query requires external data columns that do not exist and cannot be derived.
+  - The query's core intent depends on one or more concepts the schema grounding
+    could not map to any available column, derived statistic, or proxy, and the
+    query text provides no explicit derivation for them.
   - The query requests a prediction, classification, anomaly detection, clustering, or temporal forecast
     but the required inputs or target cannot be derived from the available columns and the procedure
     described in the query.

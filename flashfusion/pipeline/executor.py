@@ -537,14 +537,32 @@ class ExecutionLayer:
             f"{c} ({df[c].dtype})" for c in df.columns
         )
         if self._react_faithful:
+            # Mirrors GUARDRAIL_PROMPT's PROCEED/REJECT criteria (Flash-Fusion's
+            # feasibility gate), translated into ReAct's Thought/Action/Final
+            # Answer convention since ReAct-Only has no separate guardrail call.
             return (
                 "You are a data analyst working with a pandas DataFrame named `df`.\n"
                 f"Columns: {col_descriptions}\n"
                 f"Total rows: {len(df)}\n"
-                "\nSCOPE CHECK:\n"
-                "- If the question depends on information that is NOT derivable from the columns listed above,\n"
-                "  do NOT fabricate a value.\n"
-                "- In that case, respond exactly with:\n"
+                "\nSCOPE CHECK (perform before writing any code):\n"
+                "- Decide whether the question can be answered using ONLY the columns listed above.\n"
+                "- Proceed normally if it requires aggregation, filtering, grouping, correlation,\n"
+                "  ranking, or statistical analysis of the available columns, or if it names data\n"
+                "  that isn't a column but explicitly explains how to derive it from columns that are.\n"
+                "- Treat the question as out-of-scope if it depends on information that is NOT derivable from the columns\n"
+                "  listed above — e.g. it requires external data that\n"
+                "  cannot be derived; requires a prediction, classification, anomaly detection, or\n"
+                "  forecast whose inputs or target cannot be derived from the available columns and\n"
+                "  the procedure described in the question; depends on future outcomes tied to\n"
+                "  information not represented in this data; requires internet access or outside\n"
+                "  domain knowledge not present in the columns or question; or asks for personal\n"
+                "  information beyond the identifiers already present in the schema.\n"
+                "- In-dataset predictive tasks ARE in scope: training a model on a specified\n"
+                "  historical/held-out subset and predicting a known in-dataset record, or\n"
+                "  forecasting the next observed value in an ordered in-dataset sequence — do not\n"
+                "  treat those as out-of-scope.\n"
+                "- If out-of-scope per the above, do NOT fabricate a value or write code. Instead\n"
+                "  respond exactly with:\n"
                 "  Final Answer: This request is out-of-scope for the available data because <one-sentence reason>.\n"
             )
         return (
@@ -563,12 +581,18 @@ class ExecutionLayer:
             "  Never return a bare numeric ID — it is indistinguishable from a measurement value.\n"
         )
 
-    def guardrail(self, query: str) -> tuple[bool, str]:
+    def guardrail(self, query: str, grounding: str = "") -> tuple[bool, str]:
         """
         Check whether the query is feasible given the available schema.
 
         Args:
             query: The (possibly rewritten) query to check.
+            grounding: Optional raw S1/S2 concept-to-column grounding text
+                (e.g. `grounding["raw_grounding"]`, optionally with extra
+                resolved-plan context appended) for this exact query. Used to
+                tell the guardrail which concepts are already grounded versus
+                UNMAPPABLE, instead of relying solely on column metadata.
+                Defaults to "" (no grounding context available).
 
         Returns:
             (proceed, reason)
@@ -577,14 +601,17 @@ class ExecutionLayer:
 
         Implementation:
             1. meta_str = meta_to_str(build_column_metadata(self._df))
-            2. system = GUARDRAIL_PROMPT.format(column_metadata=meta_str)
+            2. system = GUARDRAIL_PROMPT.format(column_metadata=meta_str, grounding=grounding)
             3. Build chain with formatted system prompt + query as human message
             4. Invoke (stage="guardrail")
             5. Parse: starts with "PROCEED" → (True, "")
                       starts with "REJECT"  → (False, text after "REJECT: ")
         """
         meta_str = meta_to_str(build_column_metadata(self._df))
-        system_prompt = GUARDRAIL_PROMPT.format(column_metadata=meta_str)
+        grounding_str = grounding.strip() or "No schema grounding available for this query."
+        system_prompt = GUARDRAIL_PROMPT.format(
+            column_metadata=meta_str, grounding=grounding_str
+        )
         chain = (
             ChatPromptTemplate.from_messages(
                 [("system", system_prompt), ("human", "{query}")]

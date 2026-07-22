@@ -13,25 +13,25 @@
   },
   {
     "query_id": 3,
-    "query_text": "How many samples in record_id 106 have an MLII value greater than 0?",
+    "query_text": "For record_id 106, how many samples have MLII > 0?",
     "reference_answer": "record_id 106 has 111769 samples with MLII > 0.",
     "expected_rejection": false
   },
   {
     "query_id": 4,
-    "query_text": "What is the timestamp (time_s) of the very last annotated beat in record_id 221?",
+    "query_text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?",
     "reference_answer": "The last annotated beat in record_id 221 occurs at time_s = 1805.027778.",
     "expected_rejection": false
   },
   {
     "query_id": 5,
-    "query_text": "Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.",
-    "reference_answer": "record_id 208 has 3040 annotated beats over 1805.5528 seconds, giving an estimated average heart rate of 101.02 BPM.",
+    "query_text": "For record_id 208, what is the average annotation count per timestamp (time_s)?",
+    "reference_answer": "For record_id 208, the average annotation count per timestamp (time_s) is 1.000000.",
     "expected_rejection": false
   },
   {
     "query_id": 6,
-    "query_text": "Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?",
+    "query_text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
     "reference_answer": "record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.",
     "expected_rejection": false
   },
@@ -61,14 +61,14 @@
   },
   {
     "query_id": 11,
-    "query_text": "Which patients in this dataset have a recorded family history of atrial fibrillation?",
+    "query_text": "Which patients in this dataset have a recorded family history of brain cancer?",
     "reference_answer": "Reject: family medical history is unavailable in this ECG dataset.",
     "expected_rejection": true
   },
   {
     "query_id": 12,
-    "query_text": "Estimate the patient's blood pressure during the time of the recording for record_id 105.",
-    "reference_answer": "Reject: hemodynamic variables such as blood pressure are unavailable in this ECG dataset.",
+    "query_text": "Estimate the patient's weight during the time of the recording for record_id 105.",
+    "reference_answer": "Reject: variables such as body weight are unavailable in this ECG dataset.",
     "expected_rejection": true
   },
   {

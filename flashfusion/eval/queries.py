@@ -37,7 +37,7 @@ WISDM_QUERIES: list[dict] = [
     },
     {
         "id": 2,
-        "text": "How many total samples in the dataset are classified as the Walking activity?",
+        "text": "How many users have the activity label walking?",
         "complexity": "direct",
         "operation": "FILTER+COUNT",
         "stress": (
@@ -48,7 +48,7 @@ WISDM_QUERIES: list[dict] = [
     },
     {
         "id": 3,
-        "text": "What is the average y-accel value for user 5 during the Sitting activity?",
+        "text": "What is the average y-acceleration of user 5 with activity label Sitting?",
         "complexity": "direct",
         "operation": "FILTER+AGGREGATE",
         "stress": (
@@ -83,8 +83,8 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 6,
         "text": (
-            "Identify the user whose total recorded duration of stationary activities "
-            "exceeds their duration of active locomotion by the largest margin."
+            "Identify the user whose total recorded duration of resting states "
+            "exceeds their duration of dynamic movements by the largest margin."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+GROUPBY+COMPARE",
@@ -97,7 +97,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 7,
         "text": (
-            "What is the median net acceleration vector length for user 20 while ascending steps?"
+            "What is the median acceleration magnitude for user 20 with activity label Upstairs?"
         ),
         "complexity": "intermediate",
         "operation": "FILTER+DERIVE+AGGREGATE",
@@ -110,8 +110,8 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 8,
         "text": (
-            "Calculate the difference between the average z-axis acceleration between "
-            "Upstairs and Downstairs activities for all users."
+            "Calculate the absolute difference between the mean z-axis acceleration of "
+            "activity labels Upstairs and Downstairs."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE+DIFF",
@@ -235,28 +235,28 @@ MIT_ECG_QUERIES: list[dict] = [
     },
     {
         "id": 3,
-        "text": "How many samples in record_id 106 have an MLII value greater than 0?",
+        "text": "For record_id 106, how many samples have MLII > 0?",
         "complexity": "direct",
         "operation": "FILTER+COUNT",
         "stress": "Simple numeric threshold filtering and counting.",
     },
     {
         "id": 4,
-        "text": "What is the timestamp (time_s) of the very last annotated beat in record_id 221?",
+        "text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?",
         "complexity": "direct",
         "operation": "FILTER+AGGREGATE",
         "stress": "Annotation-presence filtering followed by max aggregation.",
     },
     {
         "id": 5,
-        "text": "Estimate the average heart rate in beats per minute for record_id 208 based on its total number of annotations and its maximum time_s.",
+        "text": "For record_id 208, what is the average annotation count per timestamp (time_s)?",
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE+DERIVE",
-        "stress": "Multi-step derivation mapping clinical concepts (HR/BPM) to raw time and annotation counts.",
+        "stress": "Multi-step derivation mapping annotation counts to a per-minute rate.",
     },
     {
         "id": 6,
-        "text": "Which record_id exhibits the largest peak-to-peak MLII amplitude (difference between maximum and minimum MLII)?",
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
         "complexity": "intermediate",
         "operation": "GROUPBY+AGGREGATE+DERIVE+RANK",
         "stress": "Groupwise derivation of range (max-min) requiring multi-column aggregation before ranking.",
@@ -291,14 +291,14 @@ MIT_ECG_QUERIES: list[dict] = [
     },
     {
         "id": 11,
-        "text": "Which patients in this dataset have a recorded family history of atrial fibrillation?",
+        "text": "Which patients in this dataset have a recorded family history of brain cancer?",
         "complexity": "out_of_scope",
         "operation": "NONE",
         "stress": "Family medical history is entirely absent from the dataset.",
     },
     {
         "id": 12,
-        "text": "Estimate the patient's blood pressure during the time of the recording for record_id 105.",
+        "text": "Estimate the patient's weight during the time of the recording for record_id 105.",
         "complexity": "out_of_scope",
         "operation": "NONE",
         "stress": "Hemodynamic variables like blood pressure are not collected in this dataset.",
@@ -426,10 +426,10 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 11,
-        "text": "Which bus driver generated the smoothest driving profile?",
+        "text": "Was the bus driver complying with their operating schedule?",
         "complexity": "out_of_scope",
         "operation": "NONE",
-        "stress": "Driver identity and shift logs are not included in the dataset.",
+        "stress": "Shift logs and expected arrival times are not included in the dataset.",
     },
     {
         "id": 12,

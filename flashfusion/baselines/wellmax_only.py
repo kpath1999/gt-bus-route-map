@@ -19,6 +19,7 @@ See CLAUDE.md §_run_wellmax_only for the full algorithm.
 from __future__ import annotations
 
 from flashfusion.pipeline.executor import ExecutionLayer
+from flashfusion.pipeline.features import resolve_grounded_features
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.pipeline.runner import LLMClient, RunResult
 from flashfusion.pipeline.stages import (
@@ -76,13 +77,17 @@ def run_wellmax_only(
     stage2 = Stage2_SchemaGrounding(client)
     stage3 = Stage3_SubqueryGeneration(client)
 
-    concepts = stage1.run(query)
+    concepts = stage1.run(query, df)
     r.s1_concepts = concepts
     r.stages_run.append("S1")
 
     grounding = stage2.run(concepts, query, meta_str, df)
     r.s2_grounding = grounding["raw_grounding"]
     r.stages_run.append("S2")
+
+    df, derived_features = resolve_grounded_features(df, grounding["raw_grounding"])
+    if derived_features:
+        meta_str = meta_to_str(build_column_metadata(df))
 
     sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
     r.s3_sub_queries = sub_result["sub_queries"]
@@ -96,7 +101,7 @@ def run_wellmax_only(
         sub_result["synthesis_hint"],
     )
 
-    executor = ExecutionLayer(df, client)
+    executor = ExecutionLayer(df, client)  # df includes any features resolved above
     raw_answer, trace, details = executor.execute_single(grounded_query)
     r.answer = raw_answer
     r.trace = trace
