@@ -1,0 +1,65 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],HARGPT_PAPER,13,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the activity label for the first row in the holdout set.",False,Logistic regression predicts activity 'Jogging' for the first holdout row.,6    0    Walking  0.0000  0.0000  0.0000,False,False,,FAIL,0.0,Candidate answer does not match the predicted activity label,SOUND,Logistic regression predicts 'Jogging' for the first holdout row,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the predicted activity label"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression predicts 'Jogging' for the first holdout row""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,14,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the activity label for the first row in the holdout set.",False,Random forest predicts activity 'Sitting' for the first holdout row.,[ERROR] RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read),False,False,,FAIL,0.0,"Candidate answer is an error message, not a prediction.",SOUND,Clear prediction of activity 'Sitting'.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is an error message, not a prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear prediction of activity 'Sitting'.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,15,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the activity label for the first row in the holdout set.",False,1-nearest-neighbor predicts activity 'Sitting' for the first holdout row.,[ERROR] RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read),False,False,,FAIL,0.0,"Candidate answer is an error message, not a prediction.",SOUND,1-nearest-neighbor prediction is provided.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer is an error message, not a prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor prediction is provided.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,16,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the activity label for the first row in the holdout set.",False,Hist gradient boosting predicts activity 'Sitting' for the first holdout row.,[ERROR] RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read),False,False,,FAIL,0.0,Candidate answer contains an error message instead of a prediction,SOUND,Hist gradient boosting predicts activity 'Sitting' for the first holdout row,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer contains an error message instead of a prediction"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting predicts activity 'Sitting' for the first holdout row""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,13,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the activity label for the first row in the holdout set.",False,Logistic regression predicts activity 'Jogging' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data does not contain enough information,SOUND,Logistic regression prediction is provided as ground truth,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data does not contain enough information"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression prediction is provided as ground truth""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,14,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the activity label for the first row in the holdout set.",False,Random forest predicts activity 'Sitting' for the first holdout row.,[ERROR] BadRequestResponseError: Provider returned error,False,False,,FAIL,0.0,Candidate answer indicates an error and does not provide a prediction,SOUND,Clear prediction of activity 'Sitting' for the first holdout row,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer indicates an error and does not provide a prediction"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Clear prediction of activity 'Sitting' for the first holdout row""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,15,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the activity label for the first row in the holdout set.",False,1-nearest-neighbor predicts activity 'Sitting' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data is insufficient to answer the query.,SOUND,1-nearest-neighbor model predicts 'Sitting' for the first holdout row.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data is insufficient to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor model predicts 'Sitting' for the first holdout row.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,16,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the activity label for the first row in the holdout set.",False,Hist gradient boosting predicts activity 'Sitting' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data is insufficient to answer the query.,SOUND,Hist gradient boosting model makes a prediction for the first holdout row.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data is insufficient to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting model makes a prediction for the first holdout row.""
+}
+```"

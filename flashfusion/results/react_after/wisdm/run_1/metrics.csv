@@ -1,0 +1,5 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
+REACT_ONLY,9,1.0,guardrail_skip_expected_rejection,7.8934550285339355,0.00027155,400,45,False,True,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,10,1.0,guardrail_skip_expected_rejection,3.0892670154571533,0.00026306,399,35,False,True,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,11,1.0,guardrail_skip_expected_rejection,2.672729015350342,0.00025812000000000003,400,28,False,True,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,12,1.0,guardrail_skip_expected_rejection,2.5347108840942383,0.00027312,404,44,False,True,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

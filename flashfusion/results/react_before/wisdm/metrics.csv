@@ -1,0 +1,13 @@
+run_id,baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
+1,REACT_ONLY,9,0.0,llm_judge_score,14.260260105133057,0.00043548999999999997,394,257,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1,REACT_ONLY,10,0.0,llm_judge_score,10.075384140014648,0.000482,434,286,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1,REACT_ONLY,11,0.0,llm_judge_score,10.642368078231812,0.00049387,426,307,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+1,REACT_ONLY,12,0.0,llm_judge_score,8.52729868888855,0.00036320000000000005,396,164,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+2,REACT_ONLY,9,0.0,llm_judge_score,15.17483901977539,0.00042600999999999994,394,245,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+2,REACT_ONLY,10,1.0,llm_judge_score,18.639929056167603,0.00049948,394,338,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+2,REACT_ONLY,11,0.0,llm_judge_score,39.76162886619568,0.0014163399999999999,1000,1046,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+2,REACT_ONLY,12,0.0,llm_judge_score,8.888611793518066,0.00043326,417,237,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+3,REACT_ONLY,9,0.0,llm_judge_score,29.574278831481934,0.00091216,748,596,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+3,REACT_ONLY,10,0.0,llm_judge_score,55.481982946395874,0.0009569299999999999,773,634,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+3,REACT_ONLY,11,0.0,llm_judge_score,17.097038745880127,0.0005271,406,364,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+3,REACT_ONLY,12,0.0,llm_judge_score,13.191422939300537,0.0003989500000000001,395,210,True,False,N/A,react_agent,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

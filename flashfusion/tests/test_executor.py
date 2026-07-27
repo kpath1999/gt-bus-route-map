@@ -171,6 +171,36 @@ class TestExecutionLayer:
         assert reason == ""
         build_agent.assert_not_called()
 
+    def test_safe_backend_rejects_before_code_execution(self, minimal_df, mock_client):
+        """A safe codegen REJECT sentinel must avoid Python execution entirely."""
+        from flashfusion.pipeline.executor import ExecutionLayer
+
+        rejection = "REJECT: Geographic location is not represented in the available columns."
+        mock_client.invoke_chain.return_value = rejection
+
+        with patch.dict(
+            os.environ,
+            {
+                "FLASHFUSION_AGENT_BACKEND": "safe",
+                "REACT_ABSTENTION_CLAUSE": "Return REJECT for unavailable data.",
+            },
+            clear=False,
+        ):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            with patch.object(layer, "_run_safe_code") as run_safe_code:
+                answer, trace, details = layer.execute_single("Where was subject 1600 walking?")
+
+        assert answer == rejection
+        assert "Scope check rejected" in trace
+        assert details.final_code == ""
+        assert details.tries == 0
+        run_safe_code.assert_not_called()
+        assert mock_client.invoke_chain.call_args.kwargs["stage"] == "safe_codegen_1"
+        assert (
+            mock_client.invoke_chain.call_args.args[1]["abstention_clause"]
+            == "Return REJECT for unavailable data."
+        )
+
     def test_execute_single_builds_agent_lazily_once(self, minimal_df, mock_client):
         """
         execute_single() should build the agent only on first use.

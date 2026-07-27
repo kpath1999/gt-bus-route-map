@@ -1,0 +1,9 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
+HARGPT_PAPER,13,0.0,llm_judge_score,2372.1339180469513,0.07952427000000001,112849,16384,False,False,N/A,"hargpt_scope,hargpt_wisdm_window,hargpt_wisdm_rewrite,hargpt_wisdm_infer,hargpt_wisdm_parse",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+HARGPT_PAPER,14,0.0,llm_judge_score,0.0,0.0,0,0,False,False,N/A,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+HARGPT_PAPER,15,0.0,llm_judge_score,0.0,0.0,0,0,False,False,N/A,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+HARGPT_PAPER,16,0.0,llm_judge_score,0.0,0.0,0,0,False,False,N/A,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,13,0.0,llm_judge_score,649.2472779750824,0.23886024999999997,393579,8416,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,14,0.0,llm_judge_score,0.0,0.07789225999999999,128281,2793,False,False,N/A,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,15,0.0,llm_judge_score,57.558008909225464,0.23266251,386703,5706,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+LLMSENSE_PAPER,16,0.0,llm_judge_score,215.33969473838806,0.18670444999999997,310787,4228,False,False,N/A,"S_summarize,R_reason",0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

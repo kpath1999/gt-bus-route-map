@@ -2,37 +2,19 @@
 
 from __future__ import annotations
 
-"""Generate primary accuracy figures from July26 baseline results.
+"""Generate primary accuracy figures from baseline results.
 
 Figures produced:
-1) Accuracy versus baselines across datasets
+1) Accuracy versus baselines across datasets (FF, ReAct, AutoIOT)
 2) Accuracy versus baselines across query types
-"""
+3) OOS abstention accuracy across datasets (ReAct before/after + Flash-Fusion)
 
-"""
-How to invoke each comparison:
-
-ReAct OOS abstention (before = run without the new prompt, after = run with):
+Default invocation (all data from ff_newlook_with_react; ReAct OOS and
+ReAct-after abstention from react_after; ReAct-before from july26):
 
 ```
-cd flashfusion/viz && python llamas.py \
-  --react-oos-after-root ../results/react_oos_after \
-  --before-after-baselines REACT_ONLY \
-  --before-after-query-types "Out-of-Scope" \
-  --before-after-title "Out-of-Scope Performance" \
-  --output-dir ../results/figures/react_oos
+cd flashfusion/viz && python llamas.py --output-dir results/primary_visualizations
 ```
-
-Flash-Fusion S1/S2 SLM (before = 70B everywhere, after = 8B on S1/S2):
-
-```
-python llamas.py \
-  --before-dir ../../results/ff_70b/bus \
-  --after-dir  ../../results/ff_8b_s12/bus \
-  --before-after-baselines FLASH_FUSION \
-  --before-after-title "Flash-Fusion: S1/S2 with Llama-3.1-8B vs 70B"
-```
-
 """
 
 import argparse
@@ -52,7 +34,6 @@ from measure import (
     DATASET_LABELS,
     DATASET_ORDER,
     QUERY_TYPE_ORDER,
-    aggregate_accuracy_before_after,
     aggregate_accuracy_by_dataset,
     aggregate_accuracy_by_query_type,
     display_baseline,
@@ -64,6 +45,13 @@ from measure import (
 
 TOP3_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
 DATASET_FIG_BASELINES = TOP3_BASELINES
+FULL_BASELINES = [
+    "FLASH_FUSION",
+    "AUTOIOT_PAPER",
+    "REACT_ONLY",
+    "HARGPT_PAPER",
+    "LLMSENSE_PAPER",
+]
 
 RC = {
     "font.family": "DejaVu Sans",
@@ -84,6 +72,29 @@ def _clean_axes(ax) -> None:
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_linewidth(1.0)
     ax.spines["bottom"].set_linewidth(1.0)
+
+
+def _parse_csv_list(raw: str | None) -> list[str] | None:
+    if raw is None:
+        return None
+    values = [item.strip() for item in raw.split(",") if item.strip()]
+    return values or None
+
+
+def _filter_metrics(
+    df: pd.DataFrame,
+    baselines: list[str] | None,
+    query_types: list[str] | None,
+) -> pd.DataFrame:
+    out = df.copy()
+    if baselines is not None:
+        out = out[out["baseline"].isin(baselines)].copy()
+    if query_types is not None:
+        out = out[out["query_type"].isin(query_types)].copy()
+    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
+    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    return out
 
 
 def _bars_with_error_labels(
@@ -127,11 +138,15 @@ def _bars_with_error_labels(
         )
 
 
-def plot_accuracy_across_datasets(summary: pd.DataFrame, out_path: Path) -> None:
+def plot_accuracy_across_datasets(
+    summary: pd.DataFrame,
+    out_path: Path,
+    baselines: list[str] | None = None,
+) -> None:
     plt.rcParams.update(RC)
 
     x_labels = DATASET_ORDER
-    baselines = DATASET_FIG_BASELINES
+    baselines = baselines or DATASET_FIG_BASELINES
     x = list(range(len(x_labels)))
     width = 0.8 / max(len(baselines), 1)
 
@@ -161,7 +176,14 @@ def plot_accuracy_across_datasets(summary: pd.DataFrame, out_path: Path) -> None
     ax.set_axisbelow(True)
     _clean_axes(ax)
 
-    ax.legend(ncol=5, loc="upper center", bbox_to_anchor=(0.5, -0.20), frameon=False, columnspacing=0.9, handletextpad=0.5)
+    ax.legend(
+        ncol=min(5, max(1, len(baselines))),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        frameon=False,
+        columnspacing=0.9,
+        handletextpad=0.5,
+    )
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     fig.subplots_adjust(bottom=0.30)
@@ -170,11 +192,24 @@ def plot_accuracy_across_datasets(summary: pd.DataFrame, out_path: Path) -> None
     plt.close(fig)
 
 
-def plot_accuracy_across_query_types(summary: pd.DataFrame, out_path: Path) -> None:
+def plot_accuracy_across_query_types(
+    summary: pd.DataFrame,
+    out_path: Path,
+    baselines: list[str] | None = None,
+    query_types: list[str] | None = None,
+) -> None:
     plt.rcParams.update(RC)
 
-    x_labels = QUERY_TYPE_ORDER
-    baselines = TOP3_BASELINES
+    if query_types is None:
+        present_query_types = [
+            str(value)
+            for value in summary["query_type"].dropna().unique().tolist()
+            if str(value) in QUERY_TYPE_ORDER
+        ]
+        x_labels = [qt for qt in QUERY_TYPE_ORDER if qt in present_query_types]
+    else:
+        x_labels = [qt for qt in QUERY_TYPE_ORDER if qt in query_types]
+    baselines = baselines or TOP3_BASELINES
     x = list(range(len(x_labels)))
     width = 0.8 / max(len(baselines), 1)
 
@@ -204,7 +239,12 @@ def plot_accuracy_across_query_types(summary: pd.DataFrame, out_path: Path) -> N
     ax.set_axisbelow(True)
     _clean_axes(ax)
 
-    ax.legend(ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.20), frameon=False)
+    ax.legend(
+        ncol=min(3, max(1, len(baselines))),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        frameon=False,
+    )
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
     fig.subplots_adjust(bottom=0.30)
@@ -213,157 +253,44 @@ def plot_accuracy_across_query_types(summary: pd.DataFrame, out_path: Path) -> N
     plt.close(fig)
 
 
-def plot_before_after(
-    summary: pd.DataFrame,
-    out_path: Path,
+def _load_react_before_after_root(
+    root: Path,
+    label: str,
     *,
-    group_col: str = "query_type",
-    baselines: list[str] | None = None,
-    title: str = "",
-    x_label: str = "",
-) -> None:
-    """Grouped before/after bar chart for a single metric comparison.
+    old_layout: bool,
+    query_type_filter: list[str] | None = ["Out-of-Scope"],
+) -> pd.DataFrame:
+    """Load ReAct metrics from the July26 (old) or new-look (new) per-dataset layout.
 
-    summary must come from ``aggregate_accuracy_before_after`` and contain
-    columns: label ('before'/'after'), baseline, <group_col>, mean, std.
+    old_layout=True expects root/REACT_ONLY/<dataset>/july26_full/metrics.csv
+    (the original July26 ReAct results, i.e. the "before" scope-check-prompt data).
+    old_layout=False expects root/<dataset>/metrics.csv directly (the new-look
+    per-dataset benchmark layout, e.g. results/ff_newlook_with_react, i.e. the
+    "after" data).
+
+    query_type_filter defaults to Out-of-Scope only (used by the OOS before/after
+    figures); pass None to load all query types (used to override REACT_ONLY
+    wholesale in the primary accuracy figures).
     """
-    plt.rcParams.update(RC)
-
-    if baselines is None:
-        baselines = list(summary["baseline"].dropna().unique())
-    x_labels = list(summary[group_col].dropna().unique())
-    x = list(range(len(x_labels)))
-
-    # Two label variants; baselines side-by-side within each (label, group) slot.
-    slot_count = 2 * len(baselines)  # before + after for each baseline
-    width = 0.8 / max(slot_count, 1)
-
-    # Color: before = full baseline colour, after = lighter (~40% lighter via alpha)
-    BEFORE_ALPHA = 1.0
-    AFTER_ALPHA = 0.45
-
-    fig, ax = plt.subplots(figsize=(max(7.1, len(x_labels) * 1.5 + 1), 3.8))
-
-    handles: list = []
-    handle_labels: list[str] = []
-
-    slot = 0
-    for baseline in baselines:
-        for li, label in enumerate(("before", "after")):
-            bdf = summary[(summary["baseline"] == baseline) & (summary["label"] == label)]
-            means: list[float] = []
-            stds: list[float] = []
-            for g in x_labels:
-                row = bdf[bdf[group_col] == g]
-                means.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
-                stds.append(float(row["std"].iloc[0]) if not row.empty else 0.0)
-
-            xpos = [p - 0.4 + (slot + 0.5) * width for p in x]
-            color = BASELINE_COLORS.get(baseline, "#999999")
-            alpha = BEFORE_ALPHA if label == "before" else AFTER_ALPHA
-            edge = "#333333" if label == "before" else "#666666"
-            lw = 0.9 if label == "before" else 0.6
-            hatch = BASELINE_HATCHES.get(baseline) if label == "after" else None
-
-            means_arr = np.asarray(means, dtype=float)
-            stds_arr = np.asarray(stds, dtype=float)
-            upper = np.maximum(0.0, np.minimum(stds_arr, 100.0 - means_arr))
-            lower = np.maximum(0.0, np.minimum(stds_arr, means_arr))
-            bounded_yerr = np.vstack([lower, upper])
-
-            bars = ax.bar(
-                xpos, means, width,
-                color=color,
-                alpha=alpha,
-                edgecolor=edge,
-                linewidth=lw,
-                hatch=hatch,
-                yerr=bounded_yerr,
-                error_kw={"elinewidth": 1.0, "capsize": 3, "ecolor": "#444444"},
-            )
-            # One proxy per (baseline, label) pair for legend
-            proxy = plt.Rectangle(
-                (0, 0), 1, 1,
-                facecolor=color,
-                alpha=alpha,
-                edgecolor=edge,
-                linewidth=lw,
-                hatch=hatch,
-            )
-            lbl = f"{display_baseline(baseline)} ({label})"
-            if lbl not in handle_labels:
-                handles.append(proxy)
-                handle_labels.append(lbl)
-
-            # Value labels above bars
-            for bar, val in zip(bars, means):
-                if val <= 0:
-                    continue
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2.0,
-                    bar.get_height() + 0.8,
-                    f"{val:.0f}%",
-                    ha="center", va="bottom",
-                    fontsize=7.5, fontweight="bold",
-                    color="#333333",
-                )
-            slot += 1
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(x_labels)
-    ax.set_xlabel(x_label or group_col.replace("_", " ").title())
-    ax.set_ylabel("Query Accuracy (%)")
-    ax.set_ylim(0, 118)
-    if title:
-        ax.set_title(title, fontsize=13.0, pad=6)
-    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
-    ax.set_axisbelow(True)
-    _clean_axes(ax)
-
-    ncol = min(len(handle_labels), 4)
-    ax.legend(
-        handles, handle_labels,
-        ncol=ncol,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.22),
-        frameon=False,
-        fontsize=10.5,
-        columnspacing=0.8,
-        handletextpad=0.4,
-    )
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    fig.subplots_adjust(bottom=0.32)
-    fig.tight_layout(rect=(0.0, 0.06, 1.0, 1.0))
-    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-
-
-def _load_oos_after_all_datasets(react_oos_after_root: Path) -> pd.DataFrame:
-    """Load React-after OOS results from react_oos_after/{bus,mit_ecg,wisdm}/metrics.csv.
-
-    benchmark metrics.csv has no dataset column, so the dataset is injected from
-    the directory name after loading.
-    """
-    # map canonical dataset name -> subdirectory name used by benchmark --output
     dataset_dirs = {"bus": "bus", "wisdm": "wisdm", "ecg": "mit_ecg"}
     parts: list[pd.DataFrame] = []
     for dataset, dir_name in dataset_dirs.items():
-        d = react_oos_after_root / dir_name
-        if not d.exists():
+        metrics_root = root / "REACT_ONLY" / dir_name / "july26_full" if old_layout else root / dir_name
+        if not metrics_root.exists():
             continue
         df = load_metrics_from_dir(
-            d,
-            label="after",
+            metrics_root,
+            label=label,
             baselines=["REACT_ONLY"],
-            query_type_filter=["Out-of-Scope"],
+            query_type_filter=query_type_filter,
         )
         df["dataset"] = dataset
-        df["dataset"] = pd.Categorical(df["dataset"], categories=list(DATASET_ORDER), ordered=True)
         parts.append(df)
     if not parts:
-        raise FileNotFoundError(f"No react_oos_after results found under {react_oos_after_root}")
-    return pd.concat(parts, ignore_index=True)
+        raise FileNotFoundError(f"No ReAct metrics found under {root}")
+    out = pd.concat(parts, ignore_index=True)
+    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
+    return out
 
 
 def _aggregate_oos_by_dataset(df: pd.DataFrame, series_name: str) -> pd.DataFrame:
@@ -503,12 +430,27 @@ def _build_parser() -> argparse.ArgumentParser:
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--results-root",
-        default=str(script_dir.parent / "results" / "with_slm_predictive"),
+        default=str(script_dir.parent / "results" / "ff_newlook_with_react"),
         help="Root folder containing dataset-level metrics.csv files.",
     )
     parser.add_argument(
+        "--flash-fusion-root",
+        default=None,
+        help="Optional override root for FLASH_FUSION baseline data.",
+    )
+    parser.add_argument(
+        "--react-root",
+        default=None,
+        help="Optional override root for REACT_ONLY baseline data.",
+    )
+    parser.add_argument(
+        "--autoiot-root",
+        default=str(script_dir.parent / "results" / "with_slm_predictive"),
+        help="Optional override root for AUTOIOT_PAPER baseline data.",
+    )
+    parser.add_argument(
         "--run-dir",
-        default="july26_full",
+        default="ff_newlook_react",
         help="Per-dataset run folder name under each baseline/dataset.",
     )
     parser.add_argument(
@@ -518,15 +460,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--llmsense-root",
-        default=None,
+        default=str(script_dir.parent / "results" / "july26"),
         help="Alternate root directory for LLMSense results if missing from primary root.",
     )
     parser.add_argument(
         "--hargpt-root",
-        default=None,
+        default=str(script_dir.parent / "results" / "july26"),
         help="Alternate root directory for HARGPT results if missing from primary root.",
     )
-    script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--ffpaper-data-root",
         default=None,
@@ -537,54 +478,51 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="performance_ffpaper ECG Flash-Fusion dedicated run root.",
     )
-    # --- Before/after comparison args ---
     parser.add_argument(
-        "--before-dir",
+        "--react-before-root",
         default=None,
         help=(
-            "Benchmark output directory for the 'before' condition of a before/after comparison "
-            "(e.g. ReAct without OOS abstention, or Flash-Fusion with 70B on all stages). "
-            "Expects a metrics.csv or run_*/metrics.csv inside this directory."
+            "Flat-layout root for ReAct 'before' (no abstention) OOS results "
+            "(root/<dataset>/metrics.csv). Produced by run_react_BeforeAfter.sh. "
+            "When set, takes precedence over --react-july26-root for the OOS figure."
         ),
     )
     parser.add_argument(
-        "--after-dir",
-        default=None,
+        "--react-after-root",
+        default=str(script_dir.parent / "results" / "react_after"),
         help=(
-            "Benchmark output directory for the 'after' condition of a before/after comparison "
-            "(e.g. ReAct with OOS abstention, or Flash-Fusion with 8B on S1/S2)."
+            "Flat-layout root for ReAct 'after' (with abstention) OOS results "
+            "(root/<dataset>/metrics.csv). Used for both the OOS abstention figure "
+            "and the Out-of-Scope portion of the primary accuracy figures."
         ),
     )
     parser.add_argument(
-        "--before-after-baselines",
-        default=None,
+        "--react-july26-root",
+        default=str(script_dir.parent / "results" / "july26"),
         help=(
-            "Comma-separated baselines to include in the before/after figure. "
-            "Defaults to REACT_ONLY for OOS comparisons and FLASH_FUSION for SLM comparisons. "
-            "Example: REACT_ONLY or FLASH_FUSION,REACT_ONLY"
+            "Legacy July26 REACT_ONLY results root (root/REACT_ONLY/<dataset>/july26_full/ "
+            "metrics.csv layout). Fallback 'before' source when --react-before-root is not set."
         ),
     )
     parser.add_argument(
-        "--before-after-query-types",
-        default=None,
-        help=(
-            "Comma-separated query types to include in the before/after figure. "
-            "Defaults to all types. Example: \"Out-of-Scope\" or \"Direct,Reasoning,Out-of-Scope\""
-        ),
+        "--baseline-set",
+        default=",".join(FULL_BASELINES),
+        help="Comma-separated baseline codes to include in figures.",
     )
     parser.add_argument(
-        "--before-after-title",
-        default="",
-        help="Optional title for the before/after figure.",
+        "--dataset-baseline-set",
+        default=",".join(FULL_BASELINES),
+        help="Comma-separated baseline codes to include in the dataset accuracy figure.",
     )
     parser.add_argument(
-        "--react-oos-after-root",
-        default=str(script_dir.parent / "results" / "react_oos_after"),
-        help=(
-            "Root folder containing per-dataset react_oos_after benchmark outputs "
-            "(expects subdirs bus/, wisdm/, mit_ecg/ each with a metrics.csv). "
-            "Used to generate the OOS abstention cross-dataset figure."
-        ),
+        "--query-type-baseline-set",
+        default=",".join(TOP3_BASELINES),
+        help="Comma-separated baseline codes to include in the query-type accuracy figure.",
+    )
+    parser.add_argument(
+        "--query-types",
+        default=",".join(QUERY_TYPE_ORDER),
+        help="Comma-separated query types to include in figures.",
     )
     return parser
 
@@ -594,8 +532,21 @@ def main() -> None:
     results_root = Path(args.results_root).resolve()
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    selected_baselines = [
+        b.strip().upper() for b in _parse_csv_list(args.baseline_set) or list(FULL_BASELINES)
+    ]
+    dataset_baselines = [
+        b.strip().upper() for b in _parse_csv_list(args.dataset_baseline_set) or list(FULL_BASELINES)
+    ]
+    query_type_baselines = [
+        b.strip().upper() for b in _parse_csv_list(args.query_type_baseline_set) or list(TOP3_BASELINES)
+    ]
+    selected_query_types = _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
 
-    # Build fallback roots dict for baselines with alternate sources
+    # Build fallback roots dict for baselines with alternate sources.
+    # For HARGPT/LLMSense the July26 nested layout is used as the default source
+    # because these baselines are not present in the primary ff_newlook_with_react
+    # flat layout.
     fallback_roots = {}
     if args.llmsense_root:
         fallback_roots["LLMSENSE_PAPER"] = Path(args.llmsense_root).resolve()
@@ -605,6 +556,8 @@ def main() -> None:
     ffpaper_run_root = Path(args.ffpaper_data_root).resolve() if args.ffpaper_data_root else None
     ffpaper_ecg_ff_root = Path(args.ffpaper_ecg_ff_root).resolve() if args.ffpaper_ecg_ff_root else None
 
+    # Load from the primary root (ff_newlook_with_react) and fall back to
+    # baseline-specific roots for baselines that are not present there.
     df = load_all_metrics(
         results_root=results_root,
         run_dir=args.run_dir,
@@ -624,6 +577,25 @@ def main() -> None:
         df["query_type"] = pd.Categorical(df["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
         return df
 
+    baseline_overrides = {
+        "FLASH_FUSION": Path(args.flash_fusion_root).resolve() if args.flash_fusion_root else None,
+        "REACT_ONLY": Path(args.react_root).resolve() if args.react_root else None,
+        "AUTOIOT_PAPER": Path(args.autoiot_root).resolve() if args.autoiot_root else None,
+    }
+    for baseline_code, override_root in baseline_overrides.items():
+        if override_root is None:
+            continue
+        try:
+            override_df = load_all_metrics(
+                results_root=override_root,
+                baselines=[baseline_code],
+                datasets=DATASET_ORDER,
+                run_dir=args.run_dir,
+            )
+            df = _apply_override(df, override_df, baseline_code)
+        except ValueError:
+            print(f"[WARN] Could not load override data for {baseline_code} from {override_root}")
+
     # Override Flash-Fusion Direct queries (query_id 1-4) only with ffpaper sources.
     # Reasoning (5-8) and Out-of-Scope (9-12) remain sourced from july26.
     if ffpaper_run_root is not None and ffpaper_ecg_ff_root is not None:
@@ -641,13 +613,75 @@ def main() -> None:
         if llmsense_wisdm is not None and not llmsense_wisdm.empty:
             df = _apply_override(df, llmsense_wisdm, "LLMSENSE_PAPER", "wisdm")
 
+    # Ensure REACT_ONLY is loaded from the flat per-dataset layout in results_root
+    # (root/<dataset>/metrics.csv), covering all query types across multiple runs.
+    # This supersedes any nested run_dir layout that load_all_metrics may have found.
+    if results_root.exists():
+        try:
+            react_newlook_df = _load_react_before_after_root(
+                results_root, "after", old_layout=False, query_type_filter=None
+            )
+            df = _apply_override(df, react_newlook_df, "REACT_ONLY")
+        except FileNotFoundError as exc:
+            print(f"[WARN] Could not load REACT_ONLY from {results_root}: {exc}")
+
+    # Override ReAct Out-of-Scope scores from the dedicated react_after source.
+    # This affects both the primary accuracy figures and the OOS abstention figure.
+    react_after_root_path = Path(args.react_after_root).resolve() if args.react_after_root else None
+    if react_after_root_path is not None and react_after_root_path.exists():
+        try:
+            react_after_oos_df = _load_react_before_after_root(
+                react_after_root_path, "after", old_layout=False, query_type_filter=["Out-of-Scope"]
+            )
+            react_after_oos_df = react_after_oos_df.drop(columns=["label"], errors="ignore")
+            react_mask = (df["baseline"] == "REACT_ONLY") & (df["query_type"] == "Out-of-Scope")
+            df = pd.concat([df[~react_mask], react_after_oos_df], ignore_index=True)
+            df["baseline"] = pd.Categorical(df["baseline"], categories=list(BASELINE_ORDER), ordered=True)
+            df["dataset"] = pd.Categorical(df["dataset"], categories=list(DATASET_ORDER), ordered=True)
+            df["query_type"] = pd.Categorical(df["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+        except FileNotFoundError as exc:
+            print(f"[WARN] Could not load REACT_ONLY OOS from {react_after_root_path}: {exc}")
+
+    # Inject zero-score Predictive rows for HARGPT and LLMSense so the query-type
+    # accuracy figure shows all five baselines on the same x-axis. July26 runs for
+    # these baselines did not include queries 13-16, so treat predictive accuracy
+    # as 0% across all datasets and runs that are already present. Latency, cost,
+    # and token columns are left as NaN so these rows do not contaminate other
+    # measurements.
+    for zero_pred_baseline in ("HARGPT_PAPER", "LLMSENSE_PAPER"):
+        if zero_pred_baseline in selected_baselines:
+            present = df[df["baseline"] == zero_pred_baseline]
+            if not present.empty:
+                run_ids = present["run_id"].unique() if "run_id" in present.columns else [1]
+                zero_rows = []
+                for dataset in DATASET_ORDER:
+                    for run_id in run_ids:
+                        for query_id in (13, 14, 15, 16):
+                            zero_rows.append({
+                                "baseline": zero_pred_baseline,
+                                "dataset": dataset,
+                                "run_id": run_id,
+                                "query_id": query_id,
+                                "gt_score": 0.0,
+                                "accuracy_percent": 0.0,
+                                "query_type": "Predictive",
+                            })
+                df = pd.concat([df, pd.DataFrame(zero_rows)], ignore_index=True)
+
+    df = _filter_metrics(df, selected_baselines, selected_query_types)
+
     by_dataset = aggregate_accuracy_by_dataset(df)
     by_query_type = aggregate_accuracy_by_query_type(df)
 
     fig1 = output_dir / "accuracy_vs_baselines_across_datasets.png"
     fig2 = output_dir / "accuracy_vs_baselines_across_query_types.png"
-    plot_accuracy_across_datasets(by_dataset, fig1)
-    plot_accuracy_across_query_types(by_query_type, fig2)
+    plot_accuracy_across_datasets(by_dataset, fig1, baselines=dataset_baselines)
+    plot_accuracy_across_query_types(
+        by_query_type,
+        fig2,
+        baselines=query_type_baselines,
+        query_types=selected_query_types,
+    )
 
     by_dataset.to_csv(output_dir / "accuracy_vs_baselines_across_datasets_summary.csv", index=False)
     by_query_type.to_csv(output_dir / "accuracy_vs_baselines_across_query_types_summary.csv", index=False)
@@ -656,13 +690,40 @@ def main() -> None:
     print(f"Wrote {fig2}")
 
     # --- OOS abstention cross-dataset figure ---
-    react_oos_after_root = Path(args.react_oos_after_root).resolve()
-    if react_oos_after_root.exists():
+    # "before" source: --react-before-root (flat layout, new runs) takes priority;
+    #   falls back to --react-july26-root (nested july26_full layout, legacy data).
+    # "after" source: --react-after-root (flat layout, new runs) takes priority;
+    #   falls back to the REACT_ONLY slice already in df (from --results-root).
+    react_before_root_path = (
+        Path(args.react_before_root).resolve() if args.react_before_root else None
+    )
+    react_july26_root = Path(args.react_july26_root).resolve()
+
+    # Resolve the before source
+    if react_before_root_path is not None and react_before_root_path.exists():
+        _before_root, _before_old_layout = react_before_root_path, False
+    elif react_july26_root.exists():
+        _before_root, _before_old_layout = react_july26_root, True
+    else:
+        _before_root, _before_old_layout = None, False
+
+    if _before_root is not None:
         try:
-            react_after_oos = _load_oos_after_all_datasets(react_oos_after_root)
-            react_before_oos = df[
-                (df["baseline"] == "REACT_ONLY") & (df["query_type"] == "Out-of-Scope")
-            ].copy()
+            react_before_oos = _load_react_before_after_root(
+                _before_root, "before", old_layout=_before_old_layout
+            )
+
+            # Resolve the after source
+            if args.react_after_root:
+                react_after_root_path = Path(args.react_after_root).resolve()
+                react_after_oos = _load_react_before_after_root(
+                    react_after_root_path, "after", old_layout=False
+                )
+            else:
+                react_after_oos = df[
+                    (df["baseline"] == "REACT_ONLY") & (df["query_type"] == "Out-of-Scope")
+                ].copy()
+
             ff_oos = df[
                 (df["baseline"] == "FLASH_FUSION") & (df["query_type"] == "Out-of-Scope")
             ].copy()
@@ -684,45 +745,8 @@ def main() -> None:
         except FileNotFoundError as exc:
             print(f"[WARN] Skipping OOS abstention figure: {exc}")
     else:
-        print(f"[INFO] --react-oos-after-root {react_oos_after_root} not found; skipping OOS figure.")
-
-    # --- Optional before/after comparison figure ---
-    if args.before_dir and args.after_dir:
-        before_dir = Path(args.before_dir).resolve()
-        after_dir = Path(args.after_dir).resolve()
-        ba_baselines = (
-            [b.strip().upper() for b in args.before_after_baselines.split(",") if b.strip()]
-            if args.before_after_baselines
-            else None
-        )
-        ba_query_types = (
-            [qt.strip() for qt in args.before_after_query_types.split(",") if qt.strip()]
-            if args.before_after_query_types
-            else None
-        )
-        before_df = load_metrics_from_dir(
-            before_dir, label="before",
-            baselines=ba_baselines or list(BASELINE_ORDER),
-            query_type_filter=ba_query_types,
-        )
-        after_df = load_metrics_from_dir(
-            after_dir, label="after",
-            baselines=ba_baselines or list(BASELINE_ORDER),
-            query_type_filter=ba_query_types,
-        )
-        ba_summary = aggregate_accuracy_before_after(
-            before_df, after_df,
-            baselines=ba_baselines,
-        )
-        fig3 = output_dir / "before_after_comparison.png"
-        plot_before_after(
-            ba_summary,
-            fig3,
-            title=args.before_after_title or "Before / After Comparison",
-            x_label="Query Type",
-        )
-        ba_summary.to_csv(output_dir / "before_after_comparison_summary.csv", index=False)
-        print(f"Wrote {fig3}")
+        print("[INFO] No ReAct before-source found; skipping OOS abstention figure."
+              " Set --react-before-root or --react-july26-root.")
 
 
 if __name__ == "__main__":

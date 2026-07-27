@@ -24,8 +24,15 @@ See CLAUDE.md §_run_agent_only for the original algorithm this replaced.
 
 from __future__ import annotations
 
+import re
+
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.runner import LLMClient, RunResult
+
+
+def _is_oos_abstention_answer(answer: str) -> bool:
+    """Return True when safe codegen returned the explicit REJECT sentinel."""
+    return bool(re.match(r"^\s*REJECT\s*:\s*\S", answer or "", re.DOTALL))
 
 
 def run_react_only(
@@ -65,11 +72,19 @@ def run_react_only(
 
     Note: ReAct-Only does NOT call Stage 1/2/3 and does not run guardrail.
     """
-    executor = ExecutionLayer(df, client, react_faithful=True)
+    # REACT_NO_ABSTENTION=1 runs without the OOS abstention clause in the prompt
+    # prefix, producing the "before" (pre scope-check-prompt) behaviour for experiments.
+    import os
+    no_abstention = os.environ.get("REACT_NO_ABSTENTION", "0").strip().lower() in {"1", "true", "yes"}
+    executor = ExecutionLayer(df, client, react_faithful=not no_abstention)
     raw_answer, trace, details = executor.execute_single(query)
+    is_abstention = _is_oos_abstention_answer(raw_answer)
     r.answer = raw_answer
     r.trace = trace
-    r.executed = True
+    r.executed = not is_abstention
+    r.rejected = is_abstention
+    if is_abstention:
+        r.rejection_reason = raw_answer.strip() or "Out-of-scope for available data."
     r.final_code = details.final_code
     r.agent_tries = details.tries
     r.execution_attempts = list(details.attempts)

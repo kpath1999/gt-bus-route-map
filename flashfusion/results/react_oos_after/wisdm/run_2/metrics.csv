@@ -1,5 +1,0 @@
-baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,protocol_id,protocol_verified,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,agent_latency_ms
-REACT_ONLY,9,0.0,llm_judge_score,38.639538049697876,0.00089201,750,569,True,False,N/A,react_agent,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
-REACT_ONLY,10,0.0,llm_judge_score,54.24968719482422,0.00052792,394,374,True,False,N/A,react_agent,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
-REACT_ONLY,11,0.0,llm_judge_score,35.311363220214844,0.00042343999999999997,395,241,True,False,N/A,react_agent,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
-REACT_ONLY,12,0.0,llm_judge_score,12.604026079177856,0.00040542,414,204,True,False,N/A,react_agent,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

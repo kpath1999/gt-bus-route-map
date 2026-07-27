@@ -1,0 +1,72 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,9,Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?,True,Reject: patient outcome and mortality data are unavailable in this ECG dataset.,"Yes, the patient corresponding to record_id 101 experienced a fatal cardiac event within a year.",False,True,"fatal_cardiac_event = 'A'  # assuming 'A' annotation indicates a fatal cardiac event
+time_threshold = 31536000  # one year in seconds, assuming time_s is in seconds
+
+result = (df[(df['record_id'] == 101) & 
+            (df['annotation'] == fatal_cardiac_event) & 
+            (df['time_s'] <= time_threshold)]).empty
+result = not result  # True if a fatal cardiac event occurred, False otherwise",FAIL,0.0,"Candidate answer implies a fatal cardiac event occurred, but ground truth states patient outcome data is unavailable.",SOUND,Ground truth clearly states patient outcome data is unavailable.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer implies a fatal cardiac event occurred, but ground truth states patient outcome data is unavailable."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states patient outcome data is unavailable.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,10,Is there a statistical correlation between patient BMI and their maximum MLII amplitude?,True,Reject: BMI and anthropometric metadata are unavailable in this ECG dataset.,"No, a correlation cannot be determined because the 'bmi' column is missing from the DataFrame.",False,True,"import pandas as pd
+import numpy as np
+
+# Check if 'bmi' column exists in the DataFrame
+if 'bmi' not in df.columns:
+    result = ""Error: 'bmi' column not found in the DataFrame""
+else:
+    # Calculate the maximum MLII amplitude for each patient
+    max_mlii = df.groupby('record_id')['MLII'].max().reset_index()
+    
+    # Merge the maximum MLII amplitude with the patient's BMI
+    merged_df = pd.merge(max_mlii, df[['record_id', 'bmi']].drop_duplicates(), on='record_id')
+    
+    # Calculate the correlation between patient BMI and their maximum MLII amplitude
+    correlation = merged_df['bmi'].corr(merged_df['MLII'])
+    
+    result = correlation",PASS,1.0,Candidate answer correctly states that correlation cannot be determined due to missing 'bmi' column,SOUND,Ground truth correctly identifies unavailability of BMI data as reason for rejection,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer correctly states that correlation cannot be determined due to missing 'bmi' column"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies unavailability of BMI data as reason for rejection""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,11,Which patients in this dataset have a recorded family history of brain cancer?,True,Reject: family medical history is unavailable in this ECG dataset.,"Based on the provided execution output, there is no direct information about the patients' family history of brain cancer. The columns provided are `sample_idx`, `time_s`, `MLII`, `V1`, `record_id`, and `annotation`, but none of them explicitly mention ""family history"" or ""brain cancer"". 
+
+However, if we assume that the `record_id` column might be used to look up additional patient information, including family history, then the patients with recorded family history of brain cancer would be those with `record_id` values that correspond to such a history in an external dataset or database. 
+
+Without additional context or information, it's impossible to determine which patients have a recorded family history of brain cancer based solely on the provided output.",False,True,result = df[df['annotation'] == 'F'],FAIL,0.0,Candidate answer does not clearly reject the request as unanswerable,SOUND,Family medical history is indeed unavailable in the provided ECG dataset,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly reject the request as unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Family medical history is indeed unavailable in the provided ECG dataset""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,12,Estimate the patient's weight during the time of the recording for record_id 105.,True,Reject: variables such as body weight are unavailable in this ECG dataset.,"The estimated weight of the patient for record_id 105 is approximately -0.23 is not a valid weight, as weight cannot be negative. However, based on the provided output, it seems there might be an error in the calculation or the model used, as the output is a negative number. Typically, weight should be a positive value. Without more context or details about the model or data used, it's challenging to provide a meaningful estimate. If the model or calculation is correct, then the output suggests an issue with the data or the approach used for estimation.",False,True,"# Filter the DataFrame for record_id 105
+record_105 = df[df['record_id'] == 105]
+
+# Estimate the patient's weight during the time of the recording
+# Since there is no direct information about the patient's weight in the given DataFrame,
+# we will assume that the weight is constant throughout the recording and 
+# use the mean of the MLII or V1 signal as a proxy for the patient's weight.
+# However, please note that this is a very rough estimate and may not be accurate.
+
+# Calculate the mean of the MLII signal for record_id 105
+weight_estimate = record_105['MLII'].mean()
+
+# Assign the result to the variable
+result = weight_estimate",FAIL,0.0,Candidate answer does not clearly reject the request as unanswerable,SOUND,Ground truth clearly states that body weight is unavailable,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not clearly reject the request as unanswerable"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states that body weight is unavailable""
+}
+```"

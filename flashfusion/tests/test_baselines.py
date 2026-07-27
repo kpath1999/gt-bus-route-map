@@ -276,6 +276,51 @@ def test_agent_runs_agent_without_guardrail() -> None:
     assert out.stages_run == ["react_agent"]
 
 
+def test_react_only_marks_scope_check_abstention_as_rejected() -> None:
+    from flashfusion.baselines.react_only import run_react_only
+
+    query = "Can you predict next week's pothole repairs?"
+    r = _result("REACT_ONLY", query)
+
+    abstention = "REJECT: Future pothole repair labels are not present in the dataset."
+
+    with patch("flashfusion.baselines.react_only.ExecutionLayer") as execution_layer_cls:
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = (
+            abstention,
+            "trace",
+            MagicMock(final_code="code", tries=1, attempts=[]),
+        )
+
+        out = run_react_only(query, _df(), _client(), r)
+
+    assert out.rejected is True
+    assert out.executed is False
+    assert out.rejection_reason == abstention
+    assert out.stages_run == ["react_agent"]
+
+
+def test_react_only_non_abstention_answer_remains_executed() -> None:
+    from flashfusion.baselines.react_only import run_react_only
+
+    query = "What is the average x-axis acceleration?"
+    r = _result("REACT_ONLY", query)
+
+    with patch("flashfusion.baselines.react_only.ExecutionLayer") as execution_layer_cls:
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = (
+            "The average x-axis acceleration is 0.52.",
+            "trace",
+            MagicMock(final_code="code", tries=1, attempts=[]),
+        )
+
+        out = run_react_only(query, _df(), _client(), r)
+
+    assert out.rejected is False
+    assert out.executed is True
+    assert out.stages_run == ["react_agent"]
+
+
 def test_wellmax_executes_grounded_query_without_guardrail() -> None:
     from flashfusion.baselines.wellmax_only import run_wellmax_only
 

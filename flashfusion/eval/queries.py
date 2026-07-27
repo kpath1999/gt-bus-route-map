@@ -173,7 +173,7 @@ WISDM_QUERIES: list[dict] = [
         "text": (
             "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a logistic regression model using the training rows. "
+            "Train a logistic regression model using the features x, y and z. "
             "Predict the activity label for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -185,7 +185,7 @@ WISDM_QUERIES: list[dict] = [
         "text": (
             "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a random forest model using the training rows. "
+            "Train a random forest model using the features x, y and z. "
             "Predict the activity label for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -197,7 +197,7 @@ WISDM_QUERIES: list[dict] = [
         "text": (
             "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a 1-nearest-neighbor model using the training rows. "
+            "Train a 1-nearest-neighbor model using the features x, y and z. "
             "Predict the activity label for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -209,7 +209,7 @@ WISDM_QUERIES: list[dict] = [
         "text": (
             "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a hist gradient boosting model using the training rows. "
+            "Train a hist gradient boosting model using the features x, y and z. "
             "Predict the activity label for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -308,7 +308,7 @@ MIT_ECG_QUERIES: list[dict] = [
         "text": (
             "Filter to record_id 101 and sort its rows by time_s in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a logistic regression model using the training rows. "
+            "Train a logistic regression model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -320,7 +320,7 @@ MIT_ECG_QUERIES: list[dict] = [
         "text": (
             "Filter to record_id 101 and sort its rows by time_s in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a random forest model using the training rows. "
+            "Train a random forest model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -332,7 +332,7 @@ MIT_ECG_QUERIES: list[dict] = [
         "text": (
             "Filter to record_id 101 and sort its rows by time_s in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a 1-nearest-neighbor model using the training rows. "
+            "Train a 1-nearest-neighbor model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -344,7 +344,7 @@ MIT_ECG_QUERIES: list[dict] = [
         "text": (
             "Filter to record_id 101 and sort its rows by time_s in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a hist gradient boosting model using the training rows. "
+            "Train a hist gradient boosting model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -443,7 +443,7 @@ BUS_QUERIES: list[dict] = [
         "text": (
             "Sort all bus rows by timestamp in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a logistic regression model using the training rows. "
+            "Train a logistic regression model using the acceleration features. "
             "Predict the label in the behavior column for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -455,7 +455,7 @@ BUS_QUERIES: list[dict] = [
         "text": (
             "Sort all bus rows by timestamp in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a random forest model using the training rows. "
+            "Train a random forest model using the acceleration features. "
             "Predict the label in the behavior column for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -467,7 +467,7 @@ BUS_QUERIES: list[dict] = [
         "text": (
             "Sort all bus rows by timestamp in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a 1-nearest-neighbor model using the training rows. "
+            "Train a 1-nearest-neighbor model using the acceleration features. "
             "Predict the label in the behavior column for the first row in the holdout set."
         ),
         "complexity": "predictive",
@@ -479,7 +479,7 @@ BUS_QUERIES: list[dict] = [
         "text": (
             "Sort all bus rows by timestamp in ascending order. "
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
-            "Train a hist gradient boosting model using the training rows. "
+            "Train a hist gradient boosting model using the acceleration features. "
             "Predict the label in the behavior column for the first row in the holdout set."
         ),
         "complexity": "predictive",

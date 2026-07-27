@@ -4,9 +4,12 @@ This folder now has a clean, focused plotting flow for July26 baseline data.
 
 ## Data source
 
-All scripts read from:
+Scripts can read from one primary root and optionally override specific baselines
+from alternate roots.
 
-- `flashfusion/results/july26/<BASELINE>/<DATASET>/july26_full/metrics.csv`
+Default baseline layout:
+
+- `flashfusion/results/<RUN_ROOT>/<BASELINE>/<DATASET>/july26_full/metrics.csv`
 
 Supported baselines:
 
@@ -54,4 +57,26 @@ From repository root:
 ```bash
 python3 flashfusion/viz/llamas.py
 python3 flashfusion/viz/latencystages.py
+```
+
+For the requested three-baseline comparison with mixed roots:
+
+- Flash-Fusion and ReAct-Only from `flashfusion/results/ff_newlook_with_react`
+- AutoIOT from `flashfusion/results/with_slm_predictive`
+- Query types: Direct, Reasoning, Out-of-Scope, Predictive
+
+```bash
+python3 flashfusion/viz/llamas.py \
+  --results-root flashfusion/results/ff_newlook_with_react \
+  --autoiot-root flashfusion/results/with_slm_predictive \
+  --baseline-set FLASH_FUSION,REACT_ONLY,AUTOIOT_PAPER \
+  --query-types Direct,Reasoning,Out-of-Scope,Predictive \
+  --output-dir flashfusion/viz/results/primary_visualizations
+
+python3 flashfusion/viz/latencystages.py \
+  --results-root flashfusion/results/ff_newlook_with_react \
+  --autoiot-root flashfusion/results/with_slm_predictive \
+  --baseline-set FLASH_FUSION,REACT_ONLY,AUTOIOT_PAPER \
+  --query-types Direct,Reasoning,Out-of-Scope,Predictive \
+  --output-dir flashfusion/viz/results/primary_visualizations
 ```

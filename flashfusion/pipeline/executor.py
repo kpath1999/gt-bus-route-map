@@ -387,7 +387,8 @@ class ExecutionLayer:
                         "system",
                         "You write Python code that runs against an in-memory pandas DataFrame named df. "
                         "Return only Python code. Do not include markdown fences. "
-                        "Assign the final answer to a variable named result.",
+                        "Assign the final answer to a variable named result.\n\n"
+                        "{abstention_clause}",
                     ),
                     (
                         "human",
@@ -693,9 +694,22 @@ class ExecutionLayer:
                     "question": query,
                     "column_metadata": meta_to_str(build_column_metadata(self._df)),
                     "last_error": last_error,
+                    "abstention_clause": os.getenv("REACT_ABSTENTION_CLAUSE", "").strip(),
                 },
                 stage=f"safe_codegen_{i}",
             )
+            rejection = self._extract_safe_rejection(code_text)
+            if rejection is not None:
+                answer = f"REJECT: {rejection}"
+                trace_steps.append("Thought: Scope check rejected the request before code generation")
+                trace_steps.append(f"Final Answer: {answer}")
+                return answer, "\n".join(trace_steps), ExecutionDetails(
+                    final_code="",
+                    tries=i - 1,
+                    attempts=attempts,
+                    safe_execution_s=total_safe_exec_s,
+                )
+
             code = self._extract_python_code(code_text)
             last_code = code
 
@@ -742,6 +756,11 @@ class ExecutionLayer:
             attempts=attempts,
             safe_execution_s=total_safe_exec_s,
         )
+
+    def _extract_safe_rejection(self, text: str) -> str | None:
+        """Return a reason when safe codegen emits the required REJECT sentinel."""
+        match = re.match(r"^\s*REJECT\s*:\s*(.+?)\s*$", text or "", re.DOTALL)
+        return match.group(1).strip() if match else None
 
     def _extract_python_code(self, text: str) -> str:
         """Extract python code from raw model output (supports fenced responses)."""

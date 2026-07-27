@@ -1,0 +1,65 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],HARGPT_PAPER,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,"Please note, this answer is highly speculative due to missing crucial metadata.",False,False,,FAIL,0.0,Candidate answer does not provide a clear prediction for the first holdout row.,SOUND,Ground truth clearly states the predicted behavior as 'moderate'.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not provide a clear prediction for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states the predicted behavior as 'moderate'.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,"**Final Answer**: Without the actual 'behavior' column and more specific details about the target variable, the final answer cannot be accurately provided. However, following the steps above with the correct target variable and features should yield the desired prediction.",False,False,,FAIL,0.0,Candidate answer does not provide a specific prediction for the first holdout row.,SOUND,Ground truth provides a clear prediction of 'moderate' behavior.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not provide a specific prediction for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth provides a clear prediction of 'moderate' behavior.""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The final answer is: $\boxed{9.27}$,False,False,,FAIL,0.0,Candidate answer does not match the predicted behavior,SOUND,1-nearest-neighbor model predicts behavior 'moderate' for the first holdout row,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the predicted behavior"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor model predicts behavior 'moderate' for the first holdout row""
+}
+```"
+[in_memory_benchmark_run],HARGPT_PAPER,16,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,"Given the constraints and assumptions made due to missing metadata, the final answer would be the predicted `accel_mean` value for the first row in the holdout set, which cannot be calculated without the actual data. However, the process outlined above demonstrates how one would approach this task with the provided information.",False,False,,FAIL,0.0,Candidate answer does not match the predicted behavior for the first holdout row,SOUND,Hist gradient boosting predicts behavior 'moderate' for the first holdout row,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not match the predicted behavior for the first holdout row"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting predicts behavior 'moderate' for the first holdout row""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data does not contain enough information to answer the query.,SOUND,Logistic regression prediction is possible with the given data.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data does not contain enough information to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression prediction is possible with the given data.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data does not contain enough information to answer the query.,SOUND,Random forest prediction is provided as ground truth.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data does not contain enough information to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Random forest prediction is provided as ground truth.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data does not contain enough information to answer the query.,SOUND,1-nearest-neighbor model can be trained and used for prediction.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data does not contain enough information to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor model can be trained and used for prediction.""
+}
+```"
+[in_memory_benchmark_run],LLMSENSE_PAPER,16,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The available data does not contain enough information to answer this query.,False,False,,FAIL,0.0,Candidate answer incorrectly states that the data does not contain enough information to answer the query.,SOUND,Hist gradient boosting prediction is provided as ground truth.,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer incorrectly states that the data does not contain enough information to answer the query."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting prediction is provided as ground truth.""
+}
+```"

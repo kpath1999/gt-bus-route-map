@@ -414,7 +414,7 @@ def load_all_metrics(
                 df = load_metrics_from_dataset_root(results_root, baseline, dataset)
 
             if df is None and baseline in fallback_roots:
-                df = load_metrics_for_baseline_dataset_safe(fallback_roots[baseline], baseline, dataset, run_dir=run_dir)
+                df = load_metrics_for_baseline_dataset_safe(fallback_roots[baseline], baseline, dataset, run_dir="july26_full")
 
             if df is None and ffpaper_run_root is not None:
                 df = load_ffpaper_metrics(ffpaper_run_root, baseline, dataset)
