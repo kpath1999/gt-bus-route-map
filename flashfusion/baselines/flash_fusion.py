@@ -7,8 +7,8 @@ Default path (one LLM round-trip, no codegen, no sandbox):
       -> bypass detector (0 LLM calls)  OR  single structured guardrail+plan call
       -> Gate 1: Pydantic structural validation   (microseconds)
       -> Gate 2: DataFrame schema validation      (microseconds)
-      -> execute_plan(df, plan)  — typed operators, in-process
-      -> synthesis
+    -> execute_plan(df, plan)  — typed operators, in-process
+    -> local result formatting
 
 Fallback path (ReAct) is entered ONLY when:
   * the planner returns in_scope=True but no plan (operator vocabulary gap), or
@@ -66,10 +66,6 @@ FF_FALLBACK_GROUNDING = os.getenv("FF_FALLBACK_GROUNDING", "1").lower() in (
     "true",
     "yes",
 )
-
-#: Convert the machine value into a natural-language sentence. Disable to
-#: measure raw typed-operator latency without the presentation call.
-FF_SYNTHESIS = os.getenv("FF_SYNTHESIS", "1").lower() in ("1", "true", "yes")
 
 PATH_GUARDRAIL_REJECT = "guardrail_reject"
 PATH_TYPED_OPERATOR = "typed_operator"
@@ -367,11 +363,9 @@ def run_flash_fusion(
         "s1": 0.0,
         "s2": 0.0,
         "s3": 0.0,
-        "guardrail": 0.0,
-        "plan": 0.0,
+        "guardrail+plan": 0.0,
         "typed_exec": 0.0,
         "agent": 0.0,
-        "synthesis": 0.0,
     }
     r.stage_latency_s = dict(stage_latency_s)
 
@@ -406,11 +400,7 @@ def run_flash_fusion(
             parsed, raw, structural_error = request_guardrail_and_plan(
                 query, meta_str, client
             )
-            record("plan", started)
-            # The single call subsumes the old separate guardrail stage; mirror
-            # its latency there so existing stage-latency reports stay readable.
-            stage_latency_s["guardrail"] = stage_latency_s["plan"]
-            r.stage_latency_s = dict(stage_latency_s)
+            record("guardrail+plan", started)
             r.stages_run.append("guardrail_plan")
             raw_plan_payload = raw
 
@@ -492,7 +482,7 @@ def run_flash_fusion(
             if execution.ok:
                 r.execution_path = PATH_TYPED_OPERATOR
                 r.plan_validation_stage_failed = ""
-                r.answer = f"{execution.value}"
+                r.answer = f"The result is {execution.value}"
                 r.trace = execution.trace
                 r.final_code = execution.code
                 r.agent_tries = len(execution.steps)
@@ -553,22 +543,6 @@ def run_flash_fusion(
             r.execution_attempts = list(details.attempts)
             r.executed = True
             r.stages_run.append("agent")
-
-        # --- Synthesis -------------------------------------------------------
-        if FF_SYNTHESIS and r.executed and r.answer:
-            last_stage = "synthesis"
-            started = time.time()
-            try:
-                synthesized = ExecutionLayer(df, client).synthesize(
-                    query, [r.answer], "Answer the original question directly."
-                )
-                if synthesized:
-                    r.raw_answer = r.answer
-                    r.answer = synthesized
-                r.stages_run.append("synthesis")
-            except Exception as exc:  # noqa: BLE001 — keep the machine answer
-                _debug(f"Synthesis failed ({exc}); keeping raw answer.")
-            record("synthesis", started)
 
         return r
     except Exception as exc:

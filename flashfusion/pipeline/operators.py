@@ -183,7 +183,13 @@ class DeriveVectorMagnitude(_Operator):
 
 
 class DeriveBin(_Operator):
-    """Bucket a numeric column into fixed-width bins: ``floor(col / width) * width``."""
+    """Bucket a column into fixed-width bins: ``floor(col / width) * width``.
+
+    ``column`` may be numeric or datetime. For a datetime column, ``width`` is
+    interpreted in nanoseconds (e.g. 60_000_000_000 for a 1-minute bucket),
+    matching ``pd.Timestamp`` resolution, and the bucketed result is itself a
+    datetime — the start of each fixed-width time window.
+    """
 
     op: Literal["DERIVE_BIN"]
     column: str = Field(min_length=1)
@@ -537,6 +543,22 @@ def _to_python(value: Any) -> Any:
     return value
 
 
+def _bin_series(series: pd.Series, width: float) -> pd.Series:
+    """Bucket ``series`` into fixed-width bins: ``floor(value / width) * width``.
+
+    Numeric columns are binned directly. Datetime columns are binned in the
+    nanosecond domain (``width`` is nanoseconds, matching pandas' internal
+    ``datetime64[ns]`` resolution) and the result is converted back to a
+    datetime, so the bucket value is the start of each fixed-width window.
+    """
+    if pd.api.types.is_datetime64_any_dtype(series):
+        nanos = series.astype("int64")
+        width_ns = int(width)
+        bucketed = (nanos // width_ns) * width_ns
+        return pd.to_datetime(bucketed)
+    return (series // width) * width
+
+
 # ---------------------------------------------------------------------------
 # Gate 2 — DataFrame schema validation
 # ---------------------------------------------------------------------------
@@ -551,6 +573,19 @@ def _require_numeric(column: str, df: pd.DataFrame, op: str) -> None:
     if column in df.columns and not pd.api.types.is_numeric_dtype(df[column]):
         raise PlanSchemaError(
             f"{op} requires a numeric column; {column!r} has dtype {df[column].dtype}"
+        )
+
+
+def _require_numeric_or_datetime(column: str, df: pd.DataFrame, op: str) -> None:
+    if column not in df.columns:
+        return
+    dtype = df[column].dtype
+    if not (
+        pd.api.types.is_numeric_dtype(dtype)
+        or pd.api.types.is_datetime64_any_dtype(dtype)
+    ):
+        raise PlanSchemaError(
+            f"{op} requires a numeric or datetime column; {column!r} has dtype {dtype}"
         )
 
 
@@ -613,7 +648,7 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
 
             case DeriveBin():
                 _require_column(step.column, available, step.op)
-                _require_numeric(step.column, df, step.op)
+                _require_numeric_or_datetime(step.column, df, step.op)
                 available.add(step.result)
 
             case GroupAggregate():
@@ -979,12 +1014,12 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
 
         case DeriveBin():
             state.use(step.column)
-            derived = (state.working[step.column] // step.width) * step.width
+            derived = _bin_series(state.working[step.column], step.width)
             # Apply to both working and original so partitions can access derived columns
             state.working = state.working.assign(**{step.result: derived})
             # Only update original if source column exists there (it may have been created by PARALLEL_AGGREGATE)
             if step.column in state.original.columns:
-                derived_orig = (state.original[step.column] // step.width) * step.width
+                derived_orig = _bin_series(state.original[step.column], step.width)
                 state.original = state.original.assign(**{step.result: derived_orig})
             state.use(step.result)
             return (
@@ -1408,14 +1443,35 @@ OPERATORS:
 FILTER_COMPARE      {"op":"FILTER_COMPARE","column":str,"comparator":"eq|ne|gt|gte|lt|lte","value":scalar}
 FILTER_IN           {"op":"FILTER_IN","column":str,"values":[scalar,...]}
 FILTER_NOT_EMPTY    {"op":"FILTER_NOT_EMPTY","column":str}
+
 FILTER_EQ_AGGREGATE {"op":"FILTER_EQ_AGGREGATE","column":str,"aggregate":AGG}   rows where column == AGG(column)
+                    USE FOR: rows where a column reaches its maximum or minimum;
+                    this preserves every tied row. Follow with SELECT_COLUMN to return
+                    another field from those rows. Never nest an operator object inside
+                    FILTER_COMPARE.value; it must always be a literal scalar.
+
 AGGREGATE_COLUMN    {"op":"AGGREGATE_COLUMN","column":str,"aggregate":AGG}
 COUNT_ROWS          {"op":"COUNT_ROWS"}
 COUNT_DISTINCT      {"op":"COUNT_DISTINCT","column":str}
 SELECT_COLUMN       {"op":"SELECT_COLUMN","column":str,"distinct":bool}
 DERIVE_BINARY       {"op":"DERIVE_BINARY","left":str,"right":str,"operation":"add|subtract|multiply|divide|abs_difference","result":str}
+                    CRITICAL: left and right must be EXISTING COLUMN NAMES (strings), never nested operator objects,
+                    and NEVER a numeric literal (e.g. 60000000000) or a time constant — DERIVE_BINARY is
+                    column-vs-column arithmetic ONLY. If one side of the arithmetic is a constant/scalar number
+                    rather than a real column name, DERIVE_BINARY is the WRONG operator — use DERIVE_BIN instead
+                    (see below) when the constant is a bucket width, or set "plan" to null if no operator fits.
+                    operation must be an ARITHMETIC operation, never a comparator like "gt" or "lt".
+                    Use this ONLY after PARALLEL_AGGREGATE to combine result_column values, or to combine
+                    existing columns. Cannot compute medians/aggregates inline — use SPLIT_BY_THRESHOLD for that.
 DERIVE_VECTOR_MAGNITUDE {"op":"DERIVE_VECTOR_MAGNITUDE","columns":[str,str,str],"result":str}
 DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"width":number,"result":str}   floor(col/width)*width
+                    USE FOR: bucketing/grouping a column into fixed-size intervals against a CONSTANT width,
+                    e.g. "group timestamps into 1-minute windows" → column="timestamp", width=60000000000
+                    (nanoseconds per minute) or the correct unit for this column's dtype. This is the ONLY
+                    operator that divides a column by a literal scalar — DERIVE_BINARY must never be used
+                    for this because its "right" operand must be a column name, not a constant.
+                    After DERIVE_BIN, typically follow with GROUP_AGGREGATE(group_by=[result], ...) to
+                    aggregate a metric within each bucket, then RANK_GROUPS to find the extreme bucket.
 
 GROUP_AGGREGATE     {"op":"GROUP_AGGREGATE","group_by":[str,...],"aggregate":AGG,"column":str|null,"freq":str|null}
                     USE WHEN: One filtered subset needs one grouped metric and the answer is the highest/lowest
@@ -1433,12 +1489,17 @@ RANK_ROWS           {"op":"RANK_ROWS","column":str,"direction":"max|min","return
 PARALLEL_AGGREGATE  {"op":"PARALLEL_AGGREGATE","branches":[{"filter_column":str|null,"filter_values":[scalar,...]|null,
                      "group_by":[str,...],"aggregate":AGG,"column":str|null,"result_column":str},...]}
                     USE WHEN: The question compares, combines, or ranks metrics from TWO OR MORE independently
-                    filtered subsets per shared group (e.g., "compare resting vs dynamic activity per subject").
+                    filtered subsets PER SHARED GROUPING KEY (e.g., "compare resting vs dynamic activity per subject",
+                    "which user has the largest difference between X and Y"). There MUST be a grouping dimension
+                    (subject_id, user_id, etc.) that appears in every branch's group_by field.
+                    DO NOT USE when comparing two halves of the entire dataset with no per-entity grouping — use
+                    SPLIT_BY_THRESHOLD + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS for that pattern instead.
                     EXECUTION: Every branch starts from ORIGINAL dataframe, filters its own rows, groups by the
                     SAME keys, aggregates, then all branch outputs are outer-merged into the working frame.
                     OUTPUT: A working frame with columns [group_by keys, result_column_1, result_column_2, ...].
                     NEXT STEPS: Use DERIVE_BINARY on result_column values, then RANK_ROWS to find the answer.
                     DO NOT use GROUP_AGGREGATE before, after, or inside this pattern.
+                    CRITICAL: group_by must contain at least one column name — NEVER use an empty list.
                     Example:
                     {"op":"PARALLEL_AGGREGATE","branches":[
                       {"filter_column":"activity_label","filter_values":["Sitting","Standing"],
@@ -1453,6 +1514,13 @@ AGGREGATE_PARTITIONS {"op":"AGGREGATE_PARTITIONS","partitions":[label,label],"ag
 COMPARE_PARTITIONS  {"op":"COMPARE_PARTITIONS","mode":"difference|abs_difference|ratio"}
                     USE: SPLIT_BY_* + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS for "compare A versus B" questions
                     when the comparison is based on static partitions, not per-group aggregates.
+                    Example (comparing northern vs southern half by latitude):
+                    [{"op":"SPLIT_BY_THRESHOLD","column":"latitude","comparator":"gt","threshold":"median","label":"northern"},
+                     {"op":"SPLIT_BY_THRESHOLD","column":"latitude","comparator":"lte","threshold":"median","label":"southern"},
+                     {"op":"AGGREGATE_PARTITIONS","partitions":["northern","southern"],"aggregate":"mean","column":"accel_variance"},
+                     {"op":"COMPARE_PARTITIONS","mode":"difference"}]
+                    This pattern compares TWO DATASET HALVES. If the question asks to compare metrics
+                    PER ENTITY (e.g., "per subject", "per user", "for each X"), use PARALLEL_AGGREGATE instead.
 
 PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|random_forest|one_nearest_neighbor|hist_gradient_boosting",
                      "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
@@ -1464,11 +1532,18 @@ AGG is one of: min, max, mean, median, sum, count, std, var, nunique, rms.
 
 INVALID PATTERN—never emit:
 [{"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"X"}, {"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"Y"}]
-WHY: GROUP_AGGREGATE has no result_column field. Use PARALLEL_AGGREGATE for multiple independent aggregates.
-
-BEFORE RETURNING JSON:
-1. Every step contains ONLY fields listed for its exact op (no extra fields).
-2. Use PARALLEL_AGGREGATE when two or more independently filtered aggregates must become columns on the same table.
+2. NEVER nest an operator object inside another operator's field — all column references must be strings.
+3. NEVER use a comparator (gt, lt, eq, etc.) as a DERIVE_BINARY operation — only arithmetic operations allowed.
+4. NEVER emit an empty group_by array — it must contain at least one column name.
+5. Use PARALLEL_AGGREGATE ONLY when comparing metrics PER ENTITY with a shared grouping key. Use
+   SPLIT_BY_THRESHOLD + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS when comparing two halves of the
+   entire dataset with no per-entity dimension.
+6. Use RANK_GROUPS only after GROUP_AGGREGATE; use RANK_ROWS after DataFrame-producing operations.
+7. Use ONLY the operators above and ONLY real column names from the schema.
+8. Use PARALLEL_AGGREGATE when two or more independently filtered aggregates must become columns on the same table.
+9. NEVER put a numeric literal or time constant (e.g. 60000000000, 3600, 1000) into DERIVE_BINARY's
+   left/right fields — those fields are column names only. A constant-vs-column operation (e.g.
+   bucketing a timestamp into fixed-width windows) is DERIVE_BIN(column, width, result), not DERIVE_BINARY.
 3. After PARALLEL_AGGREGATE, only group keys + branch result_column names are available to DERIVE_BINARY and RANK_ROWS.
 4. Use RANK_GROUPS only after GROUP_AGGREGATE; use RANK_ROWS after DataFrame-producing operations.
 5. Use ONLY the operators above and ONLY real column names from the schema.

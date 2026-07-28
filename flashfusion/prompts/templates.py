@@ -320,6 +320,11 @@ PLANNING
   qualitative term has no literal column (for example "roughness",
   "turbulence", "instability"), pick the closest real column, and also list the
   term in ambiguous_concepts.
+  When the question asks to bucket/group a numeric or datetime column into
+  fixed-size intervals against a CONSTANT (e.g. "1-minute intervals", "bins of
+  width 10"), use DERIVE_BIN with that column and the constant as `width` —
+  NEVER DERIVE_BINARY, whose `left`/`right` fields must always be existing
+  column names and never a numeric literal or time constant.
   If the question is in scope but CANNOT be expressed with the operators above,
   set plan to null and list the missing capability in ambiguous_concepts. Do
   not invent an operator, and do not emit Python code.

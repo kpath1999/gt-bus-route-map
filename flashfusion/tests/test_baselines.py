@@ -173,6 +173,28 @@ def test_typed_plan_executes_filter_then_aggregate() -> None:
     assert execution.rows_after_filter == 1
 
 
+def test_typed_plan_returns_all_values_at_a_tied_column_maximum() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    df = pd.DataFrame(
+        {
+            "timestamp": ["2026-01-01T00:00:00", "2026-01-01T00:01:00", "2026-01-01T00:02:00"],
+            "accel_stats_z_p99": [1.0, 2.0, 2.0],
+        }
+    )
+    plan = _plan(
+        {"op": "FILTER_EQ_AGGREGATE", "column": "accel_stats_z_p99", "aggregate": "max"},
+        {"op": "SELECT_COLUMN", "column": "timestamp"},
+    )
+
+    validate_plan_against_dataframe(plan, df)
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert execution.value == ["2026-01-01T00:01:00", "2026-01-01T00:02:00"]
+    assert execution.operators_used == ["FILTER_EQ_AGGREGATE", "SELECT_COLUMN"]
+
+
 def test_typed_plan_groupby_then_rank_returns_group_and_metric() -> None:
     from flashfusion.pipeline.operators import execute_plan
 
@@ -356,8 +378,7 @@ def test_flash_fusion_rejection_sets_explanation() -> None:
 
 
 def test_flash_fusion_typed_path_never_invokes_react() -> None:
-    """The default path executes typed operators in-process: one LLM call for
-    planning, one for synthesis, and no agent codegen."""
+    """The default path executes typed operators in-process with no synthesis call."""
     from flashfusion.baselines.flash_fusion import run_flash_fusion
     from flashfusion.pipeline.operators import GuardrailAndPlan
 
@@ -369,7 +390,6 @@ def test_flash_fusion_typed_path_never_invokes_react() -> None:
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
         return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
     ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
-        execution_layer_cls.return_value.synthesize.return_value = "The maximum x is 0.2."
         out = run_flash_fusion(query, _df(), _client(), r)
 
     execution_layer_cls.return_value.execute_single.assert_not_called()
@@ -377,13 +397,13 @@ def test_flash_fusion_typed_path_never_invokes_react() -> None:
     assert out.execution_path == "typed_operator"
     assert out.plan_validation_stage_failed == ""
     assert out.operators_used == ["AGGREGATE_COLUMN"]
-    assert out.raw_answer == "0.2"
+    assert out.answer == "The result is 0.2"
     assert out.stages_run == [
         "guardrail_plan",
         "plan_validated",
         "typed_exec",
-        "synthesis",
     ]
+    execution_layer_cls.return_value.synthesize.assert_not_called()
 
 
 def test_flash_fusion_falls_back_to_react_when_vocabulary_cannot_express_query() -> None:
