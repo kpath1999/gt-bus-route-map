@@ -66,195 +66,166 @@ def test_flash_fusion_timeout_helper_raises_for_slow_call() -> None:
         _run_with_timeout(slow_callable, timeout_s=0.01)
 
 
-def test_flash_fusion_timeout_applies_to_non_predictive_queries() -> None:
-    """Flash-Fusion should enforce the configured timeout for all query types."""
+def test_flash_fusion_timeout_applies_to_typed_execution() -> None:
+    """Flash-Fusion enforces the configured timeout around plan execution."""
     from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
     query = "What is the average x observed in this dataset?"
     r = _result("FLASH_FUSION", query)
+    plan = _plan({"op": "AGGREGATE_COLUMN", "column": "x", "aggregate": "mean"})
 
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+    ), patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls, patch(
         "flashfusion.baselines.flash_fusion._run_with_timeout"
     ) as timeout_mock:
-        s1_cls.return_value.run.return_value = {"DATA": ["x"], "REASONING": []}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  x -> x\nUNMAPPABLE: NONE",
-            "mappings": ["x -> x"],
-            "unmappable": [],
-        }
-        s3_cls.return_value.run.return_value = {
-            "sub_queries": ["df['x'].mean()"],
-            "synthesis_hint": "Return the result",
-        }
-
-        executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (True, "")
-        executor.synthesize.return_value = "The average is 0.15"
+        execution_layer_cls.return_value.synthesize.return_value = "The average is 0.15"
         timeout_mock.return_value = MagicMock(
-            answer="0.15",
-            trace="trace",
-            final_code="code",
-            tries=1,
-            attempts=[],
+            ok=True, value=0.15, trace="trace", code="code", steps=[], latency_ms=1.0
         )
 
         out = run_flash_fusion(query, _df(), _client(), r)
 
     assert timeout_mock.called
     assert out.executed is True
+    assert out.execution_path == "typed_operator"
 
 
-def test_deterministic_rank_with_empty_filter_falls_back_cleanly() -> None:
-    """An empty filter must not leak pandas' idxmax ValueError from RANK."""
-    from flashfusion.baselines.flash_fusion import (
-        _DeterministicPlanUnsupported,
-        _run_deterministic_plan,
-    )
+def _plan(*steps: dict) -> "object":
+    from flashfusion.pipeline.operators import structural_validate
 
-    with pytest.raises(_DeterministicPlanUnsupported, match="RANK received no rows"):
-        _run_deterministic_plan(
-            "Rank after an empty filter.",
-            _df(),
-            [
-                "[FILTER] column=activity_label | comparator=eq | value=Missing",
-                "[RANK] metric=x | stat=max | return=timestamp",
-            ],
+    return structural_validate({"version": "1", "steps": list(steps)})
+
+
+def test_structural_gate_rejects_unknown_operator() -> None:
+    """Gate 1: an operator outside the closed vocabulary never reaches the data."""
+    from flashfusion.pipeline.operators import StructuralValidationError, structural_validate
+
+    with pytest.raises(StructuralValidationError):
+        structural_validate(
+            {"version": "1", "steps": [{"op": "USER_ACTIVITY_DURATION_MARGIN"}]}
         )
 
 
-def test_plan_gate_accepts_supported_typed_and_prose_steps() -> None:
-    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
+def test_structural_gate_rejects_extra_operator_fields() -> None:
+    """Gate 1: operators forbid unknown kwargs, so no untyped payload slips in."""
+    from flashfusion.pipeline.operators import StructuralValidationError, structural_validate
 
-    ok, reason = _plan_is_deterministic(
-        [
-            {"op": "SPLIT_BY_VALUES", "column": "activity_label", "values": ["A"], "label": "g1"},
-            "[AGGREGATE] column=x | stat=mean",
-            "df['x'].max()",
-        ],
-        {"COLUMN": ["x"], "DERIVED_STAT": ["mean"], "PROXY": []},
+    with pytest.raises(StructuralValidationError):
+        structural_validate(
+            {
+                "version": "1",
+                "steps": [
+                    {
+                        "op": "AGGREGATE_COLUMN",
+                        "column": "x",
+                        "aggregate": "mean",
+                        "python": "os.system('rm -rf /')",
+                    }
+                ],
+            }
+        )
+
+
+def test_schema_gate_rejects_unknown_column() -> None:
+    """Gate 2: a structurally valid plan can still reference a column that
+    does not exist in this DataFrame."""
+    from flashfusion.pipeline.operators import (
+        PlanSchemaError,
+        validate_plan_against_dataframe,
     )
-    assert ok is True
-    assert reason == ""
+
+    plan = _plan({"op": "AGGREGATE_COLUMN", "column": "heart_rate", "aggregate": "mean"})
+    with pytest.raises(PlanSchemaError, match="heart_rate"):
+        validate_plan_against_dataframe(plan, _df())
 
 
-def test_unsupported_grounded_derived_stat_requires_react_delegation() -> None:
-    from flashfusion.baselines.flash_fusion import _unsupported_grounded_derived_stats
-
-    assert _unsupported_grounded_derived_stats(
-        {"DERIVED_STAT": ["RMS", "MEAN"]},
-        {"unmappable": [], "raw_grounding": "MAPPINGS:\n  RMS -> MLII\nUNMAPPABLE: NONE"},
-    ) == ["RMS"]
-    assert _unsupported_grounded_derived_stats(
-        {"DERIVED_STAT": ["RMS"]},
-        {"unmappable": ["RMS"], "raw_grounding": "MAPPINGS:\nUNMAPPABLE: RMS"},
-    ) == []
-
-
-def test_flash_fusion_routes_grounded_unsupported_derived_stat_to_react() -> None:
-    from flashfusion.baselines.flash_fusion import run_flash_fusion
-
-    query = "Calculate the root mean square (RMS) of x."
-    r = _result("FLASH_FUSION", query)
-
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
-        "flashfusion.baselines.flash_fusion.ExecutionLayer"
-    ) as execution_layer_cls, patch(
-        "flashfusion.baselines.flash_fusion._run_with_timeout",
-        side_effect=lambda fn, timeout_s, **kwargs: fn(*kwargs.get("args", ())),
-    ):
-        s1_cls.return_value.run.return_value = {"COLUMN": ["x"], "DERIVED_STAT": ["RMS"], "PROXY": []}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  RMS -> MLII\nUNMAPPABLE: NONE",
-            "mappings": ["RMS -> MLII"],
-            "unmappable": [],
-        }
-        executor = execution_layer_cls.return_value
-        executor.execute_single.return_value = ("0.15", "trace", MagicMock(final_code="code", tries=1, attempts=[]))
-        executor.synthesize.return_value = "The RMS is 0.15."
-
-        out = run_flash_fusion(query, _df(), _client(), r)
-
-    executor.guardrail.assert_not_called()
-    s3_cls.return_value.run.assert_not_called()
-    agent_query = executor.execute_single.call_args.args[0]
-    assert "Derived statistics required by the query: RMS" in agent_query
-    assert "S3_skipped_unsupported_derived_stat" in out.stages_run
-    assert "react_delegate" in out.stages_run
-    assert out.executed is True
-
-
-def test_plan_gate_rejects_unsupported_typed_op() -> None:
-    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
-
-    ok, reason = _plan_is_deterministic(
-        [{"op": "USER_ACTIVITY_DURATION_MARGIN"}],
-        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+def test_schema_gate_rejects_numeric_aggregate_on_text_column() -> None:
+    from flashfusion.pipeline.operators import (
+        PlanSchemaError,
+        validate_plan_against_dataframe,
     )
-    assert ok is False
-    assert "unsupported_typed_op" in reason
 
-
-def test_plan_gate_rejects_untyped_prose_and_proxy() -> None:
-    from flashfusion.baselines.flash_fusion import _plan_is_deterministic
-
-    ok_prose, reason_prose = _plan_is_deterministic(
-        ["[FILTER] keep the rows that look interesting"],
-        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+    plan = _plan(
+        {"op": "AGGREGATE_COLUMN", "column": "activity_label", "aggregate": "mean"}
     )
-    # A recognized [OP] tag passes op-coverage; arg-shape is the exception net's
-    # job — so this stays deterministic-eligible.
-    assert ok_prose is True
+    with pytest.raises(PlanSchemaError, match="numeric"):
+        validate_plan_against_dataframe(plan, _df())
 
-    ok_bad_tag, reason_bad_tag = _plan_is_deterministic(
-        ["[WINDOW] column=x | size=10"],
-        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": []},
+
+def test_typed_plan_executes_filter_then_aggregate() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    plan = _plan(
+        {"op": "FILTER_COMPARE", "column": "subject_id", "comparator": "eq", "value": 1600},
+        {"op": "AGGREGATE_COLUMN", "column": "x", "aggregate": "max"},
     )
-    assert ok_bad_tag is False
-    assert "unsupported_plan_op" in reason_bad_tag
+    validate_plan_against_dataframe(plan, _df())
+    execution = execute_plan(_df(), plan)
 
-    ok_proxy, reason_proxy = _plan_is_deterministic(
-        ["[AGGREGATE] column=x | stat=mean"],
-        {"COLUMN": [], "DERIVED_STAT": [], "PROXY": ["roughness"]},
+    assert execution.ok is True
+    assert execution.value == 0.1
+    assert execution.operators_used == ["FILTER_COMPARE", "AGGREGATE_COLUMN"]
+    assert execution.rows_after_filter == 1
+
+
+def test_typed_plan_groupby_then_rank_returns_group_and_metric() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    plan = _plan(
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["subject_id"],
+            "column": "timestamp",
+            "aggregate": "sum",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
     )
-    assert ok_proxy is False
-    assert "proxy_concepts" in reason_proxy
+    execution = execute_plan(_df(), plan)
+
+    assert execution.ok is True
+    assert execution.value == {"subject_id": "1601", "timestamp": 2000}
 
 
-def test_build_react_query_includes_s2_grounding() -> None:
-    from flashfusion.baselines.flash_fusion import _build_react_query
+def test_typed_plan_rank_on_empty_frame_reports_error_not_crash() -> None:
+    """An empty filter must surface as a coverage gap, not a pandas traceback."""
+    from flashfusion.pipeline.operators import execute_plan
 
-    out = _build_react_query(
+    plan = _plan(
+        {
+            "op": "FILTER_COMPARE",
+            "column": "activity_label",
+            "comparator": "eq",
+            "value": "Missing",
+        },
+        {
+            "op": "RANK_ROWS",
+            "column": "x",
+            "direction": "max",
+            "return_columns": ["timestamp"],
+        },
+    )
+    execution = execute_plan(_df(), plan)
+
+    assert execution.ok is False
+    assert "no rows" in (execution.error or "")
+
+
+def test_build_react_query_includes_grounding_and_ambiguous_concepts() -> None:
+    from flashfusion.baselines.flash_fusion import build_react_query
+
+    out = build_react_query(
         "Which user is roughest?",
-        "MAPPINGS:\n  roughness → PROXY(accel_variance, mean)\nUNMAPPABLE: NONE",
-        ["[AGGREGATE] column=accel_variance | stat=mean"],
-        "Report the roughest user.",
+        "MAPPINGS:\n  roughness → accel_variance\nUNMAPPABLE: NONE",
+        ["roughness"],
     )
     assert "Which user is roughest?" in out
-    assert "PROXY(accel_variance, mean)" in out
     assert "accel_variance" in out
-
-
-def test_groupby_plan_with_trailing_separator_is_parsed_as_typed_kv() -> None:
-    """A trailing pipe must not force GROUPBY into ambiguous prose parsing."""
-    from flashfusion.baselines.flash_fusion import _run_deterministic_plan
-
-    result = _run_deterministic_plan(
-        "Sum timestamps by subject.",
-        _df(),
-        ["[GROUPBY] group_column=subject_id | value_column=timestamp | stat=sum |"],
-    )
-
-    assert result.answer == "{'1600': 1000, '1601': 2000}"
+    assert "roughness" in out
 
 
 def test_agent_runs_agent_without_guardrail() -> None:
@@ -361,207 +332,160 @@ def test_wellmax_executes_grounded_query_without_guardrail() -> None:
 
 def test_flash_fusion_rejection_sets_explanation() -> None:
     from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
     query = "What is average heart rate during jogging?"
     r = _result("FLASH_FUSION", query)
 
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
-        "flashfusion.baselines.flash_fusion.ExecutionLayer"
-    ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["heart_rate"], "REASONING": []}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\nUNMAPPABLE: heart_rate",
-            "mappings": [],
-            "unmappable": ["heart_rate"],
-        }
-        s3_cls.return_value.run.return_value = {
-            "sub_queries": ["[FILTER] heart_rate during jogging"],
-            "synthesis_hint": "Compute mean",
-        }
+    verdict = GuardrailAndPlan(
+        in_scope=False, rejection_reason="heart_rate is not in schema", plan=None
+    )
 
-        executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (False, "heart_rate is not in schema")
-
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(verdict, "{}", ""),
+    ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    executor.execute_single.assert_not_called()
-    executor.judge_plan.assert_not_called()
+    execution_layer_cls.return_value.execute_single.assert_not_called()
     assert out.rejected is True
     assert out.executed is False
+    assert out.execution_path == "guardrail_reject"
     assert "heart_rate is not in schema" in out.rejection_reason
-    assert "Rejected after schema grounding" in out.alignment_explanation
-    assert out.stages_run == ["S1", "S2", "guardrail"]
+    assert out.stages_run == ["guardrail_plan"]
 
 
-def test_flash_fusion_runs_s3_when_direct_bypass_is_not_safe() -> None:
+def test_flash_fusion_typed_path_never_invokes_react() -> None:
+    """The default path executes typed operators in-process: one LLM call for
+    planning, one for synthesis, and no agent codegen."""
     from flashfusion.baselines.flash_fusion import run_flash_fusion
-
-    query = "Compare mean magnitude for walking and jogging."
-    r = _result("FLASH_FUSION", query)
-
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
-        "flashfusion.baselines.flash_fusion.ExecutionLayer"
-    ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["magnitude"], "REASONING": ["compare"]}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  compare -> activity_name + mean(magnitude)",
-            "mappings": ["compare -> activity_name + mean(magnitude)"],
-            "unmappable": [],
-        }
-        s3_cls.return_value.run.return_value = {
-            "sub_queries": [
-                "[FILTER] Keep rows where activity_name is Walking or Jogging",
-                "[GROUPBY] Group by activity_name and compute mean(magnitude)",
-            ],
-            "synthesis_hint": "Compare the two means directly.",
-        }
-
-        executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (True, "")
-        executor.execute_single.return_value = (
-            "Jogging has higher mean magnitude.",
-            "trace",
-            MagicMock(final_code="code", tries=2, attempts=[]),
-        )
-
-        out = run_flash_fusion(query, _df(), _client(), r)
-
-    s3_cls.return_value.run.assert_called_once()
-    executor.execute_single.assert_called_once()
-    assert out.executed is True
-    assert out.stages_run == [
-        "S1",
-        "S2",
-        "guardrail",
-        "S3",
-        "deterministic_fallback",
-        "agent",
-        "synthesis",
-    ]
-
-
-def test_flash_fusion_bypasses_s3_for_direct_single_column_aggregate() -> None:
-    from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
     query = "What is the maximum x observed in this dataset?"
     r = _result("FLASH_FUSION", query)
+    plan = _plan({"op": "AGGREGATE_COLUMN", "column": "x", "aggregate": "max"})
 
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
-        "flashfusion.baselines.flash_fusion.ExecutionLayer"
-    ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["x"], "REASONING": []}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  measurement value → x\nUNMAPPABLE: NONE",
-            "mappings": ["measurement value → x"],
-            "unmappable": [],
-        }
-
-        executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (True, "")
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+    ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
+        execution_layer_cls.return_value.synthesize.return_value = "The maximum x is 0.2."
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    s3_cls.return_value.run.assert_not_called()
-    executor.execute_single.assert_not_called()
-    assert out.s3_sub_queries == ["df['x'].max()"]
+    execution_layer_cls.return_value.execute_single.assert_not_called()
+    assert out.executed is True
+    assert out.execution_path == "typed_operator"
+    assert out.plan_validation_stage_failed == ""
+    assert out.operators_used == ["AGGREGATE_COLUMN"]
+    assert out.raw_answer == "0.2"
     assert out.stages_run == [
-        "S1",
-        "S2",
-        "guardrail",
-        "S3_bypass",
-        "deterministic_exec",
+        "guardrail_plan",
+        "plan_validated",
+        "typed_exec",
         "synthesis",
     ]
 
 
-def test_flash_fusion_does_not_bypass_s3_when_grounding_has_multiple_columns() -> None:
+def test_flash_fusion_falls_back_to_react_when_vocabulary_cannot_express_query() -> None:
+    """in_scope with no plan is a coverage gap: fall back, never improvise an
+    operator inline."""
     from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
-    query = "What is the average acceleration?"
+    query = "Which user's resting duration exceeds their dynamic duration most?"
     r = _result("FLASH_FUSION", query)
 
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
+    verdict = GuardrailAndPlan(
+        in_scope=True, plan=None, ambiguous_concepts=["resting duration margin"]
+    )
+
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(verdict, "{}", ""),
+    ), patch(
+        "flashfusion.baselines.flash_fusion.FF_FALLBACK_GROUNDING", False
+    ), patch(
+        "flashfusion.baselines.flash_fusion.log_operator_gap"
+    ) as gap_log, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["acceleration"], "REASONING": []}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": "MAPPINGS:\n  acceleration → x, y, z\nUNMAPPABLE: NONE",
-            "mappings": ["acceleration → x, y, z"],
-            "unmappable": [],
-        }
-        s3_cls.return_value.run.return_value = {
-            "sub_queries": ["[AGGREGATE] Compute the mean of x, y, and z."],
-            "synthesis_hint": "Summarize the aggregate.",
-        }
-
         executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (True, "")
         executor.execute_single.return_value = (
-            "Average acceleration summary.",
+            "Subject 1601",
+            "trace",
+            MagicMock(final_code="code", tries=2, attempts=[]),
+        )
+        executor.synthesize.return_value = "Subject 1601 has the largest margin."
+        out = run_flash_fusion(query, _df(), _client(), r)
+
+    gap_log.assert_called_once()
+    assert gap_log.call_args.kwargs["stage"] == "no_plan"
+    assert out.execution_path == "react_fallback"
+    assert out.plan_validation_stage_failed == "no_plan"
+    assert out.executed is True
+    assert "resting duration margin" in executor.execute_single.call_args.args[0]
+
+
+def test_flash_fusion_falls_back_when_plan_fails_schema_gate() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
+
+    query = "What is the average heart rate?"
+    r = _result("FLASH_FUSION", query)
+    plan = _plan({"op": "AGGREGATE_COLUMN", "column": "heart_rate", "aggregate": "mean"})
+
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+    ), patch(
+        "flashfusion.baselines.flash_fusion.FF_FALLBACK_GROUNDING", False
+    ), patch(
+        "flashfusion.baselines.flash_fusion.log_operator_gap"
+    ) as gap_log, patch(
+        "flashfusion.baselines.flash_fusion.ExecutionLayer"
+    ) as execution_layer_cls:
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = (
+            "answer",
             "trace",
             MagicMock(final_code="code", tries=1, attempts=[]),
         )
-
+        executor.synthesize.return_value = "answer"
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    s3_cls.return_value.run.assert_called_once()
-    assert "S3" in out.stages_run
-    assert "S3_bypass" not in out.stages_run
+    assert gap_log.call_args.kwargs["stage"] == "schema"
+    assert out.plan_validation_stage_failed == "schema"
+    assert out.execution_path == "react_fallback"
+    assert out.typed_plan == {}
 
 
-def test_flash_fusion_bypasses_s3_when_multiple_mappings_resolve_to_same_column() -> None:
-    """S2 may emit separate mapping lines for a DATA concept and its REASONING
-    counterpart (e.g. 'average → accel_mean (mean)') that both point to the same
-    column.  The detector should still trigger the bypass in this case."""
+def test_flash_fusion_predictive_bypass_skips_the_planning_call() -> None:
     from flashfusion.baselines.flash_fusion import run_flash_fusion
 
-    query = "What is the average magnitude across all recorded samples?"
+    query = (
+        "Sort all WISDM rows by timestamp in ascending order, using subject_id as "
+        "the tie-breaker. Use the first 80% of rows for training and the final 20% "
+        "as the chronological holdout. Train a random forest model using the "
+        "features x, y and z. Predict the activity label for the first row in the "
+        "holdout set."
+    )
     r = _result("FLASH_FUSION", query)
 
-    with patch("flashfusion.baselines.flash_fusion.Stage1_ConceptExtraction") as s1_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage2_SchemaGrounding"
-    ) as s2_cls, patch(
-        "flashfusion.baselines.flash_fusion.Stage3_SubqueryGeneration"
-    ) as s3_cls, patch(
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan"
+    ) as plan_call, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:
-        s1_cls.return_value.run.return_value = {"DATA": ["magnitude"], "REASONING": ["average"]}
-        s2_cls.return_value.run.return_value = {
-            "raw_grounding": (
-                "MAPPINGS:\n"
-                "  magnitude → magnitude\n"
-                "  average → magnitude (mean)\n"
-                "UNMAPPABLE: NONE"
-            ),
-            "mappings": ["magnitude → magnitude", "average → magnitude (mean)"],
-            "unmappable": [],
-        }
-
-        executor = execution_layer_cls.return_value
-        executor.guardrail.return_value = (True, "")
+        execution_layer_cls.return_value.synthesize.return_value = "Predicted A."
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    s3_cls.return_value.run.assert_not_called()
-    executor.execute_single.assert_not_called()
-    assert out.s3_sub_queries == ["df['magnitude'].mean()"]
-    assert "S3_bypass" in out.stages_run
-    assert "S3" not in out.stages_run
-    assert "deterministic_exec" in out.stages_run
+    plan_call.assert_not_called()
+    execution_layer_cls.return_value.execute_single.assert_not_called()
+    assert out.plan_source == "predictive_template"
+    assert out.execution_path == "typed_operator"
+    assert out.typed_plan["steps"][0]["feature_columns"] == ["x", "y", "z"]
+    assert out.typed_plan["steps"][0]["model"] == "random_forest"
+    assert out.typed_plan["steps"][0]["sort_by"] == ["timestamp", "subject_id"]
 
 
 def test_autoiot_paper_requires_tavily_key() -> None:

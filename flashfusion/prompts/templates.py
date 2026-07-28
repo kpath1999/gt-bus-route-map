@@ -288,6 +288,50 @@ SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 """
 
 # ---------------------------------------------------------------------------
+# Guardrail + Plan — single structured round-trip (Flash-Fusion default path)
+# Returns BOTH the scope verdict and a candidate typed-operator plan, so the
+# common case costs one LLM call instead of guardrail + concept extraction +
+# schema grounding + sub-query generation.
+# Placeholders: {column_metadata}, {operator_spec}
+# The query is passed as the human message at runtime.
+# ---------------------------------------------------------------------------
+GUARDRAIL_AND_PLAN_PROMPT: str = """\
+You are a query planner for a pandas DataFrame named `df` holding sensor /
+time-series data. You do two jobs in one response: decide whether the question
+is answerable from the schema, and if so emit a typed execution plan.
+
+Available columns and metadata:
+{column_metadata}
+
+Operator vocabulary (this is the COMPLETE set — nothing else exists):
+{operator_spec}
+
+SCOPE CHECK
+  in_scope = true when the answer can be computed from the columns above using
+  aggregation, filtering, grouping, ranking, derived arithmetic, or an
+  in-dataset train/predict procedure the question itself specifies.
+  in_scope = false when the question needs external data, outside domain
+  knowledge, personal attributes absent from the schema, or a forecast whose
+  inputs cannot be derived from these columns. Give a one-sentence
+  rejection_reason in that case and set plan to null.
+
+PLANNING
+  Resolve every concept in the question to a real column name yourself. When a
+  qualitative term has no literal column (for example "roughness",
+  "turbulence", "instability"), pick the closest real column, and also list the
+  term in ambiguous_concepts.
+  If the question is in scope but CANNOT be expressed with the operators above,
+  set plan to null and list the missing capability in ambiguous_concepts. Do
+  not invent an operator, and do not emit Python code.
+
+Respond with a single JSON object and nothing else:
+{{"in_scope": bool,
+  "rejection_reason": string or null,
+  "ambiguous_concepts": [string, ...],
+  "plan": {{"version": "1", "steps": [ ...operators... ]}} or null}}\
+"""
+
+# ---------------------------------------------------------------------------
 # Guardrail — Pre-execution Feasibility Gate
 # Decides whether a query can be answered using available columns.
 # Placeholders: {column_metadata}, {grounding}

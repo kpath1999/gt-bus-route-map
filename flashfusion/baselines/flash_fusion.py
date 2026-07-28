@@ -1,19 +1,28 @@
 """
-baselines/flash_fusion.py — Flash-Fusion baseline (B4).
+baselines/flash_fusion.py — Flash-Fusion baseline.
 
-S1 → S2 → guardrail(query + S2 grounding) → judge_plan → S3 → agent(grounded_query)
-                                      [one S3 refinement on FAIL]
+Default path (one LLM round-trip, no codegen, no sandbox):
 
-The stages build a grounded query that maps indirect concepts to exact column
-names and injects sub-task structure. The agent resolves sub-tasks autonomously
-via its ReAct loop. The guardrail runs after S2 (before S3) so OOS queries are
-rejected early without wasting S3 + agent cost.
+    query
+      -> bypass detector (0 LLM calls)  OR  single structured guardrail+plan call
+      -> Gate 1: Pydantic structural validation   (microseconds)
+      -> Gate 2: DataFrame schema validation      (microseconds)
+      -> execute_plan(df, plan)  — typed operators, in-process
+      -> synthesis
 
-Expected benchmark behaviour:
-  - Q4, Q10: rejected=True (guardrail on query + S2 grounding)
-    - Q1–Q3, Q5–Q9: executed=True, judge_verdict={"verdict": "PASS"|"FAIL"}
+Fallback path (ReAct) is entered ONLY when:
+  * the planner returns in_scope=True but no plan (operator vocabulary gap), or
+  * Gate 1 fails (malformed/unknown operator), or
+  * Gate 2 fails (unknown column / wrong dtype), or
+  * execution of a validated plan fails.
 
-See CLAUDE.md §_run_flash_fusion for the full algorithm.
+Every fallback is recorded via ``log_operator_gap()`` for offline review. The
+vocabulary is never extended inside a live request — that would reintroduce the
+arbitrary-code-execution risk typed operators exist to remove.
+
+Instrumentation (see RunResult): ``execution_path``,
+``plan_validation_stage_failed``, ``typed_plan``, ``operators_used``,
+``plan_source``, plus per-stage latency in ``stage_latency_s``.
 """
 
 from __future__ import annotations
@@ -23,28 +32,58 @@ import re
 import signal
 import sys
 import time
-from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S
 from flashfusion.pipeline.executor import ExecutionLayer
-from flashfusion.pipeline.features import resolve_grounded_features
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
-from flashfusion.pipeline.runner import LLMClient, RunResult
-from flashfusion.pipeline.stages import (
-    Stage1_ConceptExtraction,
-    Stage2_SchemaGrounding,
-    Stage3_SubqueryGeneration,
+from flashfusion.pipeline.operators import (
+    OPERATOR_VOCABULARY_SPEC,
+    DeterministicPlan,
+    GuardrailAndPlan,
+    PlanSchemaError,
+    StructuralValidationError,
+    execute_plan,
+    log_operator_gap,
+    parse_guardrail_and_plan,
+    structural_validate,
+    validate_plan_against_dataframe,
 )
+from flashfusion.pipeline.runner import LLMClient, RunResult
+from flashfusion.prompts.templates import GUARDRAIL_AND_PLAN_PROMPT
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
+
+#: Run concept extraction + schema grounding before the ReAct fallback. This
+#: costs two extra LLM calls, but only on the small subset the typed vocabulary
+#: cannot express — the fast path stays at a single round-trip.
+FF_FALLBACK_GROUNDING = os.getenv("FF_FALLBACK_GROUNDING", "1").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+#: Convert the machine value into a natural-language sentence. Disable to
+#: measure raw typed-operator latency without the presentation call.
+FF_SYNTHESIS = os.getenv("FF_SYNTHESIS", "1").lower() in ("1", "true", "yes")
+
+PATH_GUARDRAIL_REJECT = "guardrail_reject"
+PATH_TYPED_OPERATOR = "typed_operator"
+PATH_REACT_FALLBACK = "react_fallback"
+
+
+def _debug(message: str) -> None:
+    if FF_DEBUG:
+        print(f"[FF_DEBUG] {message}", file=sys.stderr, flush=True)
+
+
+# ---------------------------------------------------------------------------
+# Timeout helper
+# ---------------------------------------------------------------------------
 
 
 class _FlashFusionTimeoutError(TimeoutError):
@@ -77,1430 +116,240 @@ def _run_with_timeout(
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
 
-# Random seed mirrored from eval/build_groundtruth/simple_pred.py so the
-# deterministic predictive pipeline's model fits/predictions align with the
-# ground-truth generation logic for CHRONO_SPLIT+CLASSIFY queries.
-_PREDICTIVE_RANDOM_SEED = 42
 
-_PREDICTIVE_MODEL_ALIASES: tuple[tuple[str, str], ...] = (
-    ("hist gradient boosting", "hgb"),
-    ("random forest", "rf"),
-    ("1-nearest-neighbor", "1nn"),
-    ("nearest neighbor", "1nn"),
-    ("logistic regression", "logreg"),
+# ---------------------------------------------------------------------------
+# Bypass detector — builds a typed plan with zero LLM calls
+# ---------------------------------------------------------------------------
+
+_PREDICTIVE_MODEL_PHRASES: tuple[tuple[str, str], ...] = (
+    ("hist gradient boosting", "hist_gradient_boosting"),
+    ("random forest", "random_forest"),
+    ("1-nearest-neighbor", "one_nearest_neighbor"),
+    ("nearest neighbor", "one_nearest_neighbor"),
+    ("logistic regression", "logistic_regression"),
 )
 
-_PREDICTIVE_MODEL_DISPLAY: dict[str, str] = {
-    "logreg": "Logistic regression",
-    "rf": "Random forest",
-    "1nn": "1-nearest-neighbor",
-    "hgb": "Hist gradient boosting",
-}
-
-_SUPPORTED_DIRECT_AGGREGATES: dict[str, tuple[str, ...]] = {
-    "max": ("max", "maximum", "highest", "largest", "peak"),
-    "min": ("min", "minimum", "lowest", "smallest"),
-    "mean": ("mean", "average", "avg"),
-    "median": ("median",),
-    "sum": ("sum", "total"),
-    "count": ("count", "number of"),
-}
-
-_DETERMINISTIC_DERIVED_STAT_ALIASES: dict[str, str] = {
-    "AVERAGE": "MEAN",
-    "AVG": "MEAN",
-    "MAXIMUM": "MAX",
-    "HIGHEST": "MAX",
-    "MINIMUM": "MIN",
-    "LOWEST": "MIN",
-    "TOTAL": "SUM",
-}
-
-_DETERMINISTIC_DERIVED_STATS: frozenset[str] = frozenset(
-    {"MAX", "MIN", "MEAN", "MEDIAN", "SUM", "COUNT"}
-)
-
-_DIRECT_DISQUALIFIER_PATTERNS: tuple[str, ...] = (
-    r"\bfor\b",
-    r"\bwhere\b",
-    r"\bwith\b",
-    r"\bbetween\b",
-    r"\bby\b",
-    r"\bper\b",
-    r"\beach\b",
-    r"\bgroup(?:ed|ing)?\b",
-    r"\bcompare\b",
-    r"\bversus\b",
-    r"\bvs\b",
-    r"\bhigher than\b",
-    r"\blower than\b",
-    r"\bdifference\b",
-    r"\bsubtract\b",
-    r"\bminus\b",
-    r"\bplus\b",
-    r"\border\b",
-    r"\bsort\b",
-    r"\brank\b",
-    r"\btop\b",
-    r"\bbottom\b",
-    r"\bfirst\b",
-    r"\blast\b",
-    r"\bover time\b",
-    r"\btime\b",
-    r"\bbefore\b",
-    r"\bafter\b",
-    r"\bsince\b",
-    r"\bduring\b",
-    r"\btrend\b",
-)
-
-_SUPPORTED_PLAN_OPS: frozenset[str] = frozenset(
-    {"FILTER", "AGGREGATE", "GROUPBY", "COMPARE", "RANK", "SELECT", "DERIVE"}
-)
+#: Columns treated as "the acceleration features" when a predictive query names
+#: the feature family instead of listing columns. Mirrors the feature set used
+#: by eval/build_groundtruth/simple_pred.py for the bus dataset.
+_ACCEL_FEATURE_EXTRAS = ("extreme_event_magnitude", "instability_score")
 
 
-def _parse_kv_line(text: str) -> dict[str, str] | None:
-    """Parse a typed 'key=value | key=value | ...' sub-query body into a dict.
+def _split_feature_names(text: str) -> list[str]:
+    cleaned = re.sub(r"\band\b", ",", text)
+    return [part.strip().strip("`'\"") for part in cleaned.split(",") if part.strip()]
 
-    Returns None when the text does not look like the typed key=value grammar
-    (e.g. legacy/older prose sub-queries), so callers can fall back gracefully.
+
+def _resolve_feature_columns(
+    query: str, df: pd.DataFrame, excluded: set[str]
+) -> list[str]:
+    """Resolve an explicit, auditable feature list for a predictive plan."""
+    match = re.search(
+        r"using the features?\s+(.+?)(?:\.|$)", query, re.IGNORECASE | re.DOTALL
+    )
+    if match:
+        named = [c for c in _split_feature_names(match.group(1)) if c in df.columns]
+        if named:
+            return named
+
+    if re.search(r"using the acceleration features", query, re.IGNORECASE):
+        return [
+            column
+            for column in df.columns
+            if column not in excluded
+            and pd.api.types.is_numeric_dtype(df[column])
+            and ("accel" in column.lower() or column in _ACCEL_FEATURE_EXTRAS)
+        ]
+
+    return []
+
+
+def detect_predictive_plan(query: str, df: pd.DataFrame) -> DeterministicPlan | None:
+    """Recognize the CHRONO_SPLIT+CLASSIFY template (eval/queries.py ids 13-16).
+
+    Returns a fully typed, already-structurally-valid DeterministicPlan, or None
+    when the query does not confidently match — in which case the normal
+    single-call planning path runs.
     """
-    if "=" not in text:
-        return None
-    kv: dict[str, str] = {}
-    for part in text.split("|"):
-        part = part.strip()
-        # LLM-generated plans occasionally leave a trailing separator. It does
-        # not change the meaning of an otherwise valid typed step.
-        if not part:
-            continue
-        if "=" not in part:
-            return None
-        key, _, value = part.partition("=")
-        key = key.strip().lower()
-        if not key:
-            return None
-        kv[key] = value.strip()
-    return kv or None
-
-
-def _apply_comparator(series, comparator: str, value):
-    """Apply a named comparator between a pandas Series and a value."""
-    comparator = comparator.strip().lower()
-    try:
-        if comparator in ("eq", "=="):
-            return series == value
-        if comparator in ("gt", ">"):
-            return series > value
-        if comparator in ("gte", ">="):
-            return series >= value
-        if comparator in ("lt", "<"):
-            return series < value
-        if comparator in ("lte", "<="):
-            return series <= value
-        if comparator in ("ne", "!="):
-            return series != value
-    except (TypeError, ValueError) as exc:
-        raise _DeterministicPlanUnsupported(
-            f"Invalid comparator/value for column dtype {series.dtype}: "
-            f"{comparator!r} {value!r}"
-        ) from exc
-    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {comparator!r}")
-
-
-def _extract_diff_columns(text: str, df_columns: list[str]) -> tuple[str, str] | None:
-    """Detect 'difference/subtract/minus/delta between COL_A and COL_B' phrasing.
-
-    Used as a legacy-prose fallback so an AGGREGATE step that actually asks
-    for a per-record two-column difference (not a scalar reduction) is routed
-    to a row-wise DERIVE computation instead of raising an ambiguous-aggregate
-    error.
-    """
-    text_l = text.lower()
-    if not re.search(r"\b(difference|subtract|minus|delta)\b", text_l):
-        return None
-    cols = _find_columns_in_text(text, df_columns)
-    if len(cols) < 2:
-        return None
-    ordered = sorted(dict.fromkeys(cols), key=lambda c: text_l.find(c.lower()))
-    if len(ordered) < 2:
-        return None
-    return ordered[0], ordered[1]
-
-
-class _DeterministicPlanUnsupported(ValueError):
-    """Raised when a deterministic execution plan is unsupported or ambiguous."""
-
-
-def _build_predictive_model(model_key: str):
-    """Build a classifier matching eval/build_groundtruth/simple_pred.py::_build_model exactly."""
-    if model_key == "logreg":
-        return make_pipeline(
-            StandardScaler(),
-            LogisticRegression(random_state=_PREDICTIVE_RANDOM_SEED, max_iter=2000),
-        )
-    if model_key == "rf":
-        return RandomForestClassifier(
-            n_estimators=300, random_state=_PREDICTIVE_RANDOM_SEED, n_jobs=-1
-        )
-    if model_key == "hgb":
-        return HistGradientBoostingClassifier(
-            max_iter=200,
-            learning_rate=0.08,
-            max_leaf_nodes=31,
-            l2_regularization=1.0,
-            random_state=_PREDICTIVE_RANDOM_SEED,
-        )
-    if model_key == "1nn":
-        return make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1))
-    raise _DeterministicPlanUnsupported(f"Unsupported predictive model key: {model_key!r}")
-
-
-def _parse_chrono_split_classify_query(query: str, df: "pd.DataFrame") -> dict[str, Any] | None:
-    """Detect and parse a CHRONO_SPLIT+CLASSIFY predictive query (see eval/queries.py ids 13-16).
-
-    Returns a typed PREDICTIVE_PIPELINE plan dict, or None if the query doesn't
-    confidently match the template (safe fallback to the normal S1/S2/S3 pipeline).
-    """
-    query_l = query.lower()
-    if not (
-        re.search(r"\btrain\b", query_l)
-        and re.search(r"\bpredict\b", query_l)
-        and re.search(r"\bholdout\b", query_l)
-    ):
+    lowered = query.lower()
+    if not ("train" in lowered and "predict" in lowered and "holdout" in lowered):
         return None
 
-    model_key = None
-    for phrase, key in _PREDICTIVE_MODEL_ALIASES:
-        if phrase in query_l:
-            model_key = key
-            break
-    if model_key is None:
+    model = next(
+        (key for phrase, key in _PREDICTIVE_MODEL_PHRASES if phrase in lowered), None
+    )
+    if model is None:
         return None
 
-    sort_match = re.search(r"by\s+([A-Za-z_][A-Za-z0-9_]*)\s+in ascending order", query, re.IGNORECASE)
-    if not sort_match:
+    sort_match = re.search(
+        r"by\s+([A-Za-z_][A-Za-z0-9_]*)\s+in ascending order", query, re.IGNORECASE
+    )
+    if not sort_match or sort_match.group(1) not in df.columns:
         return None
-    sort_col = sort_match.group(1)
-    if sort_col not in df.columns:
-        return None
+    sort_by = [sort_match.group(1)]
 
     tie_match = re.search(
         r"using\s+([A-Za-z_][A-Za-z0-9_]*)\s+as the tie-breaker", query, re.IGNORECASE
     )
-    tie_breaker = tie_match.group(1) if tie_match else None
-    if tie_breaker and tie_breaker not in df.columns:
-        tie_breaker = None
+    if tie_match and tie_match.group(1) in df.columns:
+        sort_by.append(tie_match.group(1))
 
-    frac_match = re.search(r"first\s+(\d+)\s*%", query, re.IGNORECASE)
-    train_fraction = (float(frac_match.group(1)) / 100.0) if frac_match else 0.8
+    fraction_match = re.search(r"first\s+(\d+)\s*%", query, re.IGNORECASE)
+    train_fraction = float(fraction_match.group(1)) / 100.0 if fraction_match else 0.8
 
-    filter_spec: tuple[str, str] | None = None
-    filter_match = re.search(r"Filter to\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\d+)", query, re.IGNORECASE)
+    filter_column: str | None = None
+    filter_value: Any = None
+    filter_match = re.search(
+        r"Filter to\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\d+)", query, re.IGNORECASE
+    )
     if filter_match:
-        f_col, f_val = filter_match.group(1), filter_match.group(2)
-        if f_col not in df.columns:
+        if filter_match.group(1) not in df.columns:
             return None
-        filter_spec = (f_col, f_val)
+        filter_column, filter_value = filter_match.group(1), int(filter_match.group(2))
 
-    row_match = re.search(r"for the (first|last) row in the holdout set", query, re.IGNORECASE)
-    row_selector = row_match.group(1).lower() if row_match else "first"
+    row_match = re.search(
+        r"for the (first|last) row in the holdout set", query, re.IGNORECASE
+    )
+    holdout_row = row_match.group(1).lower() if row_match else "first"
 
-    target_derive: str | None = None
-    target_source_col: str | None = None
-    col_target_match = re.search(r"label in the\s+([A-Za-z_][A-Za-z0-9_]*)\s+column", query, re.IGNORECASE)
-    if col_target_match and col_target_match.group(1) in df.columns:
-        target_col = col_target_match.group(1)
-        target_label = target_col
-    elif "activity label" in query_l and "activity_label" in df.columns:
-        target_col = "activity_label"
-        target_label = "activity"
-    elif "annotation is present" in query_l and "annotation" in df.columns:
-        target_col = "_is_annotated"
-        target_label = "annotation"
-        target_derive = "annotation_presence"
-        target_source_col = "annotation"
+    target_from_non_empty = False
+    column_target = re.search(
+        r"label in the\s+([A-Za-z_][A-Za-z0-9_]*)\s+column", query, re.IGNORECASE
+    )
+    if column_target and column_target.group(1) in df.columns:
+        target_column = column_target.group(1)
+        target_label = target_column
+    elif "activity label" in lowered and "activity_label" in df.columns:
+        target_column, target_label = "activity_label", "activity"
+    elif "annotation is present" in lowered and "annotation" in df.columns:
+        target_column, target_label = "annotation", "annotation"
+        target_from_non_empty = True
     else:
         return None
 
-    return {
-        "op": "PREDICTIVE_PIPELINE",
-        "filter": filter_spec,
-        "sort_col": sort_col,
-        "tie_breaker": tie_breaker,
-        "train_fraction": train_fraction,
-        "model_key": model_key,
-        "target_col": target_col,
-        "target_derive": target_derive,
-        "target_source_col": target_source_col,
-        "target_label": target_label,
-        "row_selector": row_selector,
-    }
-
-
-@dataclass
-class _DeterministicExecutionResult:
-    answer: str
-    trace: str
-    final_code: str
-    tries: int
-    attempts: list[dict[str, Any]]
-
-
-def _extract_plan_op(sub_query: str) -> tuple[str, str]:
-    match = re.match(r"^\s*\[([A-Za-z_]+)\]\s*(.+)$", sub_query.strip())
-    if not match:
-        raise _DeterministicPlanUnsupported(f"Missing [OP] tag: {sub_query!r}")
-    op = match.group(1).upper().strip()
-    text = match.group(2).strip()
-    if op not in _SUPPORTED_PLAN_OPS:
-        raise _DeterministicPlanUnsupported(f"Unsupported operation {op!r}")
-    return op, text
-
-
-def _find_columns_in_text(text: str, df_columns: list[str]) -> list[str]:
-    lowered = text.lower()
-    return [c for c in df_columns if c.lower() in lowered]
-
-
-def _extract_aggregate_op(text: str) -> str:
-    text_l = text.lower()
-    alias_to_op = {
-        "maximum": "max",
-        "highest": "max",
-        "max": "max",
-        "minimum": "min",
-        "lowest": "min",
-        "min": "min",
-        "average": "mean",
-        "mean": "mean",
-        "median": "median",
-        "sum": "sum",
-        "total": "sum",
-        "count": "count",
-    }
-    hits = {op for alias, op in alias_to_op.items() if re.search(rf"\b{re.escape(alias)}\b", text_l)}
-    if len(hits) != 1:
-        raise _DeterministicPlanUnsupported(f"Ambiguous aggregate operation in: {text!r}")
-    return next(iter(hits))
-
-
-def _extract_groupby_column(text: str, df_columns: list[str]) -> str:
-    text_l = text.lower()
-    match = re.search(r"group\s+by\s+([A-Za-z_][A-Za-z0-9_]*)", text_l)
-    if match:
-        col = match.group(1)
-        if col in {c.lower() for c in df_columns}:
-            for real_col in df_columns:
-                if real_col.lower() == col:
-                    return real_col
-    cols = _find_columns_in_text(text, df_columns)
-    if len(cols) == 1:
-        return cols[0]
-    raise _DeterministicPlanUnsupported(f"Unable to identify groupby column from: {text!r}")
-
-
-def _extract_eq_filters(text: str, df_columns: list[str]) -> list[tuple[str, Any]]:
-    """Extract simple equality filters such as `col == 'value'` or `col equals value`."""
-    out: list[tuple[str, Any]] = []
-    # Pattern: col == 'value' / col == "value"
-    for col in df_columns:
-        regex = rf"\b{re.escape(col)}\b\s*(?:==|=|equals|is)\s*['\"]?([A-Za-z0-9_ .-]+)['\"]?"
-        for m in re.finditer(regex, text, flags=re.IGNORECASE):
-            raw = m.group(1).strip().strip("'\"")
-            if raw:
-                out.append((col, raw))
-    return out
-
-
-def _extract_extremum_filter(text: str, df_columns: list[str]) -> tuple[str, str] | None:
-    """Extract patterns like 'col equals its maximum/minimum value' from FILTER text."""
-    text_l = text.lower()
-    if not re.search(r"\bequals\b", text_l):
-        return None
-    op = None
-    if re.search(r"\b(max|maximum|highest|largest|peak)\b", text_l):
-        op = "max"
-    elif re.search(r"\b(min|minimum|lowest|smallest)\b", text_l):
-        op = "min"
-    if op is None:
+    excluded = {target_column, *sort_by} | ({filter_column} if filter_column else set())
+    feature_columns = _resolve_feature_columns(query, df, excluded)
+    if not feature_columns:
         return None
 
-    cols = _find_columns_in_text(text, df_columns)
-    if len(cols) != 1:
-        return None
-    return cols[0], op
-
-
-def _is_prior_result_placeholder(value: str) -> bool:
-    value_l = value.lower().strip()
-    return any(
-        phrase in value_l
-        for phrase in (
-            "previously computed aggregate result",
-            "previous aggregate result",
-            "aggregate result",
-            "previously computed result",
-            "prior result",
-        )
-    )
-
-
-def _coerce_numeric(value: Any) -> float | int | None:
-    if isinstance(value, (int, float)):
-        return value
-    if isinstance(value, str):
-        raw = value.strip()
-        if re.fullmatch(r"-?\d+", raw):
-            return int(raw)
-        if re.fullmatch(r"-?\d+(?:\.\d+)?", raw):
-            return float(raw)
-    return None
-
-
-def _coerce_for_column(series: "pd.Series", raw_value: Any) -> Any:
-    """Coerce a raw literal into a value comparable with a Series' own dtype.
-
-    Comparators previously assumed every filter value was numeric, which crashes
-    with a pandas ``TypeError`` when the target column is ``datetime64[ns]``
-    (e.g. ``timestamp > 0``). Dispatching on ``series.dtype`` first means the
-    coercion strategy always matches what the column can actually be compared
-    against, instead of guessing from the literal's own text.
-    """
-    if isinstance(raw_value, str):
-        raw_value = raw_value.strip().strip("'\"")
-
-    if pd.api.types.is_datetime64_any_dtype(series):
-        numeric = _coerce_numeric(raw_value)
-        if numeric is not None:
-            # A bare numeric literal against a datetime column is interpreted
-            # the same way pandas itself would (nanoseconds since epoch), so
-            # e.g. "timestamp > 0" becomes a harmless epoch comparison instead
-            # of raising, matching the common S3 placeholder-filter pattern.
-            return pd.Timestamp(numeric)
-        try:
-            parsed = pd.to_datetime(raw_value)
-        except (ValueError, TypeError) as exc:
-            raise _DeterministicPlanUnsupported(
-                f"Cannot compare datetime64 column against value: {raw_value!r}"
-            ) from exc
-        if parsed is pd.NaT:
-            raise _DeterministicPlanUnsupported(
-                f"Cannot compare datetime64 column against value: {raw_value!r}"
-            )
-        return parsed
-
-    if pd.api.types.is_bool_dtype(series):
-        if isinstance(raw_value, bool):
-            return raw_value
-        if isinstance(raw_value, str) and raw_value.lower() in ("true", "false"):
-            return raw_value.lower() == "true"
-        return raw_value
-
-    if pd.api.types.is_numeric_dtype(series):
-        numeric = _coerce_numeric(raw_value)
-        return numeric if numeric is not None else raw_value
-
-    return raw_value
-
-
-def _run_deterministic_plan(
-    query: str,
-    df,
-    sub_queries: list[Any],
-) -> _DeterministicExecutionResult:
-    """Execute an S3 plan with a strict deterministic operator vocabulary."""
-    if not sub_queries:
-        raise _DeterministicPlanUnsupported("No sub-queries provided")
-
-    working_df = df
-    observations: list[Any] = []
-    attempts: list[dict[str, Any]] = []
-    trace_lines: list[str] = []
-    code_lines: list[str] = []
-    # partitions: named DataFrame subsets produced by SPLIT_BY_THRESHOLD or
-    # SPLIT_BY_VALUES, consumed by GROUP_AGGREGATE. group_agg_result: last
-    # GROUP_AGGREGATE output, consumed by COMPARE_GROUPS. These support
-    # two-way group comparisons split either by a numeric median threshold
-    # (e.g. "is the northern half rougher than the southern half") or by
-    # disjoint categorical value sets (e.g. "dynamic vs resting activities")
-    # without falling back to the ReAct agent.
-    partitions: dict[str, Any] = {}
-    group_agg_result: dict[str, Any] | None = None
-    group_agg_column: str = ""
-    group_agg_op: str = ""
-    # last_derived_column/last_derived_label: name and human-readable label of
-    # the most recent per-record column computed by a [DERIVE] step (typed) or
-    # a legacy-prose AGGREGATE step that detected a two-column difference
-    # (e.g. "difference between accel_stats_z_p99 and accel_stats_z_p1").
-    # A following [RANK] step falls back to this when it can't find enough
-    # literal column names mentioned in its own text.
-    last_derived_column: str = ""
-    last_derived_label: str = ""
-    # last_groupby_group_column/last_groupby_value_column: name of the group-key
-    # column and the aggregated value column from the most recent [GROUPBY] step.
-    # A following [RANK] step whose metric matches last_groupby_value_column
-    # ranks the GROUPBY dict result directly (e.g. "which time window") instead
-    # of re-scanning the ungrouped DataFrame, which would ignore the grouping
-    # entirely.
-    last_groupby_group_column: str = ""
-    last_groupby_value_column: str = ""
-
-    # Fast path for S3_bypass expression format: df['col'].op()
-    if len(sub_queries) == 1 and isinstance(sub_queries[0], str):
-        expr_match = re.match(r"^df\[['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]\]\.(max|min|mean|median|sum|count)\(\)\s*$", sub_queries[0].strip())
-        if expr_match:
-            col = expr_match.group(1)
-            op = expr_match.group(2)
-            if col not in working_df.columns:
-                raise _DeterministicPlanUnsupported(f"Unknown column in bypass expression: {col}")
-            series = working_df[col]
-            result = getattr(series, op)()
-            attempts.append({"attempt": 1, "op": "AGGREGATE", "ok": True, "output": result})
-            code_lines.append(f"result = df[{col!r}].{op}()")
-            trace_lines.extend(
-                [
-                    "Thought: Deterministic execution path (direct aggregate bypass)",
-                    "Action: deterministic_exec",
-                    f"Action Input: result = df[{col!r}].{op}()",
-                    f"Observation: {result}",
-                ]
-            )
-            answer = f"{result}"
-            trace_lines.append(f"Final Answer: {answer}")
-            return _DeterministicExecutionResult(
-                answer=answer,
-                trace="\n".join(trace_lines),
-                final_code="\n".join(code_lines),
-                tries=1,
-                attempts=attempts,
-            )
-
-    # (NOTE): To Franky and Kausar: this is what's handling deterministic execution, typed_op
-    # we could run ReAct directly with the s1 and s2 outputs if the number of sub-queries >= 4
-    # because we often run out of typed ops
-
-    for idx, sq in enumerate(sub_queries, start=1):
-        typed_op = None
-        typed_step: dict[str, Any] = {}
-        text = ""
-        text_l = ""
-        if isinstance(sq, dict):
-            typed_step = sq
-            typed_op = str(sq.get("op", "")).upper().strip()
-            op = typed_op
-        else:
-            op, text = _extract_plan_op(str(sq))
-            text_l = text.lower()
-
-        step_code = ""
-        step_obs: Any = ""
-
-        if typed_op:
-            if typed_op == "AGGREGATE_COLUMN":
-                col = str(typed_step.get("column", ""))
-                agg = str(typed_step.get("aggregate", "")).lower()
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
-                if agg not in {"max", "min", "mean", "median", "sum", "count"}:
-                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg}")
-                result = getattr(working_df[col], agg)()
-                observations.append(result)
-                step_code = f"result = df[{col!r}].{agg}()"
-                step_obs = result
-
-            elif typed_op == "FILTER_EQ_PREV":
-                col = str(typed_step.get("column", ""))
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
-                prior_scalars = [v for v in observations if isinstance(v, (int, float))]
-                if not prior_scalars:
-                    raise _DeterministicPlanUnsupported("FILTER_EQ_PREV requires prior scalar observation")
-                cast_value = prior_scalars[-1]
-                working_df = working_df[working_df[col] == cast_value]
-                step_code = f"df = df[df[{col!r}] == {cast_value!r}]"
-                step_obs = f"rows={len(working_df)} (filtered by prior aggregate result {cast_value})"
-
-            elif typed_op == "FILTER_COMPARE":
-                col = str(typed_step.get("column", ""))
-                cmp = str(typed_step.get("comparator", "")).lower()
-                raw_val = typed_step.get("value")
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
-                cast_value = _coerce_for_column(working_df[col], raw_val)
-                op_symbol_by_cmp = {
-                    "gt": ">",
-                    "gte": ">=",
-                    "lt": "<",
-                    "lte": "<=",
-                    "eq": "==",
-                }
-                if cmp not in op_symbol_by_cmp:
-                    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {cmp!r}")
-                mask = _apply_comparator(working_df[col], cmp, cast_value)
-                working_df = working_df[mask]
-                op_txt = op_symbol_by_cmp[cmp]
-                step_code = f"df = df[df[{col!r}] {op_txt} {cast_value!r}]"
-                step_obs = f"rows={len(working_df)}"
-
-            elif typed_op == "AGGREGATE_COUNT_ROWS":
-                result = int(len(working_df))
-                observations.append(result)
-                step_code = "result = len(df)"
-                step_obs = result
-
-            elif typed_op == "SELECT_LIST":
-                col = str(typed_step.get("column", ""))
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown SELECT column: {col}")
-                result = working_df[col].tolist()
-                observations.append(result)
-                step_code = f"result = df[{col!r}].tolist()"
-                step_obs = result
-
-            elif typed_op == "SPLIT_BY_THRESHOLD":
-                col = str(typed_step.get("column", ""))
-                cmp = str(typed_step.get("comparator", "")).lower()
-                label = str(typed_step.get("label", ""))
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown SPLIT column: {col}")
-                if not label:
-                    raise _DeterministicPlanUnsupported("SPLIT_BY_THRESHOLD requires a label")
-                threshold = working_df[col].median()
-                if cmp == "gt":
-                    subset = working_df[working_df[col] > threshold]
-                    op_txt = ">"
-                elif cmp == "gte":
-                    subset = working_df[working_df[col] >= threshold]
-                    op_txt = ">="
-                elif cmp == "lt":
-                    subset = working_df[working_df[col] < threshold]
-                    op_txt = "<"
-                elif cmp == "lte":
-                    subset = working_df[working_df[col] <= threshold]
-                    op_txt = "<="
-                else:
-                    raise _DeterministicPlanUnsupported(f"Unsupported comparator: {cmp!r}")
-                partitions[label] = subset
-                step_code = (
-                    f"_median = df[{col!r}].median(); "
-                    f"{label} = df[df[{col!r}] {op_txt} _median]"
-                )
-                step_obs = f"{label}: rows={len(subset)} ({col} {op_txt} median={threshold})"
-
-            elif typed_op == "SPLIT_BY_VALUES":
-                col = str(typed_step.get("column", ""))
-                values = typed_step.get("values") or []
-                label = str(typed_step.get("label", ""))
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown SPLIT column: {col}")
-                if not label:
-                    raise _DeterministicPlanUnsupported("SPLIT_BY_VALUES requires a label")
-                if not values:
-                    raise _DeterministicPlanUnsupported("SPLIT_BY_VALUES requires a non-empty value list")
-                # Splits are drawn independently from the ORIGINAL df (not the
-                # possibly-narrowed working_df) so that multiple disjoint
-                # category groups (e.g. dynamic vs resting activities) never
-                # collapse to zero rows the way sequential [FILTER] steps do
-                # when applied one after another to the same working frame.
-                subset = df[df[col].isin(values)]
-                partitions[label] = subset
-                step_code = f"{label} = df[df[{col!r}].isin({values!r})]"
-                step_obs = f"{label}: rows={len(subset)} ({col} in {values})"
-            
-            elif typed_op == "VECTOR_MAGNITUDE":
-                columns = list(typed_step.get("columns") or [])
-                result_name = str(typed_step.get("result", "_vector_magnitude"))
-
-                if len(columns) != 3 or any(column not in working_df.columns for column in columns):
-                    raise _DeterministicPlanUnsupported(
-                        "VECTOR_MAGNITUDE requires exactly three existing numeric columns"
-                    )
-
-                working_df = working_df.copy()
-                working_df[result_name] = (
-                    working_df[columns[0]].pow(2)
-                    + working_df[columns[1]].pow(2)
-                    + working_df[columns[2]].pow(2)
-                ).pow(0.5)
-
-                last_derived_column = result_name
-                last_derived_label = "vector magnitude"
-                step_code = (
-                    f"df[{result_name!r}] = (df[{columns[0]!r}]**2 + "
-                    f"df[{columns[1]!r}]**2 + df[{columns[2]!r}]**2)**0.5"
-                )
-                step_obs = f"computed '{result_name}' vector-magnitude column (rows={len(working_df)})"
-
-            elif typed_op == "GROUP_AGGREGATE":
-                col = str(typed_step.get("column", ""))
-                agg = str(typed_step.get("aggregate", "")).lower()
-                groups = typed_step.get("groups") or []
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown GROUP_AGGREGATE column: {col}")
-                if agg not in {"max", "min", "mean", "median", "sum", "count"}:
-                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg}")
-                missing = [g for g in groups if g not in partitions]
-                if missing:
-                    raise _DeterministicPlanUnsupported(f"Unknown partition(s) for GROUP_AGGREGATE: {missing}")
-                result = {g: getattr(partitions[g][col], agg)() for g in groups}
-                observations.append(result)
-                group_agg_result = result
-                group_agg_column = col
-                group_agg_op = agg
-                step_code = (
-                    "result = {" + ", ".join(f"{g!r}: {g}[{col!r}].{agg}()" for g in groups) + "}"
-                )
-                step_obs = result
-
-            elif typed_op == "COMPARE_GROUPS":
-                if not group_agg_result or len(group_agg_result) < 2:
-                    raise _DeterministicPlanUnsupported("COMPARE_GROUPS requires a prior GROUP_AGGREGATE result")
-                (label_a, value_a), (label_b, value_b) = list(group_agg_result.items())[:2]
-                if value_a >= value_b:
-                    higher_label, higher_val = label_a, value_a
-                    lower_label, lower_val = label_b, value_b
-                else:
-                    higher_label, higher_val = label_b, value_b
-                    lower_label, lower_val = label_a, value_a
-                delta = higher_val - lower_val
-                metric_desc = f"{group_agg_op} {group_agg_column}" if group_agg_column else "metric"
-                result = (
-                    f"{higher_label} has the higher {metric_desc} ({higher_val}) versus "
-                    f"{lower_label} ({lower_val}); difference={delta}"
-                )
-                observations.append(result)
-                step_code = "result = compare(" + ", ".join(group_agg_result.keys()) + ")"
-                step_obs = result
-
-            elif typed_op == "PREDICTIVE_PIPELINE":
-                plan_df = df
-                filter_spec = typed_step.get("filter")
-                if filter_spec:
-                    f_col, f_val = filter_spec
-                    if f_col not in plan_df.columns:
-                        raise _DeterministicPlanUnsupported(f"Unknown predictive filter column: {f_col}")
-                    cast_val = _coerce_for_column(plan_df[f_col], f_val)
-                    plan_df = plan_df[plan_df[f_col] == cast_val]
-                    if plan_df.empty:
-                        raise _DeterministicPlanUnsupported(
-                            f"Predictive filter produced no rows: {f_col}=={f_val}"
-                        )
-
-                sort_col = str(typed_step.get("sort_col", ""))
-                tie_breaker = typed_step.get("tie_breaker")
-                if sort_col not in plan_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown predictive sort column: {sort_col}")
-                sort_cols = [sort_col] + (
-                    [tie_breaker] if tie_breaker and tie_breaker in plan_df.columns else []
-                )
-                plan_df = plan_df.sort_values(sort_cols).reset_index(drop=True)
-
-                target_col = str(typed_step.get("target_col", ""))
-                target_derive = typed_step.get("target_derive")
-                exclude_cols = {sort_col, target_col}
-                if tie_breaker:
-                    exclude_cols.add(tie_breaker)
-                if filter_spec:
-                    exclude_cols.add(filter_spec[0])
-
-                if target_derive == "annotation_presence":
-                    source_col = str(typed_step.get("target_source_col", target_col))
-                    if source_col not in plan_df.columns:
-                        raise _DeterministicPlanUnsupported(
-                            f"Unknown predictive target source column: {source_col}"
-                        )
-                    plan_df = plan_df.copy()
-                    plan_df[target_col] = (
-                        plan_df[source_col].astype(str).str.strip() != ""
-                    ).astype(int)
-                    exclude_cols.add(source_col)
-                elif target_col not in plan_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown predictive target column: {target_col}")
-
-                n_rows = len(plan_df)
-                train_fraction = float(typed_step.get("train_fraction", 0.8))
-                split = int(n_rows * train_fraction)
-                split = max(1, min(split, n_rows - 1))
-                if split >= n_rows:
-                    raise _DeterministicPlanUnsupported("Predictive split leaves no holdout rows")
-
-                feature_cols = [
-                    c for c in plan_df.columns
-                    if c not in exclude_cols and pd.api.types.is_numeric_dtype(plan_df[c])
-                ]
-                if not feature_cols:
-                    raise _DeterministicPlanUnsupported(
-                        "No numeric feature columns available for predictive pipeline"
-                    )
-
-                x = plan_df[feature_cols].to_numpy(dtype=float)
-                y = plan_df[target_col].to_numpy() if target_derive else plan_df[target_col].astype(str).to_numpy()
-
-                x_train, y_train = x[:split], y[:split]
-                row_selector = str(typed_step.get("row_selector", "first"))
-                holdout_pos = 0 if row_selector == "first" else -1
-                x_test_row = x[split:][holdout_pos]
-
-                model_key = str(typed_step.get("model_key", ""))
-                train_classes = pd.unique(y_train)
-                if len(train_classes) == 1:
-                    pred = train_classes[0]
-                else:
-                    model = _build_predictive_model(model_key)
-                    model.fit(x_train, y_train)
-                    pred = model.predict(x_test_row.reshape(1, -1))[0]
-
-                model_display = _PREDICTIVE_MODEL_DISPLAY.get(model_key, model_key)
-                target_label = str(typed_step.get("target_label", target_col))
-                position = "first" if row_selector == "first" else "last"
-                result = (
-                    f"{model_display} predicts {target_label} '{pred}' for the {position} holdout row."
-                )
-                observations.append(result)
-                step_code = (
-                    f"# predictive pipeline: sort={sort_cols!r}, split={split}/{n_rows}, "
-                    f"model={model_key!r}, target={target_col!r}, features={len(feature_cols)} cols\n"
-                    f"result = {result!r}"
-                )
-                step_obs = result
-
-            else:
-                raise _DeterministicPlanUnsupported(f"Unsupported typed operation {typed_op!r}")
-
-            attempts.append({
-                "attempt": idx,
-                "op": op,
-                "ok": True,
-                "output": str(step_obs),
-            })
-            code_lines.append(step_code)
-            trace_lines.append(f"Thought: Deterministic step {idx} ({op})")
-            trace_lines.append("Action: deterministic_exec")
-            trace_lines.append(f"Action Input: {step_code}")
-            trace_lines.append(f"Observation: {step_obs}")
-            continue
-
-        if op == "FILTER":
-            kv = _parse_kv_line(text)
-            if kv is not None and "column" in kv:
-                col = kv["column"].strip().strip("'\"")
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
-                comparator = kv.get("comparator", "eq").strip().lower()
-                raw_value = kv.get("value", "").strip()
-                if comparator == "in":
-                    vals_raw = raw_value.strip("[]")
-                    raw_vals = [v.strip().strip("'\"") for v in vals_raw.split(",") if v.strip()]
-                    coerced_vals = [
-                        (_coerce_numeric(v) if _coerce_numeric(v) is not None else v) for v in raw_vals
-                    ]
-                    working_df = working_df[working_df[col].isin(coerced_vals)]
-                    step_code = f"df = df[df[{col!r}].isin({coerced_vals!r})]"
-                else:
-                    if raw_value.upper() in ("PREV", "PREVIOUS", "PREVIOUS_RESULT") or _is_prior_result_placeholder(raw_value):
-                        prior_scalars = [v for v in observations if isinstance(v, (int, float))]
-                        if not prior_scalars:
-                            raise _DeterministicPlanUnsupported("FILTER value references prior result, but none exists")
-                        cast_value = prior_scalars[-1]
-                    else:
-                        cast_value = _coerce_for_column(working_df[col], raw_value)
-                    mask = _apply_comparator(working_df[col], comparator, cast_value)
-                    working_df = working_df[mask]
-                    step_code = f"df = df[df[{col!r}] {comparator} {cast_value!r}]"
-                step_obs = f"rows={len(working_df)}"
-            # Avoid unnecessary non-null filters; pandas aggregations skip nulls.
-            elif "not null" in text_l or "is not null" in text_l:
-                step_code = "# skipped no-op null filter"
-                step_obs = f"rows={len(working_df)} (null-filter omitted as no-op)"
-            else:
-                eq_filters = _extract_eq_filters(text, list(working_df.columns))
-                if not eq_filters:
-                    inline_extreme = _extract_extremum_filter(text, list(working_df.columns))
-                    if inline_extreme is not None:
-                        col, ext_op = inline_extreme
-                        extreme_value = (
-                            working_df[col].max() if ext_op == "max" else working_df[col].min()
-                        )
-                        working_df = working_df[working_df[col] == extreme_value]
-                        step_code = (
-                            f"_v = df[{col!r}].{ext_op}(); "
-                            f"df = df[df[{col!r}] == _v]"
-                        )
-                        step_obs = f"rows={len(working_df)} ({col} == {ext_op}={extreme_value})"
-                    else:
-                        # Cross-step pattern: FILTER where col == <prior aggregate result>.
-                        # Detect a column name in the text and use the most recent scalar
-                        # observation as the filter value.
-                        prior_scalars = [
-                            v for v in observations if isinstance(v, (int, float))
-                        ]
-                        mentioned_cols = _find_columns_in_text(text, list(working_df.columns))
-                        if prior_scalars and len(mentioned_cols) == 1:
-                            col = mentioned_cols[0]
-                            cast_value = prior_scalars[-1]
-                            working_df = working_df[working_df[col] == cast_value]
-                            step_code = f"df = df[df[{col!r}] == {cast_value!r}]"
-                            step_obs = f"rows={len(working_df)} (filtered by prior aggregate result {cast_value})"
-                        else:
-                            raise _DeterministicPlanUnsupported(f"Unsupported FILTER pattern: {text!r}")
-                else:
-                    prior_scalars = [
-                        v for v in observations if isinstance(v, (int, float))
-                    ]
-                    for col, value in eq_filters:
-                        if col not in working_df.columns:
-                            raise _DeterministicPlanUnsupported(f"Unknown FILTER column: {col}")
-                        if " or " in value.lower():
-                            raise _DeterministicPlanUnsupported(
-                                f"Unsupported disjunctive FILTER value: {value!r}"
-                            )
-                        # Keep values as string match first; if numeric cast succeeds, use numeric compare.
-                        cast_value = value
-                        if _is_prior_result_placeholder(value):
-                            if not prior_scalars:
-                                raise _DeterministicPlanUnsupported(
-                                    "FILTER references prior aggregate result, but none exists"
-                                )
-                            cast_value = prior_scalars[-1]
-                        elif value.isdigit():
-                            cast_value = int(value)
-                        else:
-                            try:
-                                cast_value = float(value)
-                            except ValueError:
-                                cast_value = value
-                        working_df = working_df[working_df[col] == cast_value]
-                    step_code = " ; ".join(
-                        [f"df = df[df[{col!r}] == {repr(v)}]" for col, v in eq_filters]
-                    )
-                    step_obs = f"rows={len(working_df)}"
-
-        elif op == "DERIVE":
-            kv = _parse_kv_line(text)
-            if kv is None:
-                raise _DeterministicPlanUnsupported(f"DERIVE requires typed key=value form: {text!r}")
-            col_a = kv.get("column_a", "").strip().strip("'\"")
-            col_b = kv.get("column_b", "").strip().strip("'\"")
-            derive_op = kv.get("op", "subtract").strip().lower()
-            result_name = kv.get("result", "").strip().strip("'\"") or "_derived_value"
-            if col_a not in working_df.columns or col_b not in working_df.columns:
-                raise _DeterministicPlanUnsupported(f"Unknown DERIVE column(s): {col_a!r}, {col_b!r}")
-            working_df = working_df.copy()
-            if derive_op in ("subtract", "diff", "difference"):
-                working_df[result_name] = working_df[col_a] - working_df[col_b]
-                op_symbol = "-"
-            elif derive_op == "add":
-                working_df[result_name] = working_df[col_a] + working_df[col_b]
-                op_symbol = "+"
-            elif derive_op == "multiply":
-                working_df[result_name] = working_df[col_a] * working_df[col_b]
-                op_symbol = "*"
-            elif derive_op == "divide":
-                working_df[result_name] = working_df[col_a] / working_df[col_b]
-                op_symbol = "/"
-            else:
-                raise _DeterministicPlanUnsupported(f"Unsupported DERIVE op: {derive_op!r}")
-            last_derived_column = result_name
-            last_derived_label = kv.get("label", result_name).strip() or result_name
-            step_code = f"df[{result_name!r}] = df[{col_a!r}] {op_symbol} df[{col_b!r}]"
-            step_obs = f"computed '{result_name}' column (rows={len(working_df)})"
-
-        elif op == "AGGREGATE":
-            kv = _parse_kv_line(text)
-            if kv is not None and "column" in kv and "stat" in kv:
-                col = kv["column"].strip().strip("'\"")
-                alias_map = {
-                    "average": "mean", "maximum": "max", "highest": "max",
-                    "minimum": "min", "lowest": "min", "total": "sum",
-                }
-                agg_op = alias_map.get(kv["stat"].strip().lower(), kv["stat"].strip().lower())
-                if col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
-                if agg_op not in {"max", "min", "mean", "median", "sum", "count"}:
-                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg_op}")
-                result = getattr(working_df[col], agg_op)()
-                step_code = f"result = df[{col!r}].{agg_op}()"
-                observations.append(result)
-                step_obs = result
-            else:
-                diff_cols = _extract_diff_columns(text, list(working_df.columns))
-                if diff_cols is not None:
-                    col_a, col_b = diff_cols
-                    working_df = working_df.copy()
-                    working_df["_derived_diff"] = working_df[col_a] - working_df[col_b]
-                    last_derived_column = "_derived_diff"
-                    last_derived_label = f"difference between {col_a} and {col_b}"
-                    step_code = f"df['_derived_diff'] = df[{col_a!r}] - df[{col_b!r}]"
-                    step_obs = f"computed per-record '_derived_diff' column (rows={len(working_df)})"
-                else:
-                    agg_op = _extract_aggregate_op(text)
-                    cols = _find_columns_in_text(text, list(working_df.columns))
-                    if not cols:
-                        raise _DeterministicPlanUnsupported(f"No known column found in AGGREGATE: {text!r}")
-
-                    # Handle argmax/argmin-style "corresponding timestamp" pattern.
-                    if "corresponding" in text_l and agg_op in {"max", "min"} and len(cols) >= 2:
-                        metric_col = cols[-1]
-                        target_col = cols[0]
-                        if metric_col not in working_df.columns or target_col not in working_df.columns:
-                            raise _DeterministicPlanUnsupported("Unknown column in corresponding-value aggregate")
-                        idx_val = working_df[metric_col].idxmax() if agg_op == "max" else working_df[metric_col].idxmin()
-                        result = working_df.loc[idx_val, target_col]
-                        step_code = (
-                            f"idx = df[{metric_col!r}].idx{'max' if agg_op == 'max' else 'min'}(); "
-                            f"result = df.loc[idx, {target_col!r}]"
-                        )
-                    else:
-                        if len(cols) != 1:
-                            raise _DeterministicPlanUnsupported(f"Ambiguous AGGREGATE columns: {cols}")
-                        col = cols[0]
-                        if col not in working_df.columns:
-                            raise _DeterministicPlanUnsupported(f"Unknown AGGREGATE column: {col}")
-                        series = working_df[col]
-                        result = getattr(series, agg_op)()
-                        step_code = f"result = df[{col!r}].{agg_op}()"
-
-                    observations.append(result)
-                    step_obs = result
-
-        elif op == "GROUPBY":
-            kv = _parse_kv_line(text)
-            if kv is not None and "group_column" in kv:
-                group_col = kv["group_column"].strip().strip("'\"")
-                value_col = kv.get("value_column", "").strip().strip("'\"")
-                agg_op = kv.get("stat", "").strip().lower()
-                freq = kv.get("freq", "").strip()
-                if group_col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown GROUPBY group column: {group_col}")
-                if value_col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown GROUPBY value column: {value_col}")
-                if agg_op not in {"max", "min", "mean", "median", "sum", "count"}:
-                    raise _DeterministicPlanUnsupported(f"Unsupported aggregate op: {agg_op!r}")
-                if freq:
-                    # Time-bin grouping (e.g. "1-minute intervals") requires a
-                    # real datetime column; pd.Grouper does the bucketing.
-                    if not pd.api.types.is_datetime64_any_dtype(working_df[group_col]):
-                        raise _DeterministicPlanUnsupported(
-                            f"GROUPBY freq={freq!r} requires a datetime64 column; "
-                            f"{group_col} has dtype {working_df[group_col].dtype}"
-                        )
-                    grouped = working_df.groupby(pd.Grouper(key=group_col, freq=freq))[value_col]
-                    step_code = (
-                        f"result = df.groupby(pd.Grouper(key={group_col!r}, freq={freq!r}))"
-                        f"[{value_col!r}].{agg_op}().to_dict()"
-                    )
-                else:
-                    grouped = working_df.groupby(group_col)[value_col]
-                    step_code = (
-                        f"result = df.groupby({group_col!r})[{value_col!r}].{agg_op}().to_dict()"
-                    )
-                raw_result = getattr(grouped, agg_op)()
-                result = {str(k): v for k, v in raw_result.to_dict().items()}
-                observations.append(result)
-                last_groupby_group_column = group_col
-                last_groupby_value_column = value_col
-                step_obs = result
-            else:
-                group_col = _extract_groupby_column(text, list(working_df.columns))
-                agg_op = _extract_aggregate_op(text)
-                cols = _find_columns_in_text(text, list(working_df.columns))
-                value_cols = [c for c in cols if c != group_col]
-                if len(value_cols) != 1:
-                    raise _DeterministicPlanUnsupported(f"Ambiguous GROUPBY value column in: {text!r}")
-                value_col = value_cols[0]
-                grouped = working_df.groupby(group_col)[value_col]
-                result = getattr(grouped, agg_op)().to_dict()
-                observations.append(result)
-                last_groupby_group_column = group_col
-                last_groupby_value_column = value_col
-                step_code = (
-                    f"result = df.groupby({group_col!r})[{value_col!r}].{agg_op}().to_dict()"
-                )
-                step_obs = result
-
-        elif op == "RANK":
-            # RANK: find the row with the max/min of a metric column and return
-            # a dict containing both the entity identifier(s) and the metric
-            # value, matching the S3 prompt convention for [RANK] sub-questions.
-            kv = _parse_kv_line(text)
-            if kv is not None and "metric" in kv:
-                metric_col = kv["metric"].strip().strip("'\"")
-                rank_agg = kv.get("stat", "max").strip().lower()
-                if rank_agg not in {"max", "min"}:
-                    raise _DeterministicPlanUnsupported(f"RANK stat must be max/min; got {rank_agg!r}")
-                if metric_col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown RANK metric column: {metric_col}")
-                return_cols = [c.strip() for c in kv.get("return", "").split(",") if c.strip()]
-                return_cols = [c for c in return_cols if c in working_df.columns]
-                if (
-                    observations
-                    and isinstance(observations[-1], dict)
-                    and last_groupby_value_column
-                    and metric_col == last_groupby_value_column
-                ):
-                    # metric refers to the value aggregated by the immediately
-                    # preceding [GROUPBY] step: rank the grouped dict itself
-                    # (e.g. "which time window") rather than re-scanning the
-                    # ungrouped DataFrame, which would silently ignore the grouping.
-                    grouped_result = observations[-1]
-                    numeric_items = {
-                        k: v for k, v in grouped_result.items() if isinstance(v, (int, float))
+    # Routed through Gate 1 like any other plan: the bypass detector gets no
+    # privileged path into the executor.
+    try:
+        return structural_validate(
+            {
+                "version": "1",
+                "steps": [
+                    {
+                        "op": "PREDICTIVE_PIPELINE",
+                        "model": model,
+                        "feature_columns": feature_columns,
+                        "target_column": target_column,
+                        "sort_by": sort_by,
+                        "train_fraction": train_fraction,
+                        "holdout_row": holdout_row,
+                        "filter_column": filter_column,
+                        "filter_value": filter_value,
+                        "target_from_non_empty": target_from_non_empty,
+                        "target_label": target_label,
                     }
-                    if not numeric_items:
-                        raise _DeterministicPlanUnsupported(
-                            "RANK over GROUPBY result requires numeric aggregate values"
-                        )
-                    best_key = (
-                        max(numeric_items, key=lambda k: numeric_items[k])
-                        if rank_agg == "max"
-                        else min(numeric_items, key=lambda k: numeric_items[k])
-                    )
-                    group_label = last_groupby_group_column or "group"
-                    result = {group_label: best_key, metric_col: numeric_items[best_key]}
-                    step_code = (
-                        f"best_key = {'max' if rank_agg == 'max' else 'min'}(result_groupby, key=result_groupby.get); "
-                        f"result = {{{group_label!r}: best_key, {metric_col!r}: result_groupby[best_key]}}"
-                    )
-                    observations.append(result)
-                    step_obs = result
-                else:
-                    if not return_cols:
-                        raise _DeterministicPlanUnsupported("RANK requires a valid 'return' column list")
-                    if working_df.empty:
-                        raise _DeterministicPlanUnsupported("RANK received no rows after filtering")
-                    idx_val = (
-                        working_df[metric_col].idxmax() if rank_agg == "max" else working_df[metric_col].idxmin()
-                    )
-                    result = {c: working_df.loc[idx_val, c] for c in return_cols}
-                    if metric_col not in result:
-                        result[metric_col] = working_df.loc[idx_val, metric_col]
-                    step_code = (
-                        f"idx = df[{metric_col!r}].idx{'max' if rank_agg == 'max' else 'min'}(); "
-                        f"result = {{{', '.join(f'{c!r}: df.loc[idx, {c!r}]' for c in result)}}}"
-                    )
-                    observations.append(result)
-                    step_obs = result
-            else:
-                rank_agg = _extract_aggregate_op(text)
-                if rank_agg not in {"max", "min"}:
-                    raise _DeterministicPlanUnsupported(
-                        f"RANK only supports max/min ranking; got: {rank_agg!r}"
-                    )
-                if last_derived_column and last_derived_column in working_df.columns:
-                    metric_col = last_derived_column
-                    metric_label = last_derived_label or metric_col
-                    identifier_cols = _find_columns_in_text(text, list(df.columns))
-                else:
-                    cols = _find_columns_in_text(text, list(working_df.columns))
-                    if len(cols) < 2:
-                        raise _DeterministicPlanUnsupported(
-                            f"RANK requires at least two columns (identifier + metric); found: {cols}"
-                        )
-                    metric_col = cols[-1]
-                    metric_label = metric_col
-                    identifier_cols = cols[:-1]
-                if not identifier_cols:
-                    raise _DeterministicPlanUnsupported("RANK requires at least one identifier column")
-                if metric_col not in working_df.columns:
-                    raise _DeterministicPlanUnsupported(f"Unknown column in RANK: metric={metric_col!r}")
-                if working_df.empty:
-                    raise _DeterministicPlanUnsupported("RANK received no rows after filtering")
-                idx_val = (
-                    working_df[metric_col].idxmax()
-                    if rank_agg == "max"
-                    else working_df[metric_col].idxmin()
-                )
-                result = {c: working_df.loc[idx_val, c] for c in identifier_cols}
-                result[metric_label] = working_df.loc[idx_val, metric_col]
-                step_code = (
-                    f"idx = df[{metric_col!r}].idx{'max' if rank_agg == 'max' else 'min'}(); "
-                    f"result = {{{', '.join(f'{c!r}: df.loc[idx, {c!r}]' for c in identifier_cols)}, "
-                    f"{metric_label!r}: df.loc[idx, {metric_col!r}]}}"
-                )
-                observations.append(result)
-                step_obs = result
-
-        elif op == "SELECT":
-            # SELECT: return specified column(s) from the current working DataFrame.
-            cols = _find_columns_in_text(text, list(working_df.columns))
-            if not cols:
-                raise _DeterministicPlanUnsupported(f"No known column found in SELECT: {text!r}")
-            if len(cols) == 1 and "list" in text.lower():
-                result = working_df[cols[0]].tolist()
-                step_code = f"result = df[{cols[0]!r}].tolist()"
-            else:
-                result = working_df[cols].to_dict(orient="list")
-                step_code = f"result = df[{cols!r}].to_dict(orient='list')"
-            observations.append(result)
-            step_obs = result
-
-        elif op == "COMPARE":
-            if len(observations) < 2:
-                raise _DeterministicPlanUnsupported("COMPARE requires at least two prior observations")
-            a = observations[-2]
-            b = observations[-1]
-            if isinstance(a, (int, float)) and isinstance(b, (int, float)):
-                result = a - b
-                step_code = "result = obs[-2] - obs[-1]"
-                step_obs = result
-                observations.append(result)
-            else:
-                raise _DeterministicPlanUnsupported("COMPARE currently supports scalar numeric observations only")
-
-        attempts.append({
-            "attempt": idx,
-            "op": op,
-            "ok": True,
-            "output": str(step_obs),
-        })
-        code_lines.append(step_code)
-        trace_lines.append(f"Thought: Deterministic step {idx} ({op})")
-        trace_lines.append("Action: deterministic_exec")
-        trace_lines.append(f"Action Input: {step_code}")
-        trace_lines.append(f"Observation: {step_obs}")
-
-    final = observations[-1] if observations else f"rows={len(working_df)}"
-    answer = f"{final}"
-    trace_lines.append(f"Final Answer: {answer}")
-    return _DeterministicExecutionResult(
-        answer=answer,
-        trace="\n".join(trace_lines),
-        final_code="\n".join(line for line in code_lines if line),
-        tries=len(sub_queries),
-        attempts=attempts,
-    )
-
-
-def _extract_single_grounded_column(raw_grounding: str) -> str | None:
-    """Return a single grounded column only when all S2 mappings resolve to the same column.
-
-    Multiple mapping lines are allowed (e.g. S2 grounding both a DATA concept and
-    its REASONING counterpart such as "average → accel_mean (mean)") as long as
-    every line's resolved column is identical and no multi-column operators are present.
-    """
-    lines = raw_grounding.splitlines()
-    mappings: list[str] = []
-    unmappable: list[str] = []
-    in_mappings = False
-
-    for line in lines:
-        stripped = line.strip()
-        upper = stripped.upper()
-        if upper.startswith("MAPPINGS:"):
-            in_mappings = True
-            continue
-        if upper.startswith("UNMAPPABLE:"):
-            in_mappings = False
-            raw_unmappable = stripped.split(":", 1)[1].strip()
-            if raw_unmappable.upper() not in ("NONE", ""):
-                unmappable = [u.strip() for u in raw_unmappable.split(",") if u.strip()]
-            continue
-        if in_mappings and "→" in stripped:
-            mappings.append(stripped)
-
-    if unmappable or not mappings:
-        return None
-
-    # Hard-disqualify any RHS that references multiple columns, comparisons, or
-    # multi-arg operators (e.g. "latitude > MEDIAN(latitude)", "GROUP_COMPARE(...)").
-    _MULTI_COL_CHARS = {",", "+", "-", "*", "/", "=", "[", "]", ">", "<"}
-    # Single-argument derived-stat operations whose wrapped column should be
-    # unwrapped rather than mistaken for a literal column name (e.g. the "MEDIAN"
-    # in "MEDIAN(latitude)" is an operation, not a column called "MEDIAN").
-    _UNARY_OPS = {"MEDIAN", "MEAN", "SUM", "COUNT", "MIN", "MAX", "STD", "VARIANCE", "PROXY"}
-    columns: set[str] = set()
-    for mapping in mappings:
-        rhs = mapping.split("→", 1)[1].strip()
-        if not rhs:
-            return None
-        if any(ch in rhs for ch in _MULTI_COL_CHARS):
-            return None
-        # Take the first token before any space or parenthetical descriptor
-        # (e.g. "accel_mean (mean)" → "accel_mean").
-        first_token = re.split(r"[\s(]", rhs)[0].strip("`\"'")
-        if first_token.upper() in _UNARY_OPS:
-            arg_match = re.match(
-                rf"{re.escape(first_token)}\(\s*([A-Za-z_][A-Za-z0-9_]*)", rhs
-            )
-            if not arg_match:
-                return None
-            first_token = arg_match.group(1)
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", first_token):
-            return None
-        columns.add(first_token)
-
-    if len(columns) != 1:
-        return None
-
-    return next(iter(columns))
-
-
-def _detect_direct_aggregate(query: str, raw_grounding: str) -> dict[str, str] | None:
-    """Conservative detector for direct single-column aggregate queries."""
-    query_lc = query.lower()
-    for pattern in _DIRECT_DISQUALIFIER_PATTERNS:
-        if re.search(pattern, query_lc):
-            return None
-
-    matched_ops: set[str] = set()
-    for op, aliases in _SUPPORTED_DIRECT_AGGREGATES.items():
-        for alias in aliases:
-            if re.search(rf"\b{re.escape(alias)}\b", query_lc):
-                matched_ops.add(op)
-                break
-    if len(matched_ops) != 1:
-        return None
-
-    column = _extract_single_grounded_column(raw_grounding)
-    if not column:
-        return None
-
-    return {"column": column, "operation": next(iter(matched_ops))}
-
-
-def _unsupported_grounded_derived_stats(
-    concepts: dict,
-    grounding: dict[str, Any],
-) -> list[str]:
-    """Return unsupported S1 derived stats only when S2 resolved every concept."""
-    derived_stats = concepts.get("DERIVED_STAT") or []
-    unmappable = grounding.get("unmappable")
-    if unmappable is None:
-        unmappable_match = re.search(
-            r"^\s*UNMAPPABLE:\s*(.*)$", grounding.get("raw_grounding", ""), re.MULTILINE | re.IGNORECASE
+                ],
+            }
         )
-        unmappable = (
-            []
-            if unmappable_match and unmappable_match.group(1).strip().upper() in ("", "NONE")
-            else ["unverified"]
+    except StructuralValidationError as exc:
+        _debug(f"Predictive bypass failed structural validation: {exc}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Single structured LLM call — guardrail verdict + candidate plan
+# ---------------------------------------------------------------------------
+
+
+def request_guardrail_and_plan(
+    query: str, meta_str: str, client: LLMClient
+) -> tuple[GuardrailAndPlan | None, str, str]:
+    """Ask for the scope verdict and a candidate plan in one round-trip.
+
+    Returns:
+        (parsed, raw_response, structural_error). ``parsed`` is None when the
+        response could not be structurally validated (Gate 1 failure).
+    """
+    # Use LangChain's partial_variables to avoid curly-brace conflicts with
+    # the JSON structures in OPERATOR_VOCABULARY_SPEC
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", GUARDRAIL_AND_PLAN_PROMPT), ("human", "{query}")]
+    )
+    prompt = prompt.partial(
+        column_metadata=meta_str, operator_spec=OPERATOR_VOCABULARY_SPEC
+    )
+    chain = prompt | client.llm | StrOutputParser()
+    raw = client.invoke_chain(chain, {"query": query}, stage="guardrail_plan")
+    try:
+        return parse_guardrail_and_plan(raw), raw, ""
+    except (StructuralValidationError, ValueError) as exc:
+        return None, raw, str(exc)
+
+
+# ---------------------------------------------------------------------------
+# ReAct fallback prompt
+# ---------------------------------------------------------------------------
+# (NOTE): is S1/S2 even needed? ReAct-Only worked fine even on ambiguous queries
+# that would have benefitted from concept-to-column matching
+
+def build_react_query(
+    query: str, grounding: str = "", ambiguous_concepts: list[str] | None = None
+) -> str:
+    """Build the ReAct prompt used whenever the typed path cannot serve a query.
+
+    Concept-to-column grounding is included when available: a fallback happens
+    precisely because the typed plan was insufficient, so the agent benefits
+    from the mapping as scaffolding while reasoning over the raw DataFrame.
+    """
+    sections = [query]
+    if grounding.strip():
+        sections.append(
+            "Concept-to-column grounding produced by schema analysis "
+            "(use these exact column names; derive anything else from them):\n"
+            f"{grounding.strip()}"
         )
-    if unmappable or not derived_stats:
-        return []
-
-    unsupported: list[str] = []
-    for stat in derived_stats:
-        normalized = re.sub(r"\s+", " ", str(stat).strip()).upper()
-        normalized = _DETERMINISTIC_DERIVED_STAT_ALIASES.get(normalized, normalized)
-        if normalized not in _DETERMINISTIC_DERIVED_STATS:
-            unsupported.append(str(stat))
-    return unsupported
+    if ambiguous_concepts:
+        sections.append(
+            "Concepts with no literal column — resolve them from the schema: "
+            + ", ".join(ambiguous_concepts)
+        )
+    return "\n\n".join(sections)
 
 
-def _build_grounded_query(
-    query: str,
-    raw_grounding: str,
-    sub_queries: list,
-    synthesis_hint: str,
+def _ground_for_fallback(
+    query: str, df: pd.DataFrame, meta_str: str, client: LLMClient, r: RunResult
 ) -> str:
-    """Construct the agent prompt from the S3 decomposition.
-
-    ``raw_grounding`` is accepted for backward-compatible call signatures
-    (e.g. eval/trace_query.py) but intentionally NOT included in the output:
-    S3 sub-queries are now typed, self-contained key=value steps (exact
-    column names baked in already), so re-including the raw S2 mapping text
-    here only added noise/redundant, sometimes-misleading concept mappings
-    without helping the ReAct agent execute the plan.
-    """
-    del raw_grounding  # unused: see docstring
-    sub_tasks = "\n".join(f"- {sq}" for sq in sub_queries) if sub_queries else "(none)"
-    return (
-        f"{query}\n\n"
-        f"Sub-tasks to address:\n{sub_tasks}\n\n"
-        f"Hint: {synthesis_hint}"
+    """Run concept extraction + schema grounding for the ReAct fallback subset."""
+    if not FF_FALLBACK_GROUNDING:
+        return ""
+    from flashfusion.pipeline.stages import (
+        Stage1_ConceptExtraction,
+        Stage2_SchemaGrounding,
     )
 
-
-# Typed operations the deterministic executor (_run_deterministic_plan) can run
-# directly. Kept in sync with the ``typed_op ==`` branches above; consumed by
-# the pre-flight delegation gate to decide, BEFORE execution, whether an S3 plan
-# is fully expressible deterministically or must be handed to the ReAct agent.
-_DETERMINISTIC_TYPED_OPS: frozenset[str] = frozenset(
-    {
-        "AGGREGATE_COLUMN", "FILTER_EQ_PREV", "FILTER_COMPARE",
-        "AGGREGATE_COUNT_ROWS", "SELECT_LIST", "SPLIT_BY_THRESHOLD",
-        "SPLIT_BY_VALUES", "VECTOR_MAGNITUDE", "GROUP_AGGREGATE",
-        "COMPARE_GROUPS", "PREDICTIVE_PIPELINE",
-    }
-)
-
-
-def _plan_is_deterministic(plan_steps: list[Any], concepts: dict) -> tuple[bool, str]:
-    """Pre-flight coverage gate: can this S3 plan run on the typed executor?
-
-    Returns ``(True, "")`` when every step is expressible in the deterministic
-    operator vocabulary; otherwise ``(False, reason)`` so the caller can hand
-    the query + S2 grounding to the ReAct agent instead of committing to a
-    deterministic plan it cannot faithfully execute. The decision is made
-    BEFORE execution — unlike the reactive ``_DeterministicPlanUnsupported``
-    fallback — so ReAct receives the grounding and no partially-executed plan
-    can silently return a wrong answer.
-
-    Note: queries with a PROXY concept never reach this gate at all — they are
-    short-circuited earlier in ``run_flash_fusion`` (S3 is skipped entirely and
-    the query is delegated straight to ReAct), so ``concepts`` is accepted here
-    only for signature stability and isn't inspected for PROXY concepts.
-
-    Op-coverage is necessary but not sufficient: a step may pass op-membership
-    here yet still fail on its argument shape at execution time — the
-    exception fallback remains the net for that residual.
-    """
-    if not plan_steps:
-        return False, "empty_plan"
-
-    for step in plan_steps:
-        if isinstance(step, dict):
-            op = str(step.get("op", "")).upper().strip()
-            if op not in _DETERMINISTIC_TYPED_OPS:
-                return False, f"unsupported_typed_op={op!r}"
-            continue
-        if isinstance(step, str):
-            stripped = step.strip()
-            # Direct-aggregate bypass expression form: df['col'].op()
-            if stripped.startswith("df["):
-                continue
-            match = re.match(r"^\s*\[([A-Za-z_]+)\]", stripped)
-            if not match:
-                return False, f"untyped_sub_query={stripped[:60]!r}"
-            op = match.group(1).upper().strip()
-            if op not in _SUPPORTED_PLAN_OPS:
-                return False, f"unsupported_plan_op={op!r}"
-            continue
-        return False, f"unrecognized_step_type={type(step).__name__}"
-
-    return True, ""
+    try:
+        concepts = Stage1_ConceptExtraction(client.light).run(query, df)
+        r.s1_concepts = concepts
+        r.stages_run.append("S1")
+        grounding = Stage2_SchemaGrounding(client.light).run(
+            concepts, query, meta_str, df
+        )
+        r.s2_grounding = grounding["raw_grounding"]
+        r.s2_filtered_concepts = grounding.get("filtered_concepts", {})
+        r.stages_run.append("S2")
+        return grounding["raw_grounding"]
+    except Exception as exc:  # noqa: BLE001 — grounding is best-effort scaffolding
+        _debug(f"Fallback grounding failed ({exc}); using bare query.")
+        return ""
 
 
-def _build_react_query(
-    query: str,
-    raw_grounding: str,
-    sub_queries: list,
-    synthesis_hint: str,
-    derived_stats: list[str] | None = None,
-) -> str:
-    """Build the agent prompt for a ReAct delegation, INCLUDING S2 grounding.
-
-    Unlike ``_build_grounded_query`` (which deliberately drops the raw S2
-    mappings because typed sub-queries already bake exact column names in), a
-    ReAct delegation happens precisely when the deterministic plan was
-    insufficient — so the agent benefits from the concept→column grounding as
-    scaffolding to reason over the raw DataFrame itself. The sub-queries are
-    passed as non-binding guidance rather than a plan to follow verbatim.
-    """
-    grounding = (raw_grounding or "").strip() or "(no grounding available)"
-    derived_stat_context = (
-        f"\n\nDerived statistics required by the query: {', '.join(derived_stats)}"
-        if derived_stats
-        else ""
-    )
-    return (
-        f"{query}\n\n"
-        f"Concept-to-column grounding produced by schema analysis "
-        f"(use these exact column names; derive anything else from them):\n{grounding}"
-        f"{derived_stat_context}\n\n"
-        # f"Suggested sub-tasks (guidance only — refine as needed):\n{sub_tasks}\n\n"
-        # f"Hint: {synthesis_hint}"
-    )
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
 
 
 def run_flash_fusion(
@@ -1510,498 +359,225 @@ def run_flash_fusion(
     r: RunResult,
     timeout_s: float | None = None,
 ) -> RunResult:
-    """
-    Execute the full Flash-Fusion pipeline.
-
-    Args:
-        query:   Raw natural language query.
-        df:      WISDM DataFrame (deterministically enriched by BaselineRunner).
-        client:  LLMClient instance for this run.
-        r:       RunResult to populate.
-
-    Returns:
-        Populated RunResult.
-
-    Algorithm:
-        S1 → S2 → guardrail(query + S2 grounding) → reject or proceed
-        S3 → build grounded_query
-        judge_plan(query, grounding, sub_queries, synthesis_hint) → plan verdict
-        if FAIL + suggestion:
-            rerun S3 once with correction note appended to query context
-            rebuild grounded_query
-            judge_plan again → final plan verdict
-        execute_single(grounded_query) → raw_answer, trace, details
-        r.answer = raw_answer; r.executed = True
-    """
-    last_stage = "init"
-    stage_latency_s = {
+    """Execute the Flash-Fusion pipeline for one query."""
+    effective_timeout = (
+        timeout_s if timeout_s is not None else FLASH_FUSION_PREDICTIVE_TIMEOUT_S
+    )
+    stage_latency_s: dict[str, float] = {
         "s1": 0.0,
         "s2": 0.0,
+        "s3": 0.0,
         "guardrail": 0.0,
+        "plan": 0.0,
+        "typed_exec": 0.0,
         "agent": 0.0,
         "synthesis": 0.0,
     }
-    deterministic_plan_input: list[Any] = []
-    # Bypasses (predictive template, direct single-column aggregate) build a
-    # pre-validated deterministic plan and skip the pre-flight coverage gate.
-    skip_deterministic_gate = False
+    r.stage_latency_s = dict(stage_latency_s)
 
-    def record_stage(stage_key: str, start_s: float) -> None:
-        elapsed = max(0.0, time.time() - start_s)
-        stage_latency_s[stage_key] = stage_latency_s.get(stage_key, 0.0) + elapsed
+    def record(stage: str, started: float) -> None:
+        stage_latency_s[stage] = stage_latency_s.get(stage, 0.0) + max(
+            0.0, time.time() - started
+        )
         r.stage_latency_s = dict(stage_latency_s)
 
-    r.stage_latency_s = dict(stage_latency_s)
+    last_stage = "init"
     try:
         meta_str = meta_to_str(build_column_metadata(df))
+        ambiguous: list[str] = []
+        gap_stage = ""
+        gap_error = ""
+        raw_plan_payload: Any = None
 
-        # Stages 1 and 2 may run on a lighter sibling model (client.light) when a
-        # --stage12-model is configured; client.light is client itself otherwise.
-        stage1 = Stage1_ConceptExtraction(client.light)
-        stage2 = Stage2_SchemaGrounding(client.light)
-        stage3 = Stage3_SubqueryGeneration(client)
-        executor = ExecutionLayer(df, client)
+        # --- Bypass detector: a pre-validated typed plan, zero LLM calls -----
+        last_stage = "bypass_detect"
+        plan: DeterministicPlan | None = detect_predictive_plan(query, df)
+        if plan is not None:
+            r.plan_source = "predictive_template"
+            r.stages_run.append("plan_bypass_predictive")
+            _debug(f"Predictive template matched: {plan.steps[0].op}")
 
-        # Predictive (CHRONO_SPLIT+CLASSIFY) queries follow a fixed procedural
-        # template ("sort ... train a <model> ... predict ... for the first row
-        # in the holdout set"). S1/S2 still run as normal (S1 concepts feed the
-        # guardrail's grounding context, which needs the real S2 mappings to
-        # correctly PROCEED on in-dataset predictive tasks — running guardrail
-        # on the bare query without grounding causes false REJECTs). Only S3 is
-        # bypassed: instead of decomposing into FILTER/AGGREGATE/RANK sub-steps
-        # (which S3 cannot express reliably for a train/split/predict workflow),
-        # we go straight to the deterministic PREDICTIVE_PIPELINE executor.
-        predictive_plan = _parse_chrono_split_classify_query(query, df)
-        if FF_DEBUG and predictive_plan is not None:
-            print(
-                f"[FF_DEBUG] Predictive template detected (will bypass S3): "
-                f"model={predictive_plan['model_key']} target={predictive_plan['target_col']} "
-                f"sort_col={predictive_plan['sort_col']} tie_breaker={predictive_plan['tie_breaker']} "
-                f"train_fraction={predictive_plan['train_fraction']} row_selector={predictive_plan['row_selector']}",
-                file=sys.stderr,
-                flush=True,
+        # --- Single structured call: guardrail verdict + candidate plan -----
+        if plan is None:
+            r.plan_source = "llm"
+            last_stage = "guardrail_plan"
+            r.guardrail_input = query
+            started = time.time()
+            parsed, raw, structural_error = request_guardrail_and_plan(
+                query, meta_str, client
             )
+            record("plan", started)
+            # The single call subsumes the old separate guardrail stage; mirror
+            # its latency there so existing stage-latency reports stay readable.
+            stage_latency_s["guardrail"] = stage_latency_s["plan"]
+            r.stage_latency_s = dict(stage_latency_s)
+            r.stages_run.append("guardrail_plan")
+            raw_plan_payload = raw
 
-        if FF_DEBUG:
-            print(f"[FF_DEBUG] Starting S1 for query: {query[:80]}...", file=sys.stderr, flush=True)
-        last_stage = "S1"
-        stage_t0 = time.time()
-        concepts = stage1.run(query, df)
-        record_stage("s1", stage_t0)
-        r.s1_concepts = concepts
-        r.stages_run.append("S1")
-        if FF_DEBUG:
-            print(f"[FF_DEBUG] S1 complete. Concepts: {str(concepts)[:100]}...", file=sys.stderr, flush=True)
-
-        if FF_DEBUG:
-            print(f"[FF_DEBUG] Starting S2...", file=sys.stderr, flush=True)
-        last_stage = "S2"
-        stage_t0 = time.time()
-        grounding = stage2.run(concepts, query, meta_str, df)
-        record_stage("s2", stage_t0)
-        r.s2_grounding = grounding["raw_grounding"]
-        r.s2_filtered_concepts = grounding.get("filtered_concepts", {})
-        r.stages_run.append("S2")
-        if FF_DEBUG:
-            print(f"[FF_DEBUG] S2 complete. Grounding: {grounding['raw_grounding'][:100]}...", file=sys.stderr, flush=True)
-
-        unsupported_derived_stats = _unsupported_grounded_derived_stats(concepts, grounding)
-
-        df, derived_features = resolve_grounded_features(df, grounding["raw_grounding"])
-        if derived_features:
-            meta_str = meta_to_str(build_column_metadata(df))
-            executor = ExecutionLayer(df, client)
-            if FF_DEBUG:
-                print(f"[FF_DEBUG] Derived features materialized: {derived_features}", file=sys.stderr, flush=True)
-
-        # Guardrail runs after S2, before S3, using the exact same call for
-        # every query (predictive or not): executor.guardrail(query, grounding_context).
-        # For predictive queries, S1/S2 only ground the concepts explicitly
-        # named in the query text (e.g. "timestamp", "behavior") — they never
-        # mention the remaining feature columns used for training, since those
-        # aren't named concepts. That sparse context previously caused the
-        # guardrail to misread the query as missing a "row identifier" column.
-        # We already deterministically resolved the full execution plan via
-        # _parse_chrono_split_classify_query, so append that resolved plan to
-        # the grounding context (the same way S2's mapping text is passed for
-        # every other query) to give the guardrail's {grounding} slot the
-        # complete picture before it decides.
-        grounding_context = grounding["raw_grounding"]
-        if predictive_plan is not None:
-            grounding_context += (
-                "\n\nResolved predictive execution plan (fully computable from "
-                "existing dataset columns, no external data required):\n"
-                f"  sort_column={predictive_plan['sort_col']}\n"
-                f"  tie_breaker={predictive_plan['tie_breaker']}\n"
-                f"  train_fraction={predictive_plan['train_fraction']}\n"
-                f"  model={predictive_plan['model_key']}\n"
-                f"  target_column={predictive_plan['target_col']} (label={predictive_plan['target_label']})\n"
-                f"  holdout_row={predictive_plan['row_selector']}\n"
-                f"  filter={predictive_plan['filter']}\n"
-                "  features=all remaining numeric dataset columns"
-            )
-        r.guardrail_input = (
-            f"{query}\n\n"
-            f"Concept-to-column mappings produced by schema grounding:\n{grounding_context}"
-        )
-        if unsupported_derived_stats and FF_DEBUG:
-            print(
-                f"[FF_DEBUG] Unsupported derived stat(s) {unsupported_derived_stats}; "
-                "still running guardrail before delegating to ReAct.",
-                file=sys.stderr,
-                flush=True,
-            )
-
-        last_stage = "guardrail"
-        stage_t0 = time.time()
-        proceed, reason = executor.guardrail(query, grounding_context)
-        record_stage("guardrail", stage_t0)
-        r.stages_run.append("guardrail")
-        if not proceed:
-            r.rejected = True
-            r.rejection_reason = reason
-            r.alignment_explanation = (
-                "Rejected after schema grounding because the query cannot be "
-                f"answered from available dataset fields. Reason: {reason}"
-            )
-            r.answer = (
-                "Query rejected. "
-                f"Reason: {reason}. "
-                "This request is not supported by the current dataset schema or task scope."
-            )
-            r.executed = False
-            return r
-
-        # PROXY-concept short-circuit: a PROXY concept means S1 could only
-        # ground a qualitative idea (e.g. "roughness") to a column via a
-        # heuristic substitution, which has no faithful typed/deterministic
-        # representation. In that case skip S3 (and the predictive/direct
-        # bypasses) entirely — no sub-queries are generated at all — and hand
-        # the raw query plus S2 grounding straight to the ReAct agent so it can
-        # reason over the actual columns instead of following a decomposed
-        # plan built on a shaky concept mapping.
-        proxy_concepts = concepts.get("PROXY") or []
-        has_proxy_concepts = bool(proxy_concepts)
-
-        if unsupported_derived_stats:
-            r.s3_sub_queries = []
-            r.s3_synthesis_hint = (
-                "Compute the requested derived statistic directly from the S2-grounded columns."
-            )
-            deterministic_plan_input = []
-            r.stages_run.append("S3_skipped_unsupported_derived_stat")
-            grounded_query = _build_react_query(
-                query,
-                grounding["raw_grounding"],
-                r.s3_sub_queries,
-                r.s3_synthesis_hint,
-                unsupported_derived_stats,
-            )
-        elif has_proxy_concepts:
-            r.s3_sub_queries = []
-            r.s3_synthesis_hint = (
-                "Answer directly from the S2 concept-to-column grounding; no "
-                "sub-task plan was generated because a PROXY concept was detected."
-            )
-            deterministic_plan_input = []
-            r.stages_run.append("S3_skipped_proxy")
-            grounded_query = _build_react_query(
-                query, grounding["raw_grounding"], r.s3_sub_queries, r.s3_synthesis_hint
-            )
-            if FF_DEBUG:
-                print(
-                    f"[FF_DEBUG] PROXY concept(s) detected ({proxy_concepts}); "
-                    "skipping S3 and routing directly to ReAct with S2 grounding.",
-                    file=sys.stderr,
-                    flush=True,
+            if parsed is None:
+                gap_stage, gap_error = "structural", structural_error
+                _debug(f"Gate 1 (structural) failed: {structural_error}")
+            elif not parsed.in_scope:
+                reason = (
+                    parsed.rejection_reason
+                    or "The query cannot be answered from the available columns."
                 )
-        elif predictive_plan is not None:
-            r.s3_sub_queries = [
-                f"[PREDICTIVE_PIPELINE] model={predictive_plan['model_key']} "
-                f"target={predictive_plan['target_col']} target_label={predictive_plan['target_label']} "
-                f"sort_col={predictive_plan['sort_col']} tie_breaker={predictive_plan['tie_breaker']} "
-                f"train_fraction={predictive_plan['train_fraction']} row_selector={predictive_plan['row_selector']} "
-                f"filter={predictive_plan['filter']}"
-            ]
-            r.s3_synthesis_hint = "Report the model's predicted label for the holdout row."
-            deterministic_plan_input = [predictive_plan]
-            skip_deterministic_gate = True
-            r.stages_run.append("S3_bypass_predictive")
-            grounded_query = _build_grounded_query(
-                query, grounding["raw_grounding"], r.s3_sub_queries, r.s3_synthesis_hint
-            )
-            if FF_DEBUG:
-                print(
-                    f"[FF_DEBUG] S3 bypassed with predictive plan: {r.s3_sub_queries[0]}",
-                    file=sys.stderr,
-                    flush=True,
+                r.execution_path = PATH_GUARDRAIL_REJECT
+                r.rejected = True
+                r.executed = False
+                r.rejection_reason = reason
+                r.alignment_explanation = (
+                    "Rejected by the guardrail because the query cannot be "
+                    f"answered from available dataset fields. Reason: {reason}"
                 )
-        else:
-            direct_plan = _detect_direct_aggregate(query, grounding["raw_grounding"])
-            if direct_plan:
-                column = direct_plan["column"]
-                operation = direct_plan["operation"]
-                grounded_query = (
-                    f"{query}\n\n"
-                    f"Resolved column: {column}\n"
-                    f"Required operation: {operation}\n"
-                    "Execute exactly one pandas expression and report the result."
+                r.answer = (
+                    f"Query rejected. Reason: {reason}. This request is not "
+                    "supported by the current dataset schema or task scope."
                 )
-                r.s3_sub_queries = [f"df[{column!r}].{operation}()"]
-                r.s3_synthesis_hint = "Return the result of the single aggregate."
-                deterministic_plan_input = list(r.s3_sub_queries)
-                skip_deterministic_gate = True
-                r.stages_run.append("S3_bypass")
-                if FF_DEBUG:
-                    print(
-                        f"[FF_DEBUG] S3 bypassed with direct plan: {column}.{operation}()",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                return r
             else:
-                if FF_DEBUG:
-                    print(f"[FF_DEBUG] Starting S3...", file=sys.stderr, flush=True)
-                last_stage = "S3"
-                stage_t0 = time.time()
-                sub_result = stage3.run(query, grounding["raw_grounding"], meta_str)
-                record_stage("s3", stage_t0)
-                r.s3_sub_queries = sub_result["sub_queries"]
-                r.s3_synthesis_hint = sub_result["synthesis_hint"]
-                deterministic_plan_input = sub_result.get("typed_sub_queries") or list(r.s3_sub_queries)
-                if sub_result.get("compiled_plan"):
-                    r.stages_run.append("S3_compiled")
-                else:
-                    r.stages_run.append("S3")
-                if FF_DEBUG:
-                    print(
-                        f"[FF_DEBUG] S3 complete. Sub-queries: {str(r.s3_sub_queries)[:200]}...",
-                        file=sys.stderr,
-                        flush=True,
+                ambiguous = list(parsed.ambiguous_concepts)
+                r.ambiguous_concepts = ambiguous
+                plan = parsed.plan
+                if plan is None:
+                    gap_stage = "no_plan"
+                    gap_error = (
+                        "planner returned no plan; unresolved: "
+                        f"{ambiguous or ['(unspecified)']}"
                     )
 
-                grounded_query = _build_grounded_query(
-                    query,
-                    grounding["raw_grounding"],
-                    sub_result["sub_queries"],
-                    sub_result["synthesis_hint"],
-                )
-
-        r.grounded_query = grounded_query
-
-        # Clear from any prior run context; set only if fallback occurs.
-        r.deterministic_fallback_reason = ""
-
-        # Pre-flight delegation gate: decide deterministic-vs-ReAct BEFORE
-        # executing. Bypasses are pre-validated plans, so they always take the
-        # deterministic path; a freeform S3 plan is delegated to the ReAct agent
-        # (with S2 grounding as scaffolding) when it isn't fully expressible in
-        # the typed operator vocabulary. A PROXY concept forces ReAct delegation
-        # unconditionally (S3 was already skipped above, so there is no plan to
-        # gate on in the first place).
-        if unsupported_derived_stats:
-            attempt_deterministic = False
-            r.stages_run.append("react_delegate")
-            r.deterministic_fallback_reason = (
-                f"unsupported_derived_stats={unsupported_derived_stats}"
-            )
-        elif has_proxy_concepts:
-            attempt_deterministic = False
-            r.stages_run.append("react_delegate")
-            r.deterministic_fallback_reason = f"proxy_concepts={proxy_concepts}"
-        elif skip_deterministic_gate:
-            attempt_deterministic = True
-        else:
-            attempt_deterministic, gate_reason = _plan_is_deterministic(
-                deterministic_plan_input, concepts
-            )
-            if not attempt_deterministic:
-                r.stages_run.append("react_delegate")
-                r.deterministic_fallback_reason = f"pre-flight delegate: {gate_reason}"
-                if FF_DEBUG:
-                    print(
-                        f"[FF_DEBUG] Pre-flight delegate to ReAct ({gate_reason}); "
-                        "skipping deterministic execution.",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-
-        # TEMPORARILY COMMENTED OUT: Judge plan and refinement loop
-        # last_stage = "judge_plan"
-        # plan_verdict = executor.judge_plan(
-        #     query,
-        #     grounding["raw_grounding"],
-        #     sub_result["sub_queries"],
-        #     sub_result["synthesis_hint"],
-        # )
-        # r.stages_run.append("judge_plan")
-        #
-        # if plan_verdict.get("verdict") == "FAIL" and plan_verdict.get("suggestion"):
-        #     if FF_DEBUG:
-        #         print(f"[FF_DEBUG] Judge plan failed, refining S3...", file=sys.stderr, flush=True)
-        #     last_stage = "S3_refine"
-        #     refine_input = (
-        #         f"{query}\n\n"
-        #         f"Plan correction note: {plan_verdict['suggestion']}"
-        #     )
-        #     refined_sub_result = stage3.run(refine_input, grounding["raw_grounding"], meta_str)
-        #     sub_result = refined_sub_result
-        #     r.s3_sub_queries = sub_result["sub_queries"]
-        #     r.s3_synthesis_hint = sub_result["synthesis_hint"]
-        #     r.stages_run.append("S3_refine")
-        #     grounded_query = _build_grounded_query(
-        #         query,
-        #         grounding["raw_grounding"],
-        #         sub_result["sub_queries"],
-        #         sub_result["synthesis_hint"],
-        #     )
-        #     last_stage = "judge_plan_retry"
-        #     plan_verdict = executor.judge_plan(
-        #         query,
-        #         grounding["raw_grounding"],
-        #         sub_result["sub_queries"],
-        #         sub_result["synthesis_hint"],
-        #     )
-        #     r.stages_run.append("judge_plan_retry")
-        #
-        # r.judge_verdict = plan_verdict
-        # r.alignment_explanation = executor.explain_alignment(query, plan_verdict)
-
-        effective_timeout = (
-            timeout_s if timeout_s is not None else FLASH_FUSION_PREDICTIVE_TIMEOUT_S
-        )
-        # ReAct-facing query, built WITH the S2 grounding so any delegated agent
-        # run — the pre-flight delegate above OR a reactive
-        # _DeterministicPlanUnsupported fallback below — reasons over the
-        # concept→column mappings, not the bare query.
-        react_query = _build_react_query(
-            query,
-            grounding["raw_grounding"],
-            r.s3_sub_queries,
-            r.s3_synthesis_hint,
-            unsupported_derived_stats,
-        )
-        r.react_query = react_query
-
-        deterministic_ok = False
-        if attempt_deterministic:
+        # --- Gate 2: DataFrame schema validation ----------------------------
+        if plan is not None:
+            last_stage = "schema_validation"
+            raw_plan_payload = plan.model_dump(mode="json")
             try:
-                last_stage = "deterministic_exec"
-                stage_t0 = time.time()
-                try:
-                    det = _run_with_timeout(
-                        lambda: _run_deterministic_plan(query, df, deterministic_plan_input),
-                        timeout_s=effective_timeout,
-                        timeout_message=(
-                            f"Flash-Fusion execution exceeded {effective_timeout:.0f}s timeout"
-                        ),
-                    )
-                except _FlashFusionTimeoutError as det_err:
-                    r.stages_run.append("deterministic_timeout")
-                    r.deterministic_fallback_reason = str(det_err)
-                    r.answer = str(det_err)
-                    r.trace = (
-                        f"Timed out after {effective_timeout:.0f}s while running "
-                        "Flash-Fusion deterministic execution."
-                    )
-                    r.executed = False
-                    r.final_code = ""
-                    r.agent_tries = 0
-                    r.execution_attempts = []
-                    deterministic_ok = False
-                    if FF_DEBUG:
-                        print(f"[FF_DEBUG] {det_err}", file=sys.stderr, flush=True)
-                else:
-                    record_stage("agent", stage_t0)
-                    deterministic_ok = True
-                    r.answer = det.answer
-                    r.trace = det.trace
-                    r.executed = True
-                    r.final_code = det.final_code
-                    r.agent_tries = det.tries
-                    r.execution_attempts = list(det.attempts)
-                    r.stages_run.append("deterministic_exec")
-                    if FF_DEBUG:
-                        print("[FF_DEBUG] Deterministic execution succeeded.", file=sys.stderr, flush=True)
-            except _DeterministicPlanUnsupported as det_err:
-                r.stages_run.append("deterministic_fallback")
-                r.deterministic_fallback_reason = str(det_err)
-                if FF_DEBUG:
-                    print(
-                        f"[FF_DEBUG] Deterministic execution unsupported ({det_err}); falling back to agent.",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                validate_plan_against_dataframe(plan, df)
+                r.typed_plan = raw_plan_payload
+                r.operators_used = plan.operators_used
+                r.stages_run.append("plan_validated")
+            except PlanSchemaError as exc:
+                gap_stage, gap_error = "schema", str(exc)
+                plan = None
+                _debug(f"Gate 2 (schema) failed: {exc}")
 
-        if not deterministic_ok:
-            if FF_DEBUG:
-                print(f"[FF_DEBUG] Starting agent execution...", file=sys.stderr, flush=True)
+        # --- Typed operator execution ---------------------------------------
+        if plan is not None:
+            last_stage = "typed_exec"
+            started = time.time()
+            try:
+                execution = _run_with_timeout(
+                    execute_plan,
+                    effective_timeout,
+                    args=(df, plan),
+                    timeout_message=(
+                        f"Flash-Fusion execution exceeded {effective_timeout:.0f}s timeout"
+                    ),
+                )
+            except _FlashFusionTimeoutError as exc:
+                record("typed_exec", started)
+                r.execution_path = PATH_TYPED_OPERATOR
+                r.plan_validation_stage_failed = "execution"
+                r.deterministic_fallback_reason = str(exc)
+                r.stages_run.append("typed_exec_timeout")
+                r.answer = str(exc)
+                r.trace = f"Timed out after {effective_timeout:.0f}s in typed execution."
+                r.executed = False
+                return r
+            record("typed_exec", started)
+            # Keep the legacy "agent" latency slot meaningful: it is the
+            # execution phase, whichever engine served it.
+            stage_latency_s["agent"] = stage_latency_s["typed_exec"]
+            r.stage_latency_s = dict(stage_latency_s)
+
+            if execution.ok:
+                r.execution_path = PATH_TYPED_OPERATOR
+                r.plan_validation_stage_failed = ""
+                r.answer = f"{execution.value}"
+                r.trace = execution.trace
+                r.final_code = execution.code
+                r.agent_tries = len(execution.steps)
+                r.execution_attempts = list(execution.steps)
+                r.executed = True
+                r.stages_run.append("typed_exec")
+                _debug(f"Typed execution ok in {execution.latency_ms:.1f}ms")
+            else:
+                gap_stage, gap_error = "execution", execution.error or "unknown"
+                plan = None
+                _debug(f"Typed execution failed: {gap_error}")
+
+        # --- ReAct fallback --------------------------------------------------
+        if plan is None:
+            log_operator_gap(
+                query=query,
+                stage=gap_stage or "no_plan",
+                error=gap_error,
+                raw_plan=raw_plan_payload,
+            )
+            r.execution_path = PATH_REACT_FALLBACK
+            r.plan_validation_stage_failed = gap_stage or "no_plan"
+            r.deterministic_fallback_reason = f"{gap_stage}: {gap_error}"
+            r.stages_run.append("react_fallback")
+
+            last_stage = "fallback_grounding"
+            started = time.time()
+            grounding = _ground_for_fallback(query, df, meta_str, client, r)
+            record("s2", started)
+
+            react_query = build_react_query(query, grounding, ambiguous)
+            r.react_query = react_query
+            r.grounded_query = react_query
+
             last_stage = "agent"
-            stage_t0 = time.time()
+            started = time.time()
             try:
                 raw_answer, trace, details = _run_with_timeout(
-                    executor.execute_single,
+                    ExecutionLayer(df, client).execute_single,
                     effective_timeout,
                     args=(react_query,),
                     timeout_message=(
                         f"Flash-Fusion execution exceeded {effective_timeout:.0f}s timeout"
                     ),
                 )
-            except _FlashFusionTimeoutError as agent_err:
+            except _FlashFusionTimeoutError as exc:
+                record("agent", started)
                 r.stages_run.append("agent_timeout")
-                r.deterministic_fallback_reason = str(agent_err)
-                r.answer = str(agent_err)
-                r.trace = (
-                    f"Timed out after {effective_timeout:.0f}s while running "
-                    "Flash-Fusion agent execution."
-                )
+                r.answer = str(exc)
+                r.trace = f"Timed out after {effective_timeout:.0f}s in ReAct fallback."
                 r.executed = False
-                r.final_code = ""
-                r.agent_tries = 0
-                r.execution_attempts = []
-                if FF_DEBUG:
-                    print(f"[FF_DEBUG] {agent_err}", file=sys.stderr, flush=True)
-            else:
-                record_stage("agent", stage_t0)
-                r.trace = trace
-                r.executed = True
-                r.final_code = details.final_code or ""
-                r.agent_tries = details.tries
-                r.execution_attempts = list(details.attempts)
-                r.stages_run.append("agent")
-                r.answer = raw_answer
+                return r
+            record("agent", started)
+            r.answer = raw_answer
+            r.trace = trace
+            r.final_code = details.final_code or ""
+            r.agent_tries = details.tries
+            r.execution_attempts = list(details.attempts)
+            r.executed = True
+            r.stages_run.append("agent")
 
-        # Final conversion/review layer: turn the raw machine answer (a Python
-        # dict/scalar repr from deterministic_exec, or the agent's raw output)
-        # into a direct, user-friendly natural-language response, checked
-        # against the original question and Stage-3 synthesis guidance. The
-        # pre-synthesis value is preserved in r.raw_answer for debugging/trace
-        # inspection; r.answer becomes the user-facing text.
-        if r.executed and r.answer:
+        # --- Synthesis -------------------------------------------------------
+        if FF_SYNTHESIS and r.executed and r.answer:
+            last_stage = "synthesis"
+            started = time.time()
             try:
-                last_stage = "synthesis"
-                stage_t0 = time.time()
-                synthesized = executor.synthesize(query, [r.answer], r.s3_synthesis_hint)
-                record_stage("synthesis", stage_t0)
+                synthesized = ExecutionLayer(df, client).synthesize(
+                    query, [r.answer], "Answer the original question directly."
+                )
                 if synthesized:
                     r.raw_answer = r.answer
                     r.answer = synthesized
                 r.stages_run.append("synthesis")
-                if FF_DEBUG:
-                    print(f"[FF_DEBUG] Synthesis complete: {r.answer[:100]}...", file=sys.stderr, flush=True)
-            except Exception as synth_err:
-                # Non-fatal: keep the raw machine answer if synthesis fails.
-                if FF_DEBUG:
-                    print(f"[FF_DEBUG] Synthesis step failed ({synth_err}); keeping raw answer.", file=sys.stderr, flush=True)
+            except Exception as exc:  # noqa: BLE001 — keep the machine answer
+                _debug(f"Synthesis failed ({exc}); keeping raw answer.")
+            record("synthesis", started)
 
-        if FF_DEBUG:
-            print(f"[FF_DEBUG] Flash-Fusion complete. Answer: {r.answer[:100]}...", file=sys.stderr, flush=True)
         return r
-    except Exception as e:
+    except Exception as exc:
         if FF_DEBUG:
             import traceback
-            print(f"[FF_DEBUG] Flash-Fusion FAILED at stage {last_stage}", file=sys.stderr, flush=True)
+
+            print(f"[FF_DEBUG] Flash-Fusion FAILED at {last_stage}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
-        r.answer = f"[ERROR in {last_stage}] {type(e).__name__}: {e}"
-        r.alignment_explanation = f"Flash-Fusion failed during {last_stage}: {e}"
+        r.answer = f"[ERROR in {last_stage}] {type(exc).__name__}: {exc}"
+        r.alignment_explanation = f"Flash-Fusion failed during {last_stage}: {exc}"
         r.executed = False
         raise

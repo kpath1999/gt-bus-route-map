@@ -1,21 +1,31 @@
 """
-eval/trace_query.py — Step-by-step debug trace for a single Flash-Fusion query.
+eval/trace_query.py — Step-by-step debug trace for Flash-Fusion queries.
 
-Runs the Flash-Fusion pipeline (S1 -> S2 -> guardrail -> S3 -> agent) for ONE
-query, selected by dataset + query id, and prints every intermediate artifact:
-  - S1 concept extraction (DATA / REASONING concepts)
-  - S2 schema grounding (raw concept -> column mappings)
-  - Guardrail verdict (proceed / reject + reason)
-  - S3 sub-query decomposition + synthesis hint
-  - The final grounded query handed to the pandas agent
-  - The agent's ReAct trace, final code, and answer
-  - Per-stage latency and token/cost totals
-  - Side-by-side comparison against the known ground-truth answer
+Runs the Flash-Fusion pipeline for one or more queries and shows execution details:
+  - Bypass detector (zero-LLM predictive template matching)
+  - Single structured guardrail+plan call
+  - Gate 1: Pydantic structural validation
+  - Gate 2: DataFrame schema validation
+  - Typed operator execution (in-process, no sandbox)
+  - ReAct fallback (only when needed, with optional S1/S2 grounding)
+  - Final answer vs ground truth comparison
+
+When multiple queries are traced, displays a summary table showing execution
+paths and validation outcomes across all queries.
 
 This is a read-only debugging aid; it does not write benchmark artifacts.
 
 Usage:
+    # Single query detailed trace
     python -m flashfusion.eval.trace_query --dataset wisdm --query-id 5
+    
+    # Multiple queries with summary
+    python -m flashfusion.eval.trace_query --dataset bus --query-id 1,3,5,7
+    
+    # All queries in a dataset
+    python -m flashfusion.eval.trace_query --dataset wisdm --query-id all
+    
+    # With custom model
     python -m flashfusion.eval.trace_query --dataset bus --query-id 9 \\
         --model meta-llama/llama-3.3-70b-instruct
 
@@ -60,20 +70,122 @@ def _find_query(dataset: str, query_id: int) -> dict:
     raise SystemExit(f"Query id {query_id} not found for dataset {dataset!r} (have {[d['id'] for d in defs]})")
 
 
+def _parse_query_ids(query_id_arg: str, dataset: str) -> list[int]:
+    """Parse comma-separated query IDs or 'all' into a list of integer IDs."""
+    if query_id_arg.lower() == "all":
+        return [q["id"] for q in get_queries(dataset)]
+    try:
+        return [int(x.strip()) for x in query_id_arg.split(",") if x.strip()]
+    except ValueError:
+        raise SystemExit(f"Invalid --query-id format: {query_id_arg!r}. Use comma-separated integers or 'all'.")
+
+
+def _print_summary_table(results: list[tuple[int, dict, any]]) -> None:
+    """Print a summary table showing execution paths across multiple queries."""
+    _hr("SUMMARY: EXECUTION PATHS ACROSS QUERIES")
+    
+    # Header
+    print(f"{'ID':<4} {'Path':<18} {'Source':<18} {'Gates':<12} {'Operators':<30} {'Time(s)':<8} {'Score':<6}")
+    print("-" * 110)
+    
+    # Rows
+    for query_id, result, gt_entry in results:
+        r = result
+        path = r.execution_path or "unknown"
+        path_short = path.replace("_", " ").title()[:17]
+        
+        source = r.plan_source or "-"
+        source_short = source.replace("_", " ")[:17]
+        
+        # Gate status
+        if r.rejected:
+            gates = "REJECTED"
+        elif r.plan_validation_stage_failed:
+            gates = f"✗ {r.plan_validation_stage_failed}"
+        elif path == "typed_operator":
+            gates = "✓ Both"
+        else:
+            gates = "-"
+        
+        # Operators used
+        ops = ", ".join(r.operators_used[:2]) if r.operators_used else "-"
+        if len(r.operators_used) > 2:
+            ops += f" +{len(r.operators_used)-2}"
+        ops = ops[:29]
+        
+        # Latency
+        latency = f"{r.latency_s:.2f}"
+        
+        # Score
+        if gt_entry is not None:
+            scorer = SemanticScorer()
+            score_result = scorer.score_result(r, gt_entry)
+            score_str = f"{score_result['score']:.3f}"
+        else:
+            score_str = "N/A"
+        
+        print(f"{query_id:<4} {path_short:<18} {source_short:<18} {gates:<12} {ops:<30} {latency:<8} {score_str:<6}")
+    
+    # Statistics
+    _hr("STATISTICS")
+    total = len(results)
+    by_path = {}
+    by_source = {}
+    gate_failures = {}
+    
+    for _, r, _ in results:
+        path = r.execution_path or "unknown"
+        by_path[path] = by_path.get(path, 0) + 1
+        
+        source = r.plan_source or "none"
+        by_source[source] = by_source.get(source, 0) + 1
+        
+        if r.plan_validation_stage_failed:
+            stage = r.plan_validation_stage_failed
+            gate_failures[stage] = gate_failures.get(stage, 0) + 1
+    
+    print(f"Total queries: {total}")
+    print("\nExecution paths:")
+    for path, count in sorted(by_path.items()):
+        pct = 100.0 * count / total
+        print(f"  {path:<25} {count:>3} ({pct:>5.1f}%)")
+    
+    print("\nPlan sources:")
+    for source, count in sorted(by_source.items()):
+        pct = 100.0 * count / total
+        print(f"  {source:<25} {count:>3} ({pct:>5.1f}%)")
+    
+    if gate_failures:
+        print("\nValidation failures (fallback triggers):")
+        for stage, count in sorted(gate_failures.items()):
+            print(f"  {stage:<25} {count:>3}")
+    
+    # Aggregate latency
+    total_latency = sum(r.latency_s for _, r, _ in results)
+    avg_latency = total_latency / total if total > 0 else 0
+    print(f"\nTotal latency: {total_latency:.2f}s")
+    print(f"Average latency: {avg_latency:.2f}s")
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS)
-    p.add_argument("--query-id", required=True, type=int, help="1-indexed query id from eval/queries.py")
+    p.add_argument(
+        "--query-id", 
+        required=True, 
+        type=str, 
+        help="Query ID(s): single integer, comma-separated (e.g., '1,3,5'), or 'all'"
+    )
     p.add_argument("--data", default=None, help="Override path to the raw dataset file")
     p.add_argument("--ground-truth", default=None, help="Override path to ground-truth JSON")
-    p.add_argument("--model", default=DEFAULT_MODEL, help="Primary model for S3 + agent")
+    p.add_argument("--model", default=DEFAULT_MODEL, help="Primary model for guardrail+plan and typed execution")
     p.add_argument(
         "--stage12-model",
         default="meta-llama/llama-3.1-8b-instruct",
         help=(
             "Lighter model used for S1 (concept extraction) and S2 (schema grounding) "
-            "via client.light. Pass the same value as --model (or an empty string) to "
-            "disable and run S1/S2 on the primary model instead."
+            "in ReAct fallback only, via client.light. Pass the same value as --model "
+            "(or an empty string) to disable and run S1/S2 on the primary model instead."
         ),
     )
     p.add_argument("--max-rows", type=int, default=None, help="Row cap forwarded to mit_ecg loader")
@@ -85,134 +197,103 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def main() -> None:
-    args = parse_args()
-
-    data_path = args.data or DEFAULT_DATA_PATHS[args.dataset]
-    gt_path = args.ground_truth or DEFAULT_GROUND_TRUTH_PATHS[args.dataset]
-
-    query_def = _find_query(args.dataset, args.query_id)
+def trace_single_query(
+    query_id: int,
+    query_def: dict,
+    df,
+    runner: BaselineRunner,
+    client: LLMClient,
+    gt_entry,
+    args,
+    verbose: bool = True,
+):
+    """Trace execution of a single query. Returns (query_id, result, gt_entry)."""
     query_text = query_def["text"]
-
-    _hr(f"QUERY  (dataset={args.dataset}  id={args.query_id}  complexity={query_def.get('complexity')})")
-    print(query_text)
-
-    ground_truth_by_id = load_ground_truth(gt_path)
-    gt_entry = ground_truth_by_id.get(args.query_id)
-    if gt_entry is None:
-        print(f"\n[WARN] No ground-truth entry for query_id={args.query_id} in {gt_path}")
-
-    print("\nLoading dataset...", file=sys.stderr)
-    df = load_dataset_by_name(data_path, args.dataset, max_rows=args.max_rows)
-    print(f"Loaded {len(df)} rows, columns={list(df.columns)}", file=sys.stderr)
-
-    api_key = _resolve_api_key()
-    client = LLMClient(model_name=args.model, api_key=api_key, light_model_name=args.stage12_model)
-    baseline_mode = "REACT_ONLY" if args.react else "FLASH_FUSION"
-    runner = BaselineRunner(mode=baseline_mode, df=df, client=client)
-
-    s12_model = client.light.model_name
-    if args.react:
-        print(
-            f"Mode: REACT_ONLY   |   Model: {client.model_name!r}",
-            file=sys.stderr,
-        )
-    else:
-        print(
-            f"Mode: FLASH_FUSION | Models: S1/S2 (client.light) = {s12_model!r}   |   S3/agent (client) = {client.model_name!r}",
-            file=sys.stderr,
-        )
-
-    print("\nRunning Flash-Fusion pipeline...", file=sys.stderr)
+    
+    if verbose:
+        _hr(f"QUERY  (dataset={args.dataset}  id={query_id}  complexity={query_def.get('complexity')})")
+        print(query_text)
+        if gt_entry is None:
+            print(f"\n[WARN] No ground-truth entry for query_id={query_id}")
+    
     r = runner.run(query_text)
 
+    if not verbose:
+        return (query_id, r, gt_entry)
+
+    # Detailed trace output follows (only when verbose=True)
     if args.react:
         _hr("REACT_ONLY EXECUTION")
-        print("Guardrail/Stage 1/2/3 are skipped in this mode.")
+        print("Guardrail/bypass detector/typed operators are skipped in this mode.")
         _hr("EXECUTION TRACE")
         print(r.trace or "(no trace captured)")
         _hr("FINAL EXECUTED CODE")
         print(r.final_code or "(none)")
         print(f"\nagent_tries={r.agent_tries}")
     else:
-        # --- S1: concept extraction ---------------------------------------
-        _hr(f"S1 — CONCEPT EXTRACTION  (model={s12_model})")
-        print(json.dumps(r.s1_concepts, indent=2))
-
-        # --- S2 concepts as sent to grounding, pre-mapping -------------------
-        # _hr("S2 — CONCEPTS PASSED TO GROUNDING (post query-critical filter, pre-mapping)")
-        # print(json.dumps(r.s2_filtered_concepts, indent=2) if r.s2_filtered_concepts else "(not reached)")
-
-        # --- S2: schema grounding -------------------------------------------
-        _hr(f"S2 — SCHEMA GROUNDING (model={s12_model}, raw LLM output)")
-        print(r.s2_grounding or "(not reached)")
-
-        # --- Guardrail --------------------------------------------------------
-        _hr("GUARDRAIL INPUT (exact post-S2 prompt)")
-        print(r.guardrail_input or "(not captured)")
-
-        _hr("GUARDRAIL (post-S2)")
-        if r.rejected:
-            print(f"VERDICT: REJECTED\nREASON: {r.rejection_reason}")
+        # --- Bypass detector -------------------------------------------------
+        _hr("BYPASS DETECTOR (zero-LLM template matching)")
+        if r.plan_source == "predictive_template":
+            print("✓ MATCHED — predictive query template recognized")
+            print(f"  Generated plan without LLM call: {r.typed_plan['steps'][0]['op']}")
         else:
-            print("VERDICT: PROCEED (query accepted for S3 + agent execution)")
+            print("✗ NO MATCH — proceeding to LLM-based guardrail+plan call")
+
+        # --- Single structured guardrail + plan call --------------------------
+        _hr("GUARDRAIL + PLAN (single structured call)")
+        print(f"execution_path : {r.execution_path or '(unset)'}")
+        print(f"plan_source    : {r.plan_source or '(unset)'}")
+        print(f"query          : {r.guardrail_input or query_text}")
+        if r.ambiguous_concepts:
+            print(f"ambiguous      : {', '.join(r.ambiguous_concepts)}")
+        if r.rejected:
+            print(f"\nVERDICT: REJECTED\nREASON: {r.rejection_reason}")
+        else:
+            print("\nVERDICT: IN SCOPE")
 
         if not r.rejected:
-            # --- S3: sub-query decomposition (or direct-aggregate bypass) ----
-            if "S3_bypass_predictive" in r.stages_run:
-                _hr("S3 — BYPASSED (predictive CHRONO_SPLIT+CLASSIFY template detected)")
-                print(
-                    "  S1/S2 ran normally (grounding context is still needed by the "
-                    "guardrail); only S3's FILTER/AGGREGATE/RANK decomposition was "
-                    "skipped in favor of the deterministic PREDICTIVE_PIPELINE executor."
-                )
-                print(f"  Plan: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
-                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
-            elif "S3_bypass" in r.stages_run:
-                _hr("S3 — BYPASSED (direct single-column aggregate detected)")
-                print(f"  Expression: {r.s3_sub_queries[0] if r.s3_sub_queries else '(none)'}")
-                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
-            elif "S3_compiled" in r.stages_run:
-                _hr("S3 — COMPILED EXECUTABLE PLAN")
-                for i, sq in enumerate(r.s3_sub_queries or [], start=1):
-                    print(f"  {i}. {sq}")
-                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
-            elif "S3_skipped_proxy" in r.stages_run:
-                _hr("S3 — SKIPPED (PROXY concept detected)")
-                print("No S3 sub-query plan was generated.")
-                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+            # --- Two-gate validation -------------------------------------------
+            _hr("TWO-GATE VALIDATION")
+            
+            if r.typed_plan:
+                print("✓ GATE 1 (Pydantic structural validation): PASSED")
+                print("✓ GATE 2 (DataFrame schema validation): PASSED")
             else:
-                _hr("S3 — SUB-QUERY DECOMPOSITION")
-                for i, sq in enumerate(r.s3_sub_queries or [], start=1):
-                    print(f"  {i}. {sq}")
-                print(f"\nSynthesis hint: {r.s3_synthesis_hint}")
+                print("✗ VALIDATION FAILED")
+                if r.plan_validation_stage_failed:
+                    print(f"  Failed at: {r.plan_validation_stage_failed}")
+                    print(f"  Reason: {r.deterministic_fallback_reason or '(none)'}")
 
-            # --- Deterministic predictive pipeline outcome ---------------------
-            if "S3_bypass_predictive" in r.stages_run:
-                _hr("PREDICTIVE PIPELINE EXECUTION")
-                if "deterministic_exec" in r.stages_run:
-                    print("Executed deterministically (no ReAct agent code-gen needed).")
-                elif "deterministic_fallback" in r.stages_run:
-                    print(
-                        "Deterministic predictive execution FAILED and fell back to the "
-                        f"ReAct agent. Reason: {r.deterministic_fallback_reason or '(none captured)'}"
-                    )
-                else:
-                    print("(predictive plan detected, but execution stage unclear — see stages_run below)")
+            # --- Typed plan ----------------------------------------------------
+            if r.typed_plan:
+                _hr("TYPED PLAN (validated, ready for execution)")
+                print(json.dumps(r.typed_plan, indent=2))
+                print(f"\noperators_used: {', '.join(r.operators_used)}")
+            else:
+                print("\n(no validated plan — falling back to ReAct)")
 
-            # --- Prompts constructed for deterministic/ReAct execution --------
-            _hr("GROUNDED QUERY (S3-oriented prompt)")
-            print(r.grounded_query or "(not captured)")
-
-            _hr("REACT QUERY (exact agent input)")
-            if "agent" in r.stages_run or "agent_timeout" in r.stages_run or "react_delegate" in r.stages_run:
+            # --- Execution engine ----------------------------------------------
+            _hr("EXECUTION ENGINE")
+            if r.execution_path == "typed_operator":
+                print("✓ TYPED OPERATORS (in-process, no sandbox)")
+                print(f"  Execution time: {r.stage_latency_s.get('typed_exec', 0):.3f}s")
+                print(f"  Agent tries: {r.agent_tries}")
+            elif r.execution_path == "react_fallback":
+                print("✗ REACT FALLBACK (typed vocabulary insufficient)")
+                print(f"  Trigger: {r.deterministic_fallback_reason or '(unspecified)'}")
+                
+                # --- Fallback S1/S2 grounding ----------------------------------
+                if r.s1_concepts:
+                    s12_model = client.light.model_name
+                    _hr(f"FALLBACK S1 — CONCEPT EXTRACTION  (model={s12_model})")
+                    print(json.dumps(r.s1_concepts, indent=2))
+                
+                if r.s2_grounding:
+                    _hr(f"FALLBACK S2 — SCHEMA GROUNDING  (model={client.light.model_name})")
+                    print(r.s2_grounding)
+                
+                _hr("REACT QUERY (exact agent input)")
                 print(r.react_query or "(not captured)")
-            else:
-                print("ReAct was not invoked; deterministic execution handled the plan.")
-
-            if "react_delegate" in r.stages_run or "deterministic_fallback" in r.stages_run:
-                _hr("REACT DELEGATION REASON")
-                print(r.deterministic_fallback_reason or "(no reason captured)")
 
             # --- Execution trace ----------------------------------------------
             _hr("EXECUTION TRACE")
@@ -225,11 +306,8 @@ def main() -> None:
     # --- Stages run + latency -----------------------------------------------
     _hr("STAGES RUN / LATENCY (s)")
     print("stages_run:", r.stages_run)
-    if "deterministic_fallback" in r.stages_run:
-        print(
-            "deterministic_fallback_reason:",
-            r.deterministic_fallback_reason or "(none captured)",
-        )
+    if r.deterministic_fallback_reason:
+        print("fallback_reason:", r.deterministic_fallback_reason)
     print(json.dumps(r.stage_latency_s, indent=2))
 
     # --- Final answer vs ground truth --------------------------------------
@@ -255,6 +333,74 @@ def main() -> None:
     print(f"input_tokens    : {r.input_tokens}")
     print(f"output_tokens   : {r.output_tokens}")
     print(f"cost_usd        : {r.cost_usd:.6f}")
+
+    return (query_id, r, gt_entry)
+
+
+def main() -> None:
+    args = parse_args()
+
+    data_path = args.data or DEFAULT_DATA_PATHS[args.dataset]
+    gt_path = args.ground_truth or DEFAULT_GROUND_TRUTH_PATHS[args.dataset]
+
+    query_ids = _parse_query_ids(args.query_id, args.dataset)
+    multi_query_mode = len(query_ids) > 1
+
+    if multi_query_mode:
+        print(f"Tracing {len(query_ids)} queries from dataset '{args.dataset}'", file=sys.stderr)
+    
+    ground_truth_by_id = load_ground_truth(gt_path)
+
+    print("\nLoading dataset...", file=sys.stderr)
+    df = load_dataset_by_name(data_path, args.dataset, max_rows=args.max_rows)
+    print(f"Loaded {len(df)} rows, columns={list(df.columns)}", file=sys.stderr)
+
+    api_key = _resolve_api_key()
+    client = LLMClient(model_name=args.model, api_key=api_key, light_model_name=args.stage12_model)
+    baseline_mode = "REACT_ONLY" if args.react else "FLASH_FUSION"
+    runner = BaselineRunner(mode=baseline_mode, df=df, client=client)
+
+    s12_model = client.light.model_name
+    if args.react:
+        print(
+            f"Mode: REACT_ONLY   |   Model: {client.model_name!r}",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"Mode: FLASH_FUSION | Models: S1/S2 (fallback only, client.light) = {s12_model!r}   |   Guardrail/Plan/Typed (client) = {client.model_name!r}",
+            file=sys.stderr,
+        )
+
+    # Execute queries
+    results = []
+    for query_id in query_ids:
+        query_def = _find_query(args.dataset, query_id)
+        gt_entry = ground_truth_by_id.get(query_id)
+        
+        if multi_query_mode:
+            print(f"\n[{query_id}] Running...", file=sys.stderr, end=" ", flush=True)
+        
+        result_tuple = trace_single_query(
+            query_id=query_id,
+            query_def=query_def,
+            df=df,
+            runner=runner,
+            client=client,
+            gt_entry=gt_entry,
+            args=args,
+            verbose=not multi_query_mode,
+        )
+        results.append(result_tuple)
+        
+        if multi_query_mode:
+            _, r, _ = result_tuple
+            print(f"done ({r.execution_path}, {r.latency_s:.2f}s)", file=sys.stderr)
+
+    # Show summary for multiple queries
+    if multi_query_mode:
+        print()  # blank line before summary
+        _print_summary_table(results)
 
 
 if __name__ == "__main__":

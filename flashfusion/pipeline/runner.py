@@ -258,10 +258,20 @@ class RunResult:
     final_code: str = ""                             # last successfully executed pandas code
     agent_tries: int = 0                             # total agent iterations across sub-queries
     execution_attempts: list = field(default_factory=list)  # per-attempt stats
-    deterministic_fallback_reason: str = ""         # why deterministic exec fell back to agent
+    deterministic_fallback_reason: str = ""         # why the typed path fell back to ReAct
     guardrail_input: str = ""                         # exact post-S2 prompt sent to guardrail
     grounded_query: str = ""                         # S3-oriented prompt constructed by Flash-Fusion
     react_query: str = ""                            # exact prompt sent to the ReAct agent, if delegated
+
+    # Typed-operator instrumentation (Flash-Fusion). These are the primary
+    # signals for the typed-vs-ReAct comparison; stages_run remains a coarse
+    # human-readable audit trail only.
+    execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback"
+    plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "execution" | "no_plan"
+    typed_plan: dict = field(default_factory=dict)   # the validated DeterministicPlan, as JSON
+    operators_used: list = field(default_factory=list)  # op names fired, for the offline gap report
+    plan_source: str = ""                            # "predictive_template" | "llm"
+    ambiguous_concepts: list = field(default_factory=list)  # concepts the planner could not resolve literally
 
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
     s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
@@ -370,12 +380,9 @@ class BaselineRunner:
         from flashfusion.baselines.hargpt_paper import run_hargpt_paper
         from flashfusion.baselines.llmsense_paper import run_llmsense_paper
         from flashfusion.baselines.llm_only import run_llm_only
-        from flashfusion.baselines.wellmax_only import run_wellmax_only
 
         if self.mode == "LLM_ONLY":
             run_llm_only(query, self.df, self.client, r)
-        elif self.mode == "WELLMAX_ONLY":
-            run_wellmax_only(query, self.df, self.client, r)
         elif self.mode == "REACT_ONLY":
             run_react_only(query, self.df, self.client, r)
         elif self.mode == "AUTOIOT_PAPER":
@@ -408,11 +415,6 @@ class BaselineRunner:
         """Delegates to baselines.llm_only.run_llm_only."""
         from flashfusion.baselines.llm_only import run_llm_only
         return run_llm_only(query, self.df, self.client, r)
-
-    def _run_wellmax_only(self, query: str, r: RunResult) -> RunResult:
-        """Delegates to baselines.wellmax_only.run_wellmax_only."""
-        from flashfusion.baselines.wellmax_only import run_wellmax_only
-        return run_wellmax_only(query, self.df, self.client, r)
 
     def _run_react_only(self, query: str, r: RunResult) -> RunResult:
         """Delegates to baselines.react_only.run_react_only."""

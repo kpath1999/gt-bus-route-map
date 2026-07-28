@@ -1,166 +1,1476 @@
-# flashfusion / pipeline / operators.py
-
+# flashfusion/pipeline/operators.py
 """
-What the guardrail prompt looks like:
-return (
-                "You are a data analyst working with a pandas DataFrame named `df`.\n"
-                f"Columns: {col_descriptions}\n"
-                f"Total rows: {len(df)}\n\n"
-                "SCOPE CHECK: Before writing code, decide if the question is answerable "
-                "using ONLY the columns above (aggregation, filtering, grouping, ranking, "
-                "correlation, stats, or in-dataset train/predict on a specified split/sequence "
-                "all count as in-scope).\n"
-                "Reject ONLY if it needs external data, internet access, outside domain "
-                "knowledge, personal info beyond the schema, or a prediction/forecast whose "
-                "inputs cannot be derived from these columns.\n"
-                "If rejecting, write no code. Respond exactly:\n"
-                "Final Answer: This request is out-of-scope for the available data because "
-                "<one-sentence reason>.\n"
-            )
-"""
+Closed, typed operator vocabulary for Flash-Fusion's default execution path.
 
+Design contract
+---------------
+1. Every operator is a distinct Pydantic model with ``extra="forbid"``. The
+   operators are joined into a discriminated union on the ``op`` field, so a
+   malformed or unknown operator fails *structurally* — before any data is
+   touched — instead of being silently coerced.
+2. A plan passes **two gates** before execution:
+     a. structural — ``DeterministicPlan.model_validate(...)`` (Pydantic)
+     b. schema     — ``validate_plan_against_dataframe(plan, df)``
+   Both are pure Python and cost microseconds relative to an LLM call, so
+   neither is ever skipped for latency reasons. The guardrail answers "is this
+   question answerable in principle"; schema validation answers "did this
+   specific generated plan reference real columns correctly". They reason over
+   different artifacts and are not redundant.
+3. Execution dispatches with ``match`` over the union. There is no
+   ``op.upper().strip()`` string dispatch and no ``**kwargs`` passthrough
+   anywhere in this module.
+4. The vocabulary is **closed**. When a query needs an operator that does not
+   exist, ``log_operator_gap()`` records the gap and the caller falls back to
+   ReAct for that query. New operators are designed, tested, and versioned
+   offline — never invented inside a live request.
 """
-PROCESS (end-to-end):
-
-1. Parse query into existing typed operators
-2. Validate against column metadata/descriptions (guradrail prompt would do that)
-3. Attempt answer with typed operator vocabulary
-4. If feasible, use a small, cheap model only to select and fill typed operators when the deterministic parser is uncertain. Then execute
-5. If infeasible, we would add the operator necessary to the script and then execute
-"""
-
-"""
-ANOTHER POSSIBLE OPTION (to avoid arbitrary code from being generated):
-
-1. Parse query into existing typed operators.
-2. Validate against dataset metadata and supported operator grammar.
-3. Execute if confidence is high.
-4. If no valid operator graph exists:
-   a. Route to a code model.
-   b. Run code in the existing sandbox.
-   c. Record the query, generated code, outcome, and operator gap.
-5. Offline, review recurring successful gaps.
-6. Add a tested operator/compiler rule and regression tests.
-"""
-
-## with Pydantic, you could define a closed operator schema, validate column names/types, reject malformed plans
-# the current loader (flashfusion/pipeline/loader.py) already provides the full dataset schema, and the typed planner should treat it as a closed-loop vocabulary
 
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Literal
+import json
+import math
+import os
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, Field
+import numpy as np
+import pandas as pd
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+__all__ = [
+    "PLAN_VERSION",
+    "OPERATOR_VOCABULARY_SPEC",
+    "Aggregate",
+    "Comparator",
+    "DeterministicPlan",
+    "TypedPlan",
+    "GuardrailAndPlan",
+    "PlanExecution",
+    "PlanSchemaError",
+    "PlanExecutionError",
+    "StructuralValidationError",
+    "TypedOperator",
+    "structural_validate",
+    "parse_guardrail_and_plan",
+    "validate_plan_against_dataframe",
+    "execute_plan",
+    "log_operator_gap",
+]
+
+PLAN_VERSION = "1"
+
+# ---------------------------------------------------------------------------
+# Scalar vocabularies
+# ---------------------------------------------------------------------------
+
+Aggregate = Literal[
+    "min", "max", "mean", "median", "sum", "count", "std", "var", "nunique", "rms"
+]
+Comparator = Literal["eq", "ne", "gt", "gte", "lt", "lte"]
+Direction = Literal["max", "min"]
+BinaryOperation = Literal["add", "subtract", "multiply", "divide", "abs_difference"]
+ThresholdStat = Literal["median", "mean", "min", "max"]
+CompareMode = Literal["difference", "abs_difference", "ratio"]
+PredictiveModel = Literal[
+    "logistic_regression",
+    "random_forest",
+    "one_nearest_neighbor",
+    "hist_gradient_boosting",
+]
+Scalar = Union[str, int, float, bool]
+
+# Aggregates that are only meaningful on a numeric column.
+_NUMERIC_ONLY_AGGREGATES: frozenset[str] = frozenset(
+    {"mean", "median", "sum", "std", "var", "rms"}
+)
 
 
-class Aggregate(str, Enum):
-    MIN = "min"
-    MAX = "max"
-    MEAN = "mean"
-    MEDIAN = "median"
-    SUM = "sum"
-    COUNT = "count"
-    STD = "std"
+# ---------------------------------------------------------------------------
+# Operator models
+# ---------------------------------------------------------------------------
 
 
-class Predicate(BaseModel):
-    column: str
-    op: Literal["eq", "ne", "gt", "gte", "lt", "lte", "in"]
-    value: Any
+class _Operator(BaseModel):
+    """Base contract shared by every deterministic operator."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class Metric(BaseModel):
-    column: str
+class FilterCompare(_Operator):
+    """Row filter: keep rows where ``column <comparator> value``."""
+
+    op: Literal["FILTER_COMPARE"]
+    column: str = Field(min_length=1)
+    comparator: Comparator
+    value: Scalar
+
+
+class FilterIn(_Operator):
+    """Row filter: keep rows where ``column`` is one of ``values``."""
+
+    op: Literal["FILTER_IN"]
+    column: str = Field(min_length=1)
+    values: list[Scalar] = Field(min_length=1)
+
+
+class FilterNotEmpty(_Operator):
+    """Row filter: keep rows where ``column`` is non-null and non-blank."""
+
+    op: Literal["FILTER_NOT_EMPTY"]
+    column: str = Field(min_length=1)
+
+
+class FilterEqAggregate(_Operator):
+    """Row filter: keep rows where ``column`` equals an aggregate of itself.
+
+    Covers "return every row where X reaches its maximum" without a two-pass
+    plan or a placeholder referencing a prior observation.
+    """
+
+    op: Literal["FILTER_EQ_AGGREGATE"]
+    column: str = Field(min_length=1)
     aggregate: Aggregate
 
 
-class TypedOperation(BaseModel):
-    kind: Literal["aggregate", "group_aggregate", "compare_groups"]
-    metric: Metric
-    filters: list[Predicate] = Field(default_factory=list)
-    group_by: list[str] = Field(default_factory=list)
-    derived_feature: str | None = None
-    answer_style: Literal["value", "grouped_table", "comparison"] = "value"
+class AggregateColumn(_Operator):
+    """Reduce one column of the current frame to a scalar."""
+
+    op: Literal["AGGREGATE_COLUMN"]
+    column: str = Field(min_length=1)
+    aggregate: Aggregate
 
 
-## instead of the guardrail prompt, could there be a more efficient way of detecting out-of-scope queries?
-# one idea:
-def validate_columns(plan: TypedOperation, valid_columns: set[str]) -> None:
-    referenced = {plan.metric.column, *plan.group_by}
-    referenced |= {predicate.column for predicate in plan.filters}
+class CountRows(_Operator):
+    """Count rows remaining in the current frame."""
 
-    unknown = referenced - valid_columns
-    if unknown:
-        raise ValueError(f"Plan references unknown columns: {sorted(unknown)}")
-"""
-Pydantic/JSON-schema structured output could be the right mechanism here because it constrains the model to a predictable object that is easy to parse and validate downstream, rather than relying on brittle text parsing.
-"""
+    op: Literal["COUNT_ROWS"]
 
-## for direct operations, we could compile the validated plan without an LLM.
-import pandas as pd
 
-def compile_predicate(df: pd.DataFrame, p: Predicate) -> pd.Series:
-    series = df[p.column]
-    if p.op == "eq":
-        return series.eq(p.value)
-    elif p.op == "ne":
-        return series.ne(p.value)
-    elif p.op == "gt":
-        return series.gt(p.value)
-    elif p.op == "gte":
-        return series.ge(p.value)
-    elif p.op == "lt":
-        return series.lt(p.value)
-    elif p.op == "lte":
-        return series.le(p.value)
-    elif p.op == "in":
-        return series.isin(p.value)
-    raise ValueError(f"Unsupported predicate operator: {p.op}")
+class CountDistinct(_Operator):
+    """Count distinct non-null values of a column in the current frame."""
 
-## for more difficult reasoning queries, like deciphering what "dynamic" and "static" refers to and tying that to specific instances in the activity label column, we would need to do a bit of transformations in the process.
-def execute_typed_plan(df: pd.DataFrame, plan: TypedOperation):
-    mask = pd.Series(True, index=df.index)
-    for predicate in plan.filters:
-        mask &= compile_predicate(df, predicate)
+    op: Literal["COUNT_DISTINCT"]
+    column: str = Field(min_length=1)
 
-    needed = list(dict.fromkeys(
-        [plan.metric.column, *plan.group_by, *[p.column for p in plan.filters]]
-    ))
-    frame = df.loc[mask, needed]
 
-    if plan.kind == "aggregate":
-        return getattr(frame[plan.metric.column], plan.metric.aggregate.value)()
+class SelectColumn(_Operator):
+    """Return the values of a column as a list."""
 
-    if plan.kind == "group_aggregate":
-        return (
-            frame.groupby(plan.group_by, dropna=False)[plan.metric.column]
-            .agg(plan.metric.aggregate.value)
+    op: Literal["SELECT_COLUMN"]
+    column: str = Field(min_length=1)
+    distinct: bool = False
+
+
+class DeriveBinary(_Operator):
+    """Row-wise arithmetic between two columns into a new named column."""
+
+    op: Literal["DERIVE_BINARY"]
+    left: str = Field(min_length=1)
+    right: str = Field(min_length=1)
+    operation: BinaryOperation
+    result: str = Field(min_length=1)
+
+
+class DeriveVectorMagnitude(_Operator):
+    """Row-wise ``sqrt(a^2 + b^2 + c^2)`` — the canonical IoT derived feature."""
+
+    op: Literal["DERIVE_VECTOR_MAGNITUDE"]
+    columns: tuple[str, str, str]
+    result: str = Field(default="vector_magnitude", min_length=1)
+
+
+class DeriveBin(_Operator):
+    """Bucket a numeric column into fixed-width bins: ``floor(col / width) * width``."""
+
+    op: Literal["DERIVE_BIN"]
+    column: str = Field(min_length=1)
+    width: float = Field(gt=0.0)
+    result: str = Field(min_length=1)
+
+
+class GroupAggregate(_Operator):
+    """Group the current frame by one or more keys and aggregate one column.
+
+    ``freq`` switches to time-bucketed grouping (``pd.Grouper``) and requires a
+    single datetime ``group_by`` key. ``column`` may be omitted when
+    ``aggregate`` is ``count``, which then yields group sizes.
+    """
+
+    op: Literal["GROUP_AGGREGATE"]
+    group_by: list[str] = Field(min_length=1)
+    aggregate: Aggregate
+    column: str | None = None
+    freq: str | None = None
+
+
+class AggregateGroups(_Operator):
+    """Reduce the previous GROUP_AGGREGATE result to a scalar."""
+
+    op: Literal["AGGREGATE_GROUPS"]
+    aggregate: Aggregate
+
+
+class RankGroups(_Operator):
+    """Return the highest/lowest group from the previous GROUP_AGGREGATE result."""
+
+    op: Literal["RANK_GROUPS"]
+    direction: Direction
+
+
+class RankRows(_Operator):
+    """Return the row that maximises/minimises a column, projected to columns."""
+
+    op: Literal["RANK_ROWS"]
+    column: str = Field(min_length=1)
+    direction: Direction
+    return_columns: list[str] = Field(min_length=1)
+
+
+class SplitByThreshold(_Operator):
+    """Name a partition of the ORIGINAL frame split at a statistic of ``column``."""
+
+    op: Literal["SPLIT_BY_THRESHOLD"]
+    column: str = Field(min_length=1)
+    comparator: Literal["gt", "gte", "lt", "lte"]
+    threshold: ThresholdStat = "median"
+    label: str = Field(min_length=1)
+
+
+class SplitByValues(_Operator):
+    """Name a partition of the ORIGINAL frame by membership in a value set.
+
+    Partitions are drawn from the original frame, not the possibly-narrowed
+    working frame, so two disjoint category groups never collapse to zero rows.
+    """
+
+    op: Literal["SPLIT_BY_VALUES"]
+    column: str = Field(min_length=1)
+    values: list[Scalar] = Field(min_length=1)
+    label: str = Field(min_length=1)
+
+
+class AggregatePartitions(_Operator):
+    """Aggregate the same metric across previously named partitions."""
+
+    op: Literal["AGGREGATE_PARTITIONS"]
+    partitions: list[str] = Field(min_length=2)
+    aggregate: Aggregate
+    column: str | None = None
+
+
+class ComparePartitions(_Operator):
+    """Compare the two values produced by AGGREGATE_PARTITIONS."""
+
+    op: Literal["COMPARE_PARTITIONS"]
+    mode: CompareMode = "difference"
+
+
+class ParallelAggregateBranch(BaseModel):
+    """A single branch of PARALLEL_AGGREGATE: filter → group → aggregate."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    # Filter stage (optional - if None, uses all rows)
+    filter_column: str | None = None
+    filter_values: list[Scalar] | None = None
+
+    # Group stage
+    group_by: list[str] = Field(min_length=1)
+    aggregate: Aggregate
+    column: str | None = None  # None with aggregate="count" gives group sizes
+
+    # Result naming
+    result_column: str = Field(min_length=1)  # name for the aggregated values
+
+
+class ParallelAggregate(_Operator):
+    """Execute multiple independent filter→group→aggregate pipelines, then merge.
+
+    Design rationale:
+    - Solves the "compare resting vs. dynamic duration per user" pattern
+    - Each branch filters the ORIGINAL dataframe independently
+    - All branches must group by the SAME keys (enforced in validation)
+    - Results are outer-merged on group keys, filling missing with 0
+    - Working frame becomes the merged result with columns: [group_keys, result1, result2, ...]
+
+    Example (WISDM query 6):
+        {
+          "op": "PARALLEL_AGGREGATE",
+          "branches": [
+            {
+              "filter_column": "activity_label",
+              "filter_values": ["Sitting", "Standing"],
+              "group_by": ["subject_id"],
+              "aggregate": "sum",
+              "column": "timestamp",
+              "result_column": "resting_duration"
+            },
+            {
+              "filter_column": "activity_label",
+              "filter_values": ["Walking", "Jogging", "Upstairs", "Downstairs"],
+              "group_by": ["subject_id"],
+              "aggregate": "sum",
+              "column": "timestamp",
+              "result_column": "dynamic_duration"
+            }
+          ]
+        }
+    """
+
+    op: Literal["PARALLEL_AGGREGATE"]
+    branches: list[ParallelAggregateBranch] = Field(min_length=2)
+
+    @property
+    def shared_group_keys(self) -> list[str]:
+        """All branches must group by the same columns."""
+        return self.branches[0].group_by
+
+
+class PredictivePipeline(_Operator):
+    """Deterministic chronological train/holdout classification.
+
+    ``feature_columns`` is explicit and required: trained models must be
+    reproducible and auditable across runs, so "all remaining numeric columns"
+    is not an acceptable specification.
+    """
+
+    op: Literal["PREDICTIVE_PIPELINE"]
+    model: PredictiveModel
+    feature_columns: list[str] = Field(min_length=1)
+    target_column: str = Field(min_length=1)
+    sort_by: list[str] = Field(min_length=1)
+    train_fraction: float = Field(default=0.8, gt=0.0, lt=1.0)
+    holdout_row: Literal["first", "last"] = "first"
+    filter_column: str | None = None
+    filter_value: Scalar | None = None
+    target_from_non_empty: bool = False
+    target_label: str = Field(default="label", min_length=1)
+
+
+TypedOperator = Annotated[
+    Union[
+        FilterCompare,
+        FilterIn,
+        FilterNotEmpty,
+        FilterEqAggregate,
+        AggregateColumn,
+        CountRows,
+        CountDistinct,
+        SelectColumn,
+        DeriveBinary,
+        DeriveVectorMagnitude,
+        DeriveBin,
+        GroupAggregate,
+        AggregateGroups,
+        RankGroups,
+        RankRows,
+        SplitByThreshold,
+        SplitByValues,
+        AggregatePartitions,
+        ComparePartitions,
+        ParallelAggregate,
+        PredictivePipeline,
+    ],
+    Field(discriminator="op"),
+]
+
+
+class DeterministicPlan(BaseModel):
+    """A fully typed, pre-validatable Flash-Fusion execution plan."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    version: Literal["1"] = PLAN_VERSION
+    steps: list[TypedOperator] = Field(min_length=1)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "DeterministicPlan":
+        return cls.model_validate(data)
+
+    @property
+    def operators_used(self) -> list[str]:
+        return [step.op for step in self.steps]
+
+    @property
+    def kind(self) -> str:
+        return self.steps[-1].op.lower()
+
+
+#: Alias used by flashfusion/scripts/run_typed_operators.py.
+TypedPlan = DeterministicPlan
+
+
+class GuardrailAndPlan(BaseModel):
+    """Single-round-trip guardrail verdict + candidate plan.
+
+    ``extra="ignore"`` applies to this wrapper only — the plan and every
+    operator inside it still forbid unknown fields, so nothing untyped can
+    reach execution.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    in_scope: bool
+    rejection_reason: str | None = None
+    ambiguous_concepts: list[str] = Field(default_factory=list)
+    plan: DeterministicPlan | None = None
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class PlanSchemaError(ValueError):
+    """Raised when a structurally valid plan does not fit the DataFrame schema."""
+
+
+class PlanExecutionError(RuntimeError):
+    """Raised when a validated plan fails at execution time."""
+
+
+#: Re-exported so callers can catch structural failures without importing pydantic.
+StructuralValidationError = ValidationError
+
+
+# ---------------------------------------------------------------------------
+# Execution result
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class PlanExecution:
+    """Outcome of running one DeterministicPlan against a DataFrame."""
+
+    value: Any = None
+    ok: bool = False
+    error: str | None = None
+    plan_kind: str = ""
+    rows_scanned: int = 0
+    rows_after_filter: int | None = None
+    columns_used: list[str] = field(default_factory=list)
+    operators_used: list[str] = field(default_factory=list)
+    code: str = ""
+    trace: str = ""
+    steps: list[dict[str, Any]] = field(default_factory=list)
+    latency_ms: float = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Value coercion + shared helpers
+# ---------------------------------------------------------------------------
+
+
+def _coerce_value(series: pd.Series, value: Any) -> Any:
+    """Coerce a JSON scalar into something comparable with ``series``' dtype."""
+    if isinstance(value, str):
+        value = value.strip()
+
+    if pd.api.types.is_datetime64_any_dtype(series):
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return pd.Timestamp(value)
+        parsed = pd.to_datetime(value, errors="coerce")
+        if parsed is pd.NaT:
+            raise PlanSchemaError(f"Cannot compare datetime column against {value!r}")
+        return parsed
+
+    if pd.api.types.is_bool_dtype(series):
+        if isinstance(value, str):
+            return value.lower() == "true"
+        return bool(value)
+
+    if pd.api.types.is_numeric_dtype(series):
+        if isinstance(value, (bool, int, float)):
+            return value
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError) as exc:
+            raise PlanSchemaError(
+                f"Cannot compare numeric column against {value!r}"
+            ) from exc
+        return int(numeric) if numeric.is_integer() else numeric
+
+    return str(value)
+
+
+def _compare(series: pd.Series, comparator: str, value: Any) -> pd.Series:
+    match comparator:
+        case "eq":
+            return series == value
+        case "ne":
+            return series != value
+        case "gt":
+            return series > value
+        case "gte":
+            return series >= value
+        case "lt":
+            return series < value
+        case "lte":
+            return series <= value
+    raise PlanExecutionError(f"Unsupported comparator: {comparator!r}")
+
+
+def _aggregate_series(series: pd.Series, aggregate: str) -> Any:
+    match aggregate:
+        case "rms":
+            values = pd.to_numeric(series, errors="coerce").dropna().to_numpy(dtype=float)
+            if values.size == 0:
+                raise PlanExecutionError("RMS requires at least one numeric value")
+            return float(np.sqrt(np.mean(np.square(values))))
+        case "nunique":
+            return int(series.nunique())
+        case "count":
+            return int(series.count())
+        case _:
+            return getattr(series, aggregate)()
+
+
+def _to_python(value: Any) -> Any:
+    """Normalize numpy/pandas scalars so results serialize cleanly."""
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Gate 2 — DataFrame schema validation
+# ---------------------------------------------------------------------------
+
+
+def _require_column(column: str, available: set[str], op: str) -> None:
+    if column not in available:
+        raise PlanSchemaError(f"{op} references unknown column {column!r}")
+
+
+def _require_numeric(column: str, df: pd.DataFrame, op: str) -> None:
+    if column in df.columns and not pd.api.types.is_numeric_dtype(df[column]):
+        raise PlanSchemaError(
+            f"{op} requires a numeric column; {column!r} has dtype {df[column].dtype}"
         )
 
-    raise ValueError(f"Unsupported plan kind: {plan.kind}")
-"""
-an important optimization would be that the typed plan reveals filters and required columns before execution
-an IoT-appropriate form of predicate pushdown, rather than sending all 20M rows and every column into a spawned code sandbox
-"""
 
-## if, for example, repeated queries require acceleration magnitude, we could add a reviewed vector_norm derived operator:
-class DerivedFeature(BaseModel):
-    kind: Literal["vector_norm"]
-    inputs: tuple[str, str, str]
-    output_name: str
-"""
-goals: expands the operator library based on observed IoT workloads, keeping the executable DSL versioned, testable, and safe
-"""
+def _validate_aggregate(
+    column: str | None,
+    aggregate: str,
+    df: pd.DataFrame,
+    available: set[str],
+    op: str,
+) -> None:
+    if column is None:
+        if aggregate != "count":
+            raise PlanSchemaError(f"{op} requires a column for aggregate {aggregate!r}")
+        return
+    _require_column(column, available, op)
+    if aggregate in _NUMERIC_ONLY_AGGREGATES:
+        _require_numeric(column, df, op)
 
-# first implementation---
-"""
-we could start with five operator families drawn from the query suite (good news is we already made a foray into deterministic typed operators and now we need to keep it focused and latency-conscious)
-_run_deterministic_plan in flash_fusion.py may provide some hints here
 
-1. aggregate -- filter + min/max/mean/median/count
-2. group_aggregate -- group-by + aggregate
-3. compare_groups -- same metric across two filtered states, wit absolute/% difference
-4. rank -- grouped aggregate plus argmin/argmax
-5. derived_aggregate -- cached IoT-derived feature, then one of the above
+def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -> None:
+    """Gate 2: check a structurally valid plan against this DataFrame's schema.
+
+    Raises:
+        PlanSchemaError: unknown column, incompatible dtype, undefined partition,
+            or a step that depends on a prior step the plan never emits.
+    """
+    available: set[str] = {str(c) for c in df.columns}
+    partitions: set[str] = set()
+    has_group_result = False
+    has_partition_aggregate = False
+
+    for step in plan.steps:
+        match step:
+            case FilterCompare():
+                _require_column(step.column, available, step.op)
+                if step.column in df.columns:
+                    _coerce_value(df[step.column], step.value)
+
+            case FilterIn() | FilterNotEmpty() | CountDistinct() | SelectColumn():
+                _require_column(step.column, available, step.op)
+
+            case FilterEqAggregate() | AggregateColumn():
+                _validate_aggregate(step.column, step.aggregate, df, available, step.op)
+
+            case CountRows():
+                pass
+
+            case DeriveBinary():
+                _require_column(step.left, available, step.op)
+                _require_column(step.right, available, step.op)
+                _require_numeric(step.left, df, step.op)
+                _require_numeric(step.right, df, step.op)
+                available.add(step.result)
+
+            case DeriveVectorMagnitude():
+                for column in step.columns:
+                    _require_column(column, available, step.op)
+                    _require_numeric(column, df, step.op)
+                available.add(step.result)
+
+            case DeriveBin():
+                _require_column(step.column, available, step.op)
+                _require_numeric(step.column, df, step.op)
+                available.add(step.result)
+
+            case GroupAggregate():
+                for key in step.group_by:
+                    _require_column(key, available, step.op)
+                _validate_aggregate(step.column, step.aggregate, df, available, step.op)
+                if step.freq is not None:
+                    if len(step.group_by) != 1:
+                        raise PlanSchemaError(
+                            "GROUP_AGGREGATE with freq requires exactly one group key"
+                        )
+                    key = step.group_by[0]
+                    if key in df.columns and not pd.api.types.is_datetime64_any_dtype(
+                        df[key]
+                    ):
+                        raise PlanSchemaError(
+                            f"GROUP_AGGREGATE freq={step.freq!r} requires a datetime "
+                            f"column; {key!r} has dtype {df[key].dtype}"
+                        )
+                has_group_result = True
+
+            case AggregateGroups() | RankGroups():
+                if not has_group_result:
+                    raise PlanSchemaError(
+                        f"{step.op} requires a preceding GROUP_AGGREGATE step"
+                    )
+
+            case RankRows():
+                _require_column(step.column, available, step.op)
+                _require_numeric(step.column, df, step.op)
+                for column in step.return_columns:
+                    _require_column(column, available, step.op)
+
+            case SplitByThreshold():
+                _require_column(step.column, available, step.op)
+                _require_numeric(step.column, df, step.op)
+                partitions.add(step.label)
+
+            case SplitByValues():
+                _require_column(step.column, available, step.op)
+                partitions.add(step.label)
+
+            case AggregatePartitions():
+                missing = [p for p in step.partitions if p not in partitions]
+                if missing:
+                    raise PlanSchemaError(
+                        f"AGGREGATE_PARTITIONS references undefined partition(s): {missing}"
+                    )
+                _validate_aggregate(step.column, step.aggregate, df, available, step.op)
+                has_partition_aggregate = True
+
+            case ComparePartitions():
+                if not has_partition_aggregate:
+                    raise PlanSchemaError(
+                        "COMPARE_PARTITIONS requires a preceding AGGREGATE_PARTITIONS step"
+                    )
+
+            case ParallelAggregate():
+                # All branches must use the same group_by keys
+                reference_keys = step.branches[0].group_by
+                for i, branch in enumerate(step.branches):
+                    if branch.group_by != reference_keys:
+                        raise PlanSchemaError(
+                            f"PARALLEL_AGGREGATE: branch {i} has group_by={branch.group_by!r}, "
+                            f"expected {reference_keys!r} (all branches must group by same keys)"
+                        )
+
+                    # Validate filter column if present
+                    if branch.filter_column is not None:
+                        _require_column(branch.filter_column, available, "PARALLEL_AGGREGATE")
+
+                    # Validate group keys
+                    for key in branch.group_by:
+                        _require_column(key, available, "PARALLEL_AGGREGATE")
+
+                    # Validate aggregation
+                    _validate_aggregate(
+                        branch.column,
+                        branch.aggregate,
+                        df,
+                        available,
+                        "PARALLEL_AGGREGATE"
+                    )
+
+                # After PARALLEL_AGGREGATE, working frame only has group keys + result columns
+                available = {*reference_keys, *(b.result_column for b in step.branches)}
+
+            case PredictivePipeline():
+                for column in step.feature_columns:
+                    _require_column(column, available, step.op)
+                    _require_numeric(column, df, step.op)
+                for column in step.sort_by:
+                    _require_column(column, available, step.op)
+                if step.filter_column is not None:
+                    _require_column(step.filter_column, available, step.op)
+                    if step.filter_value is None:
+                        raise PlanSchemaError(
+                            "PREDICTIVE_PIPELINE filter_column requires filter_value"
+                        )
+                _require_column(step.target_column, available, step.op)
+                if step.target_column in step.feature_columns:
+                    raise PlanSchemaError(
+                        "PREDICTIVE_PIPELINE target_column must not also be a feature"
+                    )
+
+
+# ---------------------------------------------------------------------------
+# Predictive model factory (mirrors eval/build_groundtruth/simple_pred.py)
+# ---------------------------------------------------------------------------
+
+PREDICTIVE_RANDOM_SEED = 42
+
+_PREDICTIVE_MODEL_DISPLAY: dict[str, str] = {
+    "logistic_regression": "Logistic regression",
+    "random_forest": "Random forest",
+    "one_nearest_neighbor": "1-nearest-neighbor",
+    "hist_gradient_boosting": "Hist gradient boosting",
+}
+
+
+def _build_predictive_model(model: str):
+    from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    match model:
+        case "logistic_regression":
+            return make_pipeline(
+                StandardScaler(),
+                LogisticRegression(random_state=PREDICTIVE_RANDOM_SEED, max_iter=2000),
+            )
+        case "random_forest":
+            return RandomForestClassifier(
+                n_estimators=300, random_state=PREDICTIVE_RANDOM_SEED, n_jobs=-1
+            )
+        case "hist_gradient_boosting":
+            return HistGradientBoostingClassifier(
+                max_iter=200,
+                learning_rate=0.08,
+                max_leaf_nodes=31,
+                l2_regularization=1.0,
+                random_state=PREDICTIVE_RANDOM_SEED,
+            )
+        case "one_nearest_neighbor":
+            return make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=1))
+    raise PlanExecutionError(f"Unsupported predictive model {model!r}")
+
+
+# ---------------------------------------------------------------------------
+# Execution
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _State:
+    original: pd.DataFrame
+    working: pd.DataFrame
+    observations: list[Any] = field(default_factory=list)
+    partitions: dict[str, pd.DataFrame] = field(default_factory=dict)
+    group_result: pd.Series | None = None
+    group_label: str = "group"
+    group_metric: str = "value"
+    partition_result: dict[str, Any] = field(default_factory=dict)
+    partition_metric: str = "value"
+    columns_used: set[str] = field(default_factory=set)
+
+    def use(self, *columns: str) -> None:
+        self.columns_used.update(c for c in columns if c)
+
+
+def _run_predictive(step: PredictivePipeline, state: _State) -> tuple[Any, str]:
+    frame = state.original
+    state.use(*step.feature_columns, *step.sort_by, step.target_column)
+
+    if step.filter_column is not None:
+        state.use(step.filter_column)
+        value = _coerce_value(frame[step.filter_column], step.filter_value)
+        frame = frame[frame[step.filter_column] == value]
+        if frame.empty:
+            raise PlanExecutionError(
+                f"Predictive filter produced no rows: "
+                f"{step.filter_column}=={step.filter_value!r}"
+            )
+
+    frame = frame.sort_values(list(step.sort_by)).reset_index(drop=True)
+
+    if step.target_from_non_empty:
+        target = (
+            frame[step.target_column].astype(str).str.strip().ne("").astype(int).to_numpy()
+        )
+    else:
+        target = frame[step.target_column].astype(str).to_numpy()
+
+    features = frame[list(step.feature_columns)].to_numpy(dtype=float)
+
+    n_rows = len(frame)
+    split = max(1, min(int(math.floor(n_rows * step.train_fraction)), n_rows - 1))
+    if split >= n_rows:
+        raise PlanExecutionError("Predictive split leaves no holdout rows")
+
+    x_train, y_train = features[:split], target[:split]
+    holdout_index = split if step.holdout_row == "first" else n_rows - 1
+    x_test = features[holdout_index].reshape(1, -1)
+
+    train_classes = pd.unique(y_train)
+    if len(train_classes) == 1:
+        prediction = train_classes[0]
+    else:
+        model = _build_predictive_model(step.model)
+        model.fit(x_train, y_train)
+        prediction = model.predict(x_test)[0]
+
+    display = _PREDICTIVE_MODEL_DISPLAY.get(step.model, step.model)
+    answer = (
+        f"{display} predicts {step.target_label} "
+        f"'{_to_python(prediction)}' for the {step.holdout_row} holdout row."
+    )
+    code = (
+        f"# sort_by={list(step.sort_by)!r} split={split}/{n_rows} "
+        f"model={step.model!r} features={list(step.feature_columns)!r}\n"
+        f"result = {answer!r}"
+    )
+    return answer, code
+
+
+def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
+    """Run one typed operator. Returns ``(observation, equivalent_code)``."""
+    match step:
+        case FilterCompare():
+            state.use(step.column)
+            value = _coerce_value(state.working[step.column], step.value)
+            state.working = state.working[
+                _compare(state.working[step.column], step.comparator, value)
+            ]
+            return (
+                f"rows={len(state.working)}",
+                f"df = df[df[{step.column!r}] {step.comparator} {value!r}]",
+            )
+
+        case FilterIn():
+            state.use(step.column)
+            values = [_coerce_value(state.working[step.column], v) for v in step.values]
+            state.working = state.working[state.working[step.column].isin(values)]
+            return (
+                f"rows={len(state.working)}",
+                f"df = df[df[{step.column!r}].isin({values!r})]",
+            )
+
+        case FilterNotEmpty():
+            state.use(step.column)
+            series = state.working[step.column]
+            mask = series.notna()
+            if not pd.api.types.is_numeric_dtype(series):
+                mask &= series.astype(str).str.strip().ne("")
+            state.working = state.working[mask]
+            return (
+                f"rows={len(state.working)}",
+                f"df = df[df[{step.column!r}].notna()]",
+            )
+
+        case FilterEqAggregate():
+            state.use(step.column)
+            target = _aggregate_series(state.working[step.column], step.aggregate)
+            state.working = state.working[state.working[step.column] == target]
+            return (
+                f"rows={len(state.working)} ({step.column}=={_to_python(target)})",
+                f"_v = df[{step.column!r}].{step.aggregate}(); "
+                f"df = df[df[{step.column!r}] == _v]",
+            )
+
+        case AggregateColumn():
+            state.use(step.column)
+            value = _to_python(
+                _aggregate_series(state.working[step.column], step.aggregate)
+            )
+            state.observations.append(value)
+            return value, f"result = df[{step.column!r}].{step.aggregate}()"
+
+        case CountRows():
+            value = int(len(state.working))
+            state.observations.append(value)
+            return value, "result = len(df)"
+
+        case CountDistinct():
+            state.use(step.column)
+            value = int(state.working[step.column].nunique())
+            state.observations.append(value)
+            return value, f"result = df[{step.column!r}].nunique()"
+
+        case SelectColumn():
+            state.use(step.column)
+            series = state.working[step.column]
+            if step.distinct:
+                series = series.drop_duplicates()
+            value = [_to_python(v) for v in series.tolist()]
+            state.observations.append(value)
+            return value, f"result = df[{step.column!r}].tolist()"
+
+        case DeriveBinary():
+            state.use(step.left, step.right)
+            left = state.working[step.left]
+            right = state.working[step.right]
+            match step.operation:
+                case "add":
+                    derived, symbol = left + right, "+"
+                case "subtract":
+                    derived, symbol = left - right, "-"
+                case "multiply":
+                    derived, symbol = left * right, "*"
+                case "divide":
+                    derived, symbol = left / right, "/"
+                case "abs_difference":
+                    derived, symbol = (left - right).abs(), "- (abs)"
+            # Apply to both working and original so partitions can access derived columns
+            state.working = state.working.assign(**{step.result: derived})
+            # Only update original if source columns exist there (they may have been created by PARALLEL_AGGREGATE)
+            if step.left in state.original.columns and step.right in state.original.columns:
+                left_orig = state.original[step.left]
+                right_orig = state.original[step.right]
+                match step.operation:
+                    case "add":
+                        derived_orig = left_orig + right_orig
+                    case "subtract":
+                        derived_orig = left_orig - right_orig
+                    case "multiply":
+                        derived_orig = left_orig * right_orig
+                    case "divide":
+                        derived_orig = left_orig / right_orig
+                    case "abs_difference":
+                        derived_orig = (left_orig - right_orig).abs()
+                state.original = state.original.assign(**{step.result: derived_orig})
+            state.use(step.result)
+            return (
+                f"derived {step.result!r} (rows={len(state.working)})",
+                f"df[{step.result!r}] = df[{step.left!r}] {symbol} df[{step.right!r}]",
+            )
+
+        case DeriveVectorMagnitude():
+            a, b, c = step.columns
+            state.use(a, b, c)
+            derived = (
+                state.working[a].pow(2)
+                + state.working[b].pow(2)
+                + state.working[c].pow(2)
+            ).pow(0.5)
+            # Apply to both working and original so partitions can access derived columns
+            state.working = state.working.assign(**{step.result: derived})
+            # Only update original if source columns exist there (they may have been created by PARALLEL_AGGREGATE)
+            if all(col in state.original.columns for col in [a, b, c]):
+                derived_orig = (
+                    state.original[a].pow(2)
+                    + state.original[b].pow(2)
+                    + state.original[c].pow(2)
+                ).pow(0.5)
+                state.original = state.original.assign(**{step.result: derived_orig})
+            state.use(step.result)
+            return (
+                f"derived {step.result!r} (rows={len(state.working)})",
+                f"df[{step.result!r}] = (df[{a!r}]**2 + df[{b!r}]**2 + df[{c!r}]**2)**0.5",
+            )
+
+        case DeriveBin():
+            state.use(step.column)
+            derived = (state.working[step.column] // step.width) * step.width
+            # Apply to both working and original so partitions can access derived columns
+            state.working = state.working.assign(**{step.result: derived})
+            # Only update original if source column exists there (it may have been created by PARALLEL_AGGREGATE)
+            if step.column in state.original.columns:
+                derived_orig = (state.original[step.column] // step.width) * step.width
+                state.original = state.original.assign(**{step.result: derived_orig})
+            state.use(step.result)
+            return (
+                f"derived {step.result!r} (width={step.width})",
+                f"df[{step.result!r}] = (df[{step.column!r}] // {step.width}) * {step.width}",
+            )
+
+        case GroupAggregate():
+            state.use(*step.group_by, step.column or "")
+            if step.freq is not None:
+                grouper = pd.Grouper(key=step.group_by[0], freq=step.freq)
+                grouped = state.working.groupby(grouper)
+                code_key = f"pd.Grouper(key={step.group_by[0]!r}, freq={step.freq!r})"
+            else:
+                keys = step.group_by[0] if len(step.group_by) == 1 else list(step.group_by)
+                grouped = state.working.groupby(keys, dropna=False)
+                code_key = repr(keys)
+
+            if step.column is None:
+                series = grouped.size()
+                metric = "count"
+                code = f"result = df.groupby({code_key}).size()"
+            elif step.aggregate == "rms":
+                series = grouped[step.column].apply(lambda s: _aggregate_series(s, "rms"))
+                metric = step.column
+                code = f"result = df.groupby({code_key})[{step.column!r}].apply(rms)"
+            else:
+                series = grouped[step.column].agg(step.aggregate)
+                metric = step.column
+                code = (
+                    f"result = df.groupby({code_key})[{step.column!r}]"
+                    f".{step.aggregate}()"
+                )
+
+            state.group_result = series
+            state.group_label = (
+                step.group_by[0] if len(step.group_by) == 1 else "+".join(step.group_by)
+            )
+            state.group_metric = metric
+            value = {str(_to_python(k)): _to_python(v) for k, v in series.items()}
+            state.observations.append(value)
+            return value, code
+
+        case AggregateGroups():
+            if state.group_result is None:
+                raise PlanExecutionError("AGGREGATE_GROUPS has no grouped result")
+            value = _to_python(_aggregate_series(state.group_result, step.aggregate))
+            state.observations.append(value)
+            return value, f"result = grouped.{step.aggregate}()"
+
+        case RankGroups():
+            if state.group_result is None or state.group_result.empty:
+                raise PlanExecutionError("RANK_GROUPS has no grouped result")
+            key = (
+                state.group_result.idxmax()
+                if step.direction == "max"
+                else state.group_result.idxmin()
+            )
+            value = {
+                state.group_label: str(_to_python(key)),
+                state.group_metric: _to_python(state.group_result.loc[key]),
+            }
+            state.observations.append(value)
+            return value, f"result = grouped.idx{step.direction}()"
+
+        case RankRows():
+            state.use(step.column, *step.return_columns)
+            if state.working.empty:
+                raise PlanExecutionError("RANK_ROWS received no rows after filtering")
+            index = (
+                state.working[step.column].idxmax()
+                if step.direction == "max"
+                else state.working[step.column].idxmin()
+            )
+            value = {
+                column: _to_python(state.working.loc[index, column])
+                for column in step.return_columns
+            }
+            value.setdefault(
+                step.column, _to_python(state.working.loc[index, step.column])
+            )
+            state.observations.append(value)
+            return (
+                value,
+                f"idx = df[{step.column!r}].idx{step.direction}(); "
+                f"result = df.loc[idx, {list(step.return_columns)!r}].to_dict()",
+            )
+
+        case SplitByThreshold():
+            state.use(step.column)
+            threshold = getattr(state.original[step.column], step.threshold)()
+            subset = state.original[
+                _compare(state.original[step.column], step.comparator, threshold)
+            ]
+            state.partitions[step.label] = subset
+            return (
+                f"{step.label}: rows={len(subset)} ({step.column} {step.comparator} "
+                f"{step.threshold}={_to_python(threshold)})",
+                f"{step.label} = df[df[{step.column!r}] {step.comparator} "
+                f"df[{step.column!r}].{step.threshold}()]",
+            )
+
+        case SplitByValues():
+            state.use(step.column)
+            values = [_coerce_value(state.original[step.column], v) for v in step.values]
+            subset = state.original[state.original[step.column].isin(values)]
+            state.partitions[step.label] = subset
+            return (
+                f"{step.label}: rows={len(subset)}",
+                f"{step.label} = df[df[{step.column!r}].isin({values!r})]",
+            )
+
+        case AggregatePartitions():
+            state.use(step.column or "")
+            result: dict[str, Any] = {}
+            for label in step.partitions:
+                subset = state.partitions.get(label)
+                if subset is None:
+                    raise PlanExecutionError(f"Unknown partition {label!r}")
+                if step.column is None:
+                    result[label] = int(len(subset))
+                else:
+                    result[label] = _to_python(
+                        _aggregate_series(subset[step.column], step.aggregate)
+                    )
+            state.partition_result = result
+            state.partition_metric = (
+                f"{step.aggregate} {step.column}" if step.column else "row count"
+            )
+            state.observations.append(result)
+            return result, "result = {label: agg(partition) for label in partitions}"
+
+        case ComparePartitions():
+            if len(state.partition_result) < 2:
+                raise PlanExecutionError(
+                    "COMPARE_PARTITIONS requires two aggregated partitions"
+                )
+            (label_a, value_a), (label_b, value_b) = list(
+                state.partition_result.items()
+            )[:2]
+            match step.mode:
+                case "difference":
+                    delta: Any = value_a - value_b
+                case "abs_difference":
+                    delta = abs(value_a - value_b)
+                case "ratio":
+                    delta = value_a / value_b if value_b else float("nan")
+            higher, lower = (
+                (label_a, label_b) if value_a >= value_b else (label_b, label_a)
+            )
+            value = {
+                "higher": higher,
+                "lower": lower,
+                "metric": state.partition_metric,
+                label_a: value_a,
+                label_b: value_b,
+                step.mode: delta,
+            }
+            state.observations.append(value)
+            return value, f"result = compare({label_a}, {label_b}, mode={step.mode!r})"
+
+        case ParallelAggregate():
+            group_keys = step.shared_group_keys
+            state.use(*group_keys)
+
+            # Execute each branch independently on the ORIGINAL dataframe
+            branch_results: list[pd.DataFrame] = []
+            code_lines = ["# PARALLEL_AGGREGATE branches:"]
+
+            for i, branch in enumerate(step.branches):
+                # Start with original frame
+                branch_df = state.original.copy()
+
+                # Apply filter if specified
+                if branch.filter_column is not None and branch.filter_values is not None:
+                    state.use(branch.filter_column)
+                    values = [
+                        _coerce_value(state.original[branch.filter_column], v)
+                        for v in branch.filter_values
+                    ]
+                    branch_df = branch_df[branch_df[branch.filter_column].isin(values)]
+                    code_lines.append(
+                        f"# Branch {i}: filter {branch.filter_column!r} in {values!r}"
+                    )
+
+                # Group and aggregate
+                if branch.column is not None:
+                    state.use(branch.column)
+
+                grouped = branch_df.groupby(group_keys, dropna=False)
+
+                if branch.column is None:
+                    # Count group sizes
+                    aggregated = grouped.size()
+                elif branch.aggregate == "rms":
+                    aggregated = grouped[branch.column].apply(
+                        lambda s: _aggregate_series(s, "rms")
+                    )
+                else:
+                    aggregated = grouped[branch.column].agg(branch.aggregate)
+
+                # Convert to DataFrame with named result column
+                result_df = aggregated.reset_index(name=branch.result_column)
+                branch_results.append(result_df)
+
+                agg_method = "size()" if branch.column is None else f"[{branch.column!r}].{branch.aggregate}()"
+                code_lines.append(
+                    f"branch_{i} = df.groupby({group_keys!r}){agg_method}"
+                )
+
+            # Merge all branch results on group keys (outer join, fill NaN with 0)
+            merged = branch_results[0]
+            for i, branch_df in enumerate(branch_results[1:], start=1):
+                merged = merged.merge(branch_df, on=group_keys, how="outer")
+
+            # Fill NaN with 0 for all result columns
+            result_columns = [b.result_column for b in step.branches]
+            merged[result_columns] = merged[result_columns].fillna(0)
+
+            # Update working frame
+            state.working = merged
+
+            observation = {
+                "groups": len(merged),
+                "columns": [*group_keys, *result_columns]
+            }
+            state.observations.append(observation)
+
+            code_lines.append(
+                f"merged = branch_0.merge(branch_1, on={group_keys!r}, how='outer').fillna(0)"
+            )
+
+            return (observation, "\n".join(code_lines))
+
+        case PredictivePipeline():
+            value, code = _run_predictive(step, state)
+            state.observations.append(value)
+            return value, code
+
+    raise PlanExecutionError(f"Unhandled operator: {type(step).__name__}")
+
+
+def execute_plan(df: pd.DataFrame, plan: DeterministicPlan) -> PlanExecution:
+    """Execute a validated plan in-process. No codegen, no sandbox, no LLM.
+
+    The caller is expected to have already run both gates
+    (``structural_validate`` and ``validate_plan_against_dataframe``). Any
+    failure here is returned as ``ok=False`` with an ``error`` message rather
+    than raised, so the caller can log a coverage gap and fall back to ReAct.
+    """
+    started = time.perf_counter()
+    state = _State(original=df, working=df)
+    steps: list[dict[str, Any]] = []
+    code_lines: list[str] = []
+    trace_lines: list[str] = []
+
+    def _failure(message: str) -> PlanExecution:
+        return PlanExecution(
+            ok=False,
+            error=message,
+            plan_kind=plan.kind,
+            rows_scanned=len(df),
+            rows_after_filter=len(state.working),
+            columns_used=sorted(state.columns_used),
+            operators_used=plan.operators_used,
+            code="\n".join(code_lines),
+            trace="\n".join(trace_lines),
+            steps=steps,
+            latency_ms=round((time.perf_counter() - started) * 1000, 3),
+        )
+
+    for index, step in enumerate(plan.steps, start=1):
+        try:
+            observation, code = _execute_step(step, state)
+        except (PlanSchemaError, PlanExecutionError) as exc:
+            return _failure(f"{step.op}: {exc}")
+        except Exception as exc:  # noqa: BLE001 — surfaced as a coverage gap
+            return _failure(f"{step.op}: {type(exc).__name__}: {exc}")
+
+        steps.append(
+            {"step": index, "op": step.op, "ok": True, "output": str(observation)}
+        )
+        code_lines.append(code)
+        trace_lines.extend(
+            [
+                f"Thought: typed operator step {index} ({step.op})",
+                "Action: typed_operator_exec",
+                f"Action Input: {code}",
+                f"Observation: {observation}",
+            ]
+        )
+
+    value = (
+        state.observations[-1] if state.observations else f"rows={len(state.working)}"
+    )
+    trace_lines.append(f"Final Answer: {value}")
+    return PlanExecution(
+        value=value,
+        ok=True,
+        error=None,
+        plan_kind=plan.kind,
+        rows_scanned=len(df),
+        rows_after_filter=len(state.working),
+        columns_used=sorted(state.columns_used),
+        operators_used=plan.operators_used,
+        code="\n".join(code_lines),
+        trace="\n".join(trace_lines),
+        steps=steps,
+        latency_ms=round((time.perf_counter() - started) * 1000, 3),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Plan parsing (Gate 1)
+# ---------------------------------------------------------------------------
+
+
+def structural_validate(raw: Any) -> DeterministicPlan:
+    """Gate 1: structural validation of a raw plan payload.
+
+    Raises:
+        ValidationError: unknown op, missing field, or wrong type.
+    """
+    if isinstance(raw, DeterministicPlan):
+        return raw
+    return DeterministicPlan.model_validate(raw)
+
+
+def _strip_code_fence(text: str) -> str:
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+    body = text[3:]
+    if body.lower().startswith("json"):
+        body = body[4:]
+    closing = body.rfind("```")
+    return (body[:closing] if closing != -1 else body).strip()
+
+
+def parse_guardrail_and_plan(payload: str | dict[str, Any]) -> GuardrailAndPlan:
+    """Parse the single-round-trip guardrail+plan response (Gate 1).
+
+    Raises:
+        ValidationError: the response is not a valid GuardrailAndPlan.
+        ValueError: the response contains no JSON object at all.
+    """
+    if isinstance(payload, dict):
+        return GuardrailAndPlan.model_validate(payload)
+
+    text = _strip_code_fence(payload)
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON object found in guardrail+plan response")
+    return GuardrailAndPlan.model_validate_json(text[start : end + 1])
+
+
+# ---------------------------------------------------------------------------
+# Offline vocabulary growth — coverage gap log
+# ---------------------------------------------------------------------------
+
+
+def log_operator_gap(
+    *,
+    query: str,
+    stage: str,
+    error: str,
+    raw_plan: Any = None,
+    dataset: str = "",
+) -> None:
+    """Append a coverage gap to the offline review log.
+
+    Gaps are reviewed **between** runs: a missing operator is designed, tested,
+    and versioned into the vocabulary offline. Nothing here mutates the
+    vocabulary at request time.
+
+    Args:
+        stage: "structural", "schema", "execution", or "no_plan".
+    """
+    path = Path(
+        os.getenv(
+            "FF_OPERATOR_GAP_LOG",
+            str(Path(__file__).resolve().parents[1] / "results" / "operator_gaps.jsonl"),
+        )
+    )
+    record = {
+        "logged_at": datetime.now().isoformat(timespec="seconds"),
+        "dataset": dataset,
+        "query": query,
+        "stage": stage,
+        "error": error,
+        "raw_plan": raw_plan,
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, default=str) + "\n")
+    except OSError:
+        # Gap logging is diagnostic only; never fail a query because of it.
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Prompt-facing vocabulary description
+# ---------------------------------------------------------------------------
+
+OPERATOR_VOCABULARY_SPEC: str = """\
+EXECUTION MODEL:
+- Plans are sequential by default: each step reads the current working frame.
+- FILTER_* steps narrow the working frame (rows removed).
+- DERIVE_* steps add columns to both working and original frames.
+- GROUP_AGGREGATE produces an internal grouped result for RANK_GROUPS or AGGREGATE_GROUPS.
+  It does NOT create DataFrame columns and does NOT accept result_column.
+- PARALLEL_AGGREGATE is the ONLY operator that creates multiple independent branches from
+  the ORIGINAL dataframe and produces a merged working frame with new columns.
+- After GROUP_AGGREGATE, only RANK_GROUPS or AGGREGATE_GROUPS can consume the result.
+- After PARALLEL_AGGREGATE, the working frame contains group keys + result_columns.
+
+OPERATORS:
+
+FILTER_COMPARE      {"op":"FILTER_COMPARE","column":str,"comparator":"eq|ne|gt|gte|lt|lte","value":scalar}
+FILTER_IN           {"op":"FILTER_IN","column":str,"values":[scalar,...]}
+FILTER_NOT_EMPTY    {"op":"FILTER_NOT_EMPTY","column":str}
+FILTER_EQ_AGGREGATE {"op":"FILTER_EQ_AGGREGATE","column":str,"aggregate":AGG}   rows where column == AGG(column)
+AGGREGATE_COLUMN    {"op":"AGGREGATE_COLUMN","column":str,"aggregate":AGG}
+COUNT_ROWS          {"op":"COUNT_ROWS"}
+COUNT_DISTINCT      {"op":"COUNT_DISTINCT","column":str}
+SELECT_COLUMN       {"op":"SELECT_COLUMN","column":str,"distinct":bool}
+DERIVE_BINARY       {"op":"DERIVE_BINARY","left":str,"right":str,"operation":"add|subtract|multiply|divide|abs_difference","result":str}
+DERIVE_VECTOR_MAGNITUDE {"op":"DERIVE_VECTOR_MAGNITUDE","columns":[str,str,str],"result":str}
+DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"width":number,"result":str}   floor(col/width)*width
+
+GROUP_AGGREGATE     {"op":"GROUP_AGGREGATE","group_by":[str,...],"aggregate":AGG,"column":str|null,"freq":str|null}
+                    USE WHEN: One filtered subset needs one grouped metric and the answer is the highest/lowest
+                    group or a scalar reduction of that grouped metric.
+                    OUTPUT: Internal grouped result consumed ONLY by RANK_GROUPS or AGGREGATE_GROUPS.
+                    DO NOT USE: When comparing two or more independently filtered subsets per group.
+
+AGGREGATE_GROUPS    {"op":"AGGREGATE_GROUPS","aggregate":AGG}      reduce the previous GROUP_AGGREGATE result
+RANK_GROUPS         {"op":"RANK_GROUPS","direction":"max|min"}     best group from the previous GROUP_AGGREGATE
+
+RANK_ROWS           {"op":"RANK_ROWS","column":str,"direction":"max|min","return_columns":[str,...]}
+                    USE WHEN: You need the row with max/min value from a DataFrame (after filters, derives, or
+                    PARALLEL_AGGREGATE). REQUIRES: A working frame with actual rows and columns.
+
+PARALLEL_AGGREGATE  {"op":"PARALLEL_AGGREGATE","branches":[{"filter_column":str|null,"filter_values":[scalar,...]|null,
+                     "group_by":[str,...],"aggregate":AGG,"column":str|null,"result_column":str},...]}
+                    USE WHEN: The question compares, combines, or ranks metrics from TWO OR MORE independently
+                    filtered subsets per shared group (e.g., "compare resting vs dynamic activity per subject").
+                    EXECUTION: Every branch starts from ORIGINAL dataframe, filters its own rows, groups by the
+                    SAME keys, aggregates, then all branch outputs are outer-merged into the working frame.
+                    OUTPUT: A working frame with columns [group_by keys, result_column_1, result_column_2, ...].
+                    NEXT STEPS: Use DERIVE_BINARY on result_column values, then RANK_ROWS to find the answer.
+                    DO NOT use GROUP_AGGREGATE before, after, or inside this pattern.
+                    Example:
+                    {"op":"PARALLEL_AGGREGATE","branches":[
+                      {"filter_column":"activity_label","filter_values":["Sitting","Standing"],
+                       "group_by":["subject_id"],"aggregate":"sum","column":"timestamp","result_column":"resting_duration"},
+                      {"filter_column":"activity_label","filter_values":["Walking","Jogging","Upstairs","Downstairs"],
+                       "group_by":["subject_id"],"aggregate":"sum","column":"timestamp","result_column":"dynamic_duration"}
+                    ]}
+
+SPLIT_BY_THRESHOLD  {"op":"SPLIT_BY_THRESHOLD","column":str,"comparator":"gt|gte|lt|lte","threshold":"median|mean|min|max","label":str}
+SPLIT_BY_VALUES     {"op":"SPLIT_BY_VALUES","column":str,"values":[scalar,...],"label":str}
+AGGREGATE_PARTITIONS {"op":"AGGREGATE_PARTITIONS","partitions":[label,label],"aggregate":AGG,"column":str|null}
+COMPARE_PARTITIONS  {"op":"COMPARE_PARTITIONS","mode":"difference|abs_difference|ratio"}
+                    USE: SPLIT_BY_* + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS for "compare A versus B" questions
+                    when the comparison is based on static partitions, not per-group aggregates.
+
+PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|random_forest|one_nearest_neighbor|hist_gradient_boosting",
+                     "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
+                     "holdout_row":"first|last","filter_column":str|null,"filter_value":scalar|null,
+                     "target_from_non_empty":bool,"target_label":str}
+                    feature_columns must be listed explicitly.
+
+AGG is one of: min, max, mean, median, sum, count, std, var, nunique, rms.
+
+INVALID PATTERN—never emit:
+[{"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"X"}, {"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"Y"}]
+WHY: GROUP_AGGREGATE has no result_column field. Use PARALLEL_AGGREGATE for multiple independent aggregates.
+
+BEFORE RETURNING JSON:
+1. Every step contains ONLY fields listed for its exact op (no extra fields).
+2. Use PARALLEL_AGGREGATE when two or more independently filtered aggregates must become columns on the same table.
+3. After PARALLEL_AGGREGATE, only group keys + branch result_column names are available to DERIVE_BINARY and RANK_ROWS.
+4. Use RANK_GROUPS only after GROUP_AGGREGATE; use RANK_ROWS after DataFrame-producing operations.
+5. Use ONLY the operators above and ONLY real column names from the schema.
+6. If the question cannot be expressed with these operators, set "plan" to null.\
 """

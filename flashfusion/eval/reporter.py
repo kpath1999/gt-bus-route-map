@@ -172,6 +172,58 @@ def save_markdown(
         lines.append("(no results)")
     lines.append("")
 
+    # Typed-operator coverage. Latency/accuracy wins must be read against this
+    # number: a baseline that still routes the hard tail through ReAct has not
+    # earned an aggregate latency claim over the full query set.
+    typed_results = [r for r in results if r.execution_path]
+    if typed_results:
+        lines.append("## Typed-Operator Coverage")
+        lines.append("")
+        coverage_rows: list[dict] = []
+        by_baseline: dict[str, list[RunResult]] = {}
+        for r in typed_results:
+            by_baseline.setdefault(r.baseline, []).append(r)
+        for baseline, group in by_baseline.items():
+            typed = [r for r in group if r.execution_path == "typed_operator"]
+            fallback = [r for r in group if r.execution_path == "react_fallback"]
+            rejected = [r for r in group if r.execution_path == "guardrail_reject"]
+            coverage_rows.append(
+                {
+                    "Baseline": baseline,
+                    "Queries": len(group),
+                    "Typed": len(typed),
+                    "Coverage": f"{len(typed) / len(group):.0%}",
+                    "ReAct fallback": len(fallback),
+                    "Guardrail reject": len(rejected),
+                    "Typed avg latency (s)": (
+                        f"{sum(r.latency_s for r in typed) / len(typed):.2f}"
+                        if typed
+                        else "-"
+                    ),
+                    "Fallback avg latency (s)": (
+                        f"{sum(r.latency_s for r in fallback) / len(fallback):.2f}"
+                        if fallback
+                        else "-"
+                    ),
+                }
+            )
+        lines.append(
+            tabulate(coverage_rows, headers="keys", tablefmt="pipe", showindex=False)
+        )
+        lines.append("")
+        gap_counts: dict[str, int] = {}
+        for r in typed_results:
+            if r.plan_validation_stage_failed:
+                gap_counts[r.plan_validation_stage_failed] = (
+                    gap_counts.get(r.plan_validation_stage_failed, 0) + 1
+                )
+        if gap_counts:
+            lines.append(
+                "Fallback causes: "
+                + ", ".join(f"{stage}={count}" for stage, count in sorted(gap_counts.items()))
+            )
+            lines.append("")
+
     if query_defs is None:
         query_defs = WISDM_QUERIES
     query_lookup = {q["text"]: q for q in query_defs}
@@ -207,6 +259,15 @@ def save_markdown(
                 f"{verdict_label}: {verdict}"
             )
             lines.append(f"- Stages: {','.join(r.stages_run)}")
+            if r.execution_path:
+                lines.append(f"- Path: {r.execution_path}")
+                if r.operators_used:
+                    lines.append(f"- Operators: {','.join(r.operators_used)}")
+                if r.plan_validation_stage_failed:
+                    lines.append(
+                        f"- Fallback ({r.plan_validation_stage_failed}): "
+                        f"{r.deterministic_fallback_reason}"
+                    )
             if "S3_refine" in r.stages_run:
                 lines.append("- Plan refinement: yes (one Stage-3 regeneration)")
             lines.append(f"- Latency: {r.latency_s:.2f}s | Cost: ${r.cost_usd:.5f}")
