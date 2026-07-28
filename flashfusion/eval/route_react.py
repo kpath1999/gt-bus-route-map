@@ -59,3 +59,29 @@ Comparisons will be made between ReAct with routing and ReAct without routing. T
 
 # CACHING: there is an identical prompt prefix passed in every time. a cache hit skips reprocessing the cached portion, which lowers TTFT singificantly on repeated structures. we can structure the messages such that the static content sits at the front.
 # [STRETCH] semantic caching for high-traffic, repetitive workloads can also be added in. by storing query vector embeddings and LLM responses, cached answers for semantically similar queries can hit the same cache entry based on similarity threshold.
+
+"""
+prompt template (ICL approach - with query family exemplars):
+Return ONLY executable Python code.
+Do not include Thought, Action, comments, markdown, or explanations.
+Assign the final answer to a variable named `result`.
+
+Rules:
+- Use only the columns available in the schema.
+- Prefer the shortest correct solution.
+- Do not import a library unless it is required.
+- Do not create unused variables.
+- For predictive tasks, use the exact split/evaluation procedure stated in the question.
+- If the query is impossible from the schema, return exactly:
+raise ValueError("out-of-scope")
+"""
+
+## recommendation
+"""
+retrieval-augmented code skeleton selection for pandas/IoT query families
+* Retrieve 1-2 compact exemplars from a family library based on query type.
+* Use a strict output contract: code only, result only.
+* Skip Thought/Action/Final Answer entirely for codegen.
+* Keep answer synthesis templated for direct and multi_step; use the light model only when explanation is actually needed.
+"""
+# novelty: Flash-Fusion uses family-level in-context code priors to reduce code-generation entropy and latency for IoT analytics, while preserving generality across schemas and query wordings. The likely ceiling for predictive queries will still be bounded by local model fitting time, but codegen variance and token waste can absolutely be reduced that way.
