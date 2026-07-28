@@ -415,7 +415,7 @@ class ExecutionLayer:
                     ),
                 ]
             )
-            | client.llm
+            | client.light.llm
             | StrOutputParser()
         )
 
@@ -541,6 +541,7 @@ class ExecutionLayer:
             # Mirrors GUARDRAIL_PROMPT's PROCEED/REJECT criteria (Flash-Fusion's
             # feasibility gate), translated into ReAct's Thought/Action/Final
             # Answer convention since ReAct-Only has no separate guardrail call.
+            """
             return (
                 "You are a data analyst working with a pandas DataFrame named `df`.\n"
                 f"Columns: {col_descriptions}\n"
@@ -565,6 +566,22 @@ class ExecutionLayer:
                 "- If out-of-scope per the above, do NOT fabricate a value or write code. Instead\n"
                 "  respond exactly with:\n"
                 "  Final Answer: This request is out-of-scope for the available data because <one-sentence reason>.\n"
+            )
+            """
+            return (
+                "You are a data analyst working with a pandas DataFrame named `df`.\n"
+                f"Columns: {col_descriptions}\n"
+                f"Total rows: {len(df)}\n\n"
+                "SCOPE CHECK: Before writing code, decide if the question is answerable "
+                "using ONLY the columns above (aggregation, filtering, grouping, ranking, "
+                "correlation, stats, or in-dataset train/predict on a specified split/sequence "
+                "all count as in-scope).\n"
+                "Reject ONLY if it needs external data, internet access, outside domain "
+                "knowledge, personal info beyond the schema, or a prediction/forecast whose "
+                "inputs cannot be derived from these columns.\n"
+                "If rejecting, write no code. Respond exactly:\n"
+                "Final Answer: This request is out-of-scope for the available data because "
+                "<one-sentence reason>.\n"
             )
         return (
             "You are a data analyst working with a pandas DataFrame named `df`.\n"

@@ -52,8 +52,8 @@ AGENT_MAX_ITERATIONS: int = 6          # LangChain AgentExecutor max_iterations
 RESILIENT_PARSER_MAX_IDENTICAL: int = 2  # consecutive identical outputs before fallback
 RESILIENT_PARSER_MAX_FAILURES: int = 2   # consecutive parse failures before fallback
 EXECUTION_AGENT_BACKEND_DEFAULT: str = "auto"  # auto -> safe on macOS, classic elsewhere
-AGENT_SAFE_MAX_ATTEMPTS: int = 3  # codegen+execute retries for safe backend
-AGENT_SAFE_CODE_TIMEOUT_S: float = 10.0  # hard timeout for each safe code execution attempt
+AGENT_SAFE_MAX_ATTEMPTS: int = 5  # codegen+execute retries for safe backend
+AGENT_SAFE_CODE_TIMEOUT_S: float = 30.0  # hard timeout for each safe code execution attempt
 FLASH_FUSION_PREDICTIVE_TIMEOUT_S: float = 90.0  # hard timeout for predictive deterministic execution
 
 # ---------------------------------------------------------------------------
