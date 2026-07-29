@@ -1561,8 +1561,18 @@ DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"width":number,"result":str}
 GROUP_AGGREGATE     {"op":"GROUP_AGGREGATE","group_by":[str,...],"aggregate":AGG,"column":str|null,"freq":str|null}
                     USE WHEN: One filtered subset needs one grouped metric and the answer is the highest/lowest
                     group or a scalar reduction of that grouped metric.
-                    OUTPUT: Internal grouped result consumed ONLY by RANK_GROUPS or AGGREGATE_GROUPS.
+                    OUTPUT: Internal grouped result consumed ONLY by RANK_GROUPS or AGGREGATE_GROUPS. It has NO
+                    name of its own — you can never reference it by a column name like "max_MLII" or
+                    "mean_duration" in a later step. GROUP_AGGREGATE does not accept and never produces a
+                    "result"/"result_column" field.
                     DO NOT USE: When comparing two or more independently filtered subsets per group.
+                    DO NOT USE: For a per-group RANGE/SPREAD question ("largest difference between max and min
+                    X per group", "which group has the widest spread of Y"). This requires TWO aggregates
+                    (max AND min) available as separate columns simultaneously, which GROUP_AGGREGATE cannot
+                    provide — use PARALLEL_AGGREGATE with two branches (same group_by, same column, one branch
+                    aggregate="max" and one aggregate="min", each with its own result_column) followed by
+                    DERIVE_BINARY(operation="abs_difference") and RANK_ROWS instead. See the PARALLEL_AGGREGATE
+                    "per-group range" example below.
 
 AGGREGATE_GROUPS    {"op":"AGGREGATE_GROUPS","aggregate":AGG}      reduce the previous GROUP_AGGREGATE result
 RANK_GROUPS         {"op":"RANK_GROUPS","direction":"max|min"}     best group from the previous GROUP_AGGREGATE
@@ -1636,6 +1646,17 @@ PARALLEL_AGGREGATE  {"op":"PARALLEL_AGGREGATE","branches":[{"filter_column":str|
                     mention of entity/user/per-X), prefer SPLIT_BY_VALUES + AGGREGATE_PARTITIONS +
                     COMPARE_PARTITIONS instead (see below) — it aggregates over rows directly, matching what
                     "overall average" normally means.
+                    Example (per-group RANGE: "which group has the largest difference between max and min of
+                    a column" — both branches read the SAME column with NO filter, only the aggregate differs;
+                    do NOT use GROUP_AGGREGATE for this, it cannot expose two named aggregates at once):
+                    [{"op":"PARALLEL_AGGREGATE","branches":[
+                       {"filter_column":null,"filter_values":null,
+                        "group_by":["group_id"],"aggregate":"max","column":"metric_col","result_column":"max_metric"},
+                       {"filter_column":null,"filter_values":null,
+                        "group_by":["group_id"],"aggregate":"min","column":"metric_col","result_column":"min_metric"}
+                     ]},
+                     {"op":"DERIVE_BINARY","left":"max_metric","right":"min_metric","operation":"abs_difference","result":"metric_range"},
+                     {"op":"RANK_ROWS","column":"metric_range","direction":"max","return_columns":["group_id","metric_range"]}]
 
 SPLIT_BY_THRESHOLD  {"op":"SPLIT_BY_THRESHOLD","column":str,"comparator":"gt|gte|lt|lte","threshold":"median|mean|min|max","label":str}
 SPLIT_BY_VALUES     {"op":"SPLIT_BY_VALUES","column":str,"values":[scalar,...],"label":str}
@@ -1703,5 +1724,12 @@ INVALID PATTERN—never emit:
     "what is the difference between these two numbers" (no entity picked out). If the question has no
     per-entity framing ("overall", "in general", no "per subject"/"per user"/"which X"), the answer is a
     single overall comparison — use COMPARE_VALUES (after two AGGREGATE_COLUMN/AGGREGATE_GROUPS steps) or
-    COMPARE_PARTITIONS (after SPLIT_BY_* + AGGREGATE_PARTITIONS), never RANK_ROWS.\
+    COMPARE_PARTITIONS (after SPLIT_BY_* + AGGREGATE_PARTITIONS), never RANK_ROWS.
+16. NEVER invent a column name for a GROUP_AGGREGATE result (e.g. "max_val", "mean_duration") and then
+    reference it in DERIVE_BINARY, RANK_ROWS, or any other step — GROUP_AGGREGATE does not name or expose
+    a column, only RANK_GROUPS/AGGREGATE_GROUPS may consume it, and doing so will fail schema validation
+    with "references unknown column". For a per-group range/spread (max vs min, or any two aggregates of
+    the same column needed as separate values), use PARALLEL_AGGREGATE with one branch per aggregate, each
+    given an explicit "result_column" name — those are the only per-group aggregate names that legitimately
+    exist for later steps to reference. See the PARALLEL_AGGREGATE "per-group range" example above.\
 """
