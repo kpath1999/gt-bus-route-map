@@ -238,7 +238,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
 
     # Q1-Q8
     q1_max_x = float(df.loc[df["subject_id"] == 15, "x"].max())
-    q2_walk_count = int(df.loc[df["activity_lower"] == "walking"].shape[0])
+    q2_walk_count = df.loc[df["activity_lower"] == "walking", "subject_id"].nunique()
     q3_mask = (df["subject_id"] == 5) & (df["activity_lower"] == "sitting")
     q3_y_mean = float(df.loc[q3_mask, "y"].mean())
 
@@ -293,7 +293,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
         {
             "query_id": 2,
             "query_text": qmap[2],
-            "reference_answer": f"Total Walking samples in the dataset: {q2_walk_count}.",
+            "reference_answer": f"Total users Walking in the dataset: {q2_walk_count}.",
             "expected_rejection": False,
         },
         {

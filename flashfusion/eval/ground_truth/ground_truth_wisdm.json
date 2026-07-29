@@ -8,7 +8,7 @@
   {
     "query_id": 2,
     "query_text": "How many users have the activity label walking?",
-    "reference_answer": "Total Walking samples in the dataset: 424397.",
+    "reference_answer": "Total users Walking in the dataset: 36.",
     "expected_rejection": false
   },
   {
@@ -37,7 +37,7 @@
   },
   {
     "query_id": 7,
-    "query_text": "What is the median acceleration magnitude for user 20 while ascending steps?",
+    "query_text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
     "reference_answer": "Median net acceleration vector length for user 20 while ascending steps is 9.8931.",
     "expected_rejection": false
   },
@@ -73,25 +73,25 @@
   },
   {
     "query_id": 13,
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the activity label for the first row in the holdout set.",
+    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
     "reference_answer": "Logistic regression predicts activity 'Jogging' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 14,
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the activity label for the first row in the holdout set.",
+    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
     "reference_answer": "Random forest predicts activity 'Sitting' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 15,
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the activity label for the first row in the holdout set.",
+    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
     "reference_answer": "1-nearest-neighbor predicts activity 'Sitting' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 16,
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the activity label for the first row in the holdout set.",
+    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
     "reference_answer": "Hist gradient boosting predicts activity 'Sitting' for the first holdout row.",
     "expected_rejection": false
   }

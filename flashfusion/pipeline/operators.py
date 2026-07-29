@@ -274,6 +274,23 @@ class ComparePartitions(_Operator):
     mode: CompareMode = "difference"
 
 
+class CompareValues(_Operator):
+    """Compare the two most recent scalar aggregates, from ANY prior source.
+
+    Generalizes COMPARE_PARTITIONS beyond SPLIT_BY_*: the two values being
+    compared can come from AGGREGATE_COLUMN or AGGREGATE_GROUPS run in any
+    context, including twice in a row after a PARALLEL_AGGREGATE merge (e.g.
+    to reduce per-entity branch results down to two comparable scalars).
+    Requires exactly two preceding AGGREGATE_COLUMN/AGGREGATE_GROUPS steps
+    with no COMPARE_VALUES between them (enforced in schema validation).
+    """
+
+    op: Literal["COMPARE_VALUES"]
+    mode: CompareMode = "difference"
+    label_a: str = Field(default="value_a", min_length=1)
+    label_b: str = Field(default="value_b", min_length=1)
+
+
 class ParallelAggregateBranch(BaseModel):
     """A single branch of PARALLEL_AGGREGATE: filter → group → aggregate."""
 
@@ -377,6 +394,7 @@ TypedOperator = Annotated[
         SplitByValues,
         AggregatePartitions,
         ComparePartitions,
+        CompareValues,
         ParallelAggregate,
         PredictivePipeline,
     ],
@@ -616,6 +634,9 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
     partitions: set[str] = set()
     has_group_result = False
     has_partition_aggregate = False
+    # Count of AGGREGATE_COLUMN/AGGREGATE_GROUPS steps since the last COMPARE_VALUES
+    # (or since the start of the plan) — COMPARE_VALUES requires exactly two.
+    pending_scalar_count = 0
 
     for step in plan.steps:
         match step:
@@ -627,8 +648,12 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
             case FilterIn() | FilterNotEmpty() | CountDistinct() | SelectColumn():
                 _require_column(step.column, available, step.op)
 
-            case FilterEqAggregate() | AggregateColumn():
+            case FilterEqAggregate():
                 _validate_aggregate(step.column, step.aggregate, df, available, step.op)
+
+            case AggregateColumn():
+                _validate_aggregate(step.column, step.aggregate, df, available, step.op)
+                pending_scalar_count += 1
 
             case CountRows():
                 pass
@@ -670,10 +695,17 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                         )
                 has_group_result = True
 
-            case AggregateGroups() | RankGroups():
+            case AggregateGroups():
                 if not has_group_result:
                     raise PlanSchemaError(
-                        f"{step.op} requires a preceding GROUP_AGGREGATE step"
+                        "AGGREGATE_GROUPS requires a preceding GROUP_AGGREGATE step"
+                    )
+                pending_scalar_count += 1
+
+            case RankGroups():
+                if not has_group_result:
+                    raise PlanSchemaError(
+                        "RANK_GROUPS requires a preceding GROUP_AGGREGATE step"
                     )
 
             case RankRows():
@@ -705,6 +737,15 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                     raise PlanSchemaError(
                         "COMPARE_PARTITIONS requires a preceding AGGREGATE_PARTITIONS step"
                     )
+
+            case CompareValues():
+                if pending_scalar_count != 2:
+                    raise PlanSchemaError(
+                        "COMPARE_VALUES requires exactly two preceding AGGREGATE_COLUMN or "
+                        "AGGREGATE_GROUPS steps (with no COMPARE_VALUES between them); "
+                        f"found {pending_scalar_count}"
+                    )
+                pending_scalar_count = 0
 
             case ParallelAggregate():
                 # All branches must use the same group_by keys
@@ -816,6 +857,8 @@ class _State:
     partition_result: dict[str, Any] = field(default_factory=dict)
     partition_metric: str = "value"
     columns_used: set[str] = field(default_factory=set)
+    # (label, value) pairs from AGGREGATE_COLUMN/AGGREGATE_GROUPS, consumed by COMPARE_VALUES.
+    scalar_trail: list[tuple[str, Any]] = field(default_factory=list)
 
     def use(self, *columns: str) -> None:
         self.columns_used.update(c for c in columns if c)
@@ -927,6 +970,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 _aggregate_series(state.working[step.column], step.aggregate)
             )
             state.observations.append(value)
+            state.scalar_trail.append((f"{step.column} {step.aggregate}", value))
             return value, f"result = df[{step.column!r}].{step.aggregate}()"
 
         case CountRows():
@@ -1068,6 +1112,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 raise PlanExecutionError("AGGREGATE_GROUPS has no grouped result")
             value = _to_python(_aggregate_series(state.group_result, step.aggregate))
             state.observations.append(value)
+            state.scalar_trail.append((f"{state.group_metric} {step.aggregate}", value))
             return value, f"result = grouped.{step.aggregate}()"
 
         case RankGroups():
@@ -1180,6 +1225,41 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             }
             state.observations.append(value)
             return value, f"result = compare({label_a}, {label_b}, mode={step.mode!r})"
+
+        case CompareValues():
+            if len(state.scalar_trail) < 2:
+                raise PlanExecutionError(
+                    "COMPARE_VALUES requires two preceding AGGREGATE_COLUMN/"
+                    "AGGREGATE_GROUPS steps"
+                )
+            (metric_a, value_a), (metric_b, value_b) = state.scalar_trail[-2:]
+            match step.mode:
+                case "difference":
+                    delta: Any = value_a - value_b
+                case "abs_difference":
+                    delta = abs(value_a - value_b)
+                case "ratio":
+                    delta = value_a / value_b if value_b else float("nan")
+            higher, lower = (
+                (step.label_a, step.label_b)
+                if value_a >= value_b
+                else (step.label_b, step.label_a)
+            )
+            value = {
+                "higher": higher,
+                "lower": lower,
+                step.label_a: value_a,
+                step.label_b: value_b,
+                f"{step.label_a}_metric": metric_a,
+                f"{step.label_b}_metric": metric_b,
+                step.mode: delta,
+            }
+            state.observations.append(value)
+            return (
+                value,
+                f"result = compare({step.label_a}={value_a!r}, "
+                f"{step.label_b}={value_b!r}, mode={step.mode!r})",
+            )
 
         case ParallelAggregate():
             group_keys = step.shared_group_keys
@@ -1437,6 +1517,11 @@ EXECUTION MODEL:
   the ORIGINAL dataframe and produces a merged working frame with new columns.
 - After GROUP_AGGREGATE, only RANK_GROUPS or AGGREGATE_GROUPS can consume the result.
 - After PARALLEL_AGGREGATE, the working frame contains group keys + result_columns.
+- COMPARE_VALUES reduces exactly two preceding AGGREGATE_COLUMN/AGGREGATE_GROUPS scalars into one
+  comparison — it works no matter what produced those scalars (a plain filter, a PARALLEL_AGGREGATE
+  merge, a GROUP_AGGREGATE). RANK_ROWS/RANK_GROUPS answer "which ROW/GROUP is extreme"; COMPARE_VALUES
+  and COMPARE_PARTITIONS answer "what is the difference between these two numbers" — never use
+  RANK_ROWS as a substitute for a two-value comparison.
 
 OPERATORS:
 
@@ -1497,16 +1582,60 @@ PARALLEL_AGGREGATE  {"op":"PARALLEL_AGGREGATE","branches":[{"filter_column":str|
                     EXECUTION: Every branch starts from ORIGINAL dataframe, filters its own rows, groups by the
                     SAME keys, aggregates, then all branch outputs are outer-merged into the working frame.
                     OUTPUT: A working frame with columns [group_by keys, result_column_1, result_column_2, ...].
-                    NEXT STEPS: Use DERIVE_BINARY on result_column values, then RANK_ROWS to find the answer.
+                    NEXT STEPS depend on what the question asks for:
+                    - "which entity/subject/user is highest/lowest" → RANK_ROWS(column=a result_column).
+                    - "what is entity X's difference between the two metrics" → DERIVE_BINARY on the two
+                      result_columns, then RANK_ROWS or SELECT_COLUMN.
+                    - "what is the OVERALL/AGGREGATE difference between the two metrics across ALL entities"
+                      (no single entity singled out) → AGGREGATE_COLUMN(column=result_column_1) then
+                      AGGREGATE_COLUMN(column=result_column_2) then COMPARE_VALUES. Do NOT use RANK_ROWS for
+                      this — RANK_ROWS picks one entity's row, which silently answers a different question.
                     DO NOT use GROUP_AGGREGATE before, after, or inside this pattern.
                     CRITICAL: group_by must contain at least one column name — NEVER use an empty list.
-                    Example:
+                    CRITICAL: "column" must be null ONLY when aggregate is "count". For every other aggregate
+                    (mean, sum, median, std, var, rms, min, max, nunique) column is REQUIRED and must be a real
+                    column name — never leave it null "by default".
+                    CRITICAL: if the metric to aggregate is NOT a raw column (e.g. "acceleration magnitude",
+                    "vector magnitude", "overall intensity"), it does not exist yet — emit a DERIVE_* step
+                    (e.g. DERIVE_VECTOR_MAGNITUDE) BEFORE this operator to materialize it, then reference that
+                    step's "result" name as every branch's "column". Derived columns are written to BOTH the
+                    working and original frames, so a DERIVE_* step run before PARALLEL_AGGREGATE is visible to
+                    every branch.
+                    Example (raw column, group A vs group B duration, per entity):
                     {"op":"PARALLEL_AGGREGATE","branches":[
-                      {"filter_column":"activity_label","filter_values":["Sitting","Standing"],
-                       "group_by":["subject_id"],"aggregate":"sum","column":"timestamp","result_column":"resting_duration"},
-                      {"filter_column":"activity_label","filter_values":["Walking","Jogging","Upstairs","Downstairs"],
-                       "group_by":["subject_id"],"aggregate":"sum","column":"timestamp","result_column":"dynamic_duration"}
+                      {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
+                       "group_by":["entity_id"],"aggregate":"sum","column":"duration_col","result_column":"a_duration"},
+                      {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
+                       "group_by":["entity_id"],"aggregate":"sum","column":"duration_col","result_column":"b_duration"}
                     ]}
+                    Example (derived metric — a DERIVE_* step must run first, group A vs group B metric
+                    PER ENTITY, then find which entity differs most — "per entity"/"which X" is explicit):
+                    [{"op":"DERIVE_VECTOR_MAGNITUDE","columns":["c1","c2","c3"],"result":"derived_metric"},
+                     {"op":"PARALLEL_AGGREGATE","branches":[
+                       {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
+                        "group_by":["entity_id"],"aggregate":"mean","column":"derived_metric","result_column":"a_mean_metric"},
+                       {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
+                        "group_by":["entity_id"],"aggregate":"mean","column":"derived_metric","result_column":"b_mean_metric"}
+                     ]},
+                     {"op":"RANK_ROWS","column":"b_mean_metric","direction":"max",
+                      "return_columns":["entity_id","a_mean_metric","b_mean_metric"]}]
+                    Example (per-entity breakdown reduced to ONE overall comparison — "which entity" is NOT
+                    asked; the question wants a single overall number, so RANK_ROWS would be wrong here):
+                    [{"op":"DERIVE_VECTOR_MAGNITUDE","columns":["c1","c2","c3"],"result":"derived_metric"},
+                     {"op":"PARALLEL_AGGREGATE","branches":[
+                       {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
+                        "group_by":["entity_id"],"aggregate":"mean","column":"derived_metric","result_column":"a_mean_metric"},
+                       {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
+                        "group_by":["entity_id"],"aggregate":"mean","column":"derived_metric","result_column":"b_mean_metric"}
+                     ]},
+                     {"op":"AGGREGATE_COLUMN","column":"a_mean_metric","aggregate":"mean"},
+                     {"op":"AGGREGATE_COLUMN","column":"b_mean_metric","aggregate":"mean"},
+                     {"op":"COMPARE_VALUES","mode":"difference","label_a":"group_a","label_b":"group_b"}]
+                    NOTE: this two-level mean-of-per-entity-means is NOT the same number as pooling every row
+                    directly. If the question has NO per-entity framing at all ("overall", "in general", no
+                    mention of entity/user/per-X), prefer SPLIT_BY_VALUES + AGGREGATE_PARTITIONS +
+                    COMPARE_PARTITIONS instead (see below) — it aggregates over rows directly, matching what
+                    "overall average" normally means.
 
 SPLIT_BY_THRESHOLD  {"op":"SPLIT_BY_THRESHOLD","column":str,"comparator":"gt|gte|lt|lte","threshold":"median|mean|min|max","label":str}
 SPLIT_BY_VALUES     {"op":"SPLIT_BY_VALUES","column":str,"values":[scalar,...],"label":str}
@@ -1514,13 +1643,31 @@ AGGREGATE_PARTITIONS {"op":"AGGREGATE_PARTITIONS","partitions":[label,label],"ag
 COMPARE_PARTITIONS  {"op":"COMPARE_PARTITIONS","mode":"difference|abs_difference|ratio"}
                     USE: SPLIT_BY_* + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS for "compare A versus B" questions
                     when the comparison is based on static partitions, not per-group aggregates.
-                    Example (comparing northern vs southern half by latitude):
-                    [{"op":"SPLIT_BY_THRESHOLD","column":"latitude","comparator":"gt","threshold":"median","label":"northern"},
-                     {"op":"SPLIT_BY_THRESHOLD","column":"latitude","comparator":"lte","threshold":"median","label":"southern"},
-                     {"op":"AGGREGATE_PARTITIONS","partitions":["northern","southern"],"aggregate":"mean","column":"accel_variance"},
+                    Example (comparing above-median vs below-median half by a numeric column):
+                    [{"op":"SPLIT_BY_THRESHOLD","column":"numeric_col","comparator":"gt","threshold":"median","label":"above_median"},
+                     {"op":"SPLIT_BY_THRESHOLD","column":"numeric_col","comparator":"lte","threshold":"median","label":"below_median"},
+                     {"op":"AGGREGATE_PARTITIONS","partitions":["above_median","below_median"],"aggregate":"mean","column":"metric_col"},
                      {"op":"COMPARE_PARTITIONS","mode":"difference"}]
-                    This pattern compares TWO DATASET HALVES. If the question asks to compare metrics
-                    PER ENTITY (e.g., "per subject", "per user", "for each X"), use PARALLEL_AGGREGATE instead.
+                    Example (overall group A vs group B derived metric, NO per-entity framing — "the overall X
+                    between A and B" with no mention of entity/user/per-X means pool ALL matching rows directly):
+                    [{"op":"DERIVE_VECTOR_MAGNITUDE","columns":["c1","c2","c3"],"result":"derived_metric"},
+                     {"op":"SPLIT_BY_VALUES","column":"category_col","values":["cat_1","cat_2"],"label":"group_a"},
+                     {"op":"SPLIT_BY_VALUES","column":"category_col",
+                      "values":["cat_3","cat_4"],"label":"group_b"},
+                     {"op":"AGGREGATE_PARTITIONS","partitions":["group_a","group_b"],"aggregate":"mean","column":"derived_metric"},
+                     {"op":"COMPARE_PARTITIONS","mode":"difference"}]
+                    This pattern compares TWO DATASET HALVES (pooled row-level statistic — one number per side).
+                    If the question asks to compare metrics PER ENTITY (e.g., "per subject", "per user", "for
+                    each X", "which user"), use PARALLEL_AGGREGATE instead.
+
+COMPARE_VALUES      {"op":"COMPARE_VALUES","mode":"difference|abs_difference|ratio","label_a":str,"label_b":str}
+                    USE: Generalized version of COMPARE_PARTITIONS — compares the two most recently computed
+                    scalar aggregates, from ANY source (not just AGGREGATE_PARTITIONS). REQUIRES exactly two
+                    immediately-preceding AGGREGATE_COLUMN or AGGREGATE_GROUPS steps, with nothing else of that
+                    kind in between. Typical use: reducing a PARALLEL_AGGREGATE per-entity breakdown down to one
+                    overall comparison (see the PARALLEL_AGGREGATE section above for the worked example).
+                    DO NOT use after only ONE AGGREGATE_COLUMN/AGGREGATE_GROUPS step, and DO NOT use after
+                    AGGREGATE_PARTITIONS (use COMPARE_PARTITIONS for that).
 
 PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|random_forest|one_nearest_neighbor|hist_gradient_boosting",
                      "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
@@ -1544,8 +1691,17 @@ INVALID PATTERN—never emit:
 9. NEVER put a numeric literal or time constant (e.g. 60000000000, 3600, 1000) into DERIVE_BINARY's
    left/right fields — those fields are column names only. A constant-vs-column operation (e.g.
    bucketing a timestamp into fixed-width windows) is DERIVE_BIN(column, width, result), not DERIVE_BINARY.
-3. After PARALLEL_AGGREGATE, only group keys + branch result_column names are available to DERIVE_BINARY and RANK_ROWS.
-4. Use RANK_GROUPS only after GROUP_AGGREGATE; use RANK_ROWS after DataFrame-producing operations.
-5. Use ONLY the operators above and ONLY real column names from the schema.
-6. If the question cannot be expressed with these operators, set "plan" to null.\
+10. NEVER leave PARALLEL_AGGREGATE branch "column" null unless aggregate is "count". If the metric is
+    derived (e.g. "magnitude", "vector magnitude", "intensity"), emit DERIVE_VECTOR_MAGNITUDE or another
+    DERIVE_* step first, then set "column" to that step's "result" name in every branch.
+11. After PARALLEL_AGGREGATE, only group keys + branch result_column names are available to DERIVE_BINARY and RANK_ROWS.
+12. Use RANK_GROUPS only after GROUP_AGGREGATE; use RANK_ROWS after DataFrame-producing operations.
+13. Use ONLY the operators above and ONLY real column names from the schema.
+14. If the question cannot be expressed with these operators, set "plan" to null.
+15. NEVER use RANK_ROWS/RANK_GROUPS as a substitute for a two-value comparison. RANK_ROWS/RANK_GROUPS
+    answer "which entity/group is extreme" (one row picked out); COMPARE_VALUES/COMPARE_PARTITIONS answer
+    "what is the difference between these two numbers" (no entity picked out). If the question has no
+    per-entity framing ("overall", "in general", no "per subject"/"per user"/"which X"), the answer is a
+    single overall comparison — use COMPARE_VALUES (after two AGGREGATE_COLUMN/AGGREGATE_GROUPS steps) or
+    COMPARE_PARTITIONS (after SPLIT_BY_* + AGGREGATE_PARTITIONS), never RANK_ROWS.\
 """

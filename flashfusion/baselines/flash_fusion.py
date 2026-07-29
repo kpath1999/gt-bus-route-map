@@ -302,17 +302,17 @@ def build_react_query(
     from the mapping as scaffolding while reasoning over the raw DataFrame.
     """
     sections = [query]
-    if grounding.strip():
-        sections.append(
-            "Concept-to-column grounding produced by schema analysis "
-            "(use these exact column names; derive anything else from them):\n"
-            f"{grounding.strip()}"
-        )
-    if ambiguous_concepts:
-        sections.append(
-            "Concepts with no literal column — resolve them from the schema: "
-            + ", ".join(ambiguous_concepts)
-        )
+    # if grounding.strip():
+    #     sections.append(
+    #         "Concept-to-column grounding produced by schema analysis "
+    #         "(use these exact column names; derive anything else from them):\n"
+    #         f"{grounding.strip()}"
+    #     )
+    # if ambiguous_concepts:
+    #     sections.append(
+    #         "Concepts with no literal column — resolve them from the schema: "
+    #         + ", ".join(ambiguous_concepts)
+    #     )
     return "\n\n".join(sections)
 
 
@@ -510,10 +510,10 @@ def run_flash_fusion(
 
             last_stage = "fallback_grounding"
             started = time.time()
-            grounding = _ground_for_fallback(query, df, meta_str, client, r)
-            record("s2", started)
+            # grounding = _ground_for_fallback(query, df, meta_str, client, r)
+            # record("s2", started)
 
-            react_query = build_react_query(query, grounding, ambiguous)
+            react_query = build_react_query(query)
             r.react_query = react_query
             r.grounded_query = react_query
 
