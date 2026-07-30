@@ -197,6 +197,28 @@ class DeriveBin(_Operator):
     result: str = Field(min_length=1)
 
 
+class DeriveDurationSeconds(_Operator):
+    """Elapsed seconds between consecutive samples, computed within each group.
+
+    Duration is *never* the sum of a timestamp column — a timestamp is an
+    instant, not an interval. This operator materializes the interval first:
+    sort by ``group_by + timestamp_column``, take the within-group difference,
+    and express it in seconds. Downstream steps then aggregate ``result``
+    like any other numeric column.
+
+    ``timestamp_column`` may be datetime-typed or an integer/float epoch
+    counter. Both are interpreted at nanosecond resolution (matching pandas'
+    ``datetime64[ns]``), so a numeric column must be in nanoseconds.
+    """
+
+    op: Literal["DERIVE_DURATION_SECONDS"]
+    timestamp_column: str = Field(min_length=1)
+    group_by: list[str] = Field(min_length=1)
+    result: str = Field(default="dt_s", min_length=1)
+    clip_negative: bool = True
+    fill_first: float = 0.0
+
+
 class GroupAggregate(_Operator):
     """Group the current frame by one or more keys and aggregate one column.
 
@@ -319,28 +341,32 @@ class ParallelAggregate(_Operator):
     - Results are outer-merged on group keys, filling missing with 0
     - Working frame becomes the merged result with columns: [group_keys, result1, result2, ...]
 
-    Example (WISDM query 6):
+    Example ("which entity spent more time in category group A than group B",
+    after a DERIVE_DURATION_SECONDS step materialized ``dt_s``):
         {
           "op": "PARALLEL_AGGREGATE",
           "branches": [
             {
-              "filter_column": "activity_label",
-              "filter_values": ["Sitting", "Standing"],
-              "group_by": ["subject_id"],
+              "filter_column": "category_col",
+              "filter_values": ["cat_1", "cat_2"],
+              "group_by": ["entity_id"],
               "aggregate": "sum",
-              "column": "timestamp",
-              "result_column": "resting_duration"
+              "column": "dt_s",
+              "result_column": "a_duration"
             },
             {
-              "filter_column": "activity_label",
-              "filter_values": ["Walking", "Jogging", "Upstairs", "Downstairs"],
-              "group_by": ["subject_id"],
+              "filter_column": "category_col",
+              "filter_values": ["cat_3", "cat_4"],
+              "group_by": ["entity_id"],
               "aggregate": "sum",
-              "column": "timestamp",
-              "result_column": "dynamic_duration"
+              "column": "dt_s",
+              "result_column": "b_duration"
             }
           ]
         }
+
+    Note the aggregated column is the *derived* elapsed-seconds column, never a
+    raw timestamp — see ``DeriveDurationSeconds``.
     """
 
     op: Literal["PARALLEL_AGGREGATE"]
@@ -386,6 +412,7 @@ TypedOperator = Annotated[
         DeriveBinary,
         DeriveVectorMagnitude,
         DeriveBin,
+        DeriveDurationSeconds,
         GroupAggregate,
         AggregateGroups,
         RankGroups,
@@ -577,9 +604,54 @@ def _bin_series(series: pd.Series, width: float) -> pd.Series:
     return (series // width) * width
 
 
+#: Nanoseconds per second — the resolution both datetime64[ns] and integer
+#: epoch timestamp columns are interpreted at by DERIVE_DURATION_SECONDS.
+_NANOS_PER_SECOND = 1_000_000_000
+
+
+def _duration_seconds(frame: pd.DataFrame, step: "DeriveDurationSeconds") -> pd.Series:
+    """Within-group elapsed seconds between consecutive rows of ``frame``.
+
+    The result is aligned back to ``frame``'s own index, so the caller can
+    assign it as a column regardless of the sort order used internally.
+    """
+    ordered = frame.sort_values([*step.group_by, step.timestamp_column])
+    series = ordered[step.timestamp_column]
+    if pd.api.types.is_datetime64_any_dtype(series):
+        nanos = series.astype("int64")
+    else:
+        nanos = pd.to_numeric(series, errors="coerce")
+
+    deltas = nanos.groupby(
+        [ordered[key] for key in step.group_by], dropna=False, sort=False
+    ).diff()
+    deltas = deltas / _NANOS_PER_SECOND
+    if step.clip_negative:
+        deltas = deltas.clip(lower=0.0)
+    # The first row of each group has no predecessor, so diff() left it NaN.
+    deltas = deltas.fillna(float(step.fill_first))
+    return deltas.reindex(frame.index)
+
+
 # ---------------------------------------------------------------------------
 # Gate 2 — DataFrame schema validation
 # ---------------------------------------------------------------------------
+
+#: Aggregates that are well-defined on zero rows. Everything else yields NaN
+#: on an empty frame, which would silently pass a wrong answer downstream.
+_EMPTY_SAFE_AGGREGATES: frozenset[str] = frozenset({"count", "nunique"})
+
+
+def _require_non_empty(frame: pd.DataFrame, op: str, aggregate: str | None = None) -> None:
+    """Fail loudly rather than let an aggregate over zero rows return NaN."""
+    if aggregate is not None and aggregate in _EMPTY_SAFE_AGGREGATES:
+        return
+    if len(frame) == 0:
+        suffix = f" ({aggregate})" if aggregate else ""
+        raise PlanExecutionError(
+            f"{op}{suffix} received an empty frame — every preceding filter or "
+            "split removed all rows, so the aggregate would be undefined"
+        )
 
 
 def _require_column(column: str, available: set[str], op: str) -> None:
@@ -619,6 +691,17 @@ def _validate_aggregate(
             raise PlanSchemaError(f"{op} requires a column for aggregate {aggregate!r}")
         return
     _require_column(column, available, op)
+    if (
+        aggregate == "sum"
+        and column in df.columns
+        and pd.api.types.is_datetime64_any_dtype(df[column])
+    ):
+        # Summing instants is meaningless — the intent is always elapsed time.
+        raise PlanSchemaError(
+            f"{op} cannot sum the datetime column {column!r}: a timestamp is an "
+            "instant, not a duration. Derive elapsed time first with "
+            "DERIVE_DURATION_SECONDS and aggregate that result column instead"
+        )
     if aggregate in _NUMERIC_ONLY_AGGREGATES:
         _require_numeric(column, df, op)
 
@@ -637,6 +720,10 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
     # Count of AGGREGATE_COLUMN/AGGREGATE_GROUPS steps since the last COMPARE_VALUES
     # (or since the start of the plan) — COMPARE_VALUES requires exactly two.
     pending_scalar_count = 0
+    # Grouping keys of the most recent PARALLEL_AGGREGATE, or None if the working
+    # frame is not a parallel-aggregate merge. A RANK_ROWS over such a frame must
+    # return at least one of these keys, otherwise it identifies no entity.
+    parallel_group_keys: list[str] | None = None
 
     for step in plan.steps:
         match step:
@@ -676,6 +763,13 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                 _require_numeric_or_datetime(step.column, df, step.op)
                 available.add(step.result)
 
+            case DeriveDurationSeconds():
+                _require_column(step.timestamp_column, available, step.op)
+                _require_numeric_or_datetime(step.timestamp_column, df, step.op)
+                for key in step.group_by:
+                    _require_column(key, available, step.op)
+                available.add(step.result)
+
             case GroupAggregate():
                 for key in step.group_by:
                     _require_column(key, available, step.op)
@@ -713,6 +807,17 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                 _require_numeric(step.column, df, step.op)
                 for column in step.return_columns:
                     _require_column(column, available, step.op)
+                if parallel_group_keys is not None and not (
+                    set(step.return_columns) & set(parallel_group_keys)
+                ):
+                    # Without a grouping key the ranked row is a bare number —
+                    # it names no entity, so it cannot answer "which X".
+                    raise PlanSchemaError(
+                        "RANK_ROWS after PARALLEL_AGGREGATE must return at least one "
+                        f"of the grouping keys {parallel_group_keys!r} in "
+                        f"return_columns; got {step.return_columns!r}, which "
+                        "identifies no entity"
+                    )
 
             case SplitByThreshold():
                 _require_column(step.column, available, step.op)
@@ -776,6 +881,7 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
 
                 # After PARALLEL_AGGREGATE, working frame only has group keys + result columns
                 available = {*reference_keys, *(b.result_column for b in step.branches)}
+                parallel_group_keys = list(reference_keys)
 
             case PredictivePipeline():
                 for column in step.feature_columns:
@@ -956,6 +1062,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
 
         case FilterEqAggregate():
             state.use(step.column)
+            _require_non_empty(state.working, step.op, step.aggregate)
             target = _aggregate_series(state.working[step.column], step.aggregate)
             state.working = state.working[state.working[step.column] == target]
             return (
@@ -966,6 +1073,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
 
         case AggregateColumn():
             state.use(step.column)
+            _require_non_empty(state.working, step.op, step.aggregate)
             value = _to_python(
                 _aggregate_series(state.working[step.column], step.aggregate)
             )
@@ -1071,8 +1179,30 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 f"df[{step.result!r}] = (df[{step.column!r}] // {step.width}) * {step.width}",
             )
 
+        case DeriveDurationSeconds():
+            state.use(step.timestamp_column, *step.group_by)
+            derived = _duration_seconds(state.working, step)
+            state.working = state.working.assign(**{step.result: derived})
+            # Mirror into the original frame so SPLIT_BY_* partitions and later
+            # PARALLEL_AGGREGATE branches can read the derived column too.
+            source_columns = [step.timestamp_column, *step.group_by]
+            if all(col in state.original.columns for col in source_columns):
+                state.original = state.original.assign(
+                    **{step.result: _duration_seconds(state.original, step)}
+                )
+            state.use(step.result)
+            return (
+                f"derived {step.result!r} (rows={len(state.working)}, "
+                f"total={_to_python(derived.sum())}s)",
+                f"df = df.sort_values({[*step.group_by, step.timestamp_column]!r}); "
+                f"df[{step.result!r}] = df.groupby({list(step.group_by)!r})"
+                f"[{step.timestamp_column!r}].diff().dt.total_seconds()"
+                f".clip(lower=0).fillna({step.fill_first!r})",
+            )
+
         case GroupAggregate():
             state.use(*step.group_by, step.column or "")
+            _require_non_empty(state.working, step.op, step.aggregate)
             if step.freq is not None:
                 grouper = pd.Grouper(key=step.group_by[0], freq=step.freq)
                 grouped = state.working.groupby(grouper)
@@ -1187,6 +1317,9 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 if step.column is None:
                     result[label] = int(len(subset))
                 else:
+                    _require_non_empty(
+                        subset, f"{step.op} partition {label!r}", step.aggregate
+                    )
                     result[label] = _to_python(
                         _aggregate_series(subset[step.column], step.aggregate)
                     )
@@ -1288,6 +1421,10 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 # Group and aggregate
                 if branch.column is not None:
                     state.use(branch.column)
+
+                _require_non_empty(
+                    branch_df, f"{step.op} branch {i}", branch.aggregate
+                )
 
                 grouped = branch_df.groupby(group_keys, dropna=False)
 
@@ -1523,6 +1660,40 @@ EXECUTION MODEL:
   and COMPARE_PARTITIONS answer "what is the difference between these two numbers" — never use
   RANK_ROWS as a substitute for a two-value comparison.
 
+HARD RULES — decide the shape of the plan BEFORE choosing operators:
+
+R1. OVERALL COMPARISON (no entity in the question).
+    Trigger words: "overall", "in general", "on average", "across the dataset", "between A and B",
+    or any comparison of two label groups that never mentions a user / subject / device / entity.
+    REQUIRED SHAPE: SPLIT_BY_VALUES(group_a) -> SPLIT_BY_VALUES(group_b)
+                    -> AGGREGATE_PARTITIONS -> COMPARE_PARTITIONS
+    This pools every matching row on each side and produces exactly two numbers plus their delta.
+    DO NOT use PARALLEL_AGGREGATE here. DO NOT introduce a per-entity grouping layer that the
+    question never asked for — a mean-of-per-entity-means is a DIFFERENT number from a pooled mean.
+
+R2. PER-ENTITY COMPARISON (the question names an entity dimension).
+    Trigger words: "which user", "which subject", "per subject", "per device", "per entity",
+    "for each X", "the user whose ...".
+    REQUIRED SHAPE: PARALLEL_AGGREGATE (one branch per filtered subset, all sharing the same
+                    group_by entity key) -> optional DERIVE_BINARY -> optional FILTER_COMPARE
+                    -> RANK_ROWS (return_columns MUST include the entity key).
+
+R3. DURATION IS NEVER A SUM OF TIMESTAMPS.
+    A timestamp is an instant; a duration is an interval between two instants. "How long did X
+    last", "total time spent", "duration exceeding" all require elapsed time to be MATERIALIZED
+    first with DERIVE_DURATION_SECONDS, then aggregated like any ordinary numeric column:
+        DERIVE_DURATION_SECONDS -> sum/mean of the derived result column.
+    sum(timestamp_column) is rejected by schema validation and is always wrong.
+
+R4. COMPARE_VALUES OPERATES ON SCALARS THAT WERE ALREADY COMPUTED.
+    It takes NO column references at all — it has no "column1"/"column2"/"column" field. It reads
+    the two most recent AGGREGATE_COLUMN / AGGREGATE_GROUPS scalars from the plan itself. To
+    compare two columns you must first reduce each one with its own AGGREGATE_COLUMN step.
+
+R5. AN AGGREGATE OVER ZERO ROWS IS AN ERROR, NOT A RESULT.
+    If a filter or split can empty the frame, the plan fails loudly rather than returning NaN.
+    Check that filter values actually exist in the schema's sample values before emitting them.
+
 OPERATORS:
 
 FILTER_COMPARE      {"op":"FILTER_COMPARE","column":str,"comparator":"eq|ne|gt|gte|lt|lte","value":scalar}
@@ -1557,6 +1728,22 @@ DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"width":number,"result":str}
                     for this because its "right" operand must be a column name, not a constant.
                     After DERIVE_BIN, typically follow with GROUP_AGGREGATE(group_by=[result], ...) to
                     aggregate a metric within each bucket, then RANK_GROUPS to find the extreme bucket.
+
+DERIVE_DURATION_SECONDS {"op":"DERIVE_DURATION_SECONDS","timestamp_column":str,"group_by":[str,...],
+                     "result":str,"clip_negative":bool,"fill_first":number}
+                    USE FOR: any question about elapsed time, time spent, session length, or duration.
+                    Sorts by group_by + timestamp_column, takes the difference between consecutive
+                    timestamps WITHIN each group, and writes it as seconds into "result" (default
+                    "dt_s"). The first row of every group gets "fill_first" (default 0.0), and
+                    "clip_negative" (default true) floors negative gaps at zero.
+                    group_by must name at least one column and should include every column that
+                    defines a contiguous recording session (typically the entity key, plus the
+                    category column when time is attributed per category).
+                    timestamp_column must be a datetime column or a numeric nanosecond counter.
+                    THIS IS THE ONLY WAY TO EXPRESS DURATION. After it, aggregate "result" normally:
+                    AGGREGATE_COLUMN(column="dt_s",aggregate="sum") for a total, or a
+                    PARALLEL_AGGREGATE branch with column="dt_s",aggregate="sum" for a per-entity
+                    total. NEVER aggregate the timestamp column itself.
 
 GROUP_AGGREGATE     {"op":"GROUP_AGGREGATE","group_by":[str,...],"aggregate":AGG,"column":str|null,"freq":str|null}
                     USE WHEN: One filtered subset needs one grouped metric and the answer is the highest/lowest
@@ -1611,13 +1798,16 @@ PARALLEL_AGGREGATE  {"op":"PARALLEL_AGGREGATE","branches":[{"filter_column":str|
                     step's "result" name as every branch's "column". Derived columns are written to BOTH the
                     working and original frames, so a DERIVE_* step run before PARALLEL_AGGREGATE is visible to
                     every branch.
-                    Example (raw column, group A vs group B duration, per entity):
-                    {"op":"PARALLEL_AGGREGATE","branches":[
-                      {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
-                       "group_by":["entity_id"],"aggregate":"sum","column":"duration_col","result_column":"a_duration"},
-                      {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
-                       "group_by":["entity_id"],"aggregate":"sum","column":"duration_col","result_column":"b_duration"}
-                    ]}
+                    Example (elapsed time per entity — the duration column must be DERIVED first;
+                    there is no raw duration column in a sampled sensor table):
+                    [{"op":"DERIVE_DURATION_SECONDS","timestamp_column":"timestamp_col",
+                      "group_by":["entity_id"],"result":"dt_s","clip_negative":true,"fill_first":0.0},
+                     {"op":"PARALLEL_AGGREGATE","branches":[
+                       {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
+                        "group_by":["entity_id"],"aggregate":"sum","column":"dt_s","result_column":"a_duration"},
+                       {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
+                        "group_by":["entity_id"],"aggregate":"sum","column":"dt_s","result_column":"b_duration"}
+                     ]}]
                     Example (derived metric — a DERIVE_* step must run first, group A vs group B metric
                     PER ENTITY, then find which entity differs most — "per entity"/"which X" is explicit):
                     [{"op":"DERIVE_VECTOR_MAGNITUDE","columns":["c1","c2","c3"],"result":"derived_metric"},
@@ -1689,6 +1879,12 @@ COMPARE_VALUES      {"op":"COMPARE_VALUES","mode":"difference|abs_difference|rat
                     overall comparison (see the PARALLEL_AGGREGATE section above for the worked example).
                     DO NOT use after only ONE AGGREGATE_COLUMN/AGGREGATE_GROUPS step, and DO NOT use after
                     AGGREGATE_PARTITIONS (use COMPARE_PARTITIONS for that).
+                    TAKES NO COLUMN REFERENCES. The only fields are mode, label_a and label_b — label_a
+                    and label_b are display names for the two scalars already on the plan's scalar trail,
+                    NOT column names. There is no "column1", "column2", "column", "left" or "right" field;
+                    emitting one fails structural validation immediately. To compare two columns, reduce
+                    each to a scalar with its own AGGREGATE_COLUMN step first, in the order you want them
+                    compared (label_a describes the FIRST scalar, label_b the SECOND).
 
 PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|random_forest|one_nearest_neighbor|hist_gradient_boosting",
                      "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
@@ -1697,6 +1893,49 @@ PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|ran
                     feature_columns must be listed explicitly.
 
 AGG is one of: min, max, mean, median, sum, count, std, var, nunique, rms.
+
+WORKED EXAMPLES — three question shapes that are easy to confuse. Substitute the real schema
+column names; the placeholder names below are illustrative only.
+
+W1. OVERALL comparison of a DERIVED metric between two label groups.
+    Question shape: "Compare <derived metric> between <group A activities> and <group B activities>."
+    There is no entity in the question, so there is no per-entity layer in the plan (rule R1).
+    [{"op":"DERIVE_VECTOR_MAGNITUDE","columns":["c1","c2","c3"],"result":"derived_metric"},
+     {"op":"SPLIT_BY_VALUES","column":"category_col","values":["cat_1","cat_2","cat_3"],"label":"group_a"},
+     {"op":"SPLIT_BY_VALUES","column":"category_col","values":["cat_4","cat_5"],"label":"group_b"},
+     {"op":"AGGREGATE_PARTITIONS","partitions":["group_a","group_b"],"aggregate":"mean","column":"derived_metric"},
+     {"op":"COMPARE_PARTITIONS","mode":"difference"}]
+    WRONG for this question: PARALLEL_AGGREGATE grouped by an entity key, then RANK_ROWS — that
+    answers "which entity" and silently changes both the statistic and the question.
+
+W2. PER-ENTITY comparison of DURATION, asking which entity exceeds by the largest amount.
+    Question shape: "Which <entity> spent more time in <group A> than in <group B>?"
+    Elapsed time is derived first (rule R3); the entity key makes this per-entity (rule R2).
+    [{"op":"DERIVE_DURATION_SECONDS","timestamp_column":"timestamp_col","group_by":["entity_id"],
+      "result":"dt_s","clip_negative":true,"fill_first":0.0},
+     {"op":"PARALLEL_AGGREGATE","branches":[
+       {"filter_column":"category_col","filter_values":["cat_1","cat_2"],
+        "group_by":["entity_id"],"aggregate":"sum","column":"dt_s","result_column":"a_duration"},
+       {"filter_column":"category_col","filter_values":["cat_3","cat_4"],
+        "group_by":["entity_id"],"aggregate":"sum","column":"dt_s","result_column":"b_duration"}
+     ]},
+     {"op":"DERIVE_BINARY","left":"a_duration","right":"b_duration","operation":"subtract","result":"duration_delta"},
+     {"op":"FILTER_COMPARE","column":"duration_delta","comparator":"gt","value":0},
+     {"op":"RANK_ROWS","column":"duration_delta","direction":"max","return_columns":["entity_id","a_duration","b_duration","duration_delta"]}]
+    Use "subtract", NOT "abs_difference": "exceeds by the largest amount" is directional, and an
+    absolute difference would also rank entities that went the other way. The FILTER_COMPARE keeps
+    only entities that genuinely exceed. RANK_ROWS returns the entity key so the answer names someone.
+
+W3. OVERALL comparison of a RAW column between exactly two label groups.
+    Question shape: "What is the difference in average <raw column> between <label A> and <label B>?"
+    Still an overall comparison (rule R1) — two labels are not two entities. Do not add a per-entity
+    aggregation layer.
+    [{"op":"SPLIT_BY_VALUES","column":"category_col","values":["cat_1"],"label":"group_a"},
+     {"op":"SPLIT_BY_VALUES","column":"category_col","values":["cat_2"],"label":"group_b"},
+     {"op":"AGGREGATE_PARTITIONS","partitions":["group_a","group_b"],"aggregate":"mean","column":"metric_col"},
+     {"op":"COMPARE_PARTITIONS","mode":"abs_difference"}]
+    Use "abs_difference" when the question asks for "the difference" with no direction implied, and
+    "difference" when it asks how much A exceeds B.
 
 INVALID PATTERN—never emit:
 [{"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"X"}, {"op":"FILTER_IN",...}, {"op":"GROUP_AGGREGATE",...,"result_column":"Y"}]
@@ -1731,5 +1970,47 @@ INVALID PATTERN—never emit:
     with "references unknown column". For a per-group range/spread (max vs min, or any two aggregates of
     the same column needed as separate values), use PARALLEL_AGGREGATE with one branch per aggregate, each
     given an explicit "result_column" name — those are the only per-group aggregate names that legitimately
-    exist for later steps to reference. See the PARALLEL_AGGREGATE "per-group range" example above.\
+    exist for later steps to reference. See the PARALLEL_AGGREGATE "per-group range" example above.
+
+REJECTED PATTERNS — each of these fails validation. Do not emit them.
+
+X1. Summing a timestamp to mean "duration".
+    REJECTED: {"op":"AGGREGATE_COLUMN","column":"timestamp_col","aggregate":"sum"}
+    REJECTED: {"op":"GROUP_AGGREGATE","group_by":["entity_id"],"aggregate":"sum","column":"timestamp_col"}
+    REJECTED: a PARALLEL_AGGREGATE branch with "aggregate":"sum","column":"timestamp_col"
+    CORRECT:  DERIVE_DURATION_SECONDS(timestamp_column="timestamp_col", group_by=["entity_id"],
+              result="dt_s") first, then aggregate "dt_s" with sum. Adding timestamps together
+              produces a meaningless number that scales with row count, not with elapsed time.
+
+X2. Passing columns to COMPARE_VALUES.
+    REJECTED: {"op":"COMPARE_VALUES","column1":"a_metric","column2":"b_metric"}
+    REJECTED: {"op":"COMPARE_VALUES","mode":"difference","column":"a_metric"}
+    CORRECT:  {"op":"AGGREGATE_COLUMN","column":"a_metric","aggregate":"mean"},
+              {"op":"AGGREGATE_COLUMN","column":"b_metric","aggregate":"mean"},
+              {"op":"COMPARE_VALUES","mode":"difference","label_a":"a","label_b":"b"}
+    COMPARE_VALUES has exactly three optional fields: mode, label_a, label_b. Any other key is
+    rejected structurally because every operator forbids unknown fields.
+
+X3. PARALLEL_AGGREGATE for an overall dataset comparison.
+    REJECTED for "compare <metric> between group A and group B overall / in general":
+              PARALLEL_AGGREGATE(group_by=["entity_id"], ...) followed by RANK_ROWS
+    CORRECT:  SPLIT_BY_VALUES + SPLIT_BY_VALUES + AGGREGATE_PARTITIONS + COMPARE_PARTITIONS (see W1).
+    PARALLEL_AGGREGATE requires an entity dimension that the question actually named.
+
+X4. RANK_ROWS after PARALLEL_AGGREGATE without the grouping key.
+    REJECTED: {"op":"RANK_ROWS","column":"a_duration","direction":"max","return_columns":["a_duration"]}
+    CORRECT:  {"op":"RANK_ROWS","column":"a_duration","direction":"max",
+               "return_columns":["entity_id","a_duration"]}
+    At least one of the PARALLEL_AGGREGATE group_by keys must appear in return_columns, otherwise
+    the result is a number that identifies nobody.
+
+X5. Legacy / invented fields that are not part of this vocabulary.
+    REJECTED: "group_columns" (the field is "group_by" on GROUP_AGGREGATE, PARALLEL_AGGREGATE
+              branches and DERIVE_DURATION_SECONDS)
+    REJECTED: "aggregates":[...] — every operator takes exactly ONE "aggregate" string. To produce
+              two aggregates of the same column side by side, use PARALLEL_AGGREGATE with one
+              branch per aggregate, each with its own "result_column".
+    REJECTED: "result_column" on GROUP_AGGREGATE — only PARALLEL_AGGREGATE branches name a result.
+    REJECTED: "as", "alias", "name", "output", "unit", "timestamp" or any other field not listed in
+              this spec. Every operator sets extra="forbid"; an unlisted field fails Gate 1.\
 """

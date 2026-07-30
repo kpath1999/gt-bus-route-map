@@ -70,7 +70,7 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 5,
         "text": (
-            "Compare the overall acceleration magnitude between dynamic movements and resting states."
+            "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE",
@@ -83,8 +83,8 @@ WISDM_QUERIES: list[dict] = [
     {
         "id": 6,
         "text": (
-            "Identify the user whose total recorded duration of resting states "
-            "exceeds their duration of dynamic movements by the largest margin."
+            "Identify the user whose total recorded duration of resting states (sitting,standing) "
+            "exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
         ),
         "complexity": "intermediate",
         "operation": "FILTER+GROUPBY+COMPARE",
