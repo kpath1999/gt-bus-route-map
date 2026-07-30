@@ -1694,6 +1694,11 @@ R5. AN AGGREGATE OVER ZERO ROWS IS AN ERROR, NOT A RESULT.
     If a filter or split can empty the frame, the plan fails loudly rather than returning NaN.
     Check that filter values actually exist in the schema's sample values before emitting them.
 
+R6. DURATION MUST BE DERIVED FROM THE FULL TIMELINE, NOT A CATEGORY SUBSET.
+    DERIVE_DURATION_SECONDS.group_by is the entity key only. Computing elapsed time only within 
+    rows of one category column treats non-adjacent occurrences of that label as continuous, 
+    corrupting every downstream sum. Category filtering happens after this step, never inside it.    
+
 OPERATORS:
 
 FILTER_COMPARE      {"op":"FILTER_COMPARE","column":str,"comparator":"eq|ne|gt|gte|lt|lte","value":scalar}
@@ -1736,9 +1741,12 @@ DERIVE_DURATION_SECONDS {"op":"DERIVE_DURATION_SECONDS","timestamp_column":str,"
                     timestamps WITHIN each group, and writes it as seconds into "result" (default
                     "dt_s"). The first row of every group gets "fill_first" (default 0.0), and
                     "clip_negative" (default true) floors negative gaps at zero.
-                    group_by must name at least one column and should include every column that
-                    defines a contiguous recording session (typically the entity key, plus the
-                    category column when time is attributed per category).
+                    group_by must contain ONLY the entity key, NEVER include the category column 
+                    you intend to filter by afterward — doing so breaks time-contiguity by grouping 
+                    non-adjacent samples of the same category together. Filter by category AFTER 
+                    duration is derived, inside PARALLEL_AGGREGATE branches or FILTER_IN, inside 
+                    PARALLEL_AGGREGATE branches or FILTER_IN, never inside DERIVE_DURATION_SECONDS's 
+                    group_by.
                     timestamp_column must be a datetime column or a numeric nanosecond counter.
                     THIS IS THE ONLY WAY TO EXPRESS DURATION. After it, aggregate "result" normally:
                     AGGREGATE_COLUMN(column="dt_s",aggregate="sum") for a total, or a
@@ -2013,4 +2021,12 @@ X5. Legacy / invented fields that are not part of this vocabulary.
     REJECTED: "result_column" on GROUP_AGGREGATE — only PARALLEL_AGGREGATE branches name a result.
     REJECTED: "as", "alias", "name", "output", "unit", "timestamp" or any other field not listed in
               this spec. Every operator sets extra="forbid"; an unlisted field fails Gate 1.\
+
+X6. Including the category/label column in DERIVE_DURATION_SECONDS.group_by.
+    REJECTED: {"op":"DERIVE_DURATION_SECONDS","timestamp_column":"timestamp_col",
+               "group_by":["entity_id","category_label"],"result":"dt_s"}
+    CORRECT:  {"op":"DERIVE_DURATION_SECONDS","timestamp_column":"timestamp_col",
+               "group_by":["entity_id"],"result":"dt_s"}
+    Filtering by category happens in the PARALLEL_AGGREGATE branches that consume dt_s,
+    never in the group_by of the derivation itself.
 """
