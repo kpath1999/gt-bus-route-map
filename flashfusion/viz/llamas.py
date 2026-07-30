@@ -430,8 +430,13 @@ def _build_parser() -> argparse.ArgumentParser:
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
         "--results-root",
-        default=str(script_dir.parent / "results" / "ff_newlook_with_react"),
+        default=str(script_dir.parent / "results" / "ff_react_operators"),
         help="Root folder containing dataset-level metrics.csv files.",
+    )
+    parser.add_argument(
+        "--run-tag",
+        required=True,
+        help="Benchmark run tag, e.g., run_20260730_131331.",
     )
     parser.add_argument(
         "--flash-fusion-root",
@@ -478,24 +483,24 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="performance_ffpaper ECG Flash-Fusion dedicated run root.",
     )
-    parser.add_argument(
-        "--react-before-root",
-        default=None,
-        help=(
-            "Flat-layout root for ReAct 'before' (no abstention) OOS results "
-            "(root/<dataset>/metrics.csv). Produced by run_react_BeforeAfter.sh. "
-            "When set, takes precedence over --react-july26-root for the OOS figure."
-        ),
-    )
-    parser.add_argument(
-        "--react-after-root",
-        default=str(script_dir.parent / "results" / "react_after"),
-        help=(
-            "Flat-layout root for ReAct 'after' (with abstention) OOS results "
-            "(root/<dataset>/metrics.csv). Used for both the OOS abstention figure "
-            "and the Out-of-Scope portion of the primary accuracy figures."
-        ),
-    )
+    # parser.add_argument(
+    #     "--react-before-root",
+    #     default=None,
+    #     help=(
+    #         "Flat-layout root for ReAct 'before' (no abstention) OOS results "
+    #         "(root/<dataset>/metrics.csv). Produced by run_react_BeforeAfter.sh. "
+    #         "When set, takes precedence over --react-july26-root for the OOS figure."
+    #     ),
+    # )
+    # parser.add_argument(
+    #     "--react-after-root",
+    #     default=str(script_dir.parent / "results" / "react_after"),
+    #     help=(
+    #         "Flat-layout root for ReAct 'after' (with abstention) OOS results "
+    #         "(root/<dataset>/metrics.csv). Used for both the OOS abstention figure "
+    #         "and the Out-of-Scope portion of the primary accuracy figures."
+    #     ),
+    # )
     parser.add_argument(
         "--react-july26-root",
         default=str(script_dir.parent / "results" / "july26"),

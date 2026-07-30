@@ -1,0 +1,2 @@
+baseline,gt_score,latency_s,cost_usd,input_tokens,output_tokens,runs
+FLASH_FUSION,0.9375,9.105743199586868,0.003615805625,5961.083333333333,125.02083333333333,3
