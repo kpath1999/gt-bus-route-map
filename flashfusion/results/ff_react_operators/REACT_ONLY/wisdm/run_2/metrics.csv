@@ -1,0 +1,17 @@
+baseline,query_id,gt_score,gt_method,latency_s,cost_usd,input_tokens,output_tokens,executed,rejected,judge_verdict,stages_run,execution_path,plan_validation_stage_failed,plan_source,operators_used,s1_latency_s,s2_latency_s,s3_latency_s,guardrail_latency_s,typed_exec_latency_s,agent_latency_s,s1_latency_ms,s2_latency_ms,s3_latency_ms,guardrail_latency_ms,typed_exec_latency_ms,agent_latency_ms
+REACT_ONLY,1,1.0,llm_judge_score,4.1231529712677,0.00030771,472,37,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,2,0.0,llm_judge_score,9.273788213729858,0.00028547,441,32,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,3,1.0,llm_judge_score,4.016720294952393,0.00033,483,57,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,4,1.0,llm_judge_score,4.719351053237915,0.00029647,465,28,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,5,0.0,llm_judge_score,6.896720886230469,0.00045797,487,216,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,6,1.0,llm_judge_score,35.036438941955566,0.00052133,502,285,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,7,1.0,llm_judge_score,8.138672828674316,0.00038748,480,132,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,8,1.0,llm_judge_score,4.432996988296509,0.0003292499999999999,467,68,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,9,1.0,guardrail_skip_expected_rejection,1.511854887008667,0.00027328,419,33,False,True,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,10,1.0,guardrail_skip_expected_rejection,61.14759707450867,0.00027644,419,37,False,True,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,11,1.0,guardrail_skip_expected_rejection,1.237905740737915,0.00025812000000000003,400,28,False,True,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,12,1.0,guardrail_skip_expected_rejection,61.73069500923157,0.00028496999999999995,404,59,False,True,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,13,1.0,llm_judge_score,20.93486499786377,0.00052922,585,233,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,14,0.0,llm_judge_score,60.00478219985962,0.00087836,917,427,False,False,N/A,timeout,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,15,1.0,llm_judge_score,9.69180417060852,0.0005378900000000001,593,238,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+REACT_ONLY,16,1.0,llm_judge_score,40.33122205734253,0.00057168,586,286,True,False,N/A,react_agent,,,,,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

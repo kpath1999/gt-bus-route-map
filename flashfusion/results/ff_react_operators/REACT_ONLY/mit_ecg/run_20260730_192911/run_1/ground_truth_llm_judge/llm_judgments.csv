@@ -1,0 +1,211 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,1,What is the minimum MLII value recorded for record_id 101?,False,Minimum MLII for record_id 101 is -3.1750.,The minimum MLII value recorded for record_id 101 is -3.175.,False,True,"result = df.loc[df['record_id'] == 101, 'MLII'].min()",PASS,1.0,Candidate answer matches ground truth,SOUND,Minimum MLII value is correctly stated,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Minimum MLII value is correctly stated""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,2,What is the total recording duration in seconds (maximum time_s) for record_id 234?,False,Total recording duration for record_id 234 is 1805.5528 seconds.,The total recording duration in seconds for record_id 234 is 1805.55 seconds.,False,True,"result = df.loc[df['record_id'] == 234, 'time_s'].max()",PASS,1.0,Candidate answer matches ground truth within minor rounding difference.,SOUND,Ground truth is consistent with deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth within minor rounding difference."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,3,"For record_id 106, how many samples have MLII > 0?",False,record_id 106 has 111769 samples with MLII > 0.,"For record_id 106, there are 111769 samples with MLII > 0.",False,True,result = (df[df['record_id'] == 106]['MLII'] > 0).sum(),PASS,1.0,The candidate answer matches the ground truth exactly.,SOUND,Matches the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth exactly."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,4,What is the timestamp (time_s) of the last annotated beat for record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,The timestamp (time_s) of the last annotated beat for record_id 221 is 1805.0277777777776.,False,True,"result = df[(df['record_id'] == 221) & (df['annotation'] != '')].sort_values(by='time_s', ascending=False)['time_s'].iloc[0]",PASS,1.0,The candidate answer matches the ground truth timestamp,SOUND,Timestamp matches the deterministic sanity hint,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth timestamp"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Timestamp matches the deterministic sanity hint""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,5,"For record_id 208, what is the average annotation count per timestamp (time_s)?",False,"For record_id 208, the average annotation count per timestamp (time_s) is 1.000000.",The average annotation count per timestamp (time_s) for record_id 208 is 1.0.,False,True,result = df[df['record_id'] == 208].groupby('time_s')['annotation'].count().mean(),PASS,1.0,The candidate answer matches the ground truth,SOUND,Average annotation count per timestamp is correctly stated as 1,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Average annotation count per timestamp is correctly stated as 1""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,6,Which record_id exhibits the largest difference between maximum and minimum MLII?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,The record_id that exhibits the largest difference between maximum and minimum MLII is 116.,False,True,result = df.groupby('record_id')['MLII'].apply(lambda x: x.max() - x.min()).idxmax(),PASS,1.0,The candidate answer correctly identifies record_id 116 as having the largest difference between maximum and minimum MLII.,SOUND,The ground truth answer is consistent with the deterministic sanity hint.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly identifies record_id 116 as having the largest difference between maximum and minimum MLII."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth answer is consistent with the deterministic sanity hint.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,7,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.",The 10-second interval that contains the highest number of annotated beats for record_id 101 is the interval ending at 110.0 seconds.,False,True,"import pandas as pd
+
+# Filter the DataFrame for record_id 101 and non-empty annotations
+df_filtered = df[(df['record_id'] == 101) & (df['annotation'] != '')]
+
+# Round the time_s column to the nearest 10-second interval
+df_filtered['interval'] = (df_filtered['time_s'] // 10) * 10
+
+# Count the number of annotated beats in each interval
+interval_counts = df_filtered['interval'].value_counts()
+
+# Get the interval with the highest number of annotated beats
+result = interval_counts.idxmax()",FAIL,0.0,Candidate answer refers to a different interval,SOUND,"Ground truth clearly states the interval [110s, 120s)","```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer refers to a different interval"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states the interval [110s, 120s)""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,8,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,The RMS of the MLII signal for record_id 106 is 0.4088.,False,True,"import numpy as np
+
+# Filter the DataFrame for record_id 106
+df_filtered = df[df['record_id'] == 106]
+
+# Calculate the root mean square (RMS) of the MLII signal
+rms = np.sqrt(np.mean(df_filtered['MLII'] ** 2))
+
+result = rms",PASS,1.0,The candidate answer matches the ground truth,SOUND,The ground truth RMS value is provided,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The ground truth RMS value is provided""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,13,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict whether an annotation is present for the first row in the holdout set.,False,Logistic regression predicts annotation '0' for the first holdout row.,"Based on the execution output, the prediction for the presence of an annotation for the first row in the holdout set is: **0**, indicating that an annotation is not present.",False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+# Filter to record_id 101 and sort rows by time_s
+df_filtered = df[df['record_id'] == 101].sort_values(by='time_s')
+
+# Split data into training and holdout sets
+train_size = int(0.8 * len(df_filtered))
+train_data, holdout_data = df_filtered[:train_size], df_filtered[train_size:]
+
+# Define features and target
+X_train = train_data[['MLII', 'V1']]
+y_train = (train_data['annotation'] != '').astype(int)
+
+# Train logistic regression model
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# Predict whether an annotation is present for the first row in the holdout set
+X_holdout = holdout_data[['MLII', 'V1']].iloc[0].values.reshape(1, -1)
+prediction = model.predict(X_holdout)
+
+result = prediction[0]",PASS,1.0,The candidate answer correctly predicts the absence of an annotation for the first holdout row.,SOUND,Logistic regression prediction matches the expected outcome.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly predicts the absence of an annotation for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Logistic regression prediction matches the expected outcome.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,14,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict whether an annotation is present for the first row in the holdout set.,False,Random forest predicts annotation '0' for the first holdout row.,The prediction for the presence of an annotation in the first row of the holdout set is: **False**,False,True,"import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# Filter to record_id 101 and sort rows by time_s
+df_filtered = df[df['record_id'] == 101].sort_values(by='time_s')
+
+# Split data into training and holdout sets
+train_size = int(0.8 * len(df_filtered))
+train_data, holdout_data = df_filtered[:train_size], df_filtered[train_size:]
+
+# Define features and target
+X_train = train_data[['MLII', 'V1']]
+y_train = (train_data['annotation'] != '').astype(int)
+
+# Train a random forest model
+model = RandomForestClassifier()
+model.fit(X_train, y_train)
+
+# Predict whether an annotation is present for the first row in the holdout set
+X_holdout = holdout_data[['MLII', 'V1']].iloc[0].values.reshape(1, -1)
+prediction = model.predict(X_holdout)
+
+result = bool(prediction[0])",FAIL,0.0,Candidate answer implies a different referent,SOUND,Ground truth clearly states '0' as the predicted annotation,"```json
+{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer implies a different referent"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth clearly states '0' as the predicted annotation""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,15,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict whether an annotation is present for the first row in the holdout set.,False,1-nearest-neighbor predicts annotation '0' for the first holdout row.,The prediction for the presence of an annotation in the first row of the holdout set is: **0** (indicating no annotation is present).,False,True,"import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+
+# Filter to record_id 101 and sort by time_s
+df_filtered = df[df['record_id'] == 101].sort_values(by='time_s')
+
+# Split data into training and holdout sets
+train_size = int(0.8 * len(df_filtered))
+train_data = df_filtered[:train_size]
+holdout_data = df_filtered[train_size:]
+
+# Train a 1-nearest-neighbor model
+X_train = train_data[['MLII', 'V1']]
+y_train = (train_data['annotation'] != '').astype(int)
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train, y_train)
+
+# Predict whether an annotation is present for the first row in the holdout set
+X_test = holdout_data[['MLII', 'V1']].iloc[[0]]
+y_pred = knn.predict(X_test)
+
+result = y_pred[0]",PASS,1.0,Candidate answer matches the ground truth prediction.,SOUND,1-nearest-neighbor model predicts annotation '0'.,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""1-nearest-neighbor model predicts annotation '0'.""
+}
+```"
+[in_memory_benchmark_run],REACT_ONLY,16,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict whether an annotation is present for the first row in the holdout set.,False,Hist gradient boosting predicts annotation '0' for the first holdout row.,"Based on the execution output, the prediction for the presence of an annotation for the first row in the holdout set is: **0**, indicating that no annotation is predicted.",False,True,"import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.preprocessing import LabelEncoder
+
+# Filter to record_id 101 and sort rows by time_s
+df_filtered = df[df['record_id'] == 101].sort_values(by='time_s')
+
+# Split data into training and holdout sets
+train_size = int(0.8 * len(df_filtered))
+train_data, holdout_data = df_filtered[:train_size], df_filtered[train_size:]
+
+# Prepare data for training
+X_train = train_data[['MLII', 'V1']]
+y_train = train_data['annotation'].apply(lambda x: 1 if x != '' else 0)
+
+# Train hist gradient boosting model
+le = LabelEncoder()
+y_train = le.fit_transform(y_train)
+model = HistGradientBoostingClassifier()
+model.fit(X_train, y_train)
+
+# Predict whether an annotation is present for the first row in the holdout set
+X_holdout = holdout_data[['MLII', 'V1']].iloc[0].values.reshape(1, -1)
+prediction = model.predict(X_holdout)
+
+# Convert prediction back to annotation presence (1) or absence (0)
+result = 1 if prediction[0] == 1 else 0",PASS,1.0,Candidate answer matches ground truth prediction,SOUND,Hist gradient boosting predicts annotation '0' for the first holdout row,"```json
+{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches ground truth prediction"",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Hist gradient boosting predicts annotation '0' for the first holdout row""
+}
+```"

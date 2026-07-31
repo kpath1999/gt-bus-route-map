@@ -1,0 +1,2 @@
+baseline,accuracy,latency_s,input_tokens,output_tokens,total_tokens,cost_usd,executed_rate,rejected_rate
+REACT_ONLY,0.90625,17.17471291373173,774.96875,132.21875,907.1875,0.0005616843749999709,0.7395833333333333,0.25
