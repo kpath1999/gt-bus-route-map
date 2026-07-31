@@ -548,6 +548,52 @@ def aggregate_accuracy_by_dataset(df: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["dataset", "baseline"]).reset_index(drop=True)
 
 
+def aggregate_cost_by_dataset(df: pd.DataFrame, scale: float = 1e5) -> pd.DataFrame:
+    per_run = (
+        df.groupby(["baseline", "dataset", "run_id"], as_index=False, observed=True)
+        .agg(cost_usd=("cost_usd", "mean"))
+        .copy()
+    )
+    out = (
+        per_run.groupby(["baseline", "dataset"], as_index=False, observed=True)
+        .agg(
+            mean=("cost_usd", "mean"),
+            std=("cost_usd", "std"),
+            n_runs=("run_id", "nunique"),
+        )
+        .copy()
+    )
+    out["std"] = out["std"].fillna(0.0)
+    out["mean"] = out["mean"] * scale
+    out["std"] = out["std"] * scale
+    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
+    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
+    return out.sort_values(["dataset", "baseline"]).reset_index(drop=True)
+
+
+def aggregate_cost_by_query_type(df: pd.DataFrame, scale: float = 1e5) -> pd.DataFrame:
+    per_run_dataset = (
+        df.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)
+        .agg(cost_usd=("cost_usd", "mean"))
+        .copy()
+    )
+    out = (
+        per_run_dataset.groupby(["baseline", "query_type"], as_index=False, observed=True)
+        .agg(
+            mean=("cost_usd", "mean"),
+            std=("cost_usd", "std"),
+            n=("cost_usd", "count"),
+        )
+        .copy()
+    )
+    out["std"] = out["std"].fillna(0.0)
+    out["mean"] = out["mean"] * scale
+    out["std"] = out["std"] * scale
+    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
+
+
 def aggregate_accuracy_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
     per_run_dataset = (
         df.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)

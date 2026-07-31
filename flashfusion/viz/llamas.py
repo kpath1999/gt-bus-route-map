@@ -41,6 +41,8 @@ from measure import (
     QUERY_TYPE_ORDER,
     aggregate_accuracy_by_dataset,
     aggregate_accuracy_by_query_type,
+    aggregate_cost_by_dataset,
+    aggregate_cost_by_query_type,
     display_baseline,
 )
 
@@ -169,6 +171,166 @@ def _bars_with_error_labels(
             fontsize=9.0,
             fontweight="bold",
         )
+
+
+def _cost_bars_with_error_labels(
+    ax,
+    xpos: list[float],
+    means: list[float],
+    stds: list[float],
+    width: float,
+    baseline: str,
+    label_shift: float = 0.0,
+):
+    means_arr = np.asarray(means, dtype=float)
+    stds_arr = np.asarray(stds, dtype=float)
+    lower = np.minimum(stds_arr, means_arr)
+    upper = stds_arr
+    bounded_yerr = np.vstack([lower, upper])
+
+    bars = ax.bar(
+        xpos,
+        means,
+        width,
+        label=display_baseline(baseline),
+        color=BASELINE_COLORS.get(baseline, "#999999"),
+        edgecolor="#333333",
+        linewidth=0.9,
+        yerr=bounded_yerr,
+        error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+        hatch=BASELINE_HATCHES.get(baseline),
+    )
+    for bar, val, err in zip(bars, means, upper):
+        if val <= 0:
+            continue
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + err + max(abs(val) * 0.02, 0.05) + label_shift,
+            f"{val:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=9.0,
+            fontweight="bold",
+        )
+
+
+def plot_cost_across_datasets(
+    summary: pd.DataFrame,
+    out_path: Path,
+    baselines: list[str] | None = None,
+) -> None:
+    plt.rcParams.update(RC)
+
+    x_labels = DATASET_ORDER
+    baselines = baselines or DATASET_FIG_BASELINES
+    x = list(range(len(x_labels)))
+    width = 0.8 / max(len(baselines), 1)
+
+    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+    peak = 0.0
+    for i, baseline in enumerate(baselines):
+        bdf = summary[summary["baseline"] == baseline]
+        means: list[float] = []
+        stds: list[float] = []
+        for dataset in x_labels:
+            row = bdf[bdf["dataset"] == dataset]
+            if row.empty:
+                means.append(0.0)
+                stds.append(0.0)
+            else:
+                means.append(float(row["mean"].iloc[0]))
+                stds.append(float(row["std"].iloc[0]))
+
+        xpos = [p - 0.4 + (i + 0.5) * width for p in x]
+        _cost_bars_with_error_labels(ax, xpos, means, stds, width, baseline, label_shift=0.02 * (i % 2))
+        peak = max(peak, max((m + s for m, s in zip(means, stds)), default=0.0))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels([DATASET_LABELS[d] for d in x_labels])
+    ax.set_xlabel("Dataset")
+    ax.set_ylabel(r"Cost ($\times 10^{-5}$ USD)")
+    ax.set_ylim(0, peak * 1.2 if peak > 0 else 1.0)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(
+        ncol=min(5, max(1, len(baselines))),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        frameon=False,
+        columnspacing=0.9,
+        handletextpad=0.5,
+    )
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+def plot_cost_across_query_types(
+    summary: pd.DataFrame,
+    out_path: Path,
+    baselines: list[str] | None = None,
+    query_types: list[str] | None = None,
+) -> None:
+    plt.rcParams.update(RC)
+
+    if query_types is None:
+        present_query_types = [
+            str(value)
+            for value in summary["query_type"].dropna().unique().tolist()
+            if str(value) in QUERY_TYPE_ORDER
+        ]
+        x_labels = [qt for qt in QUERY_TYPE_ORDER if qt in present_query_types]
+    else:
+        x_labels = [qt for qt in QUERY_TYPE_ORDER if qt in query_types]
+    baselines = baselines or TOP3_BASELINES
+    x = list(range(len(x_labels)))
+    width = 0.8 / max(len(baselines), 1)
+
+    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+    peak = 0.0
+    for i, baseline in enumerate(baselines):
+        bdf = summary[summary["baseline"] == baseline]
+        means: list[float] = []
+        stds: list[float] = []
+        for query_type in x_labels:
+            row = bdf[bdf["query_type"] == query_type]
+            if row.empty:
+                means.append(0.0)
+                stds.append(0.0)
+            else:
+                means.append(float(row["mean"].iloc[0]))
+                stds.append(float(row["std"].iloc[0]))
+
+        xpos = [p - 0.4 + (i + 0.5) * width for p in x]
+        _cost_bars_with_error_labels(ax, xpos, means, stds, width, baseline, label_shift=0.02 * (i % 2))
+        peak = max(peak, max((m + s for m, s in zip(means, stds)), default=0.0))
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_labels)
+    ax.set_xlabel("Query Type")
+    ax.set_ylabel(r"Cost ($\times 10^{-5}$ USD)")
+    ax.set_ylim(0, peak * 1.2 if peak > 0 else 1.0)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(
+        ncol=min(3, max(1, len(baselines))),
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        frameon=False,
+    )
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
 
 
 def plot_accuracy_across_datasets(
@@ -747,6 +909,8 @@ def main() -> None:
 
     by_dataset = aggregate_accuracy_by_dataset(df)
     by_query_type = aggregate_accuracy_by_query_type(df)
+    cost_by_dataset = aggregate_cost_by_dataset(df)
+    cost_by_query_type = aggregate_cost_by_query_type(df)
 
     if by_dataset.empty:
         raise SystemExit(
@@ -762,6 +926,8 @@ def main() -> None:
 
     fig1 = output_dir / "accuracy_vs_baselines_across_datasets.png"
     fig2 = output_dir / "accuracy_vs_baselines_across_query_types.png"
+    fig3 = output_dir / "cost_vs_baselines_across_datasets.png"
+    fig4 = output_dir / "cost_vs_baselines_across_query_types.png"
 
     plot_accuracy_across_datasets(
         by_dataset,
@@ -774,6 +940,17 @@ def main() -> None:
         baselines=query_type_baselines,
         query_types=selected_query_types,
     )
+    plot_cost_across_datasets(
+        cost_by_dataset,
+        fig3,
+        baselines=dataset_baselines,
+    )
+    plot_cost_across_query_types(
+        cost_by_query_type,
+        fig4,
+        baselines=query_type_baselines,
+        query_types=selected_query_types,
+    )
 
     by_dataset.to_csv(
         output_dir / "accuracy_vs_baselines_across_datasets_summary.csv",
@@ -783,9 +960,19 @@ def main() -> None:
         output_dir / "accuracy_vs_baselines_across_query_types_summary.csv",
         index=False,
     )
+    cost_by_dataset.to_csv(
+        output_dir / "cost_vs_baselines_across_datasets_summary.csv",
+        index=False,
+    )
+    cost_by_query_type.to_csv(
+        output_dir / "cost_vs_baselines_across_query_types_summary.csv",
+        index=False,
+    )
 
     print(f"Wrote {fig1}")
     print(f"Wrote {fig2}")
+    print(f"Wrote {fig3}")
+    print(f"Wrote {fig4}")
 
 
 if __name__ == "__main__":

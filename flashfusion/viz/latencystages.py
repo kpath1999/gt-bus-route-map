@@ -37,6 +37,8 @@ from measure import (
     display_baseline,
 )
 
+TWO_WAY_BASELINES = ["FLASH_FUSION", "REACT_ONLY"]
+
 RC: dict[str, Any] = {
     "font.family": "DejaVu Sans",
     "font.size": 13.5,
@@ -608,12 +610,62 @@ def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
     plt.close(fig)
 
 
+def plot_semantic_stage_comparison_overall_two(summary, out_path: Path) -> None:
+    """Stacked horizontal bar for FLASH_FUSION and REACT_ONLY only, linear x-axis.
+
+    Same as plot_semantic_stage_comparison_overall but restricted to the two
+    baselines in TWO_WAY_BASELINES (drops AutoIOT).
+    """
+    _apply_rc()
+
+    baselines = TWO_WAY_BASELINES
+    y = list(range(len(baselines)))
+    left = [0.0 for _ in baselines]
+
+    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+    for stage in SEMANTIC_STAGE_ORDER:
+        color = SEMANTIC_STAGE_COLORS[stage]
+        vals = []
+        for baseline in baselines:
+            row = summary[(summary["baseline"] == baseline) & (summary["stage"] == stage)]
+            vals.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
+
+        ax.barh(
+            y,
+            vals,
+            height=0.56,
+            left=left,
+            color=color,
+            edgecolor="#f5f5f5",
+            linewidth=0.8,
+            label=stage,
+        )
+        left = [b + v for b, v in zip(left, vals)]
+
+    ax.set_yticks(y)
+    ax.set_yticklabels([display_baseline(b) for b in baselines])
+    ax.invert_yaxis()
+    ax.set_xlabel("Avg Latency (s)")
+    ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(ncol=4, loc="upper left", bbox_to_anchor=(-0.05, -0.28), frameon=False, columnspacing=0.8)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def plot_semantic_stage_comparison(
     summary,
     out_path: Path,
     baselines: list[str] | None = None,
     query_types: list[str] | None = None,
     total_summary=None,
+    log_scale: bool = True,
 ) -> None:
     _apply_rc()
 
@@ -694,8 +746,11 @@ def plot_semantic_stage_comparison(
     ax.set_yticks(y_positions)
     ax.set_yticklabels(y_labels)
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s, log scale)")
-    ax.set_xscale("log")
+    if log_scale:
+        ax.set_xlabel("Avg Latency (s, log scale)")
+        ax.set_xscale("log")
+    else:
+        ax.set_xlabel("Avg Latency (s)")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -940,6 +995,19 @@ def main() -> None:
     )
     semantic.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_n3_summary.csv", index=False)
 
+    semantic_two = aggregate_semantic_stage_latency_by_query_type(df, baselines=TWO_WAY_BASELINES)
+    semantic_two_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=TWO_WAY_BASELINES)
+    semantic_two_out = output_dir / "semantic_stage_latency_comparison_by_baseline_two_n3.png"
+    plot_semantic_stage_comparison(
+        semantic_two,
+        semantic_two_out,
+        baselines=TWO_WAY_BASELINES,
+        query_types=selected_query_types,
+        total_summary=semantic_two_total,
+        log_scale=False,
+    )
+    semantic_two.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_two_n3_summary.csv", index=False)
+
     semantic_overall = aggregate_semantic_stage_latency_overall(df, baselines=selected_baselines)
     semantic_overall_out = output_dir / "semantic_stage_comparison_overall_n3.png"
     plot_semantic_stage_comparison_overall(semantic_overall, semantic_overall_out)
@@ -947,6 +1015,11 @@ def main() -> None:
 
     semantic_overall_log_out = output_dir / "semantic_stage_comparison_overall_log_n3.png"
     plot_semantic_stage_comparison_overall_log(semantic_overall, semantic_overall_log_out)
+
+    semantic_overall_two = aggregate_semantic_stage_latency_overall(df, baselines=TWO_WAY_BASELINES)
+    semantic_overall_two_out = output_dir / "semantic_stage_comparison_overall_two_n3.png"
+    plot_semantic_stage_comparison_overall_two(semantic_overall_two, semantic_overall_two_out)
+    semantic_overall_two.to_csv(output_dir / "semantic_stage_comparison_overall_two_n3_summary.csv", index=False)
 
     latency_compare = aggregate_latency_by_baseline_query_type(df, baselines=selected_baselines)
     latency_compare_out = output_dir / "cumulative_latency_comparison_log_by_baseline_n3.png"
@@ -960,8 +1033,10 @@ def main() -> None:
 
     print(f"Wrote {ff_out}")
     print(f"Wrote {semantic_out}")
+    print(f"Wrote {semantic_two_out}")
     print(f"Wrote {semantic_overall_out}")
     print(f"Wrote {semantic_overall_log_out}")
+    print(f"Wrote {semantic_overall_two_out}")
     print(f"Wrote {latency_compare_out}")
 
 
