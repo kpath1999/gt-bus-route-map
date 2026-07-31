@@ -33,7 +33,7 @@ QUERY_TYPE_BY_ID = {
     16: "Predictive",
 }
 
-QUERY_TYPE_ORDER = ["Direct", "Reasoning", "Out-of-Scope", "Predictive"]
+QUERY_TYPE_ORDER = ["Direct", "Reasoning", "Predictive", "Out-of-Scope"]
 DATASET_ORDER = ["bus", "wisdm", "ecg"]
 SEMANTIC_STAGE_ORDER = ["Grounding", "Validation", "Planning", "Execution"]
 BASELINE_ORDER = [

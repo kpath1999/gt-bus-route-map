@@ -44,6 +44,8 @@ from measure import (
     display_baseline,
 )
 
+from typing import Any
+
 TOP3_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
 DATASET_FIG_BASELINES = TOP3_BASELINES
 FULL_BASELINES = [
@@ -357,16 +359,23 @@ def _query_type_from_id(query_id: int) -> str:
 
 
 def _infer_dataset_from_metrics_path(metrics_path: Path) -> str | None:
-    """Infer wisdm, mit_ecg, or bus from a metrics.csv ancestor directory."""
-    known = {str(dataset).lower(): str(dataset) for dataset in DATASET_ORDER}
+    """Infer the canonical dataset code from a metrics.csv ancestor path.
+
+    Supports directory names used by the benchmark, such as ``wisdm``,
+    ``mit_ecg``, and ``bus``, as well as common display-name variants.
+    """
+    aliases = {
+        "wisdm": "wisdm",
+        "mit_ecg": "ecg",
+        "bus": "bus",
+    }
 
     for parent in metrics_path.parents:
-        name = parent.name.lower()
-        if name in known:
-            return known[name]
+        name = parent.name.strip().lower()
+        if name in aliases:
+            return aliases[name]
 
     return None
-
 
 def _load_baseline_root(
     baseline: str,
@@ -550,6 +559,9 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = _build_parser().parse_args()
 
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent.parent
+
     if args.interactive:
         roots = _prompt_for_baseline_roots(
             {
@@ -566,86 +578,143 @@ def main() -> None:
         args.hargpt_root = roots["hargpt"]
         args.llmsense_root = roots["llmsense"]
 
-        script_dir = Path(__file__).resolve().parent
-        repo_root = script_dir.parent.parent
-        output_dir = _resolve_user_path(args.output_dir, repo_root)
-        assert output_dir is not None
-        output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = _resolve_user_path(args.output_dir, repo_root)
+    assert output_dir is not None
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-        selected_baselines = [
-            baseline.strip().upper()
-            for baseline in (
-                _parse_csv_list(args.baseline_set) or list(FULL_BASELINES)
-            )
-        ]
-        dataset_baselines = [
-            baseline.strip().upper()
-            for baseline in (
-                _parse_csv_list(args.dataset_baseline_set) or list(FULL_BASELINES)
-            )
-        ]
-        query_type_baselines = [
-            baseline.strip().upper()
-            for baseline in (
-                _parse_csv_list(args.query_type_baseline_set) or list(TOP3_BASELINES)
-            )
-        ]
-        selected_query_types = (
-            _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
+    selected_baselines = [
+        baseline.strip().upper()
+        for baseline in (
+            _parse_csv_list(args.baseline_set) or list(FULL_BASELINES)
+        )
+    ]
+    dataset_baselines = [
+        baseline.strip().upper()
+        for baseline in (
+            _parse_csv_list(args.dataset_baseline_set) or list(FULL_BASELINES)
+        )
+    ]
+    query_type_baselines = [
+        baseline.strip().upper()
+        for baseline in (
+            _parse_csv_list(args.query_type_baseline_set) or list(TOP3_BASELINES)
+        )
+    ]
+    selected_query_types = (
+        _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
+    )
+
+    configured_roots = {
+        "FLASH_FUSION": args.flash_fusion_root,
+        "REACT_ONLY": args.react_root,
+        "AUTOIOT_PAPER": args.autoiot_root,
+        "HARGPT_PAPER": args.hargpt_root,
+        "LLMSENSE_PAPER": args.llmsense_root,
+    }
+
+    frames: list[pd.DataFrame] = []
+
+    for baseline in selected_baselines:
+        raw_root = configured_roots.get(baseline)
+
+        if raw_root is None:
+            print(f"[INFO] Skipping {baseline}: no results root provided.")
+            continue
+
+        root = _resolve_user_path(raw_root, repo_root)
+        assert root is not None
+
+        try:
+            baseline_df = _load_baseline_root(baseline, root)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[WARN] Could not load {baseline} from {root}: {exc}")
+            continue
+
+        print(
+            f"[INFO] Loaded {len(baseline_df)} rows for {baseline} "
+            f"from {root}"
+        )
+        frames.append(baseline_df)
+
+    if not frames:
+        raise SystemExit(
+            "No baseline metrics were loaded. Check the entered roots and "
+            "confirm each root contains one or more metrics.csv files."
         )
 
-        configured_roots = {
-            "FLASH_FUSION": args.flash_fusion_root,
-            "REACT_ONLY": args.react_root,
-            "AUTOIOT_PAPER": args.autoiot_root,
-            "HARGPT_PAPER": args.hargpt_root,
-            "LLMSENSE_PAPER": args.llmsense_root,
-        }
+    df = pd.concat(frames, ignore_index=True)
 
-        frames: list[pd.DataFrame] = []
+    df["baseline"] = pd.Categorical(
+        df["baseline"],
+        categories=list(BASELINE_ORDER),
+        ordered=True,
+    )
+    df["dataset"] = pd.Categorical(
+        df["dataset"],
+        categories=list(DATASET_ORDER),
+        ordered=True,
+    )
+    df["query_type"] = pd.Categorical(
+        df["query_type"],
+        categories=list(QUERY_TYPE_ORDER),
+        ordered=True,
+    )
 
-        for baseline in selected_baselines:
-            raw_root = configured_roots.get(baseline)
+    df = _filter_metrics(
+        df,
+        selected_baselines,
+        selected_query_types,
+    )
 
-            if raw_root is None:
-                print(f"[INFO] Skipping {baseline}: no results root provided.")
-                continue
-
-            root = _resolve_user_path(raw_root, repo_root)
-            assert root is not None
-
-            try:
-                baseline_df = _load_baseline_root(baseline, root)
-            except (FileNotFoundError, ValueError) as exc:
-                print(f"[WARN] Could not load {baseline} from {root}: {exc}")
-                continue
-
-            print(
-                f"[INFO] Loaded {len(baseline_df)} rows for {baseline} "
-                f"from {root}"
-            )
-            frames.append(baseline_df)
-
-        if not frames:
-            raise SystemExit(
-                "No baseline metrics were loaded. Check the entered roots and "
-                "confirm each root contains one or more metrics.csv files."
-            )
-
-        df = pd.concat(frames, ignore_index=True)
-
-        df["baseline"] = pd.Categorical(
-            df["baseline"],
-            categories=list(BASELINE_ORDER),
-            ordered=True,
+    if df.empty:
+        raise SystemExit(
+            "Metrics were loaded, but no rows remain after baseline/query-type "
+            "filtering. Check BASELINE_ORDER, QUERY_TYPE_ORDER, and the "
+            "--baseline-set / --query-types arguments."
         )
-        df["dataset"] = pd.Categorical(
-            df["dataset"],
-            categories=list(DATASET_ORDER),
-            ordered=True,
+
+    by_dataset = aggregate_accuracy_by_dataset(df)
+    by_query_type = aggregate_accuracy_by_query_type(df)
+
+    if by_dataset.empty:
+        raise SystemExit(
+            "No dataset summary rows were produced. Verify dataset codes match "
+            f"DATASET_ORDER: {list(DATASET_ORDER)}"
         )
-        df["query_type"] = pd.Categorical(
-            df["query_type"],
-            categories=list(QUERY_TYPE_ORDER),
-            ordered=True,
+
+    if by_query_type.empty:
+        raise SystemExit(
+            "No query-type summary rows were produced. Verify query types match "
+            f"QUERY_TYPE_ORDER: {list(QUERY_TYPE_ORDER)}"
         )
+
+    fig1 = output_dir / "accuracy_vs_baselines_across_datasets.png"
+    fig2 = output_dir / "accuracy_vs_baselines_across_query_types.png"
+
+    plot_accuracy_across_datasets(
+        by_dataset,
+        fig1,
+        baselines=dataset_baselines,
+    )
+    plot_accuracy_across_query_types(
+        by_query_type,
+        fig2,
+        baselines=query_type_baselines,
+        query_types=selected_query_types,
+    )
+
+    by_dataset.to_csv(
+        output_dir / "accuracy_vs_baselines_across_datasets_summary.csv",
+        index=False,
+    )
+    by_query_type.to_csv(
+        output_dir / "accuracy_vs_baselines_across_query_types_summary.csv",
+        index=False,
+    )
+
+    print(f"Wrote {fig1}")
+    print(f"Wrote {fig2}")
+
+
+if __name__ == "__main__":
+    main()
