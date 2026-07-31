@@ -15,6 +15,8 @@ import argparse
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -31,8 +33,8 @@ from measure import (
     aggregate_latency_by_baseline_query_type,
     aggregate_semantic_stage_latency_by_query_type,
     aggregate_semantic_stage_latency_overall,
+    aggregate_semantic_stage_total_latency_by_query_type,
     display_baseline,
-    load_all_metrics,
 )
 
 RC: dict[str, Any] = {
@@ -53,11 +55,10 @@ def _apply_rc() -> None:
     plt.rcParams.update(cast(Any, RC))
 
 FF_STAGE_SPECS = [
-    ("s1_latency_s", "Stage 1", "#2f8f57"),
-    ("s2_latency_s", "Stage 2", "#386cc8"),
-    ("s3_latency_s", "Stage 3", "#ef8b2c"),
-    ("guardrail_latency_s", "Guardrail", "#df2127"),
-    ("agent_latency_s", "Agent", "#8d67b8"),
+    ("grounding_s", "Grounding", "#2f8f57"),
+    ("validation_s", "Validation", "#df2127"),
+    ("planning_s", "Planning", "#ef8b2c"),
+    ("execution_s", "Execution", "#8d67b8"),
 ]
 
 SEMANTIC_STAGE_COLORS = {
@@ -84,14 +85,333 @@ def _filter_metrics(
     query_types: list[str] | None,
 ) -> pd.DataFrame:
     out = df.copy()
+
+    out["query_type"] = out["query_type"].map(_query_type_from_complexity)
+
     if baselines is not None:
         out = out[out["baseline"].isin(baselines)].copy()
+
     if query_types is not None:
         out = out[out["query_type"].isin(query_types)].copy()
-    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
-    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
-    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+
+    out["baseline"] = pd.Categorical(
+        out["baseline"],
+        categories=list(BASELINE_ORDER),
+        ordered=True,
+    )
+    out["dataset"] = pd.Categorical(
+        out["dataset"],
+        categories=list(DATASET_ORDER),
+        ordered=True,
+    )
+    out["query_type"] = pd.Categorical(
+        out["query_type"],
+        categories=list(QUERY_TYPE_ORDER),
+        ordered=True,
+    )
+
+    if out["query_type"].isna().any():
+        bad_rows = out.loc[
+            out["query_type"].isna(),
+            ["baseline", "dataset", "query_id"],
+        ]
+        raise ValueError(
+            "Unknown query_type values were converted to NaN. "
+            f"Example rows:\n{bad_rows.head(10).to_string(index=False)}"
+        )
+
     return out
+
+
+def _prompt_for_root(baseline_label: str, current_default: str | None) -> str | None:
+    """Prompt the user for a baseline's results root, defaulting to current_default.
+
+    Pressing Enter keeps current_default (which may be None). Entering "-" or
+    "none" explicitly clears an existing default (sets it to None).
+    """
+    shown_default = current_default if current_default is not None else "none"
+    raw = input(f"  {baseline_label} root [{shown_default}]: ").strip()
+    if not raw:
+        return current_default
+    if raw.lower() in {"-", "none"}:
+        return None
+    return raw
+
+
+def _prompt_for_baseline_roots(defaults: dict[str, str | None]) -> dict[str, str | None]:
+    """Interactively collect a results root for each baseline.
+
+    defaults maps baseline key (e.g. "flash_fusion") to its current default
+    root (or None). Returns a dict of the same shape with user-entered values.
+    """
+    labels = {
+        "flash_fusion": "Flash-Fusion",
+        "react": "ReAct",
+        "autoiot": "AutoIOT",
+    }
+    print("\nEnter the results root for each baseline (press Enter to keep the default,")
+    print("or type '-' / 'none' to clear it):\n")
+    roots: dict[str, str | None] = {}
+    for key, label in labels.items():
+        roots[key] = _prompt_for_root(label, defaults.get(key))
+    return roots
+
+
+def _resolve_user_path(raw_path: str | None, repo_root: Path) -> Path | None:
+    """Resolve user-entered paths relative to the repository root.
+
+    Absolute paths remain unchanged. This avoids accidentally resolving an
+    interactive entry such as 'flashfusion/results/...' below flashfusion/viz.
+    """
+    if raw_path is None:
+        return None
+
+    path = Path(raw_path).expanduser()
+    if not path.is_absolute():
+        path = repo_root / path
+    return path.resolve()
+
+
+def _normalize_bool(series: pd.Series) -> pd.Series:
+    """Normalize bool-like CSV values to pandas booleans."""
+    if pd.api.types.is_bool_dtype(series):
+        return series.fillna(False)
+
+    return (
+        series.astype(str)
+        .str.strip()
+        .str.lower()
+        .map(
+            {
+                "true": True,
+                "1": True,
+                "yes": True,
+                "y": True,
+                "false": False,
+                "0": False,
+                "no": False,
+                "n": False,
+            }
+        )
+        .fillna(False)
+        .astype(bool)
+    )
+
+
+def _query_type_from_complexity(value: object) -> str:
+    """Normalize benchmark complexity/query-type labels for plotting."""
+    text = str(value or "").strip().lower()
+
+    normalized = (
+        text.replace("_", " ")
+        .replace("-", " ")
+        .replace("/", " ")
+    )
+    normalized = " ".join(normalized.split())
+
+    if normalized == "direct":
+        return "Direct"
+
+    if normalized in {"intermediate", "reasoning"}:
+        return "Reasoning"
+
+    if normalized in {
+        "predictive",
+        "prediction",
+        "forecasting",
+    }:
+        return "Predictive"
+
+    if normalized in {
+        "oos",
+        "out of scope",
+        "outofscope",
+        "unsupported",
+    }:
+        return "Out-of-Scope"
+
+    print(
+        f"[WARN] Unrecognized query-type/complexity label "
+        f"{value!r}; assigning Out-of-Scope."
+    )
+    return "Out-of-Scope"
+
+
+def _query_type_from_id(query_id: int) -> str:
+    """Fallback mapping for the current 16-query benchmark suite."""
+    if 1 <= query_id <= 4:
+        return "Direct"
+    if 5 <= query_id <= 8:
+        return "Reasoning"
+    if 9 <= query_id <= 12:
+        return "OOS"
+    if 13 <= query_id <= 16:
+        return "Predictive"
+    return "OOS"
+
+
+def _infer_dataset_from_metrics_path(metrics_path: Path) -> str | None:
+    """Infer the canonical dataset code from a metrics.csv ancestor path.
+
+    Supports directory names used by the benchmark, such as ``wisdm``,
+    ``mit_ecg``, and ``bus``, as well as common display-name variants.
+    """
+    aliases = {
+        "wisdm": "wisdm",
+        "mit_ecg": "ecg",
+        "bus": "bus",
+    }
+
+    for parent in metrics_path.parents:
+        name = parent.name.strip().lower()
+        if name in aliases:
+            return aliases[name]
+
+    return None
+
+
+def _load_baseline_root(
+    baseline: str,
+    root: Path,
+) -> pd.DataFrame:
+    """Recursively load all metrics.csv files below one baseline result root.
+
+    Supported examples:
+      <root>/<dataset>/<run_tag>/metrics.csv
+      <root>/<dataset>/metrics.csv
+      <root>/<baseline>/<dataset>/<run_tag>/metrics.csv
+
+    In addition to the accuracy/latency columns llamas.py's equivalent loader
+    reads, this also preserves the per-stage latency columns latencystages.py
+    needs (s1/s2/s3/guardrail/agent_latency_s plus typed_exec_latency_s and
+    agent_latency_ms), defaulting any that are absent from a given schema to
+    0.0 so _semantic_stage_frame can rely on them always being present.
+    """
+    if not root.exists():
+        raise FileNotFoundError(f"Results root does not exist: {root}")
+
+    metric_paths = sorted(root.rglob("metrics.csv"))
+    if not metric_paths:
+        raise FileNotFoundError(f"No metrics.csv files found below: {root}")
+
+    frames: list[pd.DataFrame] = []
+
+    for metrics_path in metric_paths:
+        dataset = _infer_dataset_from_metrics_path(metrics_path)
+
+        if dataset is None:
+            print(
+                f"[WARN] Skipping {metrics_path}: "
+                "could not infer dataset from its parent directories."
+            )
+            continue
+
+        try:
+            metrics = pd.read_csv(metrics_path)
+        except Exception as exc:
+            print(f"[WARN] Could not read {metrics_path}: {exc}")
+            continue
+
+        if metrics.empty:
+            print(f"[WARN] Skipping empty metrics file: {metrics_path}")
+            continue
+
+        if "query_id" not in metrics.columns:
+            print(f"[WARN] Skipping {metrics_path}: missing query_id column.")
+            continue
+
+        metrics = metrics.copy()
+        metrics["baseline"] = baseline
+        metrics["dataset"] = dataset
+        metrics["source_metrics_path"] = str(metrics_path)
+        metrics["source_run_dir"] = metrics_path.parent.name
+
+        metrics["query_id"] = pd.to_numeric(
+            metrics["query_id"],
+            errors="coerce",
+        )
+        metrics = metrics.dropna(subset=["query_id"]).copy()
+        metrics["query_id"] = metrics["query_id"].astype(int)
+
+        if "run_id" not in metrics.columns:
+            metrics["run_id"] = 1
+
+        if "gt_score" not in metrics.columns:
+            print(f"[WARN] Skipping {metrics_path}: missing gt_score column.")
+            continue
+
+        metrics["gt_score"] = pd.to_numeric(
+            metrics["gt_score"],
+            errors="coerce",
+        ).fillna(0.0)
+
+        if "accuracy_percent" not in metrics.columns:
+            metrics["accuracy_percent"] = metrics["gt_score"] * 100.0
+        else:
+            metrics["accuracy_percent"] = pd.to_numeric(
+                metrics["accuracy_percent"],
+                errors="coerce",
+            ).fillna(metrics["gt_score"] * 100.0)
+
+        if "complexity" in metrics.columns:
+            metrics["query_type"] = metrics["complexity"].map(
+                _query_type_from_complexity
+            )
+        elif "query_type" not in metrics.columns:
+            metrics["query_type"] = metrics["query_id"].map(
+                _query_type_from_id
+            )
+        else:
+            metrics["query_type"] = metrics["query_id"].map(
+                _query_type_from_id
+            )
+
+        for column in (
+            "latency_s",
+            "input_tokens",
+            "output_tokens",
+            "cost_usd",
+        ):
+            if column not in metrics.columns:
+                metrics[column] = np.nan
+            else:
+                metrics[column] = pd.to_numeric(
+                    metrics[column],
+                    errors="coerce",
+                )
+
+        for column in (
+            "s1_latency_s",
+            "s2_latency_s",
+            "s3_latency_s",
+            "guardrail_latency_s",
+            "agent_latency_s",
+            "typed_exec_latency_s",
+            "agent_latency_ms",
+        ):
+            if column not in metrics.columns:
+                metrics[column] = 0.0
+            else:
+                metrics[column] = pd.to_numeric(
+                    metrics[column],
+                    errors="coerce",
+                ).fillna(0.0)
+
+        for column in ("executed", "rejected"):
+            if column not in metrics.columns:
+                metrics[column] = False
+            else:
+                metrics[column] = _normalize_bool(metrics[column])
+
+        frames.append(metrics)
+
+    if not frames:
+        raise ValueError(
+            f"No valid benchmark metrics could be loaded below: {root}"
+        )
+
+    return pd.concat(frames, ignore_index=True)
+
 
 def _clean_axes(ax) -> None:
     ax.spines["top"].set_visible(False)
@@ -293,6 +613,7 @@ def plot_semantic_stage_comparison(
     out_path: Path,
     baselines: list[str] | None = None,
     query_types: list[str] | None = None,
+    total_summary=None,
 ) -> None:
     _apply_rc()
 
@@ -348,6 +669,28 @@ def plot_semantic_stage_comparison(
         )
         left = [a + b for a, b in zip(left, vals)]
 
+    if total_summary is not None:
+        total_stds: list[float] = []
+        for query_type, baseline in rows:
+            trow = total_summary[
+                (total_summary["query_type"] == query_type)
+                & (total_summary["baseline"] == baseline)
+            ]
+            total_stds.append(float(trow["std"].iloc[0]) if not trow.empty else 0.0)
+
+        stds_arr = np.asarray(total_stds, dtype=float)
+        tips_arr = np.asarray(left, dtype=float)
+        lower = np.minimum(stds_arr, np.maximum(tips_arr, 0.0))
+        ax.errorbar(
+            tips_arr,
+            y_positions,
+            xerr=np.vstack([lower, stds_arr]),
+            fmt="none",
+            ecolor="#222222",
+            elinewidth=1.2,
+            capsize=4,
+        )
+
     ax.set_yticks(y_positions)
     ax.set_yticklabels(y_labels)
     ax.invert_yaxis()
@@ -402,9 +745,16 @@ def plot_cumulative_latency_comparison(
     fig, ax = plt.subplots(figsize=(8.8, 4.6))
     for i, baseline in enumerate(baselines):
         vals = []
+        stds = []
         for qt in qtypes:
             row = summary[(summary["query_type"] == qt) & (summary["baseline"] == baseline)]
             vals.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
+            stds.append(float(row["std"].iloc[0]) if not row.empty else 0.0)
+
+        vals_arr = np.asarray(vals, dtype=float)
+        stds_arr = np.asarray(stds, dtype=float)
+        lower = np.minimum(stds_arr, np.maximum(vals_arr, 0.0))
+        bounded_xerr = np.vstack([lower, stds_arr])
 
         ypos = [p - width + i * width for p in y]
         ax.barh(
@@ -415,6 +765,8 @@ def plot_cumulative_latency_comparison(
             edgecolor="#333333",
             linewidth=0.8,
             label=display_baseline(baseline),
+            xerr=bounded_xerr,
+            error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
         )
 
     ax.set_yticks(y)
@@ -439,9 +791,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate latency-stage figures for July26.")
     script_dir = Path(__file__).resolve().parent
     parser.add_argument(
-        "--results-root",
-        default=str(script_dir.parent / "results" / "with_slm_predictive"),
-        help="Root folder containing dataset-level metrics.csv files.",
+        "--interactive",
+        action="store_true",
+        help="Interactively prompt for each baseline's results root instead of using flags.",
     )
     parser.add_argument(
         "--flash-fusion-root",
@@ -455,13 +807,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--autoiot-root",
-        default=None,
+        default=str(script_dir.parent / "results" / "with_slm_predictive"),
         help="Optional override root for AUTOIOT_PAPER baseline data.",
-    )
-    parser.add_argument(
-        "--run-dir",
-        default="july26_full",
-        help="Per-dataset run folder name under each baseline/dataset.",
     )
     parser.add_argument(
         "--baseline-set",
@@ -483,45 +830,98 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = _build_parser().parse_args()
-    results_root = Path(args.results_root).resolve()
-    output_dir = Path(args.output_dir).resolve()
+
+    script_dir = Path(__file__).resolve().parent
+    repo_root = script_dir.parent.parent
+
+    if args.interactive:
+        roots = _prompt_for_baseline_roots(
+            {
+                "flash_fusion": args.flash_fusion_root,
+                "react": args.react_root,
+                "autoiot": args.autoiot_root,
+            }
+        )
+        args.flash_fusion_root = roots["flash_fusion"]
+        args.react_root = roots["react"]
+        args.autoiot_root = roots["autoiot"]
+
+    output_dir = _resolve_user_path(args.output_dir, repo_root)
+    assert output_dir is not None
     output_dir.mkdir(parents=True, exist_ok=True)
+
     selected_baselines = [
-        b.strip().upper() for b in _parse_csv_list(args.baseline_set) or list(LATENCY_COMPARE_BASELINES)
+        baseline.strip().upper()
+        for baseline in (
+            _parse_csv_list(args.baseline_set) or list(LATENCY_COMPARE_BASELINES)
+        )
     ]
-    selected_query_types = _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
+    selected_query_types = (
+        _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
+    )
 
-    df = load_all_metrics(results_root=results_root, run_dir=args.run_dir)
-
-    def _apply_override(frame, override_df, baseline: str):
-        if override_df.empty:
-            return frame
-        without = frame[frame["baseline"] != baseline].copy()
-        out = pd.concat([without, override_df], ignore_index=True)
-        out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
-        out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
-        out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
-        return out
-
-    baseline_overrides = {
-        "FLASH_FUSION": Path(args.flash_fusion_root).resolve() if args.flash_fusion_root else None,
-        "REACT_ONLY": Path(args.react_root).resolve() if args.react_root else None,
-        "AUTOIOT_PAPER": Path(args.autoiot_root).resolve() if args.autoiot_root else None,
+    configured_roots = {
+        "FLASH_FUSION": args.flash_fusion_root,
+        "REACT_ONLY": args.react_root,
+        "AUTOIOT_PAPER": args.autoiot_root,
     }
-    for baseline_code, override_root in baseline_overrides.items():
-        if override_root is None:
+
+    frames: list[pd.DataFrame] = []
+
+    for baseline in selected_baselines:
+        raw_root = configured_roots.get(baseline)
+
+        if raw_root is None:
+            print(f"[INFO] Skipping {baseline}: no results root provided.")
             continue
+
+        root = _resolve_user_path(raw_root, repo_root)
+        assert root is not None
+
         try:
-            override_df = load_all_metrics(
-                results_root=override_root,
-                baselines=[baseline_code],
-                run_dir=args.run_dir,
-            )
-            df = _apply_override(df, override_df, baseline_code)
-        except ValueError:
-            print(f"[WARN] Could not load override data for {baseline_code} from {override_root}")
+            baseline_df = _load_baseline_root(baseline, root)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"[WARN] Could not load {baseline} from {root}: {exc}")
+            continue
+
+        print(
+            f"[INFO] Loaded {len(baseline_df)} rows for {baseline} "
+            f"from {root}"
+        )
+        frames.append(baseline_df)
+
+    if not frames:
+        raise SystemExit(
+            "No baseline metrics were loaded. Check the entered roots and "
+            "confirm each root contains one or more metrics.csv files."
+        )
+
+    df = pd.concat(frames, ignore_index=True)
+
+    df["baseline"] = pd.Categorical(
+        df["baseline"],
+        categories=list(BASELINE_ORDER),
+        ordered=True,
+    )
+    df["dataset"] = pd.Categorical(
+        df["dataset"],
+        categories=list(DATASET_ORDER),
+        ordered=True,
+    )
+    df["query_type"] = pd.Categorical(
+        df["query_type"],
+        categories=list(QUERY_TYPE_ORDER),
+        ordered=True,
+    )
 
     df = _filter_metrics(df, selected_baselines, selected_query_types)
+
+    if df.empty:
+        raise SystemExit(
+            "Metrics were loaded, but no rows remain after baseline/query-type "
+            "filtering. Check BASELINE_ORDER, QUERY_TYPE_ORDER, and the "
+            "--baseline-set / --query-types arguments."
+        )
 
     ff_summary = aggregate_flash_fusion_stage_latency_by_query_type(df)
     ff_out = output_dir / "per_stage_latency_breakdown_across_query_types_n3.png"
@@ -529,12 +929,14 @@ def main() -> None:
     ff_summary.to_csv(output_dir / "per_stage_latency_breakdown_across_query_types_n3_summary.csv", index=False)
 
     semantic = aggregate_semantic_stage_latency_by_query_type(df, baselines=selected_baselines)
+    semantic_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=selected_baselines)
     semantic_out = output_dir / "semantic_stage_latency_comparison_by_baseline_n3.png"
     plot_semantic_stage_comparison(
         semantic,
         semantic_out,
         baselines=selected_baselines,
         query_types=selected_query_types,
+        total_summary=semantic_total,
     )
     semantic.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_n3_summary.csv", index=False)
 

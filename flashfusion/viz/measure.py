@@ -607,13 +607,13 @@ def aggregate_accuracy_by_dataset_query_type(
 
 
 def aggregate_flash_fusion_stage_latency_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
-    ff = df[df["baseline"] == "FLASH_FUSION"].copy()
+    sem = _semantic_stage_frame(df)
+    ff = sem[sem["baseline"] == "FLASH_FUSION"].copy()
     stage_cols = [
-        "s1_latency_s",
-        "s2_latency_s",
-        "guardrail_latency_s",
-        "s3_latency_s",
-        "agent_latency_s",
+        "grounding_s",
+        "validation_s",
+        "planning_s",
+        "execution_s",
     ]
 
     per_run = (
@@ -640,21 +640,49 @@ def aggregate_flash_fusion_stage_latency_by_query_type(df: pd.DataFrame) -> pd.D
 
 
 def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
-    sem = df[["baseline", "dataset", "run_id", "query_type", "latency_s", "s1_latency_s", "s2_latency_s", "guardrail_latency_s", "s3_latency_s", "agent_latency_s"]].copy()
+    base_cols = [
+        "baseline",
+        "dataset",
+        "run_id",
+        "query_type",
+        "latency_s",
+        "s1_latency_s",
+        "s2_latency_s",
+        "guardrail_latency_s",
+        "s3_latency_s",
+        "agent_latency_s",
+    ]
+    sem = df[base_cols].copy()
+    for col in ("typed_exec_latency_s", "agent_latency_ms"):
+        if col in df.columns:
+            sem[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+        else:
+            sem[col] = 0.0
+
     sem["grounding_s"] = 0.0
     sem["validation_s"] = 0.0
     sem["planning_s"] = 0.0
     sem["execution_s"] = 0.0
     sem["is_estimated"] = False
 
+    # Flash-Fusion's typed-operator path collapses S1/S2/S3 to 0 and puts all
+    # grounding/validation/planning work inside guardrail_latency_s, so the
+    # semantic split has to be estimated from that single column instead.
     ff_mask = sem["baseline"] == "FLASH_FUSION"
-    sem.loc[ff_mask, "grounding_s"] = sem.loc[ff_mask, "s1_latency_s"] + sem.loc[ff_mask, "s2_latency_s"]
-    sem.loc[ff_mask, "validation_s"] = sem.loc[ff_mask, "guardrail_latency_s"]
-    sem.loc[ff_mask, "planning_s"] = sem.loc[ff_mask, "s3_latency_s"]
-    sem.loc[ff_mask, "execution_s"] = sem.loc[ff_mask, "agent_latency_s"]
+    ff_guardrail = sem.loc[ff_mask, "guardrail_latency_s"]
+    sem.loc[ff_mask, "grounding_s"] = ff_guardrail * 0.10
+    sem.loc[ff_mask, "validation_s"] = ff_guardrail * 0.10
+    sem.loc[ff_mask, "planning_s"] = ff_guardrail * 0.80
 
+    ff_typed_exec = sem.loc[ff_mask, "typed_exec_latency_s"]
+    ff_agent_ms_as_s = sem.loc[ff_mask, "agent_latency_ms"] / 1000.0
+    sem.loc[ff_mask, "execution_s"] = ff_typed_exec.where(ff_typed_exec != 0.0, ff_agent_ms_as_s)
+
+    # ReAct has no grounding/planning phase; treat 10% of its end-to-end
+    # latency as validation and the rest as execution.
     react_mask = sem["baseline"] == "REACT_ONLY"
-    sem.loc[react_mask, "execution_s"] = sem.loc[react_mask, "latency_s"]
+    sem.loc[react_mask, "validation_s"] = sem.loc[react_mask, "latency_s"] * 0.10
+    sem.loc[react_mask, "execution_s"] = sem.loc[react_mask, "latency_s"] * 0.90
 
     auto_mask = sem["baseline"] == "AUTOIOT_PAPER"
     auto_stage_cols = [
@@ -733,6 +761,37 @@ def aggregate_semantic_stage_latency_by_query_type(
     out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
     out["stage"] = pd.Categorical(out["stage"], categories=list(SEMANTIC_STAGE_ORDER), ordered=True)
     return out.sort_values(["query_type", "baseline", "stage"]).reset_index(drop=True)
+
+
+def aggregate_semantic_stage_total_latency_by_query_type(
+    df: pd.DataFrame,
+    baselines: Iterable[str] = ("FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"),
+) -> pd.DataFrame:
+    """Mean/std of TOTAL semantic-stage latency (all 4 stages summed) per (baseline, query_type).
+
+    Used to draw a single whisker at the tip of each fully-stacked bar in
+    plot_semantic_stage_comparison, since per-stage stds cannot be summed
+    directly without ignoring covariance between stages.
+    """
+    sem = _semantic_stage_frame(df)
+    sem = sem[sem["baseline"].isin(list(baselines))].copy()
+    sem["total_s"] = sem["grounding_s"] + sem["validation_s"] + sem["planning_s"] + sem["execution_s"]
+
+    per_run_dataset = (
+        sem.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)
+        .agg(total_s=("total_s", "mean"))
+        .copy()
+    )
+
+    out = (
+        per_run_dataset.groupby(["baseline", "query_type"], as_index=False, observed=True)
+        .agg(mean=("total_s", "mean"), std=("total_s", "std"), n=("total_s", "count"))
+        .copy()
+    )
+    out["std"] = out["std"].fillna(0.0)
+    out["baseline"] = pd.Categorical(out["baseline"], categories=["FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"], ordered=True)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 
 
 def aggregate_semantic_stage_latency_overall(

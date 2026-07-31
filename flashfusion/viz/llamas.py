@@ -90,13 +90,43 @@ def _filter_metrics(
     query_types: list[str] | None,
 ) -> pd.DataFrame:
     out = df.copy()
+
+    out["query_type"] = out["query_type"].map(
+        _query_type_from_complexity
+    )
+
     if baselines is not None:
         out = out[out["baseline"].isin(baselines)].copy()
+
     if query_types is not None:
         out = out[out["query_type"].isin(query_types)].copy()
-    out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
-    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
-    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+
+    out["baseline"] = pd.Categorical(
+        out["baseline"],
+        categories=list(BASELINE_ORDER),
+        ordered=True,
+    )
+    out["dataset"] = pd.Categorical(
+        out["dataset"],
+        categories=list(DATASET_ORDER),
+        ordered=True,
+    )
+    out["query_type"] = pd.Categorical(
+        out["query_type"],
+        categories=list(QUERY_TYPE_ORDER),
+        ordered=True,
+    )
+
+    if out["query_type"].isna().any():
+        bad_rows = out.loc[
+            out["query_type"].isna(),
+            ["baseline", "dataset", "query_id"],
+        ]
+        raise ValueError(
+            "Unknown query_type values were converted to NaN. "
+            f"Example rows:\n{bad_rows.head(10).to_string(index=False)}"
+        )
+
     return out
 
 
@@ -331,18 +361,44 @@ def _normalize_bool(series: pd.Series) -> pd.Series:
         .astype(bool)
     )
 
-
 def _query_type_from_complexity(value: object) -> str:
-    """Map benchmark query complexity labels to plot query-type labels."""
+    """Normalize benchmark complexity/query-type labels for plotting."""
     text = str(value or "").strip().lower()
 
-    if text == "direct":
+    normalized = (
+        text.replace("_", " ")
+        .replace("-", " ")
+        .replace("/", " ")
+    )
+    normalized = " ".join(normalized.split())
+
+    if normalized == "direct":
         return "Direct"
-    if text in {"intermediate", "reasoning"}:
+
+    if normalized in {"intermediate", "reasoning"}:
         return "Reasoning"
-    if text in {"predictive", "prediction"}:
+
+    if normalized in {
+        "predictive",
+        "prediction",
+        "forecasting",
+    }:
         return "Predictive"
-    return "OOS"
+
+    if normalized in {
+        "oos",
+        "out of scope",
+        "outofscope",
+        "unsupported",
+    }:
+        return "Out-of-Scope"
+
+    # Explicitly surface unexpected labels instead of silently misclassifying.
+    print(
+        f"[WARN] Unrecognized query-type/complexity label "
+        f"{value!r}; assigning Out-of-Scope."
+    )
+    return "Out-of-Scope"
 
 
 def _query_type_from_id(query_id: int) -> str:
@@ -462,6 +518,10 @@ def _load_baseline_root(
                 _query_type_from_complexity
             )
         elif "query_type" not in metrics.columns:
+            metrics["query_type"] = metrics["query_id"].map(
+                _query_type_from_id
+            )
+        else:
             metrics["query_type"] = metrics["query_id"].map(
                 _query_type_from_id
             )
@@ -659,6 +719,18 @@ def main() -> None:
         categories=list(QUERY_TYPE_ORDER),
         ordered=True,
     )
+
+    print("\n[DEBUG] Query-type values before filtering:")
+    print(
+        df.groupby(["baseline", "query_type"], dropna=False)
+        .size()
+        .rename("rows")
+        .reset_index()
+        .to_string(index=False)
+    )
+
+    print(f"\n[DEBUG] QUERY_TYPE_ORDER: {list(QUERY_TYPE_ORDER)}")
+    print(f"[DEBUG] Selected query types: {selected_query_types}")
 
     df = _filter_metrics(
         df,
