@@ -27,6 +27,7 @@ Design contract
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -38,11 +39,16 @@ from typing import Annotated, Any, Literal, Union
 
 import numpy as np
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 __all__ = [
     "PLAN_VERSION",
+    "OPERATOR_VOCABULARY_VERSION",
     "OPERATOR_VOCABULARY_SPEC",
+    "FLASH_FUSION_PLANNER_PREFIX",
+    "PLANNER_PREFIX_SHA256",
+    "PLANNER_PREFIX_VERSION",
+    "planner_cache_key",
     "Aggregate",
     "Comparator",
     "DeterministicPlan",
@@ -55,12 +61,20 @@ __all__ = [
     "TypedOperator",
     "structural_validate",
     "parse_guardrail_and_plan",
+    "parse_guardrail_response",
+    "ParsedGuardrail",
+    "NORMALIZATION_VERSION",
+    "normalize_raw_plan",
+    "normalize_guardrail_payload",
     "validate_plan_against_dataframe",
     "execute_plan",
     "log_operator_gap",
 ]
 
 PLAN_VERSION = "1"
+
+#: Bumped whenever OPERATOR_VOCABULARY_SPEC or the planner contract text changes.
+OPERATOR_VOCABULARY_VERSION = "2"
 
 # ---------------------------------------------------------------------------
 # Scalar vocabularies
@@ -74,6 +88,9 @@ Direction = Literal["max", "min"]
 BinaryOperation = Literal["add", "subtract", "multiply", "divide", "abs_difference"]
 ThresholdStat = Literal["median", "mean", "min", "max"]
 CompareMode = Literal["difference", "abs_difference", "ratio"]
+CorrelationMethod = Literal["pearson", "spearman", "kendall"]
+BinKind = Literal["numeric", "temporal"]
+EpochUnit = Literal["s", "ms", "us", "ns"]
 PredictiveModel = Literal[
     "logistic_regression",
     "random_forest",
@@ -183,18 +200,41 @@ class DeriveVectorMagnitude(_Operator):
 
 
 class DeriveBin(_Operator):
-    """Bucket a column into fixed-width bins: ``floor(col / width) * width``.
+    """Bucket a column in either numeric or temporal mode.
 
-    ``column`` may be numeric or datetime. For a datetime column, ``width`` is
-    interpreted in nanoseconds (e.g. 60_000_000_000 for a 1-minute bucket),
-    matching ``pd.Timestamp`` resolution, and the bucketed result is itself a
-    datetime — the start of each fixed-width time window.
+    - ``kind="numeric"`` preserves legacy width binning:
+      ``floor(col / width) * width``.
+    - ``kind="temporal"`` floors timestamps to a pandas frequency via
+      ``dt.floor(freq)``. Numeric epoch columns are supported, but require an
+      explicit ``epoch_unit`` so no unit guessing occurs.
     """
 
     op: Literal["DERIVE_BIN"]
     column: str = Field(min_length=1)
-    width: float = Field(gt=0.0)
+    kind: BinKind = "numeric"
+    width: float | None = Field(default=None, gt=0.0)
+    freq: str | None = None
+    epoch_unit: EpochUnit | None = None
     result: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _validate_mode_fields(self) -> "DeriveBin":
+        if self.kind == "numeric":
+            if self.width is None:
+                raise ValueError("DERIVE_BIN kind='numeric' requires width.")
+            if self.freq is not None:
+                raise ValueError("DERIVE_BIN kind='numeric' must not set freq")
+            if self.epoch_unit is not None:
+                raise ValueError(
+                    "DERIVE_BIN kind='numeric' must not set epoch_unit"
+                )
+            return self
+
+        if self.freq is None or not self.freq.strip():
+            raise ValueError("DERIVE_BIN kind='temporal' requires freq")
+        if self.width is not None:
+            raise ValueError("DERIVE_BIN kind='temporal' must not set width")
+        return self
 
 
 class DeriveDurationSeconds(_Operator):
@@ -313,6 +353,21 @@ class CompareValues(_Operator):
     label_b: str = Field(default="value_b", min_length=1)
 
 
+class CorrelateColumns(_Operator):
+    """Correlation coefficient between two numeric columns of the working frame.
+
+    The only way to answer a "does X correlate with Y" question. Both operands
+    must be real numeric columns, so a query about a field this dataset does not
+    carry fails schema validation naming that field — which is the honest answer,
+    rather than a proxy or an ordinal encoding of an unrelated label.
+    """
+
+    op: Literal["CORRELATE_COLUMNS"]
+    left: str = Field(min_length=1)
+    right: str = Field(min_length=1)
+    method: CorrelationMethod = "pearson"
+
+
 class ParallelAggregateBranch(BaseModel):
     """A single branch of PARALLEL_AGGREGATE: filter → group → aggregate."""
 
@@ -422,6 +477,7 @@ TypedOperator = Annotated[
         AggregatePartitions,
         ComparePartitions,
         CompareValues,
+        CorrelateColumns,
         ParallelAggregate,
         PredictivePipeline,
     ],
@@ -476,7 +532,17 @@ class GuardrailAndPlan(BaseModel):
 
 
 class PlanSchemaError(ValueError):
-    """Raised when a structurally valid plan does not fit the DataFrame schema."""
+    """Raised when a structurally valid plan does not fit the DataFrame schema.
+
+    ``missing_columns`` distinguishes "this dataset has no such field" from every
+    other schema failure. A missing field is a scope verdict, not a planning bug,
+    so the caller rejects terminally instead of falling back to a free-form agent
+    that would be tempted to synthesize the values.
+    """
+
+    def __init__(self, message: str, missing_columns: set[str] | None = None) -> None:
+        super().__init__(message)
+        self.missing_columns: set[str] = set(missing_columns or ())
 
 
 class PlanExecutionError(RuntimeError):
@@ -588,20 +654,35 @@ def _to_python(value: Any) -> Any:
     return value
 
 
-def _bin_series(series: pd.Series, width: float) -> pd.Series:
-    """Bucket ``series`` into fixed-width bins: ``floor(value / width) * width``.
+def _bin_series(series: pd.Series, step: "DeriveBin") -> pd.Series:
+    """Bucket a series using DERIVE_BIN's explicit numeric/temporal modes."""
+    if step.kind == "numeric":
+        if step.width is None:
+                raise PlanExecutionError("DERIVE_BIN numeric mode requires width.")
+        return (series // step.width) * step.width
 
-    Numeric columns are binned directly. Datetime columns are binned in the
-    nanosecond domain (``width`` is nanoseconds, matching pandas' internal
-    ``datetime64[ns]`` resolution) and the result is converted back to a
-    datetime, so the bucket value is the start of each fixed-width window.
-    """
+    if step.freq is None:
+        raise PlanExecutionError("DERIVE_BIN temporal mode requires freq")
+
     if pd.api.types.is_datetime64_any_dtype(series):
-        nanos = series.astype("int64")
-        width_ns = int(width)
-        bucketed = (nanos // width_ns) * width_ns
-        return pd.to_datetime(bucketed)
-    return (series // width) * width
+        if step.epoch_unit is not None:
+            raise PlanExecutionError(
+                "DERIVE_BIN temporal mode with datetime source must not set epoch_unit"
+            )
+        return pd.to_datetime(series, errors="coerce").dt.floor(step.freq)
+
+    if not pd.api.types.is_numeric_dtype(series):
+        raise PlanExecutionError(
+            "DERIVE_BIN temporal mode requires a datetime or numeric epoch column"
+        )
+
+    if step.epoch_unit is None:
+        raise PlanExecutionError(
+            "DERIVE_BIN temporal mode with numeric source requires epoch_unit"
+        )
+    return pd.to_datetime(series, unit=step.epoch_unit, errors="coerce").dt.floor(
+        step.freq
+    )
 
 
 #: Nanoseconds per second — the resolution both datetime64[ns] and integer
@@ -656,7 +737,9 @@ def _require_non_empty(frame: pd.DataFrame, op: str, aggregate: str | None = Non
 
 def _require_column(column: str, available: set[str], op: str) -> None:
     if column not in available:
-        raise PlanSchemaError(f"{op} references unknown column {column!r}")
+        raise PlanSchemaError(
+            f"{op} references unknown column {column!r}", missing_columns={column}
+        )
 
 
 def _require_numeric(column: str, df: pd.DataFrame, op: str) -> None:
@@ -724,8 +807,14 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
     # frame is not a parallel-aggregate merge. A RANK_ROWS over such a frame must
     # return at least one of these keys, otherwise it identifies no entity.
     parallel_group_keys: list[str] | None = None
+    rank_groups_seen = False
 
     for step in plan.steps:
+        if rank_groups_seen:
+            raise PlanSchemaError(
+                "RANK_GROUPS must be the final step; later steps can overwrite "
+                "its ranked result"
+            )
         match step:
             case FilterCompare():
                 _require_column(step.column, available, step.op)
@@ -760,7 +849,23 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
 
             case DeriveBin():
                 _require_column(step.column, available, step.op)
-                _require_numeric_or_datetime(step.column, df, step.op)
+                if step.kind == "numeric":
+                    _require_numeric(step.column, df, step.op)
+                else:
+                    _require_numeric_or_datetime(step.column, df, step.op)
+                    if step.column in df.columns:
+                        is_numeric = pd.api.types.is_numeric_dtype(df[step.column])
+                        is_datetime = pd.api.types.is_datetime64_any_dtype(df[step.column])
+                        if is_numeric and step.epoch_unit is None:
+                            raise PlanSchemaError(
+                                "DERIVE_BIN kind='temporal' with numeric timestamp "
+                                "requires epoch_unit (s|ms|us|ns)"
+                            )
+                        if is_datetime and step.epoch_unit is not None:
+                            raise PlanSchemaError(
+                                "DERIVE_BIN kind='temporal' with datetime source must "
+                                "not set epoch_unit"
+                            )
                 available.add(step.result)
 
             case DeriveDurationSeconds():
@@ -801,6 +906,7 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                     raise PlanSchemaError(
                         "RANK_GROUPS requires a preceding GROUP_AGGREGATE step"
                     )
+                rank_groups_seen = True
 
             case RankRows():
                 _require_column(step.column, available, step.op)
@@ -851,6 +957,16 @@ def validate_plan_against_dataframe(plan: DeterministicPlan, df: pd.DataFrame) -
                         f"found {pending_scalar_count}"
                     )
                 pending_scalar_count = 0
+
+            case CorrelateColumns():
+                for column in (step.left, step.right):
+                    _require_column(column, available, step.op)
+                    _require_numeric(column, df, step.op)
+                if step.left == step.right:
+                    raise PlanSchemaError(
+                        f"CORRELATE_COLUMNS: {step.left!r} correlated with itself is "
+                        "always 1.0 and answers nothing"
+                    )
 
             case ParallelAggregate():
                 # All branches must use the same group_by keys
@@ -958,8 +1074,10 @@ class _State:
     observations: list[Any] = field(default_factory=list)
     partitions: dict[str, pd.DataFrame] = field(default_factory=dict)
     group_result: pd.Series | None = None
+    group_keys: list[str] = field(default_factory=list)
     group_label: str = "group"
     group_metric: str = "value"
+    group_aggregate: str = "mean"
     partition_result: dict[str, Any] = field(default_factory=dict)
     partition_metric: str = "value"
     columns_used: set[str] = field(default_factory=set)
@@ -1166,17 +1284,44 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
 
         case DeriveBin():
             state.use(step.column)
-            derived = _bin_series(state.working[step.column], step.width)
+            source = state.working[step.column]
+            derived = _bin_series(source, step)
             # Apply to both working and original so partitions can access derived columns
             state.working = state.working.assign(**{step.result: derived})
             # Only update original if source column exists there (it may have been created by PARALLEL_AGGREGATE)
             if step.column in state.original.columns:
-                derived_orig = _bin_series(state.original[step.column], step.width)
+                derived_orig = _bin_series(state.original[step.column], step)
                 state.original = state.original.assign(**{step.result: derived_orig})
             state.use(step.result)
+            if step.kind == "numeric":
+                if step.width is None:
+                    raise PlanExecutionError("DERIVE_BIN numeric mode requires width")
+                code = (
+                    f"df[{step.result!r}] = (df[{step.column!r}] // {step.width}) * "
+                    f"{step.width}"
+                )
+                summary = f"derived {step.result!r} (kind=numeric width={step.width})"
+            elif pd.api.types.is_datetime64_any_dtype(source):
+                code = (
+                    f"df[{step.result!r}] = pd.to_datetime(df[{step.column!r}], "
+                    f"errors='coerce').dt.floor({step.freq!r})"
+                )
+                summary = (
+                    f"derived {step.result!r} (kind=temporal freq={step.freq!r} "
+                    "source=datetime)"
+                )
+            else:
+                code = (
+                    f"df[{step.result!r}] = pd.to_datetime(df[{step.column!r}], "
+                    f"unit={step.epoch_unit!r}, errors='coerce').dt.floor({step.freq!r})"
+                )
+                summary = (
+                    f"derived {step.result!r} (kind=temporal freq={step.freq!r} "
+                    f"epoch_unit={step.epoch_unit!r})"
+                )
             return (
-                f"derived {step.result!r} (width={step.width})",
-                f"df[{step.result!r}] = (df[{step.column!r}] // {step.width}) * {step.width}",
+                summary,
+                code,
             )
 
         case DeriveDurationSeconds():
@@ -1229,10 +1374,12 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 )
 
             state.group_result = series
+            state.group_keys = list(step.group_by)
             state.group_label = (
                 step.group_by[0] if len(step.group_by) == 1 else "+".join(step.group_by)
             )
             state.group_metric = metric
+            state.group_aggregate = step.aggregate
             value = {str(_to_python(k)): _to_python(v) for k, v in series.items()}
             state.observations.append(value)
             return value, code
@@ -1248,15 +1395,31 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
         case RankGroups():
             if state.group_result is None or state.group_result.empty:
                 raise PlanExecutionError("RANK_GROUPS has no grouped result")
+            ranked = state.group_result.dropna()
+            if ranked.empty:
+                raise PlanExecutionError(
+                    "RANK_GROUPS has no non-null grouped values to rank"
+                )
             key = (
-                state.group_result.idxmax()
+                ranked.idxmax()
                 if step.direction == "max"
-                else state.group_result.idxmin()
+                else ranked.idxmin()
             )
-            value = {
-                state.group_label: str(_to_python(key)),
-                state.group_metric: _to_python(state.group_result.loc[key]),
-            }
+            value = {}
+            if len(state.group_keys) == 1:
+                value[state.group_keys[0]] = _to_python(key)
+            elif isinstance(key, tuple) and len(key) == len(state.group_keys):
+                for group_key, group_value in zip(state.group_keys, key):
+                    value[group_key] = _to_python(group_value)
+            else:
+                value[state.group_label] = str(_to_python(key))
+
+            metric_key = (
+                "count"
+                if state.group_metric == "count"
+                else f"{state.group_aggregate}_{state.group_metric}"
+            )
+            value[metric_key] = _to_python(ranked.loc[key])
             state.observations.append(value)
             return value, f"result = grouped.idx{step.direction}()"
 
@@ -1392,6 +1555,27 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
                 value,
                 f"result = compare({step.label_a}={value_a!r}, "
                 f"{step.label_b}={value_b!r}, mode={step.mode!r})",
+            )
+
+        case CorrelateColumns():
+            state.use(step.left, step.right)
+            _require_non_empty(state.working, step.op)
+            value = _to_python(
+                state.working[step.left].corr(
+                    state.working[step.right], method=step.method
+                )
+            )
+            if value is None or (isinstance(value, float) and math.isnan(value)):
+                raise PlanExecutionError(
+                    f"CORRELATE_COLUMNS: correlation of {step.left!r} and "
+                    f"{step.right!r} is undefined (a column has zero variance "
+                    "or too few paired observations)"
+                )
+            state.observations.append(value)
+            return (
+                value,
+                f"result = df[{step.left!r}].corr(df[{step.right!r}], "
+                f"method={step.method!r})",
             )
 
         case ParallelAggregate():
@@ -1576,6 +1760,41 @@ def _strip_code_fence(text: str) -> str:
     return (body[:closing] if closing != -1 else body).strip()
 
 
+def _extract_json_object(text: str) -> str:
+    """Return the first balanced top-level JSON object in ``text``.
+
+    A naive ``find("{")`` / ``rfind("}")`` span breaks whenever the model wraps
+    the plan in prose containing braces, or emits trailing commentary. This
+    scanner is brace-depth aware and skips over string literals and escapes, so
+    it never alters the decoded content — it only chooses the boundaries.
+    """
+    depth = 0
+    start = -1
+    in_string = False
+    escaped = False
+    for index, char in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == "}":
+            if depth:
+                depth -= 1
+                if depth == 0:
+                    return text[start : index + 1]
+    raise ValueError("No balanced JSON object found in guardrail+plan response")
+
+
 def parse_guardrail_and_plan(payload: str | dict[str, Any]) -> GuardrailAndPlan:
     """Parse the single-round-trip guardrail+plan response (Gate 1).
 
@@ -1583,15 +1802,213 @@ def parse_guardrail_and_plan(payload: str | dict[str, Any]) -> GuardrailAndPlan:
         ValidationError: the response is not a valid GuardrailAndPlan.
         ValueError: the response contains no JSON object at all.
     """
-    if isinstance(payload, dict):
-        return GuardrailAndPlan.model_validate(payload)
+    return parse_guardrail_response(payload).parsed
 
-    text = _strip_code_fence(payload)
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError("No JSON object found in guardrail+plan response")
-    return GuardrailAndPlan.model_validate_json(text[start : end + 1])
+
+@dataclass
+class ParsedGuardrail:
+    """Gate 1 output plus the audit trail of what normalization changed."""
+
+    parsed: GuardrailAndPlan
+    raw: dict[str, Any]
+    normalization_actions: list[str]
+
+
+def parse_guardrail_response(payload: str | dict[str, Any]) -> ParsedGuardrail:
+    """Extract, normalize and structurally validate the planner response."""
+    if isinstance(payload, dict):
+        raw = payload
+    else:
+        raw = json.loads(_extract_json_object(_strip_code_fence(payload)))
+    normalized, actions = normalize_guardrail_payload(raw)
+    return ParsedGuardrail(
+        parsed=GuardrailAndPlan.model_validate(normalized),
+        raw=raw,
+        normalization_actions=actions,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Deterministic pre-validation normalization
+# ---------------------------------------------------------------------------
+#
+# This stage runs between JSON extraction and Pydantic validation. It is allowed
+# to canonicalize *representation* only. It must never invent a column, infer a
+# missing schema field, rewrite a correlation into a difference, or otherwise
+# choose a semantic reading of the question — a plan that is semantically wrong
+# has to fail loudly rather than be massaged into something executable.
+
+NORMALIZATION_VERSION = "1"
+
+#: Fields whose value is a closed lowercase vocabulary.
+_LOWERCASE_ENUM_FIELDS: frozenset[str] = frozenset(
+    {
+        "aggregate",
+        "comparator",
+        "direction",
+        "operation",
+        "kind",
+        "epoch_unit",
+        "mode",
+        "threshold",
+        "holdout_row",
+        "model",
+    }
+)
+
+#: Value lists whose order carries no meaning, so a stable order is safe.
+_ORDER_FREE_LIST_FIELDS: frozenset[str] = frozenset({"values", "filter_values"})
+
+
+def _sort_key(value: Any) -> tuple[str, str]:
+    return (type(value).__name__, str(value))
+
+
+def _normalize_step(step: Any, actions: list[str]) -> Any:
+    if not isinstance(step, dict):
+        return step
+    out: dict[str, Any] = {}
+    for key, value in step.items():
+        if value is None:
+            actions.append(f"dropped null field {key!r}")
+            continue
+        if key == "op" and isinstance(value, str):
+            canonical = value.strip().upper()
+            if canonical != value:
+                actions.append(f"canonicalized op {value!r} -> {canonical!r}")
+            out[key] = canonical
+            continue
+        if key in _LOWERCASE_ENUM_FIELDS and isinstance(value, str):
+            canonical = value.strip().lower()
+            if canonical != value:
+                actions.append(f"canonicalized {key} {value!r} -> {canonical!r}")
+            out[key] = canonical
+            continue
+        if key in _ORDER_FREE_LIST_FIELDS and isinstance(value, list):
+            ordered = sorted(value, key=_sort_key)
+            if ordered != value:
+                actions.append(f"stable-sorted {key}")
+            out[key] = ordered
+            continue
+        if key == "branches" and isinstance(value, list):
+            out[key] = [_normalize_step(branch, actions) for branch in value]
+            continue
+        out[key] = value
+    _reject_pseudo_aggregate(out)
+    return out
+
+
+def _reject_pseudo_aggregate(step: dict[str, Any]) -> None:
+    """Fail loudly on percentile-shaped aggregate names instead of guessing.
+
+    ``percentile_99`` is not an aggregate this vocabulary can compute; a dataset
+    that pre-computes percentiles exposes them as ordinary columns, and silently
+    mapping the name to one would be inventing an answer.
+    """
+    aggregate = step.get("aggregate")
+    if not isinstance(aggregate, str):
+        return
+    stem = aggregate.replace("-", "_").split("_")[0]
+    if stem in ("percentile", "quantile", "pctl", "p") or (
+        aggregate.startswith("p") and aggregate[1:].isdigit()
+    ):
+        raise PlanSchemaError(
+            f"{step.get('op', 'operator')}: {aggregate!r} is not an aggregate. "
+            "Percentiles are not computed by this vocabulary; reference the "
+            "pre-computed percentile column directly (e.g. accel_stats_z_p99) "
+            "and combine columns with DERIVE_BINARY."
+        )
+
+
+def _rewrite_single_branch_parallel(
+    steps: list[Any], actions: list[str]
+) -> list[Any]:
+    """Rewrite a one-branch PARALLEL_AGGREGATE into its sequential equivalent.
+
+    PARALLEL_AGGREGATE exists to put several independently filtered aggregates
+    side by side; with one branch it is just a filter plus a grouped aggregate,
+    which the vocabulary already expresses. Only rewritten when the consumer of
+    the branch result is unambiguous, because RANK_ROWS-after-PARALLEL and
+    RANK_GROUPS-after-GROUP consume different shapes.
+    """
+    out: list[Any] = []
+    index = 0
+    while index < len(steps):
+        step = steps[index]
+        branches = step.get("branches") if isinstance(step, dict) else None
+        if step.get("op") != "PARALLEL_AGGREGATE" or not isinstance(branches, list) or len(branches) != 1:
+            out.append(step)
+            index += 1
+            continue
+
+        branch = branches[0]
+        result_column = branch.get("result_column")
+        nxt = steps[index + 1] if index + 1 < len(steps) else None
+        consumer: dict[str, Any] | None = None
+        consumed_op = ""
+        if nxt is None:
+            pass
+        elif nxt.get("op") == "RANK_ROWS" and nxt.get("column") == result_column:
+            consumer = {"op": "RANK_GROUPS", "direction": nxt.get("direction")}
+            consumed_op = "RANK_ROWS"
+        elif nxt.get("op") == "AGGREGATE_COLUMN" and nxt.get("column") == result_column:
+            consumer = {"op": "AGGREGATE_GROUPS", "aggregate": nxt.get("aggregate")}
+            consumed_op = "AGGREGATE_COLUMN"
+        else:
+            out.append(step)
+            index += 1
+            continue
+
+        if branch.get("filter_column") and branch.get("filter_values"):
+            out.append(
+                {
+                    "op": "FILTER_IN",
+                    "column": branch["filter_column"],
+                    "values": branch["filter_values"],
+                }
+            )
+        grouped = {
+            "op": "GROUP_AGGREGATE",
+            "group_by": branch.get("group_by"),
+            "aggregate": branch.get("aggregate"),
+        }
+        if branch.get("column") is not None:
+            grouped["column"] = branch["column"]
+        out.append(grouped)
+        actions.append("rewrote single-branch PARALLEL_AGGREGATE as GROUP_AGGREGATE")
+        index += 1
+        if consumer is not None:
+            out.append(consumer)
+            actions.append(f"rewrote {consumed_op} as {consumer['op']}")
+            index += 1
+    return out
+
+
+def normalize_raw_plan(plan: Any) -> tuple[Any, list[str]]:
+    """Canonicalize a raw plan payload. Returns (normalized, actions)."""
+    actions: list[str] = []
+    if not isinstance(plan, dict):
+        return plan, actions
+    steps = plan.get("steps")
+    if not isinstance(steps, list):
+        return plan, actions
+    normalized = [_normalize_step(step, actions) for step in steps]
+    normalized = _rewrite_single_branch_parallel(normalized, actions)
+    out = dict(plan)
+    out["steps"] = normalized
+    out.setdefault("version", PLAN_VERSION)
+    return out, actions
+
+
+def normalize_guardrail_payload(payload: Any) -> tuple[Any, list[str]]:
+    """Canonicalize the guardrail wrapper and the plan it carries."""
+    actions: list[str] = []
+    if not isinstance(payload, dict):
+        return payload, actions
+    out = dict(payload)
+    if out.get("plan") is not None:
+        out["plan"], actions = normalize_raw_plan(out["plan"])
+    return out, actions
 
 
 # ---------------------------------------------------------------------------
@@ -1725,14 +2142,16 @@ DERIVE_BINARY       {"op":"DERIVE_BINARY","left":str,"right":str,"operation":"ad
                     Use this ONLY after PARALLEL_AGGREGATE to combine result_column values, or to combine
                     existing columns. Cannot compute medians/aggregates inline — use SPLIT_BY_THRESHOLD for that.
 DERIVE_VECTOR_MAGNITUDE {"op":"DERIVE_VECTOR_MAGNITUDE","columns":[str,str,str],"result":str}
-DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"width":number,"result":str}   floor(col/width)*width
-                    USE FOR: bucketing/grouping a column into fixed-size intervals against a CONSTANT width,
-                    e.g. "group timestamps into 1-minute windows" → column="timestamp", width=60000000000
-                    (nanoseconds per minute) or the correct unit for this column's dtype. This is the ONLY
-                    operator that divides a column by a literal scalar — DERIVE_BINARY must never be used
-                    for this because its "right" operand must be a column name, not a constant.
-                    After DERIVE_BIN, typically follow with GROUP_AGGREGATE(group_by=[result], ...) to
-                    aggregate a metric within each bucket, then RANK_GROUPS to find the extreme bucket.
+DERIVE_BIN          {"op":"DERIVE_BIN","column":str,"kind":"numeric|temporal",
+                     "width":number|null,"freq":str|null,"epoch_unit":"s|ms|us|ns"|null,"result":str}
+                    NUMERIC MODE (kind="numeric"): floor(col/width)*width for ordinary numeric bucketing.
+                    TEMPORAL MODE (kind="temporal"): floor timestamps with ``dt.floor(freq)``.
+                    If the source timestamp column is numeric epoch data, epoch_unit is REQUIRED
+                    (s|ms|us|ns). No unit guessing is allowed.
+                    Canonical template for time-window ranking:
+                    DERIVE_BIN(kind="temporal", freq="1min") ->
+                    GROUP_AGGREGATE(group_by=[result], aggregate="mean", column=metric) ->
+                    RANK_GROUPS(direction="max").
 
 DERIVE_DURATION_SECONDS {"op":"DERIVE_DURATION_SECONDS","timestamp_column":str,"group_by":[str,...],
                      "result":str,"clip_negative":bool,"fill_first":number}
@@ -1771,6 +2190,8 @@ GROUP_AGGREGATE     {"op":"GROUP_AGGREGATE","group_by":[str,...],"aggregate":AGG
 
 AGGREGATE_GROUPS    {"op":"AGGREGATE_GROUPS","aggregate":AGG}      reduce the previous GROUP_AGGREGATE result
 RANK_GROUPS         {"op":"RANK_GROUPS","direction":"max|min"}     best group from the previous GROUP_AGGREGATE
+                    Output includes winning group key(s) and grouped metric value.
+                    Metric field name is ``<aggregate>_<metric>`` (example: ``mean_instability_score``).
 
 RANK_ROWS           {"op":"RANK_ROWS","column":str,"direction":"max|min","return_columns":[str,...]}
                     USE WHEN: You need the row with max/min value from a DataFrame (after filters, derives, or
@@ -1893,6 +2314,19 @@ COMPARE_VALUES      {"op":"COMPARE_VALUES","mode":"difference|abs_difference|rat
                     emitting one fails structural validation immediately. To compare two columns, reduce
                     each to a scalar with its own AGGREGATE_COLUMN step first, in the order you want them
                     compared (label_a describes the FIRST scalar, label_b the SECOND).
+
+CORRELATE_COLUMNS   {"op":"CORRELATE_COLUMNS","left":str,"right":str,"method":"pearson|spearman|kendall"}
+                    USE FOR: any question phrased as "does X correlate with Y", "is there a relationship
+                    between X and Y", "how does X vary with Y". This is the ONLY operator that computes a
+                    correlation — never substitute a difference, ratio, or ranking for one, and never
+                    reduce a correlation question to RANK_ROWS.
+                    left and right must both be REAL numeric schema columns, or the "result" of an
+                    earlier DERIVE_* step. If one side of the question names a quantity this dataset does
+                    not measure (a patient attribute, an external condition, a count nobody recorded),
+                    there is no column to put there: set in_scope=false and name the missing field. Do
+                    NOT encode a nominal label column as ordinal numbers to stand in for it, and do NOT
+                    invent a "*_proxy" column — an invented operand produces a confident number that
+                    answers a question nobody asked.
 
 PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|random_forest|one_nearest_neighbor|hist_gradient_boosting",
                      "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
@@ -2041,4 +2475,126 @@ X6. Including the category/label column in DERIVE_DURATION_SECONDS.group_by.
                "group_by":["entity_id"],"result":"dt_s"}
     Filtering by category happens in the PARALLEL_AGGREGATE branches that consume dt_s,
     never in the group_by of the derivation itself.
+
+X7. Standing in a proxy for a column the dataset does not contain.
+    REJECTED: mapping a nominal label column onto invented ordinal numbers so it can be
+              correlated or averaged (e.g. treating behaviour categories as a passenger count).
+    REJECTED: inventing a "*_proxy" / "*_estimate" / "*_index" column that no DERIVE_* step created.
+    REJECTED: answering a correlation question with COMPARE_VALUES, DERIVE_BINARY or RANK_ROWS
+              because CORRELATE_COLUMNS had no second real column to use.
+    CORRECT:  set "in_scope": false and name the missing field in rejection_reason.
+    A dataset that never measured a quantity cannot be made to report it.
+
+X8. Percentiles as aggregate names.
+    REJECTED: {"op":"PARALLEL_AGGREGATE","branches":[{...,"aggregate":"percentile_99",...}]}
+    REJECTED: "aggregate":"p99" / "quantile_95" / "percentile_1"
+    CORRECT:  reference the pre-computed percentile COLUMN by name and combine columns:
+              [{"op":"DERIVE_BINARY","left":"metric_p99","right":"metric_p1",
+                "operation":"subtract","result":"metric_range"},
+               {"op":"RANK_ROWS","column":"metric_range","direction":"max",
+                "return_columns":["key_col","metric_range"]}]
+    The AGG list is closed; a percentile is never one of its members.
 """
+
+
+# ---------------------------------------------------------------------------
+# Immutable planner prefix — the prompt-cache prefix
+# ---------------------------------------------------------------------------
+#
+# Everything below is byte-stable for a given OPERATOR_VOCABULARY_VERSION. It is
+# sent as the planner's *first* message so that providers with prefix caching can
+# reuse it across every query and every dataset. Nothing request-specific may be
+# interpolated here — no dataset name, schema text, sample row, timestamp,
+# request id or query. The dynamic half lives in
+# ``flashfusion.prompts.templates.PLANNER_DYNAMIC_SUFFIX_TEMPLATE`` and is sent
+# as a later message.
+
+_PLANNER_ROLE_CONTRACT: str = """\
+You are a query planner for a pandas DataFrame named `df` holding sensor /
+time-series data. You do two jobs in one response: decide whether the question
+is answerable from the schema, and if so emit a typed execution plan.
+
+The dataset schema and the question arrive in a later message. Read the operator
+vocabulary below first; it is the COMPLETE set of things you are able to express.\
+"""
+
+_PLANNER_SCOPE_RULES: str = """\
+SCOPE CHECK
+  in_scope = true when the answer can be computed from the columns supplied in
+  the later message using aggregation, filtering, grouping, ranking, derived
+  arithmetic, correlation, or an in-dataset train/predict procedure the question
+  itself specifies.
+  in_scope = false when the question needs external data, outside domain
+  knowledge, personal attributes absent from the schema, or a forecast whose
+  inputs cannot be derived from those columns. Give a one-sentence
+  rejection_reason in that case and set plan to null.
+
+PLANNING
+  Resolve every concept in the question to a real column name yourself. When a
+  qualitative term has no literal column (for example "roughness",
+  "turbulence", "instability"), pick the closest real column, and also list the
+  term in ambiguous_concepts.
+  For in-dataset train/predict requests (chronological train/holdout split with
+  a prediction on a holdout row), emit a single-step PREDICTIVE_PIPELINE plan.
+  Use only supported model values exactly as listed in the operator vocabulary,
+  provide explicit feature_columns from real schema columns, set sort_by from
+  the chronological ordering requested, and set holdout_row to first or last.
+  Do not emit free-form modeling steps or Python code.
+  When the question asks to bucket/group a numeric or datetime column into
+  fixed-size intervals against a CONSTANT (e.g. "1-minute intervals", "bins of
+  width 10"), use DERIVE_BIN with that column and the constant as `width` —
+  NEVER DERIVE_BINARY, whose `left`/`right` fields must always be existing
+  column names and never a numeric literal or time constant.
+  If the question is in scope but CANNOT be expressed with the operators above,
+  set plan to null and list the missing capability in ambiguous_concepts. Do
+  not invent an operator, and do not emit Python code.
+
+NO INVENTION
+  Every column name you emit must appear verbatim in the schema supplied later,
+  or be the `result` name of a DERIVE_* step earlier in the same plan. Never
+  fabricate a column, a `*_proxy` stand-in, or an ordinal encoding of a nominal
+  label to stand in for a field the schema does not contain. If the metric the
+  question asks about is absent, that is a rejection, not a substitution.\
+"""
+
+_PLANNER_OUTPUT_CONTRACT: str = """\
+Respond with a single JSON object and nothing else:
+{"in_scope": bool,
+  "rejection_reason": string or null,
+  "ambiguous_concepts": [string, ...],
+  "plan": {"version": "1", "steps": [ ...operators... ]} or null}\
+"""
+
+#: Byte-stable planner prefix. Assembled in a fixed order from module constants
+#: only; no environment reads, no clock, no dict iteration.
+FLASH_FUSION_PLANNER_PREFIX: str = "\n\n".join(
+    [
+        _PLANNER_ROLE_CONTRACT,
+        f"PLAN_VERSION: {PLAN_VERSION}\n"
+        f"OPERATOR_VOCABULARY_VERSION: {OPERATOR_VOCABULARY_VERSION}",
+        "Operator vocabulary (this is the COMPLETE set — nothing else exists):\n"
+        + OPERATOR_VOCABULARY_SPEC,
+        _PLANNER_SCOPE_RULES,
+        _PLANNER_OUTPUT_CONTRACT,
+    ]
+)
+
+PLANNER_PREFIX_SHA256: str = hashlib.sha256(
+    FLASH_FUSION_PLANNER_PREFIX.encode("utf-8")
+).hexdigest()
+
+PLANNER_PREFIX_VERSION: str = hashlib.sha256(
+    "|".join(
+        (PLAN_VERSION, OPERATOR_VOCABULARY_VERSION, FLASH_FUSION_PLANNER_PREFIX)
+    ).encode("utf-8")
+).hexdigest()[:16]
+
+
+def planner_cache_key(model_id: str, environment: str = "dev") -> str:
+    """Stable prompt-cache / sticky-routing key scoped to this exact prefix.
+
+    Deliberately free of per-query entropy: OpenRouter derives its sticky-routing
+    key from the opening messages unless a session key is supplied, so a
+    per-request value would defeat the cache it is meant to warm.
+    """
+    return f"flashfusion:{model_id}:{PLANNER_PREFIX_VERSION}:{environment}"

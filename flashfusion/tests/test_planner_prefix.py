@@ -1,0 +1,100 @@
+"""The planner prefix must be byte-stable, self-contained, and cache-keyed.
+
+Prefix caching is not an optimization the provider applies on request; it is a
+property of the bytes we send. If a single character of the system message
+varies across queries — a schema line, a timestamp, a re-ordered set — every
+call is a cache miss and the ~10k-token vocabulary is billed at full price each
+time. These tests fail loudly when that property is lost.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import os
+
+from flashfusion.pipeline.operators import (
+    FLASH_FUSION_PLANNER_PREFIX,
+    OPERATOR_VOCABULARY_SPEC,
+    OPERATOR_VOCABULARY_VERSION,
+    PLAN_VERSION,
+    PLANNER_PREFIX_SHA256,
+    PLANNER_PREFIX_VERSION,
+    planner_cache_key,
+)
+from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
+
+
+def test_prefix_digest_matches_its_own_bytes() -> None:
+    """The published digest must actually describe the published string."""
+    assert (
+        hashlib.sha256(FLASH_FUSION_PLANNER_PREFIX.encode("utf-8")).hexdigest()
+        == PLANNER_PREFIX_SHA256
+    )
+
+
+def test_prefix_is_stable_across_processes() -> None:
+    """A fresh interpreter, with a different hash seed, must produce the same
+    bytes. Anything derived from set iteration order, dict identity, or the
+    clock would diverge here — and would silently cost a cache miss per query.
+    """
+    import subprocess
+    import sys
+
+    env = {**os.environ, "PYTHONHASHSEED": "1"}
+    out = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from flashfusion.pipeline.operators import PLANNER_PREFIX_SHA256;"
+            "print(PLANNER_PREFIX_SHA256)",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=True,
+    )
+    assert out.stdout.strip() == PLANNER_PREFIX_SHA256
+
+
+def test_prefix_carries_the_whole_vocabulary_and_its_versions() -> None:
+    """The static half must be the *large* half — that is the point of caching."""
+    assert OPERATOR_VOCABULARY_SPEC in FLASH_FUSION_PLANNER_PREFIX
+    assert f"PLAN_VERSION: {PLAN_VERSION}" in FLASH_FUSION_PLANNER_PREFIX
+    assert (
+        f"OPERATOR_VOCABULARY_VERSION: {OPERATOR_VOCABULARY_VERSION}"
+        in FLASH_FUSION_PLANNER_PREFIX
+    )
+    assert len(FLASH_FUSION_PLANNER_PREFIX) > 10_000
+
+
+def test_prefix_contains_no_dynamic_placeholders() -> None:
+    """Schema and question belong in the suffix; a placeholder here means the
+    prefix is being formatted per query and can never be reused."""
+    for placeholder in (
+        "{column_metadata}",
+        "{query}",
+        "{operator_spec}",
+        "{dataset}",
+        "{schema_fingerprint}",
+    ):
+        assert placeholder not in FLASH_FUSION_PLANNER_PREFIX
+
+
+def test_dynamic_suffix_holds_exactly_the_per_query_fields() -> None:
+    for placeholder in ("{dataset}", "{schema_fingerprint}", "{column_metadata}", "{query}"):
+        assert placeholder in PLANNER_DYNAMIC_SUFFIX_TEMPLATE
+    # The suffix must not duplicate the vocabulary — that would defeat the split.
+    assert OPERATOR_VOCABULARY_SPEC not in PLANNER_DYNAMIC_SUFFIX_TEMPLATE
+
+
+def test_cache_key_partitions_by_model_and_environment() -> None:
+    """A dev run must never be routed onto a production cache entry, and two
+    models must never share one."""
+    dev = planner_cache_key("qwen/qwen3-max", "dev")
+    prod = planner_cache_key("qwen/qwen3-max", "prod")
+    other = planner_cache_key("meta-llama/llama-3.3-70b-instruct", "dev")
+
+    assert dev != prod
+    assert dev != other
+    assert PLANNER_PREFIX_VERSION in dev
+    assert planner_cache_key("qwen/qwen3-max", "dev") == dev

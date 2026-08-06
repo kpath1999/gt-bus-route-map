@@ -27,6 +27,8 @@ Instrumentation (see RunResult): ``execution_path``,
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import signal
 import sys
@@ -34,25 +36,27 @@ import time
 from typing import Any
 
 import pandas as pd
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
 from flashfusion.pipeline.operators import (
-    OPERATOR_VOCABULARY_SPEC,
+    FLASH_FUSION_PLANNER_PREFIX,
+    NORMALIZATION_VERSION,
+    PLANNER_PREFIX_SHA256,
+    PLANNER_PREFIX_VERSION,
     DeterministicPlan,
-    GuardrailAndPlan,
+    ParsedGuardrail,
     PlanSchemaError,
     StructuralValidationError,
     execute_plan,
     log_operator_gap,
-    parse_guardrail_and_plan,
+    parse_guardrail_response,
     validate_plan_against_dataframe,
 )
 from flashfusion.pipeline.runner import LLMClient, RunResult
-from flashfusion.prompts.templates import GUARDRAIL_AND_PLAN_PROMPT
+from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
 
@@ -68,11 +72,45 @@ FF_FALLBACK_GROUNDING = os.getenv("FF_FALLBACK_GROUNDING", "1").lower() in (
 PATH_GUARDRAIL_REJECT = "guardrail_reject"
 PATH_TYPED_OPERATOR = "typed_operator"
 PATH_REACT_FALLBACK = "react_fallback"
+#: Gate 2 found the plan referencing a field this dataset does not have. That is a
+#: verdict about the question, not a gap in the vocabulary, so it is terminal — the
+#: ReAct fallback cannot conjure a column either, it can only hallucinate one.
+PATH_SCOPE_REJECT = "scope_reject"
 
 
 def _debug(message: str) -> None:
     if FF_DEBUG:
         print(f"[FF_DEBUG] {message}", file=sys.stderr, flush=True)
+
+
+def schema_fingerprint(meta_str: str) -> str:
+    """Short stable digest of the schema block, logged so two runs can be compared."""
+    return hashlib.sha256(meta_str.encode("utf-8")).hexdigest()[:16]
+
+
+def typed_plan_digest(plan: DeterministicPlan) -> str:
+    """Digest of the *validated* plan — the determinism harness compares these."""
+    payload = json.dumps(plan.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _format_typed_execution_value(value: Any) -> str:
+    """Render typed execution values into a stable answer string."""
+    if isinstance(value, dict) and len(value) == 2:
+        window_key = next((k for k in value if "window" in k.lower()), None)
+        if window_key is not None:
+            metric_key = next(k for k in value if k != window_key)
+            metric_value = value[metric_key]
+            if isinstance(metric_value, float):
+                metric_text = f"{metric_value:.4f}"
+            else:
+                metric_text = str(metric_value)
+            return (
+                f"The {window_key.replace('_', ' ')} starting at "
+                f"{value[window_key]} has {metric_key.replace('_', ' ')} "
+                f"{metric_text}."
+            )
+    return f"The result is {value}"
 
 
 # ---------------------------------------------------------------------------
@@ -117,28 +155,52 @@ def _run_with_timeout(
 
 
 def request_guardrail_and_plan(
-    query: str, meta_str: str, client: LLMClient
-) -> tuple[GuardrailAndPlan | None, str, str]:
+    query: str, meta_str: str, client: LLMClient, dataset: str = ""
+) -> tuple[ParsedGuardrail | None, str, str]:
     """Ask for the scope verdict and a candidate plan in one round-trip.
 
+    The static planner contract goes in the system message and never varies; the
+    dataset schema and the question go in the human message. Providers with
+    prefix caching can therefore reuse the (large) vocabulary across every query.
+
     Returns:
-        (parsed, raw_response, structural_error). ``parsed`` is None when the
+        (parsed, dynamic_suffix, structural_error). ``parsed`` is None when the
         response could not be structurally validated (Gate 1 failure).
     """
-    # Use LangChain's partial_variables to avoid curly-brace conflicts with
-    # the JSON structures in OPERATOR_VOCABULARY_SPEC
-    prompt = ChatPromptTemplate.from_messages(
-        [("system", GUARDRAIL_AND_PLAN_PROMPT), ("human", "{query}")]
+    suffix = PLANNER_DYNAMIC_SUFFIX_TEMPLATE.format(
+        dataset=dataset or "(unnamed)",
+        schema_fingerprint=schema_fingerprint(meta_str),
+        column_metadata=meta_str,
+        query=query,
     )
-    prompt = prompt.partial(
-        column_metadata=meta_str, operator_spec=OPERATOR_VOCABULARY_SPEC
-    )
-    chain = prompt | client.llm | StrOutputParser()
-    raw = client.invoke_chain(chain, {"query": query}, stage="guardrail_plan")
+    # Messages are passed as objects, not through a template: the prefix is full
+    # of literal braces from the operator JSON spec, and any interpolation pass
+    # over it would both fail and break byte-stability.
+    #
+    # The prefix is sent as a single content block with an explicit `cache_control`
+    # breakpoint. Providers with *automatic* caching (OpenAI, DeepSeek, Gemini,
+    # Grok) ignore the marker and cache the prefix anyway; providers that require
+    # an *explicit* breakpoint (Anthropic, Alibaba Qwen — see
+    # OPERATOR_VOCABULARY_SPEC's caching note) only get cache hits with this
+    # marker present. OpenRouter translates/drops the field per-provider, so it
+    # is safe to always send it.
+    messages = [
+        SystemMessage(
+            content=[
+                {
+                    "type": "text",
+                    "text": FLASH_FUSION_PLANNER_PREFIX,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+        ),
+        HumanMessage(content=suffix),
+    ]
+    raw = client.invoke_messages(messages, stage="guardrail_plan")
     try:
-        return parse_guardrail_and_plan(raw), raw, ""
+        return parse_guardrail_response(raw), suffix, ""
     except (StructuralValidationError, ValueError) as exc:
-        return None, raw, str(exc)
+        return None, suffix, str(exc)
 
 
 # ---------------------------------------------------------------------------
@@ -243,12 +305,23 @@ def run_flash_fusion(
         last_stage = "guardrail_plan"
         r.guardrail_input = query
         started = time.time()
-        parsed, raw, structural_error = request_guardrail_and_plan(
+        parsed_result, dynamic_suffix, structural_error = request_guardrail_and_plan(
             query, meta_str, client
         )
         record("guardrail+plan", started)
         r.stages_run.append("guardrail_plan")
-        raw_plan_payload = raw
+        r.guardrail_input = dynamic_suffix
+        r.planner_prefix_version = PLANNER_PREFIX_VERSION
+        r.planner_prefix_sha256 = PLANNER_PREFIX_SHA256
+        r.planner_cache_key = client.session_key
+        r.schema_fingerprint = schema_fingerprint(meta_str)
+        r.normalization_version = NORMALIZATION_VERSION
+
+        parsed = parsed_result.parsed if parsed_result is not None else None
+        if parsed_result is not None:
+            raw_plan_payload = parsed_result.raw
+            r.raw_plan = parsed_result.raw
+            r.normalization_actions = list(parsed_result.normalization_actions)
 
         if parsed is None:
             gap_stage, gap_error = "structural", structural_error
@@ -290,12 +363,44 @@ def run_flash_fusion(
             try:
                 validate_plan_against_dataframe(plan, df)
                 r.typed_plan = raw_plan_payload
+                r.typed_plan_sha256 = typed_plan_digest(plan)
                 r.operators_used = plan.operators_used
                 r.stages_run.append("plan_validated")
             except PlanSchemaError as exc:
                 gap_stage, gap_error = "schema", str(exc)
                 plan = None
                 _debug(f"Gate 2 (schema) failed: {exc}")
+                if exc.missing_columns:
+                    # The plan asked for a field the dataset does not measure.
+                    # No amount of agentic retrying creates that column, so
+                    # stop here rather than letting ReAct invent a number.
+                    missing = sorted(exc.missing_columns)
+                    reason = (
+                        "The dataset has no field(s) "
+                        + ", ".join(repr(c) for c in missing)
+                        + " required to answer this question."
+                    )
+                    r.execution_path = PATH_SCOPE_REJECT
+                    r.plan_validation_stage_failed = "scope"
+                    r.missing_columns = missing
+                    r.rejected = True
+                    r.executed = False
+                    r.rejection_reason = reason
+                    r.alignment_explanation = (
+                        "Rejected at schema validation: the planner referenced "
+                        f"non-existent column(s) {missing}."
+                    )
+                    r.answer = (
+                        f"Query rejected. Reason: {reason} This request is not "
+                        "supported by the current dataset schema."
+                    )
+                    log_operator_gap(
+                        query=query,
+                        stage="scope",
+                        error=str(exc),
+                        raw_plan=raw_plan_payload,
+                    )
+                    return r
 
         # --- Typed operator execution ---------------------------------------
         if plan is not None:
@@ -329,7 +434,7 @@ def run_flash_fusion(
             if execution.ok:
                 r.execution_path = PATH_TYPED_OPERATOR
                 r.plan_validation_stage_failed = ""
-                r.answer = f"The result is {execution.value}"
+                r.answer = _format_typed_execution_value(execution.value)
                 r.trace = execution.trace
                 r.final_code = execution.code
                 r.agent_tries = len(execution.steps)

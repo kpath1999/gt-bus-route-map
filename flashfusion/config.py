@@ -40,10 +40,20 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.07,
         "output": 0.07,
     },
+    "qwen/qwen-2.5-72b-instruct": {
+        "input": 0.12,
+        "output": 0.39,
+    },
+    # Explicit `cache_control` prompt caching is documented for qwen3-max, not
+    # for the 2.5 line. Use this model when measuring prefix-cache hit rates.
+    "qwen/qwen3-max": {
+        "input": 1.20,
+        "output": 6.00,
+    },
 }
 
 # Default model used when --model is not supplied to the CLI
-DEFAULT_MODEL = "meta-llama/llama-3.3-70b-instruct"
+DEFAULT_MODEL = "qwen/qwen3-max"
 
 # ---------------------------------------------------------------------------
 # Agent execution limits

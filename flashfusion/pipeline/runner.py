@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import time
+import warnings
 from dataclasses import dataclass, field
 
 import pandas as pd
@@ -26,6 +27,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
 from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S, MODEL_RATE_PER_1M_TOKENS
+from flashfusion.pipeline.operators import planner_cache_key
 
 
 # ---------------------------------------------------------------------------
@@ -38,12 +40,23 @@ class _UsageCapture(BaseCallbackHandler):
     OpenRouter always returns native-tokenizer usage in every response via
     ``AIMessage.usage_metadata`` (populated by langchain_openrouter).  No
     heuristics or estimation are used.
+
+    Prompt-cache metrics are best-effort: providers without prefix caching simply
+    never populate them, so zero means "not observed", never "no saving".
     """
 
     def __init__(self) -> None:
         super().__init__()
         self.input_tokens: int = 0
         self.output_tokens: int = 0
+        self.cached_tokens: int = 0
+        self.cache_write_tokens: int = 0
+        self.cache_discount_usd: float = 0.0
+        # Real dollar cost as billed by OpenRouter (included automatically in
+        # every response). ``has_real_cost`` distinguishes "not reported" from a
+        # genuine $0.00 so callers never mistake silence for a free call.
+        self.real_cost_usd: float = 0.0
+        self.has_real_cost: bool = False
 
     def on_llm_end(self, response: LLMResult, **kwargs: object) -> None:
         for gen_list in response.generations:
@@ -53,6 +66,34 @@ class _UsageCapture(BaseCallbackHandler):
                 if um:
                     self.input_tokens += int(um.get("input_tokens", 0))
                     self.output_tokens += int(um.get("output_tokens", 0))
+                    details = um.get("input_token_details") or {}
+                    self.cached_tokens += int(details.get("cache_read", 0) or 0)
+                    self.cache_write_tokens += int(details.get("cache_creation", 0) or 0)
+                meta = getattr(msg, "response_metadata", None) if msg is not None else None
+                if isinstance(meta, dict) and "cost" in meta:
+                    self.real_cost_usd += float(meta["cost"])
+                    self.has_real_cost = True
+                self._read_raw_usage(meta)
+        self._read_raw_usage(response.llm_output)
+
+    def _read_raw_usage(self, payload: object) -> None:
+        """Fall back to OpenRouter's raw ``usage`` shape when LangChain drops it."""
+        if not isinstance(payload, dict):
+            return
+        usage = payload.get("token_usage") or payload.get("usage")
+        if isinstance(usage, dict):
+            prompt_details = usage.get("prompt_tokens_details") or {}
+            if isinstance(prompt_details, dict) and not self.cached_tokens:
+                self.cached_tokens += int(prompt_details.get("cached_tokens", 0) or 0)
+                self.cache_write_tokens += int(
+                    prompt_details.get("cache_write_tokens", 0) or 0
+                )
+            if "cost" in usage and not self.has_real_cost:
+                self.real_cost_usd += float(usage["cost"])
+                self.has_real_cost = True
+        discount = payload.get("cache_discount")
+        if isinstance(discount, (int, float)):
+            self.cache_discount_usd += float(discount)
 
 
 # ---------------------------------------------------------------------------
@@ -68,11 +109,54 @@ class LLMCallLog:
     output_tokens: int
     latency_s: float
     cost_usd: float
+    cached_tokens: int = 0
+    cache_write_tokens: int = 0
+    cache_discount_usd: float = 0.0
 
 
 # ---------------------------------------------------------------------------
 # LLMClient
 # ---------------------------------------------------------------------------
+
+#: Passed to the sampler for reproducibility. Providers that ignore `seed` simply
+#: drop it; temperature=0 remains the primary determinism control.
+LLM_SEED = 42
+
+#: Models we have already warned about having no configured price, so a long run
+#: does not emit one warning per LLM call.
+_UNPRICED_MODELS_WARNED: set[str] = set()
+
+
+def _build_chat_model(model_name: str, api_key: str, session_key: str):
+    """Construct ChatOpenRouter, degrading gracefully if the wrapper is older.
+
+    `x-session-id` pins OpenRouter's sticky routing to one provider so the
+    planner's static prefix stays warm; without it the routing key is derived
+    from the (query-dependent) opening messages and every request lands cold.
+    """
+    base = {
+        "model": model_name,
+        "api_key": api_key,
+        "temperature": 0,
+        "max_retries": 2,
+        "timeout": 480_000,  # 480 s in ms; ChatOpenRouter native param (not request_timeout)
+    }
+    extras = {
+        "top_p": 1,
+        "seed": LLM_SEED,
+        "session_id": session_key[:128],
+    }
+    try:
+        return ChatOpenRouter(**base, **extras)
+    except (TypeError, ValueError) as exc:
+        warnings.warn(
+            f"ChatOpenRouter rejected determinism/cache options ({exc}); "
+            "falling back to temperature-only determinism.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return ChatOpenRouter(**base)
+
 
 class LLMClient:
     """
@@ -110,13 +194,8 @@ class LLMClient:
                               sibling that shares the primary client's call_log.
         """
         self.model_name = model_name
-        self.llm = ChatOpenRouter(
-            model=model_name,
-            api_key=api_key,
-            temperature=0,
-            max_retries=2,
-            timeout=480_000,  # 480 s in ms; ChatOpenRouter native param (not request_timeout)
-        )
+        self.session_key = planner_cache_key(model_name, os.getenv("FF_ENV", "dev"))
+        self.llm = _build_chat_model(model_name, api_key, self.session_key)
         # A light sibling shares the primary's call_log so totals aggregate once.
         self.call_log: list[LLMCallLog] = (
             _shared_call_log if _shared_call_log is not None else []
@@ -144,16 +223,20 @@ class LLMClient:
 
         Returns:
             String output from the chain.
-
-        Implementation:
-            1. t0 = time.time()
-            2. result = chain.invoke(inputs)
-            3. latency = time.time() - t0
-            4. Estimate tokens from inputs and result strings
-            5. Compute cost via _compute_cost()
-            6. Append LLMCallLog to self.call_log
-            7. Return result if str, else str(result)
         """
+        return self._invoke(chain, inputs, stage)
+
+    def invoke_messages(self, messages: list, stage: str) -> str:
+        """Invoke the chat model on an explicit message list.
+
+        Required for the Flash-Fusion planner: its static prefix is full of
+        literal ``{``/``}`` from the operator JSON spec, which a
+        ``ChatPromptTemplate`` would try to interpolate. Passing messages
+        directly also keeps the prefix byte-identical across requests.
+        """
+        return self._invoke(self.llm, messages, stage)
+
+    def _invoke(self, runnable, payload, stage: str) -> str:
         import sys as _sys
         import httpx as _httpx
         _max_attempts = 3
@@ -162,7 +245,7 @@ class LLMClient:
         for _attempt in range(_max_attempts):
             try:
                 t0 = time.time()
-                result = chain.invoke(inputs, config={"callbacks": [capture]})
+                result = runnable.invoke(payload, config={"callbacks": [capture]})
                 latency = time.time() - t0
                 break
             except _httpx.ReadTimeout as _exc:
@@ -180,7 +263,14 @@ class LLMClient:
             output_text = str(getattr(result, "content", result))
         in_tok = capture.input_tokens
         out_tok = capture.output_tokens
-        cost = self._compute_cost(in_tok, out_tok)
+        # Prefer OpenRouter's real, provider-billed cost (reflects any prompt-cache
+        # discount) over the flat per-token estimate; the estimate is only a
+        # fallback for providers/requests that don't report `usage.cost`.
+        cost = (
+            capture.real_cost_usd
+            if capture.has_real_cost
+            else self._compute_cost(in_tok, out_tok)
+        )
         self.call_log.append(
             LLMCallLog(
                 model=self.model_name,
@@ -189,6 +279,9 @@ class LLMClient:
                 output_tokens=out_tok,
                 latency_s=latency,
                 cost_usd=cost,
+                cached_tokens=capture.cached_tokens,
+                cache_write_tokens=capture.cache_write_tokens,
+                cache_discount_usd=capture.cache_discount_usd,
             )
         )
         return output_text
@@ -196,10 +289,23 @@ class LLMClient:
     def _compute_cost(self, in_tok: int, out_tok: int) -> float:
         """
         Compute USD cost from token counts using config.MODEL_RATE_PER_1M_TOKENS.
+
+        An unpriced model would otherwise report $0.00 for an entire benchmark
+        run, which reads as a result rather than as missing configuration — so
+        warn once instead of returning a silent zero.
         """
-        rates = MODEL_RATE_PER_1M_TOKENS.get(
-            self.model_name, {"input": 0.0, "output": 0.0}
-        )
+        rates = MODEL_RATE_PER_1M_TOKENS.get(self.model_name)
+        if rates is None:
+            if self.model_name not in _UNPRICED_MODELS_WARNED:
+                _UNPRICED_MODELS_WARNED.add(self.model_name)
+                warnings.warn(
+                    f"No rate configured for model {self.model_name!r}; all "
+                    "reported costs for it will be $0.00. Add an entry to "
+                    "config.MODEL_RATE_PER_1M_TOKENS.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+            rates = {"input": 0.0, "output": 0.0}
         return (
             in_tok * rates.get("input", 0.0) + out_tok * rates.get("output", 0.0)
         ) / 1_000_000
@@ -218,6 +324,15 @@ class LLMClient:
 
     def total_cost_usd(self) -> float:
         return sum(c.cost_usd for c in self.call_log)
+
+    def total_cached_tokens(self) -> int:
+        return sum(c.cached_tokens for c in self.call_log)
+
+    def total_cache_write_tokens(self) -> int:
+        return sum(c.cache_write_tokens for c in self.call_log)
+
+    def total_cache_discount_usd(self) -> float:
+        return sum(c.cache_discount_usd for c in self.call_log)
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +360,9 @@ class RunResult:
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    cached_tokens: int = 0                           # prompt tokens served from the provider cache (0 = not observed)
+    cache_write_tokens: int = 0
+    cache_discount_usd: float = 0.0
 
     # Execution state
     executed: bool = False                           # True if pandas agent ran code
@@ -266,12 +384,23 @@ class RunResult:
     # Typed-operator instrumentation (Flash-Fusion). These are the primary
     # signals for the typed-vs-ReAct comparison; stages_run remains a coarse
     # human-readable audit trail only.
-    execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback"
-    plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "execution" | "no_plan"
+    execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback" | "scope_reject"
+    plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "scope" | "execution" | "no_plan"
     typed_plan: dict = field(default_factory=dict)   # the validated DeterministicPlan, as JSON
     operators_used: list = field(default_factory=list)  # op names fired, for the offline gap report
     plan_source: str = ""                            # "llm" for planner-originated typed plans
     ambiguous_concepts: list = field(default_factory=list)  # concepts the planner could not resolve literally
+    raw_plan: dict = field(default_factory=dict)     # planner output before normalization
+    normalization_actions: list = field(default_factory=list)  # named deterministic rewrites applied
+    normalization_version: str = ""
+    missing_columns: list = field(default_factory=list)  # schema fields the query needs but the dataset lacks
+
+    # Prompt-prefix / cache provenance
+    planner_prefix_version: str = ""
+    planner_prefix_sha256: str = ""
+    planner_cache_key: str = ""
+    schema_fingerprint: str = ""
+    typed_plan_sha256: str = ""                      # stability signal across repeated runs
 
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)
     s1_concepts: dict = field(default_factory=dict)      # Stage 1 output: {"DATA": [...], "REASONING": [...]}
@@ -409,6 +538,9 @@ class BaselineRunner:
         r.input_tokens = self.client.total_input_tokens()
         r.output_tokens = self.client.total_output_tokens()
         r.cost_usd = self.client.total_cost_usd()
+        r.cached_tokens = self.client.total_cached_tokens()
+        r.cache_write_tokens = self.client.total_cache_write_tokens()
+        r.cache_discount_usd = self.client.total_cache_discount_usd()
         return r
 
     def _run_llm_only(self, query: str, r: RunResult) -> RunResult:

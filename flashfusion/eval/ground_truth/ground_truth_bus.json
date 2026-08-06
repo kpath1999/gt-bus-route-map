@@ -43,8 +43,8 @@
   },
   {
     "query_id": 8,
-    "query_text": "If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence, based on instability score?",
-    "reference_answer": "The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability_score of 5.8690.",
+    "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability score?",
+    "reference_answer": "The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.",
     "expected_rejection": false
   },
   {

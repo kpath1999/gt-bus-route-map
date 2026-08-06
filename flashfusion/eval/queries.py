@@ -405,10 +405,10 @@ BUS_QUERIES: list[dict] = [
     },
     {
         "id": 8,
-        "text": "If we group the data into 1-minute intervals, which time window experienced the most sustained turbulence, based on instability score?",
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
         "complexity": "intermediate",
         "operation": "DERIVE+GROUPBY+AGGREGATE+RANK",
-        "stress": "Requires parsing string timestamps into math-derived time bins (truncating to minutes), mapping 'turbulence' to variance sum, grouping, and ranking.",
+        "stress": "Requires parsing string timestamps into math-derived time bins (truncating to minutes), grouping, and ranking. The statistic is named explicitly: 'most sustained turbulence' left the reducer (mean vs sum vs max) to the sampler, so the same question produced different plans and different correct-looking answers across runs.",
     },
     {
         "id": 9,

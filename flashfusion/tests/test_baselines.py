@@ -42,6 +42,13 @@ def _result(mode: str, query: str) -> RunResult:
     return RunResult(baseline=mode, model="llama-3.3-70b-versatile", query=query)
 
 
+def _guardrail_return(verdict) -> tuple:
+    """Mimic ``request_guardrail_and_plan``: (ParsedGuardrail, suffix, error)."""
+    from flashfusion.pipeline.operators import ParsedGuardrail
+
+    return (ParsedGuardrail(parsed=verdict, raw={}, normalization_actions=[]), "", "")
+
+
 def test_runner_does_not_precompute_derived_features() -> None:
     """BaselineRunner must hand the pipeline the raw schema unmodified; any
     derived feature (e.g. magnitude) is now materialized only after Stage 2
@@ -77,7 +84,7 @@ def test_flash_fusion_timeout_applies_to_typed_execution() -> None:
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
     ), patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls, patch(
@@ -210,7 +217,200 @@ def test_typed_plan_groupby_then_rank_returns_group_and_metric() -> None:
     execution = execute_plan(_df(), plan)
 
     assert execution.ok is True
-    assert execution.value == {"subject_id": "1601", "timestamp": 2000}
+    assert execution.value == {"subject_id": 1601, "sum_timestamp": 2000}
+
+
+def test_typed_plan_temporal_minute_rank_returns_window_and_mean() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2025-06-06 16:00:10",
+                    "2025-06-06 16:01:00",
+                    "2025-06-06 16:01:20",
+                    "2025-06-06 16:01:40",
+                    "2025-06-06 16:02:05",
+                ]
+            ),
+            "instability_score": [4.8, 6.0, 5.8, 5.807, 5.1],
+        }
+    )
+
+    plan = _plan(
+        {
+            "op": "DERIVE_BIN",
+            "column": "timestamp",
+            "kind": "temporal",
+            "freq": "1min",
+            "result": "minute_window",
+        },
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["minute_window"],
+            "aggregate": "mean",
+            "column": "instability_score",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
+    )
+
+    validate_plan_against_dataframe(plan, df)
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert isinstance(execution.value, dict)
+    assert execution.value["minute_window"] == "2025-06-06T16:01:00"
+    assert execution.value["mean_instability_score"] == pytest.approx(5.869)
+    assert not isinstance(execution.value, list)
+
+
+def test_typed_plan_derive_bin_numeric_mode_stays_backward_compatible() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    df = pd.DataFrame({"x": [1, 2, 11, 12]})
+    plan = _plan(
+        {
+            "op": "DERIVE_BIN",
+            "column": "x",
+            "kind": "numeric",
+            "width": 10,
+            "result": "x_bin",
+        },
+        {"op": "SELECT_COLUMN", "column": "x_bin", "distinct": True},
+    )
+
+    validate_plan_against_dataframe(plan, df)
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert execution.value == [0, 10]
+
+
+def test_typed_plan_temporal_bin_requires_epoch_unit_for_numeric_timestamp() -> None:
+    from flashfusion.pipeline.operators import PlanSchemaError, validate_plan_against_dataframe
+
+    df = pd.DataFrame(
+        {
+            "ts_ns": [
+                1749225660000000000,
+                1749225670000000000,
+            ],
+            "instability_score": [5.0, 6.0],
+        }
+    )
+    plan = _plan(
+        {
+            "op": "DERIVE_BIN",
+            "column": "ts_ns",
+            "kind": "temporal",
+            "freq": "1min",
+            "result": "minute_window",
+        }
+    )
+
+    with pytest.raises(PlanSchemaError, match="epoch_unit"):
+        validate_plan_against_dataframe(plan, df)
+
+
+def test_typed_plan_temporal_bin_numeric_timestamp_with_epoch_unit_executes() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    df = pd.DataFrame(
+        {
+            "ts_ns": [
+                1749225660000000000,
+                1749225670000000000,
+            ],
+            "instability_score": [5.0, 6.0],
+        }
+    )
+    plan = _plan(
+        {
+            "op": "DERIVE_BIN",
+            "column": "ts_ns",
+            "kind": "temporal",
+            "freq": "1min",
+            "epoch_unit": "ns",
+            "result": "minute_window",
+        },
+        {"op": "SELECT_COLUMN", "column": "minute_window", "distinct": True},
+    )
+
+    validate_plan_against_dataframe(plan, df)
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert execution.value == ["2025-06-06T16:01:00"]
+
+
+def test_typed_plan_rank_groups_all_null_values_fails_deterministically() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    df = pd.DataFrame(
+        {
+            "minute_window": pd.to_datetime(["2025-06-06 16:00:00", "2025-06-06 16:01:00"]),
+            "instability_score": [float("nan"), float("nan")],
+        }
+    )
+    plan = _plan(
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["minute_window"],
+            "aggregate": "mean",
+            "column": "instability_score",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
+    )
+
+    execution = execute_plan(df, plan)
+    assert execution.ok is False
+    assert "non-null grouped values" in (execution.error or "")
+
+
+def test_typed_plan_rank_groups_tie_uses_first_group() -> None:
+    from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
+
+    df = pd.DataFrame(
+        {
+            "minute_window": pd.to_datetime(["2025-06-06 16:01:00", "2025-06-06 16:02:00"]),
+            "instability_score": [5.0, 5.0],
+        }
+    )
+    plan = _plan(
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["minute_window"],
+            "aggregate": "mean",
+            "column": "instability_score",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
+    )
+
+    validate_plan_against_dataframe(plan, df)
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert execution.value["minute_window"] == "2025-06-06T16:01:00"
+    assert execution.value["mean_instability_score"] == 5.0
+
+
+def test_schema_gate_rejects_steps_after_rank_groups() -> None:
+    from flashfusion.pipeline.operators import PlanSchemaError, validate_plan_against_dataframe
+
+    plan = _plan(
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["subject_id"],
+            "column": "timestamp",
+            "aggregate": "sum",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
+        {"op": "SELECT_COLUMN", "column": "subject_id"},
+    )
+
+    with pytest.raises(PlanSchemaError, match="RANK_GROUPS must be the final step"):
+        validate_plan_against_dataframe(plan, _df())
 
 
 def test_typed_plan_rank_on_empty_frame_reports_error_not_crash() -> None:
@@ -365,7 +565,7 @@ def test_flash_fusion_rejection_sets_explanation() -> None:
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(verdict, "{}", ""),
+        return_value=_guardrail_return(verdict),
     ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
         out = run_flash_fusion(query, _df(), _client(), r)
 
@@ -388,7 +588,7 @@ def test_flash_fusion_typed_path_never_invokes_react() -> None:
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
     ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
         out = run_flash_fusion(query, _df(), _client(), r)
 
@@ -406,6 +606,55 @@ def test_flash_fusion_typed_path_never_invokes_react() -> None:
     execution_layer_cls.return_value.synthesize.assert_not_called()
 
 
+def test_flash_fusion_formats_ranked_temporal_window_answer() -> None:
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
+
+    query = "If we group the data into 1-minute intervals, which time window has the highest mean instability score?"
+    r = _result("FLASH_FUSION", query)
+    df = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2025-06-06 16:00:10",
+                    "2025-06-06 16:01:00",
+                    "2025-06-06 16:01:20",
+                    "2025-06-06 16:01:40",
+                ]
+            ),
+            "instability_score": [4.8, 6.0, 5.8, 5.807],
+        }
+    )
+    plan = _plan(
+        {
+            "op": "DERIVE_BIN",
+            "column": "timestamp",
+            "kind": "temporal",
+            "freq": "1min",
+            "result": "minute_window",
+        },
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["minute_window"],
+            "aggregate": "mean",
+            "column": "instability_score",
+        },
+        {"op": "RANK_GROUPS", "direction": "max"},
+    )
+
+    with patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
+    ), patch("flashfusion.baselines.flash_fusion.ExecutionLayer") as execution_layer_cls:
+        out = run_flash_fusion(query, df, _client(), r)
+
+    execution_layer_cls.return_value.execute_single.assert_not_called()
+    assert out.executed is True
+    assert "minute window" in out.answer
+    assert "2025-06-06T16:01:00" in out.answer
+    assert "5.8690" in out.answer
+
+
 def test_flash_fusion_falls_back_to_react_when_vocabulary_cannot_express_query() -> None:
     """in_scope with no plan is a coverage gap: fall back, never improvise an
     operator inline."""
@@ -421,7 +670,7 @@ def test_flash_fusion_falls_back_to_react_when_vocabulary_cannot_express_query()
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(verdict, "{}", ""),
+        return_value=_guardrail_return(verdict),
     ), patch(
         "flashfusion.baselines.flash_fusion.FF_FALLBACK_GROUNDING", False
     ), patch(
@@ -446,7 +695,12 @@ def test_flash_fusion_falls_back_to_react_when_vocabulary_cannot_express_query()
     assert "resting duration margin" in executor.execute_single.call_args.args[0]
 
 
-def test_flash_fusion_falls_back_when_plan_fails_schema_gate() -> None:
+def test_flash_fusion_rejects_when_plan_names_a_column_the_dataset_lacks() -> None:
+    """A missing field is a verdict about the question, not a vocabulary gap.
+
+    ReAct cannot invent the column either — it can only hallucinate a number —
+    so Gate 2 terminates the query instead of falling back.
+    """
     from flashfusion.baselines.flash_fusion import run_flash_fusion
     from flashfusion.pipeline.operators import GuardrailAndPlan
 
@@ -456,7 +710,7 @@ def test_flash_fusion_falls_back_when_plan_fails_schema_gate() -> None:
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
     ), patch(
         "flashfusion.baselines.flash_fusion.FF_FALLBACK_GROUNDING", False
     ), patch(
@@ -464,18 +718,15 @@ def test_flash_fusion_falls_back_when_plan_fails_schema_gate() -> None:
     ) as gap_log, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:
-        executor = execution_layer_cls.return_value
-        executor.execute_single.return_value = (
-            "answer",
-            "trace",
-            MagicMock(final_code="code", tries=1, attempts=[]),
-        )
-        executor.synthesize.return_value = "answer"
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    assert gap_log.call_args.kwargs["stage"] == "schema"
-    assert out.plan_validation_stage_failed == "schema"
-    assert out.execution_path == "react_fallback"
+    execution_layer_cls.return_value.execute_single.assert_not_called()
+    assert gap_log.call_args.kwargs["stage"] == "scope"
+    assert out.plan_validation_stage_failed == "scope"
+    assert out.execution_path == "scope_reject"
+    assert out.rejected is True
+    assert out.executed is False
+    assert out.missing_columns == ["heart_rate"]
     assert out.typed_plan == {}
 
 
@@ -506,7 +757,7 @@ def test_flash_fusion_predictive_query_is_planned_by_lm() -> None:
 
     with patch(
         "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
-        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
     ) as plan_call, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:

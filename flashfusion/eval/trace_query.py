@@ -325,6 +325,9 @@ def trace_single_query(
     print(f"input_tokens    : {r.input_tokens}")
     print(f"output_tokens   : {r.output_tokens}")
     print(f"cost_usd        : {r.cost_usd:.6f}")
+    print(f"cached_tokens   : {r.cached_tokens} (prompt tokens served from provider cache)")
+    print(f"cache_write_tokens : {r.cache_write_tokens}")
+    print(f"cache_discount_usd : {r.cache_discount_usd:.6f}")
 
     return (query_id, r, gt_entry)
 

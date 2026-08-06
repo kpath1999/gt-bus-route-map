@@ -292,54 +292,20 @@ SYNTHESIS_HINT: <one-line instruction for combining all sub-answers>\
 # Returns BOTH the scope verdict and a candidate typed-operator plan, so the
 # common case costs one LLM call instead of guardrail + concept extraction +
 # schema grounding + sub-query generation.
-# Placeholders: {column_metadata}, {operator_spec}
-# The query is passed as the human message at runtime.
+#
+# The STATIC half of this prompt (role, scope rules, operator vocabulary, output
+# contract) lives in ``flashfusion.pipeline.operators.FLASH_FUSION_PLANNER_PREFIX``
+# so it stays byte-identical across requests and can be served from a provider
+# prompt cache. Only the request-specific block below varies.
+# Placeholders: {dataset}, {schema_fingerprint}, {column_metadata}, {query}
 # ---------------------------------------------------------------------------
-GUARDRAIL_AND_PLAN_PROMPT: str = """\
-You are a query planner for a pandas DataFrame named `df` holding sensor /
-time-series data. You do two jobs in one response: decide whether the question
-is answerable from the schema, and if so emit a typed execution plan.
-
-Available columns and metadata:
+PLANNER_DYNAMIC_SUFFIX_TEMPLATE: str = """\
+DATASET: {dataset}
+SCHEMA_FINGERPRINT: {schema_fingerprint}
+SCHEMA:
 {column_metadata}
 
-Operator vocabulary (this is the COMPLETE set — nothing else exists):
-{operator_spec}
-
-SCOPE CHECK
-  in_scope = true when the answer can be computed from the columns above using
-  aggregation, filtering, grouping, ranking, derived arithmetic, or an
-  in-dataset train/predict procedure the question itself specifies.
-  in_scope = false when the question needs external data, outside domain
-  knowledge, personal attributes absent from the schema, or a forecast whose
-  inputs cannot be derived from these columns. Give a one-sentence
-  rejection_reason in that case and set plan to null.
-
-PLANNING
-  Resolve every concept in the question to a real column name yourself. When a
-  qualitative term has no literal column (for example "roughness",
-  "turbulence", "instability"), pick the closest real column, and also list the
-  term in ambiguous_concepts.
-  For in-dataset train/predict requests (chronological train/holdout split with
-  a prediction on a holdout row), emit a single-step PREDICTIVE_PIPELINE plan.
-  Use only supported model values exactly as listed in the operator vocabulary,
-  provide explicit feature_columns from real schema columns, set sort_by from
-  the chronological ordering requested, and set holdout_row to first or last.
-  Do not emit free-form modeling steps or Python code.
-  When the question asks to bucket/group a numeric or datetime column into
-  fixed-size intervals against a CONSTANT (e.g. "1-minute intervals", "bins of
-  width 10"), use DERIVE_BIN with that column and the constant as `width` —
-  NEVER DERIVE_BINARY, whose `left`/`right` fields must always be existing
-  column names and never a numeric literal or time constant.
-  If the question is in scope but CANNOT be expressed with the operators above,
-  set plan to null and list the missing capability in ambiguous_concepts. Do
-  not invent an operator, and do not emit Python code.
-
-Respond with a single JSON object and nothing else:
-{{"in_scope": bool,
-  "rejection_reason": string or null,
-  "ambiguous_concepts": [string, ...],
-  "plan": {{"version": "1", "steps": [ ...operators... ]}} or null}}\
+QUESTION: {query}\
 """
 
 # ---------------------------------------------------------------------------
