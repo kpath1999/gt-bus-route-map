@@ -270,7 +270,7 @@ class RunResult:
     plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "execution" | "no_plan"
     typed_plan: dict = field(default_factory=dict)   # the validated DeterministicPlan, as JSON
     operators_used: list = field(default_factory=list)  # op names fired, for the offline gap report
-    plan_source: str = ""                            # "predictive_template" | "llm"
+    plan_source: str = ""                            # "llm" for planner-originated typed plans
     ambiguous_concepts: list = field(default_factory=list)  # concepts the planner could not resolve literally
 
     # Pipeline stage intermediates (populated by rewriting baselines: WELLMAX_ONLY, FLASH_FUSION)

@@ -479,8 +479,9 @@ def test_flash_fusion_falls_back_when_plan_fails_schema_gate() -> None:
     assert out.typed_plan == {}
 
 
-def test_flash_fusion_predictive_bypass_skips_the_planning_call() -> None:
+def test_flash_fusion_predictive_query_is_planned_by_lm() -> None:
     from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
     query = (
         "Sort all WISDM rows by timestamp in ascending order, using subject_id as "
@@ -490,19 +491,33 @@ def test_flash_fusion_predictive_bypass_skips_the_planning_call() -> None:
         "holdout set."
     )
     r = _result("FLASH_FUSION", query)
+    plan = _plan(
+        {
+            "op": "PREDICTIVE_PIPELINE",
+            "model": "random_forest",
+            "feature_columns": ["x", "y", "z"],
+            "target_column": "activity_label",
+            "sort_by": ["timestamp", "subject_id"],
+            "train_fraction": 0.8,
+            "holdout_row": "first",
+            "target_label": "activity",
+        }
+    )
 
     with patch(
-        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan"
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=(GuardrailAndPlan(in_scope=True, plan=plan), "{}", ""),
     ) as plan_call, patch(
         "flashfusion.baselines.flash_fusion.ExecutionLayer"
     ) as execution_layer_cls:
         execution_layer_cls.return_value.synthesize.return_value = "Predicted A."
         out = run_flash_fusion(query, _df(), _client(), r)
 
-    plan_call.assert_not_called()
+    plan_call.assert_called_once()
     execution_layer_cls.return_value.execute_single.assert_not_called()
-    assert out.plan_source == "predictive_template"
+    assert out.plan_source == "llm"
     assert out.execution_path == "typed_operator"
+    assert "guardrail_plan" in out.stages_run
     assert out.typed_plan["steps"][0]["feature_columns"] == ["x", "y", "z"]
     assert out.typed_plan["steps"][0]["model"] == "random_forest"
     assert out.typed_plan["steps"][0]["sort_by"] == ["timestamp", "subject_id"]

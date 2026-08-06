@@ -320,6 +320,12 @@ PLANNING
   qualitative term has no literal column (for example "roughness",
   "turbulence", "instability"), pick the closest real column, and also list the
   term in ambiguous_concepts.
+  For in-dataset train/predict requests (chronological train/holdout split with
+  a prediction on a holdout row), emit a single-step PREDICTIVE_PIPELINE plan.
+  Use only supported model values exactly as listed in the operator vocabulary,
+  provide explicit feature_columns from real schema columns, set sort_by from
+  the chronological ordering requested, and set holdout_row to first or last.
+  Do not emit free-form modeling steps or Python code.
   When the question asks to bucket/group a numeric or datetime column into
   fixed-size intervals against a CONSTANT (e.g. "1-minute intervals", "bins of
   width 10"), use DERIVE_BIN with that column and the constant as `width` —

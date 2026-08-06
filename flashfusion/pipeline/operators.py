@@ -1898,7 +1898,19 @@ PREDICTIVE_PIPELINE {"op":"PREDICTIVE_PIPELINE","model":"logistic_regression|ran
                      "feature_columns":[str,...],"target_column":str,"sort_by":[str,...],"train_fraction":number,
                      "holdout_row":"first|last","filter_column":str|null,"filter_value":scalar|null,
                      "target_from_non_empty":bool,"target_label":str}
-                    feature_columns must be listed explicitly.
+                    USE WHEN: the query explicitly asks to train on an in-dataset
+                    chronological subset and predict on a holdout row from the
+                    same dataset.
+                    CRITICAL: model must be one of the exact enum values above.
+                    CRITICAL: feature_columns must be listed explicitly and each
+                    column must exist in the schema and be numeric.
+                    CRITICAL: sort_by must list real schema columns that define
+                    chronological ordering before the split.
+                    CRITICAL: target_column must be a real schema column and must
+                    not appear in feature_columns.
+                    CRITICAL: set target_from_non_empty=true only when the query
+                    target is "whether <column> is present/non-empty"; otherwise
+                    keep it false and predict labels directly from target_column.
 
 AGG is one of: min, max, mean, median, sum, count, std, var, nunique, rms.
 

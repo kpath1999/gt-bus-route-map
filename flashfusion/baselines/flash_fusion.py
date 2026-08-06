@@ -4,7 +4,7 @@ baselines/flash_fusion.py — Flash-Fusion baseline.
 Default path (one LLM round-trip, no codegen, no sandbox):
 
     query
-      -> bypass detector (0 LLM calls)  OR  single structured guardrail+plan call
+    -> single structured guardrail+plan call
       -> Gate 1: Pydantic structural validation   (microseconds)
       -> Gate 2: DataFrame schema validation      (microseconds)
     -> execute_plan(df, plan)  — typed operators, in-process
@@ -28,7 +28,6 @@ Instrumentation (see RunResult): ``execution_path``,
 from __future__ import annotations
 
 import os
-import re
 import signal
 import sys
 import time
@@ -50,7 +49,6 @@ from flashfusion.pipeline.operators import (
     execute_plan,
     log_operator_gap,
     parse_guardrail_and_plan,
-    structural_validate,
     validate_plan_against_dataframe,
 )
 from flashfusion.pipeline.runner import LLMClient, RunResult
@@ -111,149 +109,6 @@ def _run_with_timeout(
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
-
-
-# ---------------------------------------------------------------------------
-# Bypass detector — builds a typed plan with zero LLM calls
-# ---------------------------------------------------------------------------
-
-_PREDICTIVE_MODEL_PHRASES: tuple[tuple[str, str], ...] = (
-    ("hist gradient boosting", "hist_gradient_boosting"),
-    ("random forest", "random_forest"),
-    ("1-nearest-neighbor", "one_nearest_neighbor"),
-    ("nearest neighbor", "one_nearest_neighbor"),
-    ("logistic regression", "logistic_regression"),
-)
-
-#: Columns treated as "the acceleration features" when a predictive query names
-#: the feature family instead of listing columns. Mirrors the feature set used
-#: by eval/build_groundtruth/simple_pred.py for the bus dataset.
-_ACCEL_FEATURE_EXTRAS = ("extreme_event_magnitude", "instability_score")
-
-
-def _split_feature_names(text: str) -> list[str]:
-    cleaned = re.sub(r"\band\b", ",", text)
-    return [part.strip().strip("`'\"") for part in cleaned.split(",") if part.strip()]
-
-
-def _resolve_feature_columns(
-    query: str, df: pd.DataFrame, excluded: set[str]
-) -> list[str]:
-    """Resolve an explicit, auditable feature list for a predictive plan."""
-    match = re.search(
-        r"using the features?\s+(.+?)(?:\.|$)", query, re.IGNORECASE | re.DOTALL
-    )
-    if match:
-        named = [c for c in _split_feature_names(match.group(1)) if c in df.columns]
-        if named:
-            return named
-
-    if re.search(r"using the acceleration features", query, re.IGNORECASE):
-        return [
-            column
-            for column in df.columns
-            if column not in excluded
-            and pd.api.types.is_numeric_dtype(df[column])
-            and ("accel" in column.lower() or column in _ACCEL_FEATURE_EXTRAS)
-        ]
-
-    return []
-
-
-def detect_predictive_plan(query: str, df: pd.DataFrame) -> DeterministicPlan | None:
-    """Recognize the CHRONO_SPLIT+CLASSIFY template (eval/queries.py ids 13-16).
-
-    Returns a fully typed, already-structurally-valid DeterministicPlan, or None
-    when the query does not confidently match — in which case the normal
-    single-call planning path runs.
-    """
-    lowered = query.lower()
-    if not ("train" in lowered and "predict" in lowered and "holdout" in lowered):
-        return None
-
-    model = next(
-        (key for phrase, key in _PREDICTIVE_MODEL_PHRASES if phrase in lowered), None
-    )
-    if model is None:
-        return None
-
-    sort_match = re.search(
-        r"by\s+([A-Za-z_][A-Za-z0-9_]*)\s+in ascending order", query, re.IGNORECASE
-    )
-    if not sort_match or sort_match.group(1) not in df.columns:
-        return None
-    sort_by = [sort_match.group(1)]
-
-    tie_match = re.search(
-        r"using\s+([A-Za-z_][A-Za-z0-9_]*)\s+as the tie-breaker", query, re.IGNORECASE
-    )
-    if tie_match and tie_match.group(1) in df.columns:
-        sort_by.append(tie_match.group(1))
-
-    fraction_match = re.search(r"first\s+(\d+)\s*%", query, re.IGNORECASE)
-    train_fraction = float(fraction_match.group(1)) / 100.0 if fraction_match else 0.8
-
-    filter_column: str | None = None
-    filter_value: Any = None
-    filter_match = re.search(
-        r"Filter to\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\d+)", query, re.IGNORECASE
-    )
-    if filter_match:
-        if filter_match.group(1) not in df.columns:
-            return None
-        filter_column, filter_value = filter_match.group(1), int(filter_match.group(2))
-
-    row_match = re.search(
-        r"for the (first|last) row in the holdout set", query, re.IGNORECASE
-    )
-    holdout_row = row_match.group(1).lower() if row_match else "first"
-
-    target_from_non_empty = False
-    column_target = re.search(
-        r"label in the\s+([A-Za-z_][A-Za-z0-9_]*)\s+column", query, re.IGNORECASE
-    )
-    if column_target and column_target.group(1) in df.columns:
-        target_column = column_target.group(1)
-        target_label = target_column
-    elif "activity label" in lowered and "activity_label" in df.columns:
-        target_column, target_label = "activity_label", "activity"
-    elif "annotation is present" in lowered and "annotation" in df.columns:
-        target_column, target_label = "annotation", "annotation"
-        target_from_non_empty = True
-    else:
-        return None
-
-    excluded = {target_column, *sort_by} | ({filter_column} if filter_column else set())
-    feature_columns = _resolve_feature_columns(query, df, excluded)
-    if not feature_columns:
-        return None
-
-    # Routed through Gate 1 like any other plan: the bypass detector gets no
-    # privileged path into the executor.
-    try:
-        return structural_validate(
-            {
-                "version": "1",
-                "steps": [
-                    {
-                        "op": "PREDICTIVE_PIPELINE",
-                        "model": model,
-                        "feature_columns": feature_columns,
-                        "target_column": target_column,
-                        "sort_by": sort_by,
-                        "train_fraction": train_fraction,
-                        "holdout_row": holdout_row,
-                        "filter_column": filter_column,
-                        "filter_value": filter_value,
-                        "target_from_non_empty": target_from_non_empty,
-                        "target_label": target_label,
-                    }
-                ],
-            }
-        )
-    except StructuralValidationError as exc:
-        _debug(f"Predictive bypass failed structural validation: {exc}")
-        return None
 
 
 # ---------------------------------------------------------------------------
@@ -383,58 +238,50 @@ def run_flash_fusion(
         gap_error = ""
         raw_plan_payload: Any = None
 
-        # --- Bypass detector: a pre-validated typed plan, zero LLM calls -----
-        last_stage = "bypass_detect"
-        plan: DeterministicPlan | None = detect_predictive_plan(query, df)
-        if plan is not None:
-            r.plan_source = "predictive_template"
-            r.stages_run.append("plan_bypass_predictive")
-            _debug(f"Predictive template matched: {plan.steps[0].op}")
-
         # --- Single structured call: guardrail verdict + candidate plan -----
-        if plan is None:
-            r.plan_source = "llm"
-            last_stage = "guardrail_plan"
-            r.guardrail_input = query
-            started = time.time()
-            parsed, raw, structural_error = request_guardrail_and_plan(
-                query, meta_str, client
-            )
-            record("guardrail+plan", started)
-            r.stages_run.append("guardrail_plan")
-            raw_plan_payload = raw
+        r.plan_source = "llm"
+        last_stage = "guardrail_plan"
+        r.guardrail_input = query
+        started = time.time()
+        parsed, raw, structural_error = request_guardrail_and_plan(
+            query, meta_str, client
+        )
+        record("guardrail+plan", started)
+        r.stages_run.append("guardrail_plan")
+        raw_plan_payload = raw
 
-            if parsed is None:
-                gap_stage, gap_error = "structural", structural_error
-                _debug(f"Gate 1 (structural) failed: {structural_error}")
-            elif not parsed.in_scope:
-                reason = (
-                    parsed.rejection_reason
-                    or "The query cannot be answered from the available columns."
+        if parsed is None:
+            gap_stage, gap_error = "structural", structural_error
+            _debug(f"Gate 1 (structural) failed: {structural_error}")
+            plan: DeterministicPlan | None = None
+        elif not parsed.in_scope:
+            reason = (
+                parsed.rejection_reason
+                or "The query cannot be answered from the available columns."
+            )
+            r.execution_path = PATH_GUARDRAIL_REJECT
+            r.rejected = True
+            r.executed = False
+            r.rejection_reason = reason
+            r.alignment_explanation = (
+                "Rejected by the guardrail because the query cannot be "
+                f"answered from available dataset fields. Reason: {reason}"
+            )
+            r.answer = (
+                f"Query rejected. Reason: {reason}. This request is not "
+                "supported by the current dataset schema or task scope."
+            )
+            return r
+        else:
+            ambiguous = list(parsed.ambiguous_concepts)
+            r.ambiguous_concepts = ambiguous
+            plan = parsed.plan
+            if plan is None:
+                gap_stage = "no_plan"
+                gap_error = (
+                    "planner returned no plan; unresolved: "
+                    f"{ambiguous or ['(unspecified)']}"
                 )
-                r.execution_path = PATH_GUARDRAIL_REJECT
-                r.rejected = True
-                r.executed = False
-                r.rejection_reason = reason
-                r.alignment_explanation = (
-                    "Rejected by the guardrail because the query cannot be "
-                    f"answered from available dataset fields. Reason: {reason}"
-                )
-                r.answer = (
-                    f"Query rejected. Reason: {reason}. This request is not "
-                    "supported by the current dataset schema or task scope."
-                )
-                return r
-            else:
-                ambiguous = list(parsed.ambiguous_concepts)
-                r.ambiguous_concepts = ambiguous
-                plan = parsed.plan
-                if plan is None:
-                    gap_stage = "no_plan"
-                    gap_error = (
-                        "planner returned no plan; unresolved: "
-                        f"{ambiguous or ['(unspecified)']}"
-                    )
 
         # --- Gate 2: DataFrame schema validation ----------------------------
         if plan is not None:

@@ -224,23 +224,15 @@ def trace_single_query(
     # Detailed trace output follows (only when verbose=True)
     if args.react:
         _hr("REACT_ONLY EXECUTION")
-        print("Guardrail/bypass detector/typed operators are skipped in this mode.")
+        print("Guardrail planning and typed operators are skipped in this mode.")
         _hr("EXECUTION TRACE")
         print(r.trace or "(no trace captured)")
         _hr("FINAL EXECUTED CODE")
         print(r.final_code or "(none)")
         print(f"\nagent_tries={r.agent_tries}")
     else:
-        # --- Bypass detector -------------------------------------------------
-        _hr("BYPASS DETECTOR (zero-LLM template matching)")
-        if r.plan_source == "predictive_template":
-            print("✓ MATCHED — predictive query template recognized")
-            print(f"  Generated plan without LLM call: {r.typed_plan['steps'][0]['op']}")
-        else:
-            print("✗ NO MATCH — proceeding to LLM-based guardrail+plan call")
-
         # --- Single structured guardrail + plan call --------------------------
-        _hr("GUARDRAIL + PLAN (single structured call)")
+        _hr("GUARDRAIL + PLAN (single structured LM call)")
         print(f"execution_path : {r.execution_path or '(unset)'}")
         print(f"plan_source    : {r.plan_source or '(unset)'}")
         print(f"query          : {r.guardrail_input or query_text}")
