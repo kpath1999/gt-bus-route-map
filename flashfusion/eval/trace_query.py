@@ -39,6 +39,7 @@ import argparse
 import json
 import os
 import sys
+from typing import Any
 
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.benchmark import DEFAULT_DATA_PATHS, DEFAULT_GROUND_TRUTH_PATHS
@@ -46,7 +47,7 @@ from flashfusion.eval.ground_truth import load_ground_truth
 from flashfusion.eval.queries import SUPPORTED_DATASETS, get_queries
 from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name
-from flashfusion.pipeline.runner import BaselineRunner, LLMClient
+from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
 
 
 def _hr(title: str) -> None:
@@ -80,7 +81,7 @@ def _parse_query_ids(query_id_arg: str, dataset: str) -> list[int]:
         raise SystemExit(f"Invalid --query-id format: {query_id_arg!r}. Use comma-separated integers or 'all'.")
 
 
-def _print_summary_table(results: list[tuple[int, dict, any]]) -> None:
+def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
     """Print a summary table showing execution paths across multiple queries."""
     _hr("SUMMARY: EXECUTION PATHS ACROSS QUERIES")
     
@@ -236,6 +237,23 @@ def trace_single_query(
         print(f"execution_path : {r.execution_path or '(unset)'}")
         print(f"plan_source    : {r.plan_source or '(unset)'}")
         print(f"query          : {r.guardrail_input or query_text}")
+        _hr("ROUTER TELEMETRY")
+        print(
+            "fast_path      : "
+            f"used={r.ff_fast_path_used} "
+            f"latency={r.ff_fast_path_latency_s:.3f}s "
+            f"tokens={r.ff_fast_path_input_tokens}in/"
+                f"{r.ff_fast_path_output_tokens}out "
+                f"cost=${r.ff_fast_path_cost_usd:.6f}"
+        )
+        print(
+            "full_planner   : "
+            f"used={r.ff_planner_used} "
+            f"latency={r.ff_planner_latency_s:.3f}s "
+            f"tokens={r.ff_planner_input_tokens}in/"
+                f"{r.ff_planner_output_tokens}out "
+                f"cost=${r.ff_planner_cost_usd:.6f}"
+        )
         if r.ambiguous_concepts:
             print(f"ambiguous      : {', '.join(r.ambiguous_concepts)}")
         if r.rejected:

@@ -25,8 +25,8 @@
   },
   {
     "query_id": 5,
-    "query_text": "For record_id 208, what is the average annotation count per timestamp (time_s)?",
-    "reference_answer": "For record_id 208, the average annotation count per timestamp (time_s) is 1.000000.",
+    "query_text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+    "reference_answer": "For record_id 208, the average annotation count per 60-s time_s is 98.064516.",
     "expected_rejection": false
   },
   {
@@ -73,25 +73,25 @@
   },
   {
     "query_id": 13,
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
     "reference_answer": "Logistic regression predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 14,
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
     "reference_answer": "Random forest predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 15,
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
     "reference_answer": "1-nearest-neighbor predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   },
   {
     "query_id": 16,
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict whether an annotation is present for the first row in the holdout set.",
+    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
     "reference_answer": "Hist gradient boosting predicts annotation '0' for the first holdout row.",
     "expected_rejection": false
   }

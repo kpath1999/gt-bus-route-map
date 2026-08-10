@@ -1,55 +1,66 @@
-Implement a "Static Fast-Path Semantic Router" to bypass the full planner for 5 strict, highly common query templates. 
+Scope: metrics only. Do not change planner semantics.
 
-Please read:
-1. `flashfusion/baselines/flash_fusion.py`
-2. `flashfusion/pipeline/operators.py`
-3. `flashfusion/prompts/templates.py`
+Edit:
+- flashfusion/pipeline/runner.py
+- flashfusion/baselines/flash_fusion.py
+- flashfusion/tests/test_metrics.py
+- flashfusion/eval/benchmark.py
 
-### Goal
-We want to use a lightweight LLM call to attempt to zero-shot a plan using only 5 allowed skeletons. If the lightweight model is not 100% confident, or if the query requires operators outside these exact skeletons (like derivations, temporal binning, etc.), it must fall back. 
+Goals:
+1. Extend RunResult with fields to record, per-query:
+   - whether Flash-Fusion used the fast-path,
+   - fast-path latency and token counts,
+   - whether the full planner was used,
+   - planner latency and token counts.
 
-### Step 1: Add the Fast-Path Prompt to `templates.py`
-Create a new constant `FAST_PATH_PLANNER_TEMPLATE`. The prompt must be extremely strict. It should read:
-"""
-You are a highly conservative fast-path query router. 
-Schema: {meta_str}
-Query: {query}
+2. In baselines/flash_fusion.run_flash_fusion:
+   - Time and record the attempt_fast_path_plan call.
+   - Time and record the request_guardrail_and_plan call.
+   - Set the new RunResult fields accordingly.
+   - Do not change existing behavior: all fallbacks and validation gates must stay identical.
 
-Your job is to map the query to one of the 5 EXACT plan skeletons below. You may NOT invent operators, change the sequence, or add derivation steps (no DeriveVectorMagnitude, no DeriveBin). 
-If the query requires ANY computation not perfectly described by these skeletons, or if you are not 100% confident, output exactly: {{"fallback": true}}
+3. In eval/benchmark.py and viz helpers:
+   - Ensure new RunResult fields are saved in CSV/JSONL.
+   - Add a small summary of:
+     - fraction of queries where ff_fast_path_used is True,
+     - median/p95 latency for fast path vs planner,
+     - average token counts for fast path vs planner.
 
-Allowed Skeletons:
-1. Simple Aggregate: [AggregateColumn]
-2. Filtered Aggregate: [FilterIn(1 or 2 times)] -> [AggregateColumn]
-3. Filtered Count: [FilterCompare] -> [CountRows] OR [FilterIn] -> [CountDistinct]
-4. Partition Compare: [SplitByValues (x2)] -> [AggregatePartitions] -> [ComparePartitions]
-5. Group & Rank: [GroupAggregate] -> [AggregateGroups] -> [RankGroups]
+4. Update tests in test_metrics.py so they can construct RunResult with new fields without breaking existing tests.
 
-If confident, output valid JSON matching the DeterministicPlan schema: {{"version": "1", "steps": [{{...}}]}}. 
-Ensure exact argument setup for each operator (e.g., provide `column`, `function`, `result_column` for AggregateColumn).
-Output ONLY JSON.
-"""
+Constraints:
+- No changes to ReAct baseline or other baselines.
+- No changes to operators.py or stages.py.
+- No network/LLM calls in tests.
 
-### Step 2: Create the fast path function in `flash_fusion.py`
-Add `def attempt_fast_path_plan(query: str, meta_str: str, client) -> dict | None:`
-- Use `FAST_PATH_PLANNER_TEMPLATE`.
-- Call `client.invoke_json(..., model=...)` (Assume the caller will configure the lightweight model in the client).
-- If the response contains `"fallback": True` or fails to parse, return `None`.
+---
 
-### Step 3: Integrate into `run_flash_fusion`
-Inside `run_flash_fusion` (before `request_guardrail_and_plan`), add the fast-path check:
-1. Call `attempt_fast_path_plan`.
-2. If it returns a raw plan dictionary:
-   - Wrap it in a `try/except Exception` block.
-   - Run `validated = structural_validate(raw_plan)`.
-   - Run `validate_plan_against_dataframe(validated, df)`.
-   - If both pass, `return execute_plan(df, validated)` immediately.
-3. If `attempt_fast_path_plan` returns `None` OR if the `try/except` block catches ANY validation/execution error, silently fall through to the existing `request_guardrail_and_plan` logic.
+Scope: eager-warm the planner prefix/suffix so Flash-Fusion does not pay extra latency on the first query.
 
-### Constraints for this implementation:
-- Look up the exact arguments required for `FilterIn`, `AggregateColumn`, `FilterCompare`, `CountRows`, `CountDistinct`, `SplitByValues`, `AggregatePartitions`, `ComparePartitions`, `GroupAggregate`, `AggregateGroups`, and `RankGroups` in `operators.py` and ensure the prompt description or your implementation respects them.
-- Do NOT modify the existing fallback/slow-path logic.
-- Do NOT add any caching state or memory structures.
-- Prioritize fail-open safety: if the fast path fails structurally, semantically, or execution-wise, it must seamlessly delegate to the full planner without crashing the run.
+Read:
+- flashfusion/baselines/flash_fusion.py
+- flashfusion/prompts/templates.py
+- flashfusion/pipeline/runner.py
 
-Output the code changes file-by-file.
+Goals:
+1. Identify the function(s) that build:
+   - the planner prefix (e.g., FLASH_FUSION_PLANNER_PREFIX),
+   - the dynamic suffix template (PLANNER_DYNAMIC_SUFFIX_TEMPLATE),
+   from schema/meta_str.
+
+2. Add a small helper, e.g.:
+   - flashfusion/baselines/flash_fusion.py: `def warm_flash_fusion_prefix(df, client) -> None`
+   that:
+   - builds `meta_str` from df,
+   - initializes any cached prefix/suffix structures used inside request_guardrail_and_plan,
+   - does NOT run a full LLM planning call or execute any plan.
+
+3. In flashfusion/pipeline/runner.BaselineRunner.__init__ or where the DataFrame is first available,
+   - call warm_flash_fusion_prefix(self.df, self.client) once
+   - but only when the selected baseline mode is FLASH_FUSION.
+
+Constraints:
+- No change to the content of PLANNER_DYNAMIC_SUFFIX_TEMPLATE, only when it is built.
+- No additional planner calls; if any LLM call is unavoidable, it must be a single, low-cost one without touching operators or execution.
+- Tests:
+   - Add or update a test in test_baselines.py to assert that, after constructing a BaselineRunner in FLASH_FUSION mode, the prefix/suffix cache is populated before the first query.

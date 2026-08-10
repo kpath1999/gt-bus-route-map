@@ -1,0 +1,149 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],FLASH_FUSION,1,What is the maximum recorded x-acceleration for user 15?,False,Maximum x-acceleration for user 15 is 19.5700.,The result is 19.57,False,True,"df = df[df['subject_id'].isin([15])]
+result = df['x'].max()",PASS,1.0,The candidate answer matches the ground truth value of 19.57 for the maximum x-acceleration of user 15.,SOUND,Matches deterministic hint and is consistent with the query.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth value of 19.57 for the maximum x-acceleration of user 15."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the query.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,2,How many users have the activity label walking?,False,Total users Walking in the dataset: 36.,The result is 424397,False,True,"df = df[df['activity_label'].isin(['Walking'])]
+result = len(df)",FAIL,0.0,"The candidate answer (424397) does not match the ground truth (36), indicating a different referent—likely counting rows instead of distinct users.",SOUND,Ground truth is consistent with sanity hint and plausible for user count.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate answer (424397) does not match the ground truth (36), indicating a different referent—likely counting rows instead of distinct users."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with sanity hint and plausible for user count.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,3,What is the average y-acceleration of user 5 with activity label Sitting?,False,Average y-acceleration for user 5 during Sitting is 3.0414.,The result is 3.0414423076923076,False,True,"df = df[df['subject_id'].isin([5])]
+df = df[df['activity_label'].isin(['Sitting'])]
+result = df['y'].mean()",PASS,1.0,The candidate answer matches the ground truth value of 3.041 for the average y-acceleration of user 5 during Sitting.,SOUND,Matches deterministic sanity hint and is consistent with the query.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth value of 3.041 for the average y-acceleration of user 5 during Sitting."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with the query.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,4,Which user has the highest total number of recorded data samples?,False,User with the highest sample count is 20 with 56632 samples.,The result is 1098198,False,True,result = df['subject_id'].count(),FAIL,0.0,The candidate answer returns the total number of rows (1098198) instead of identifying user 20 with 56632 samples as the user with the highest count.,SOUND,Ground truth correctly identifies user 20 and their sample count.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate answer returns the total number of rows (1098198) instead of identifying user 20 with 56632 samples as the user with the highest count."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly identifies user 20 and their sample count.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,5,Compare the overall acceleration magnitude between dynamic movements and resting states.,False,"Average magnitude for dynamic activities (walking,jogging,upstairs,downstairs) is 11.9625; resting activities (sitting,standing) is 9.8328; difference (dynamic-resting) is 2.1297.","The result is {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.832791762650903, 'difference': 2.12974699780286}",False,True,"df['acceleration_magnitude'] = (df['x']**2 + df['y']**2 + df['z']**2)**0.5
+dynamic = df[df['activity_label'].isin(['Downstairs', 'Jogging', 'Upstairs', 'Walking'])]
+resting = df[df['activity_label'].isin(['Sitting', 'Standing'])]
+result = {label: agg(partition) for label in partitions}
+result = compare(dynamic, resting, mode='difference')",PASS,1.0,Candidate answer matches the ground truth in all numeric values and correctly identifies dynamic activities as having higher acceleration magnitude than resting states.,SOUND,Ground truth is consistent with deterministic hint and reflects a valid comparison of mean acceleration magnitudes.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth in all numeric values and correctly identifies dynamic activities as having higher acceleration magnitude than resting states."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and reflects a valid comparison of mean acceleration magnitudes.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,6,Identify the user whose total recorded duration of resting states exceeds their duration of dynamic movements by the largest margin.,False,"Users [20, 6, 16] have total stationary duration (sitting, standing) exceeding locomotion duration (walking, jogging, upstairs, downstairs). User 20 has the largest margin (delta=54004.34s).","The result is {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}",False,True,"df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
+df = df.sort_values(['subject_id', 'timestamp']); df['dt_s'] = df.groupby(['subject_id'])['timestamp'].diff().dt.total_seconds().clip(lower=0).fillna(0.0)
+# PARALLEL_AGGREGATE branches:
+# Branch 0: filter 'activity_label' in ['Sitting', 'Standing']
+branch_0 = df.groupby(['subject_id'])['dt_s'].sum()
+# Branch 1: filter 'activity_label' in ['Downstairs', 'Jogging', 'Upstairs', 'Walking']
+branch_1 = df.groupby(['subject_id'])['dt_s'].sum()
+merged = branch_0.merge(branch_1, on=['subject_id'], how='outer').fillna(0)
+df['duration_margin'] = df['resting_duration'] - df['dynamic_duration']
+df = df[df['duration_margin'] gt 0]
+idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resting_duration', 'dynamic_duration', 'duration_margin']].to_dict()",PASS,1.0,"Candidate answer correctly identifies user 20 with a margin of ~54004.34s, matching the ground truth referent.",SOUND,Ground truth is consistent with deterministic hint and candidate computation.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer correctly identifies user 20 with a margin of ~54004.34s, matching the ground truth referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and candidate computation.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,7,What is the median acceleration magnitude for user 20 with activity label Upstairs?,False,Median net acceleration vector length for user 20 while ascending steps is 9.8931.,The median acceleration magnitude for user 20 with activity label Upstairs is 9.893086174221672.,False,True,"# Filter out rows with empty activity_label
+df = df[df['activity_label'] != '']
+
+# Filter for user 20 and activity 'Upstairs'
+filtered_df = df[(df['subject_id'] == 20) & (df['activity_label'] == 'Upstairs')]
+
+# Calculate acceleration magnitude
+filtered_df['magnitude'] = (filtered_df['x']**2 + filtered_df['y']**2 + filtered_df['z']**2)**0.5
+
+# Compute median magnitude
+result = filtered_df['magnitude'].median()",PASS,1.0,The candidate answer matches the ground truth in both value and referent: median acceleration magnitude for user 20 during 'Upstairs' activity.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth in both value and referent: median acceleration magnitude for user 20 during 'Upstairs' activity."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,8,Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.,False,Average z for ascending elevation changes is 0.3235; descending is 0.6841; absolute difference (ascending-descending) is 0.3605.,The result is 0.4856951405563785,False,True,"df = df[df['activity_label'].isin(['Upstairs', 'Downstairs'])]
+result = df['z'].mean()",FAIL,0.0,Candidate computes overall mean z-acceleration across both activities instead of the absolute difference between their separate means.,SOUND,"Ground truth correctly specifies separate means for Upstairs (0.324) and Downstairs (0.684), with absolute difference 0.36.","{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate computes overall mean z-acceleration across both activities instead of the absolute difference between their separate means."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly specifies separate means for Upstairs (0.324) and Downstairs (0.684), with absolute difference 0.36.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,13,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",False,Logistic regression predicts activity 'Jogging' for the first holdout row.,Jogging,False,True,"# Filter out rows with empty activity_label
+df = df[df['activity_label'] != '']
+
+# Sort by timestamp, then by subject_id as tie-breaker
+df = df.sort_values(['timestamp', 'subject_id'])
+
+# Split into 80% training and 20% holdout
+n = len(df)
+train_end = int(0.8 * n)
+train_df = df.iloc[:train_end]
+holdout_df = df.iloc[train_end:]
+
+# Train logistic regression model
+from sklearn.linear_model import LogisticRegression
+model = LogisticRegression(max_iter=1000)
+model.fit(train_df[['x', 'y', 'z']], train_df['activity_label'])
+
+# Predict activity label for first row in holdout set
+first_holdout_row = holdout_df.iloc[0][['x', 'y', 'z']].values.reshape(1, -1)
+result = model.predict(first_holdout_row)[0]",PASS,1.0,Candidate answer 'Jogging' matches the ground truth prediction.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer 'Jogging' matches the ground truth prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,14,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",False,Random forest predicts activity 'Sitting' for the first holdout row.,The result is Random forest predicts activity_label 'Sitting' for the first holdout row.,False,True,"# sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='random_forest' features=['x', 'y', 'z']
+result = ""Random forest predicts activity_label 'Sitting' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'Sitting' for the first holdout row using a random forest model.,SOUND,Consistent with deterministic hint and expected procedure.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth in predicting 'Sitting' for the first holdout row using a random forest model."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and expected procedure.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,15,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",False,1-nearest-neighbor predicts activity 'Sitting' for the first holdout row.,The result is 1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row.,False,True,"# sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='one_nearest_neighbor' features=['x', 'y', 'z']
+result = ""1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'Sitting' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and code.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth in predicting 'Sitting' for the first holdout row using 1-nearest-neighbor."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,16,"Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set.",False,Hist gradient boosting predicts activity 'Sitting' for the first holdout row.,Sitting,False,True,"# Filter out rows with empty activity_label
+df = df[df['activity_label'] != '']
+
+# Sort by timestamp, then by subject_id as tie-breaker
+df = df.sort_values(by=['timestamp', 'subject_id'])
+
+# Split into 80% training and 20% holdout (chronological)
+n = len(df)
+train_size = int(0.8 * n)
+train_df = df.iloc[:train_size]
+holdout_df = df.iloc[train_size:]
+
+# Prepare features and target
+X_train = train_df[['x', 'y', 'z']]
+y_train = train_df['activity_label']
+
+X_holdout = holdout_df[['x', 'y', 'z']]
+
+# Train HistGradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
+model = HistGradientBoostingClassifier()
+model.fit(X_train, y_train)
+
+# Predict the activity label for the first row in the holdout set
+first_holdout_features = X_holdout.iloc[[0]]
+prediction = model.predict(first_holdout_features)[0]
+result = prediction",PASS,1.0,The candidate answer 'Sitting' matches the ground truth prediction for the first holdout row.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer 'Sitting' matches the ground truth prediction for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"

@@ -494,15 +494,13 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
     rec221_ann = df.loc[(df["record_id"] == 221) & (df["is_annotated"]), "time_s"]
     q4_last_ann_221 = float(rec221_ann.max())
 
-    rec208 = df.loc[df["record_id"] == 208]
-    # q5_ann_count_208 = int(rec208.loc[rec208["is_annotated"]].shape[0])
-    # q5_total_timestamps_208 = int(rec208.shape[0])
-    # q5_avg_per_timestamp_208 = (
-    #     float(q5_ann_count_208) / float(q5_total_timestamps_208)
-    #     if q5_total_timestamps_208 > 0
-    #     else 0.0
-    # )
-    q5_avg_per_timestamp_208 = rec208.groupby('time_s')['annotation'].count().mean()
+    rec208 = df.loc[df["record_id"] == 208].copy()
+    rec208 = rec208[rec208["annotation"].str.strip() != ""]
+    rec208["time_bin_60s"] = (rec208["time_s"] // 60.0) * 60.0
+    if not rec208.empty:
+        q5_avg_per_bin_208 = float(rec208.groupby("time_bin_60s")["annotation"].count().mean())
+    else:
+        q5_avg_per_bin_208 = 0.0
 
     mlii_range = df.groupby("record_id")["MLII"].agg(lambda x: x.max() - x.min()).sort_values(ascending=False)
     q6_record = int(mlii_range.index[0])
@@ -560,7 +558,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_id": 5,
             "query_text": qmap[5],
             "reference_answer": (
-                f"For record_id 208, the average annotation count per timestamp (time_s) is {q5_avg_per_timestamp_208:.6f}."
+                f"For record_id 208, the average annotation count per 60-s time_s is {q5_avg_per_bin_208:.6f}."
             ),
             "expected_rejection": False,
         },

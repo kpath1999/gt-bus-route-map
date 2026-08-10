@@ -477,7 +477,7 @@ You are a highly conservative fast-path query router.
 Schema: {meta_str}
 Query: {query}
 
-Your job is to map the query to one of the 5 EXACT plan skeletons below. You may NOT invent operators, change the sequence, or add derivation steps (no DeriveVectorMagnitude, no DeriveBin).
+Your job is to map the query to one of the 6 EXACT plan skeletons below. You may NOT invent operators, change the sequence, or add derivation steps (no DeriveVectorMagnitude, no DeriveBin).
 If the query requires ANY computation not perfectly described by these skeletons, or if you are not 100% confident, output exactly: {{"fallback": true}}
 
 Allowed Skeletons (each step is one JSON object; use the EXACT field names and enum values shown):
@@ -493,17 +493,23 @@ Allowed Skeletons (each step is one JSON object; use the EXACT field names and e
    [{{"op": "SPLIT_BY_VALUES", "column": <str>, "values": [<scalar>, ...], "label": <str>}}, {{"op": "SPLIT_BY_VALUES", "column": <str>, "values": [<scalar>, ...], "label": <str>}}, {{"op": "AGGREGATE_PARTITIONS", "partitions": [<label>, <label>], "aggregate": <agg>, "column": <str>}}, {{"op": "COMPARE_PARTITIONS", "mode": <mode>}}]
 5. Group & Rank:
    [{{"op": "GROUP_AGGREGATE", "group_by": [<str>], "aggregate": <agg>, "column": <str>}}, {{"op": "AGGREGATE_GROUPS", "aggregate": <agg>}}, {{"op": "RANK_GROUPS", "direction": <dir>}}]
+6. Chronological Predictive Pipeline (exactly one step):
+  [{{"op": "PREDICTIVE_PIPELINE", "model": <predictive_model>, "feature_columns": [<str>, ...], "target_column": <str>, "sort_by": [<str>, ...], "train_fraction": 0.8, "holdout_row": "first", "filter_column": <str|null>, "filter_value": <scalar|null>, "target_from_non_empty": <bool>, "target_label": <str>}}]
 
 Enum values:
   <agg> is one of: "min", "max", "mean", "median", "sum", "count", "std", "var", "nunique", "rms"
   <cmp> is one of: "eq", "ne", "gt", "gte", "lt", "lte"
   <mode> is one of: "difference", "abs_difference", "ratio"
   <dir> is one of: "max", "min"
+  <predictive_model> is one of: "logistic_regression", "random_forest", "one_nearest_neighbor", "hist_gradient_boosting"
 
 Rules:
   - Use only column names that appear verbatim in the Schema above.
   - Do not add, remove, or reorder steps relative to the chosen skeleton.
   - For skeleton 5, GROUP_AGGREGATE "column" may be omitted only when its "aggregate" is "count".
+  - Use skeleton 6 ONLY for an explicit in-dataset chronological train/holdout prediction request. All feature, target, sort, filter, and target-presence fields must be stated or unambiguously named in the query and Schema.
+  - For benchmark-equivalent predictive queries, the operator fields must be identical except for the requested <predictive_model>. Do not substitute, add, remove, or reorder feature_columns or sort_by fields.
+  - Set target_from_non_empty=true only when the query asks whether target_column is present or non-empty; otherwise set it false.
   - When in any doubt, output {{"fallback": true}}.
 
 If confident, output valid JSON matching the DeterministicPlan schema: {{"version": "1", "steps": [{{...}}]}}.

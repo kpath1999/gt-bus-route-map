@@ -181,6 +181,31 @@ def _baseline_summary(metrics_df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _print_flash_fusion_router_summary(metrics_df: pd.DataFrame) -> None:
+    """Print fast-path/planner telemetry for the current benchmark slice."""
+    ff = metrics_df[metrics_df["baseline"] == "FLASH_FUSION"]
+    if ff.empty:
+        return
+
+    fast_used = ff["ff_fast_path_used"].astype(bool)
+    planner_used = ff["ff_planner_used"].astype(bool)
+    print("\n=== Flash-Fusion Router Summary ===")
+    print(f"Fast-path used: {fast_used.mean():.1%} ({int(fast_used.sum())}/{len(ff)})")
+    for label, subset, latency_col, input_col, output_col, cost_col in (
+        ("Fast path", ff[ff["ff_fast_path_latency_s"] > 0], "ff_fast_path_latency_s", "ff_fast_path_input_tokens", "ff_fast_path_output_tokens", "ff_fast_path_cost_usd"),
+        ("Planner", ff[planner_used], "ff_planner_latency_s", "ff_planner_input_tokens", "ff_planner_output_tokens", "ff_planner_cost_usd"),
+    ):
+        if subset.empty:
+            print(f"{label}: no calls")
+            continue
+        print(
+            f"{label}: median={subset[latency_col].median():.3f}s "
+            f"p95={subset[latency_col].quantile(0.95):.3f}s "
+            f"avg_tokens={subset[input_col].mean():.1f}in/{subset[output_col].mean():.1f}out "
+            f"avg_cost=${subset[cost_col].mean():.6f}"
+        )
+
+
 def _run_single_benchmark_iteration(
     *,
     baselines: list[str],
@@ -351,6 +376,7 @@ def _run_single_benchmark_iteration(
     )
     print("\n=== Summary ===")
     print_table(metrics_df)
+    _print_flash_fusion_router_summary(metrics_df)
     print(f"\nResults written to {output_dir}")
     return results, judgments_df, metrics_df, sanity_df
 

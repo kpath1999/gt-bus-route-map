@@ -335,6 +335,26 @@ def test_semantic_stage_frame_uses_native_autoiot_telemetry() -> None:
     assert bool(out["is_estimated"]) is False
 
 
+def test_aggregate_metrics_includes_flash_fusion_router_telemetry() -> None:
+    result = make_result(
+        ff_fast_path_used=True,
+        ff_fast_path_latency_s=0.25,
+        ff_fast_path_input_tokens=120,
+        ff_fast_path_output_tokens=18,
+        ff_fast_path_cost_usd=0.000015,
+        ff_planner_used=False,
+    )
+
+    row = aggregate_metrics([result]).iloc[0]
+
+    assert bool(row["ff_fast_path_used"]) is True
+    assert float(row["ff_fast_path_latency_s"]) == 0.25
+    assert int(row["ff_fast_path_input_tokens"]) == 120
+    assert int(row["ff_fast_path_output_tokens"]) == 18
+    assert float(row["ff_fast_path_cost_usd"]) == 0.000015
+    assert bool(row["ff_planner_used"]) is False
+
+
 def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
     df = pd.DataFrame(
         [

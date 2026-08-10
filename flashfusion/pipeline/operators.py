@@ -1175,7 +1175,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             state.working = state.working[mask]
             return (
                 f"rows={len(state.working)}",
-                f"df = df[df[{step.column!r}].notna()]",
+                f"df = df[df[{step.column!r}].notna() & df[{step.column!r}].astype(str).str.strip().ne('')]",
             )
 
         case FilterEqAggregate():

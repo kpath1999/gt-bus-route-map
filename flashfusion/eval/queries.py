@@ -249,7 +249,7 @@ MIT_ECG_QUERIES: list[dict] = [
     },
     {
         "id": 5,
-        "text": "For record_id 208, what is the average annotation count per timestamp (time_s)?",
+        "text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
         "complexity": "intermediate",
         "operation": "FILTER+AGGREGATE+DERIVE",
         "stress": "Multi-step derivation mapping annotation counts to a per-minute rate.",

@@ -62,6 +62,19 @@ def test_runner_does_not_precompute_derived_features() -> None:
     assert list(runner.df.columns) == list(raw_df.columns)
 
 
+def test_flash_fusion_runner_warms_planner_components_without_llm_call() -> None:
+    from flashfusion.baselines import flash_fusion
+
+    client = _client()
+    client.session_key = "test-planner-session"
+    runner = BaselineRunner(mode="FLASH_FUSION", df=_df(), client=client)
+
+    assert runner.mode == "FLASH_FUSION"
+    assert client.session_key in flash_fusion._PLANNER_PREFIX_CACHE
+    assert any(key[0] == client.session_key for key in flash_fusion._PLANNER_SUFFIX_PREFIX_CACHE)
+    client.invoke_messages.assert_not_called()
+
+
 def test_flash_fusion_timeout_helper_raises_for_slow_call() -> None:
     """The Flash-Fusion timeout helper must raise when a call exceeds the budget."""
     from flashfusion.baselines.flash_fusion import _FlashFusionTimeoutError, _run_with_timeout
@@ -102,10 +115,24 @@ def test_flash_fusion_timeout_applies_to_typed_execution() -> None:
     assert out.execution_path == "typed_operator"
 
 
-def _plan(*steps: dict) -> "object":
+def _plan(*steps: dict) -> "DeterministicPlan":
     from flashfusion.pipeline.operators import structural_validate
 
     return structural_validate({"version": "1", "steps": list(steps)})
+
+
+def test_filter_not_empty_excludes_null_and_blank_strings() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    df = pd.DataFrame({"annotation": ["N", "", "  ", None, "V"]})
+    execution = execute_plan(
+        df, _plan({"op": "FILTER_NOT_EMPTY", "column": "annotation"}),
+    )
+
+    assert execution.ok
+    assert execution.rows_after_filter == 2
+    assert "notna()" in execution.code
+    assert ".str.strip().ne('')" in execution.code
 
 
 def test_structural_gate_rejects_unknown_operator() -> None:
@@ -772,6 +799,64 @@ def test_flash_fusion_predictive_query_is_planned_by_lm() -> None:
     assert out.typed_plan["steps"][0]["feature_columns"] == ["x", "y", "z"]
     assert out.typed_plan["steps"][0]["model"] == "random_forest"
     assert out.typed_plan["steps"][0]["sort_by"] == ["timestamp", "subject_id"]
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        "logistic_regression",
+        "random_forest",
+        "one_nearest_neighbor",
+        "hist_gradient_boosting",
+    ],
+)
+def test_fast_path_predictive_models_skip_full_planner(model: str) -> None:
+    """The predictive benchmark variants may differ only by typed model enum."""
+    from flashfusion.baselines.flash_fusion import run_flash_fusion
+
+    query = "Predict the activity label for the first chronological holdout row."
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {
+                "op": "PREDICTIVE_PIPELINE",
+                "model": model,
+                "feature_columns": ["x", "y", "z"],
+                "target_column": "activity_label",
+                "sort_by": ["timestamp", "subject_id"],
+                "train_fraction": 0.8,
+                "holdout_row": "first",
+                "filter_column": None,
+                "filter_value": None,
+                "target_from_non_empty": False,
+                "target_label": "activity",
+            }
+        ],
+    }
+    execution = MagicMock(
+        ok=True,
+        value="Walking",
+        trace="predictive trace",
+        code="predictive code",
+        steps=["PREDICTIVE_PIPELINE"],
+        latency_ms=1.0,
+    )
+
+    with patch(
+        "flashfusion.baselines.flash_fusion.attempt_fast_path_plan",
+        return_value=raw_plan,
+    ), patch(
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan"
+    ) as full_planner, patch(
+        "flashfusion.baselines.flash_fusion.execute_plan", return_value=execution
+    ):
+        out = run_flash_fusion(query, _df(), _client(), _result("FLASH_FUSION", query))
+
+    full_planner.assert_not_called()
+    assert out.ff_fast_path_used is True
+    assert out.plan_source == "fast_path"
+    assert out.execution_path == "typed_operator"
+    assert out.typed_plan["steps"][0]["model"] == model
 
 
 def test_autoiot_paper_requires_tavily_key() -> None:

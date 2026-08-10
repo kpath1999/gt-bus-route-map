@@ -395,6 +395,20 @@ class RunResult:
     normalization_version: str = ""
     missing_columns: list = field(default_factory=list)  # schema fields the query needs but the dataset lacks
 
+    # Fast-path versus full-planner telemetry (Flash-Fusion only). These remain
+    # zero/False for all other baselines and for calls that fail before usage is
+    # reported by the provider.
+    ff_fast_path_used: bool = False
+    ff_fast_path_latency_s: float = 0.0
+    ff_fast_path_input_tokens: int = 0
+    ff_fast_path_output_tokens: int = 0
+    ff_fast_path_cost_usd: float = 0.0
+    ff_planner_used: bool = False
+    ff_planner_latency_s: float = 0.0
+    ff_planner_input_tokens: int = 0
+    ff_planner_output_tokens: int = 0
+    ff_planner_cost_usd: float = 0.0
+
     # Prompt-prefix / cache provenance
     planner_prefix_version: str = ""
     planner_prefix_sha256: str = ""
@@ -476,6 +490,10 @@ class BaselineRunner:
         self.client = client
         self.data_path = data_path
         self.predictive_timeout_s = predictive_timeout_s
+        if self.mode == "FLASH_FUSION":
+            from flashfusion.baselines.flash_fusion import warm_flash_fusion_prefix
+
+            warm_flash_fusion_prefix(self.df, self.client)
 
     def run(self, query: str) -> RunResult:
         """
