@@ -50,13 +50,19 @@ from flashfusion.pipeline.operators import (
     ParsedGuardrail,
     PlanSchemaError,
     StructuralValidationError,
+    _extract_json_object,
+    _strip_code_fence,
     execute_plan,
     log_operator_gap,
     parse_guardrail_response,
+    structural_validate,
     validate_plan_against_dataframe,
 )
 from flashfusion.pipeline.runner import LLMClient, RunResult
-from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
+from flashfusion.prompts.templates import (
+    FAST_PATH_PLANNER_TEMPLATE,
+    PLANNER_DYNAMIC_SUFFIX_TEMPLATE,
+)
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
 
@@ -152,6 +158,35 @@ def _run_with_timeout(
 # ---------------------------------------------------------------------------
 # Single structured LLM call — guardrail verdict + candidate plan
 # ---------------------------------------------------------------------------
+
+
+def attempt_fast_path_plan(
+    query: str, meta_str: str, client: LLMClient
+) -> dict | None:
+    """Zero-shot a plan from the five strict fast-path skeletons, or decline.
+
+    A single lightweight LLM call maps the query onto one of the allowed
+    skeletons. It returns the raw plan dict only when the router is confident;
+    it returns ``None`` when the router emits ``{"fallback": true}``, when the
+    response cannot be parsed as a JSON object, or when the call itself fails.
+    The function never raises — declining just means the full planner runs.
+    """
+    prompt = FAST_PATH_PLANNER_TEMPLATE.format(meta_str=meta_str, query=query)
+    try:
+        # The lightweight model is configured by the caller as ``client.light``.
+        raw_text = client.light.invoke_messages(
+            [HumanMessage(content=prompt)], stage="fast_path_plan"
+        )
+    except Exception as exc:  # noqa: BLE001 — fail open to the full planner
+        _debug(f"Fast-path call failed ({type(exc).__name__}: {exc}).")
+        return None
+    try:
+        payload = json.loads(_extract_json_object(_strip_code_fence(raw_text)))
+    except (ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict) or payload.get("fallback") is True:
+        return None
+    return payload
 
 
 def request_guardrail_and_plan(
@@ -299,6 +334,49 @@ def run_flash_fusion(
         gap_stage = ""
         gap_error = ""
         raw_plan_payload: Any = None
+
+        # --- Static fast-path semantic router (fail-open) -------------------
+        # A single cheap LLM call attempts one of five strict skeletons. Any
+        # structural, schema, or execution failure silently delegates to the
+        # full guardrail+planner path below. The fast path can only shortcut the
+        # common case; it never rejects a query or alters the fallback logic.
+        last_stage = "fast_path"
+        started = time.time()
+        fast_raw_plan = attempt_fast_path_plan(query, meta_str, client)
+        record("guardrail+plan", started)
+        if fast_raw_plan is not None:
+            try:
+                fast_plan = structural_validate(fast_raw_plan)
+                validate_plan_against_dataframe(fast_plan, df)
+                fast_started = time.time()
+                fast_exec = execute_plan(df, fast_plan)
+                record("typed_exec", fast_started)
+                if not fast_exec.ok:
+                    raise RuntimeError(fast_exec.error or "fast-path execution failed")
+                stage_latency_s["agent"] = stage_latency_s["typed_exec"]
+                r.stage_latency_s = dict(stage_latency_s)
+                r.plan_source = "fast_path"
+                r.execution_path = PATH_TYPED_OPERATOR
+                r.plan_validation_stage_failed = ""
+                r.raw_plan = fast_raw_plan
+                r.typed_plan = fast_plan.model_dump(mode="json")
+                r.typed_plan_sha256 = typed_plan_digest(fast_plan)
+                r.operators_used = fast_plan.operators_used
+                r.schema_fingerprint = schema_fingerprint(meta_str)
+                r.answer = _format_typed_execution_value(fast_exec.value)
+                r.trace = fast_exec.trace
+                r.final_code = fast_exec.code
+                r.agent_tries = len(fast_exec.steps)
+                r.execution_attempts = list(fast_exec.steps)
+                r.executed = True
+                r.stages_run.append("fast_path")
+                _debug(f"Fast-path execution ok in {fast_exec.latency_ms:.1f}ms")
+                return r
+            except Exception as exc:  # noqa: BLE001 — fail open to full planner
+                _debug(
+                    "Fast-path declined "
+                    f"({type(exc).__name__}: {exc}); using full planner."
+                )
 
         # --- Single structured call: guardrail verdict + candidate plan -----
         r.plan_source = "llm"

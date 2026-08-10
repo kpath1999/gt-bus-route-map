@@ -90,7 +90,7 @@ python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data_enri
 
 # after (8B on S1/S2)
 python -m flashfusion.eval.benchmark --dataset bus --data data/bus/bus_data_enriched_behavior.csv \
-  --baselines FLASH_FUSION --queries all --stage12-model meta-llama/llama-3.1-8b-instruct \
+  --baselines FLASH_FUSION --queries all --stage12-model qwen/qwen-2.5-7b-instruct \
   --ground-truth flashfusion/eval/ground_truth/ground_truth_bus.json \
   --output flashfusion/results/ff_8b_s12/bus
 ```
@@ -674,10 +674,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--stage12-model",
-        default=None,
+        default="qwen/qwen-2.5-7b-instruct",
         help=(
             "Optional lighter model for Flash-Fusion Stages 1 and 2 only "
-            "(e.g. meta-llama/llama-3.1-8b-instruct). All other stages use --model. "
+            "(e.g. qwen/qwen-2.5-7b-instruct). All other stages use --model. "
             "When omitted, every stage uses --model."
         ),
     )

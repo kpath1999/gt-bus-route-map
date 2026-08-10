@@ -460,3 +460,52 @@ VERDICT: FAIL
 ISSUE: <one-sentence description of the specific problem>
 SUGGESTION: <one-sentence refinement instruction for Stage-3 regeneration>\
 """
+
+
+# ---------------------------------------------------------------------------
+# Static Fast-Path Semantic Router
+# A lightweight, highly conservative zero-shot planner limited to five strict
+# skeletons. It exists to shortcut the most common query shapes with a single
+# cheap LLM call; anything it is not 100% confident about must return
+# {"fallback": true} so the full guardrail+planner path runs instead. The
+# argument specs below mirror the exact typed operator schemas in
+# pipeline/operators.py — do NOT drift them or the router will emit plans that
+# fail Gate 1 and waste a round-trip.
+# ---------------------------------------------------------------------------
+FAST_PATH_PLANNER_TEMPLATE: str = """\
+You are a highly conservative fast-path query router.
+Schema: {meta_str}
+Query: {query}
+
+Your job is to map the query to one of the 5 EXACT plan skeletons below. You may NOT invent operators, change the sequence, or add derivation steps (no DeriveVectorMagnitude, no DeriveBin).
+If the query requires ANY computation not perfectly described by these skeletons, or if you are not 100% confident, output exactly: {{"fallback": true}}
+
+Allowed Skeletons (each step is one JSON object; use the EXACT field names and enum values shown):
+1. Simple Aggregate:
+   [{{"op": "AGGREGATE_COLUMN", "column": <str>, "aggregate": <agg>}}]
+2. Filtered Aggregate (FILTER_IN once or twice, then aggregate):
+   [{{"op": "FILTER_IN", "column": <str>, "values": [<scalar>, ...]}}, ... , {{"op": "AGGREGATE_COLUMN", "column": <str>, "aggregate": <agg>}}]
+3. Filtered Count (either branch):
+   [{{"op": "FILTER_COMPARE", "column": <str>, "comparator": <cmp>, "value": <scalar>}}, {{"op": "COUNT_ROWS"}}]
+   OR
+   [{{"op": "FILTER_IN", "column": <str>, "values": [<scalar>, ...]}}, {{"op": "COUNT_DISTINCT", "column": <str>}}]
+4. Partition Compare (exactly two SPLIT_BY_VALUES, then aggregate partitions, then compare):
+   [{{"op": "SPLIT_BY_VALUES", "column": <str>, "values": [<scalar>, ...], "label": <str>}}, {{"op": "SPLIT_BY_VALUES", "column": <str>, "values": [<scalar>, ...], "label": <str>}}, {{"op": "AGGREGATE_PARTITIONS", "partitions": [<label>, <label>], "aggregate": <agg>, "column": <str>}}, {{"op": "COMPARE_PARTITIONS", "mode": <mode>}}]
+5. Group & Rank:
+   [{{"op": "GROUP_AGGREGATE", "group_by": [<str>], "aggregate": <agg>, "column": <str>}}, {{"op": "AGGREGATE_GROUPS", "aggregate": <agg>}}, {{"op": "RANK_GROUPS", "direction": <dir>}}]
+
+Enum values:
+  <agg> is one of: "min", "max", "mean", "median", "sum", "count", "std", "var", "nunique", "rms"
+  <cmp> is one of: "eq", "ne", "gt", "gte", "lt", "lte"
+  <mode> is one of: "difference", "abs_difference", "ratio"
+  <dir> is one of: "max", "min"
+
+Rules:
+  - Use only column names that appear verbatim in the Schema above.
+  - Do not add, remove, or reorder steps relative to the chosen skeleton.
+  - For skeleton 5, GROUP_AGGREGATE "column" may be omitted only when its "aggregate" is "count".
+  - When in any doubt, output {{"fallback": true}}.
+
+If confident, output valid JSON matching the DeterministicPlan schema: {{"version": "1", "steps": [{{...}}]}}.
+Output ONLY JSON.\
+"""

@@ -181,7 +181,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model", default=DEFAULT_MODEL, help="Primary model for guardrail+plan and typed execution")
     p.add_argument(
         "--stage12-model",
-        default="meta-llama/llama-3.1-8b-instruct",
+        default="qwen/qwen-2.5-7b-instruct",
         help=(
             "Lighter model used for S1 (concept extraction) and S2 (schema grounding) "
             "in ReAct fallback only, via client.light. Pass the same value as --model "
