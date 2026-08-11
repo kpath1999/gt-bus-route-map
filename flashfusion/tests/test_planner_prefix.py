@@ -13,13 +13,17 @@ import hashlib
 import os
 
 from flashfusion.pipeline.operators import (
+    ALL_OPERATOR_NAMES,
     FLASH_FUSION_PLANNER_PREFIX,
     OPERATOR_VOCABULARY_SPEC,
     OPERATOR_VOCABULARY_VERSION,
     PLAN_VERSION,
     PLANNER_PREFIX_SHA256,
     PLANNER_PREFIX_VERSION,
+    build_planner_prefix,
+    build_vocabulary_spec,
     planner_cache_key,
+    planner_prefix_digest,
 )
 from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
 
@@ -98,3 +102,37 @@ def test_cache_key_partitions_by_model_and_environment() -> None:
     assert dev != other
     assert PLANNER_PREFIX_VERSION in dev
     assert planner_cache_key("qwen/qwen3-max", "dev") == dev
+
+
+def test_full_vocabulary_slice_is_byte_identical_to_the_spec() -> None:
+    """Asking for every operator must return the hand-written spec untouched —
+    otherwise the narrowing machinery would silently rewrite the contract that
+    every existing benchmark result was produced under."""
+    assert build_vocabulary_spec(ALL_OPERATOR_NAMES) == OPERATOR_VOCABULARY_SPEC
+    assert build_planner_prefix(build_vocabulary_spec(ALL_OPERATOR_NAMES)) == (
+        FLASH_FUSION_PLANNER_PREFIX
+    )
+
+
+def test_narrowed_slice_drops_only_the_excluded_operators() -> None:
+    """A narrowed prefix must be strictly smaller, must still define every
+    operator it kept, and must not mention any it dropped."""
+    kept = ("FILTER_COMPARE", "AGGREGATE_COLUMN", "COUNT_ROWS", "SELECT_COLUMN")
+    spec = build_vocabulary_spec(kept)
+
+    assert len(spec) < len(OPERATOR_VOCABULARY_SPEC)
+    for name in kept:
+        assert f'"op":"{name}"' in spec
+    for name in ("PREDICTIVE_PIPELINE", "CORRELATE_COLUMNS", "GROUP_AGGREGATE"):
+        assert name not in spec
+
+
+def test_narrowed_slice_is_byte_stable_and_distinctly_keyed() -> None:
+    """Each vocabulary slice is its own cache entry, so each must hash stably
+    and must not collide with the full-vocabulary entry."""
+    kept = ("FILTER_COMPARE", "AGGREGATE_COLUMN", "COUNT_ROWS", "SELECT_COLUMN")
+    first = build_planner_prefix(build_vocabulary_spec(kept))
+    second = build_planner_prefix(build_vocabulary_spec(reversed(kept)))
+
+    assert first == second
+    assert planner_prefix_digest(first) != PLANNER_PREFIX_SHA256

@@ -43,10 +43,15 @@ def _result(mode: str, query: str) -> RunResult:
 
 
 def _guardrail_return(verdict) -> tuple:
-    """Mimic ``request_guardrail_and_plan``: (ParsedGuardrail, suffix, error)."""
+    """Mimic ``request_guardrail_and_plan``: (parsed, suffix, error, prefix)."""
     from flashfusion.pipeline.operators import ParsedGuardrail
 
-    return (ParsedGuardrail(parsed=verdict, raw={}, normalization_actions=[]), "", "")
+    return (
+        ParsedGuardrail(parsed=verdict, raw={}, normalization_actions=[]),
+        "",
+        "",
+        "prefix",
+    )
 
 
 def test_runner_does_not_precompute_derived_features() -> None:
@@ -70,7 +75,7 @@ def test_flash_fusion_runner_warms_planner_components_without_llm_call() -> None
     runner = BaselineRunner(mode="FLASH_FUSION", df=_df(), client=client)
 
     assert runner.mode == "FLASH_FUSION"
-    assert client.session_key in flash_fusion._PLANNER_PREFIX_CACHE
+    assert any(key[0] == client.session_key for key in flash_fusion._PLANNER_PREFIX_CACHE)
     assert any(key[0] == client.session_key for key in flash_fusion._PLANNER_SUFFIX_PREFIX_CACHE)
     client.invoke_messages.assert_not_called()
 
@@ -810,29 +815,27 @@ def test_flash_fusion_predictive_query_is_planned_by_lm() -> None:
         "hist_gradient_boosting",
     ],
 )
-def test_fast_path_predictive_models_skip_full_planner(model: str) -> None:
+def test_predictive_models_survive_the_typed_path(model: str) -> None:
     """The predictive benchmark variants may differ only by typed model enum."""
     from flashfusion.baselines.flash_fusion import run_flash_fusion
+    from flashfusion.pipeline.operators import GuardrailAndPlan
 
     query = "Predict the activity label for the first chronological holdout row."
-    raw_plan = {
-        "version": "1",
-        "steps": [
-            {
-                "op": "PREDICTIVE_PIPELINE",
-                "model": model,
-                "feature_columns": ["x", "y", "z"],
-                "target_column": "activity_label",
-                "sort_by": ["timestamp", "subject_id"],
-                "train_fraction": 0.8,
-                "holdout_row": "first",
-                "filter_column": None,
-                "filter_value": None,
-                "target_from_non_empty": False,
-                "target_label": "activity",
-            }
-        ],
-    }
+    plan = _plan(
+        {
+            "op": "PREDICTIVE_PIPELINE",
+            "model": model,
+            "feature_columns": ["x", "y", "z"],
+            "target_column": "activity_label",
+            "sort_by": ["timestamp", "subject_id"],
+            "train_fraction": 0.8,
+            "holdout_row": "first",
+            "filter_column": None,
+            "filter_value": None,
+            "target_from_non_empty": False,
+            "target_label": "activity",
+        }
+    )
     execution = MagicMock(
         ok=True,
         value="Walking",
@@ -843,20 +846,18 @@ def test_fast_path_predictive_models_skip_full_planner(model: str) -> None:
     )
 
     with patch(
-        "flashfusion.baselines.flash_fusion.attempt_fast_path_plan",
-        return_value=raw_plan,
+        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan",
+        return_value=_guardrail_return(GuardrailAndPlan(in_scope=True, plan=plan)),
     ), patch(
-        "flashfusion.baselines.flash_fusion.request_guardrail_and_plan"
-    ) as full_planner, patch(
         "flashfusion.baselines.flash_fusion.execute_plan", return_value=execution
     ):
         out = run_flash_fusion(query, _df(), _client(), _result("FLASH_FUSION", query))
 
-    full_planner.assert_not_called()
-    assert out.ff_fast_path_used is True
-    assert out.plan_source == "fast_path"
+    assert out.plan_source == "llm"
     assert out.execution_path == "typed_operator"
     assert out.typed_plan["steps"][0]["model"] == model
+    # The router must never strip the predictive bucket from a predictive query.
+    assert "PREDICTIVE_PIPELINE" in out.operator_route_candidate_ops
 
 
 def test_autoiot_paper_requires_tavily_key() -> None:

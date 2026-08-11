@@ -2,7 +2,7 @@
 eval/trace_query.py — Step-by-step debug trace for Flash-Fusion queries.
 
 Runs the Flash-Fusion pipeline for one or more queries and shows execution details:
-  - Bypass detector (zero-LLM predictive template matching)
+  - Deterministic operator router (zero-LLM bucket narrowing of the vocabulary)
   - Single structured guardrail+plan call
   - Gate 1: Pydantic structural validation
   - Gate 2: DataFrame schema validation
@@ -47,6 +47,8 @@ from flashfusion.eval.ground_truth import load_ground_truth
 from flashfusion.eval.queries import SUPPORTED_DATASETS, get_queries
 from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name
+from flashfusion.pipeline.operator_router import ALL_OPERATOR_NAMES
+from flashfusion.pipeline.operators import OPERATOR_VOCABULARY_SPEC, build_vocabulary_spec
 from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
 
 
@@ -86,9 +88,12 @@ def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
     _hr("SUMMARY: EXECUTION PATHS ACROSS QUERIES")
     
     # Header
-    print(f"{'ID':<4} {'Path':<18} {'Source':<18} {'Gates':<12} {'Operators':<30} {'Time(s)':<8} {'Score':<6}")
-    print("-" * 110)
-    
+    print(
+        f"{'ID':<4} {'Path':<18} {'Source':<18} {'Gates':<12} {'Ops':<30} "
+        f"{'#Cand':<6} {'Full?':<6} {'Time(s)':<8} {'Score':<6}"
+    )
+    print("-" * 128)
+
     # Rows
     for query_id, result, gt_entry in results:
         r = result
@@ -113,7 +118,10 @@ def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
         if len(r.operators_used) > 2:
             ops += f" +{len(r.operators_used)-2}"
         ops = ops[:29]
-        
+
+        n_candidates = len(r.operator_route_candidate_ops)
+        full_flag = "yes" if r.operator_route_full_fallback else "no"
+
         # Latency
         latency = f"{r.latency_s:.2f}"
         
@@ -125,7 +133,10 @@ def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
         else:
             score_str = "N/A"
         
-        print(f"{query_id:<4} {path_short:<18} {source_short:<18} {gates:<12} {ops:<30} {latency:<8} {score_str:<6}")
+        print(
+            f"{query_id:<4} {path_short:<18} {source_short:<18} {gates:<12} {ops:<30} "
+            f"{n_candidates:<6} {full_flag:<6} {latency:<8} {score_str:<6}"
+        )
     
     # Statistics
     _hr("STATISTICS")
@@ -160,7 +171,30 @@ def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
         print("\nValidation failures (fallback triggers):")
         for stage, count in sorted(gate_failures.items()):
             print(f"  {stage:<25} {count:>3}")
-    
+
+    # Operator router diagnostics: this is the primary thing the router is meant
+    # to move — fewer candidate operators means a shorter, faster-to-prefill prompt.
+    _hr("OPERATOR ROUTER")
+    n_ops = [len(r.operator_route_candidate_ops) for _, r, _ in results]
+    n_full = sum(1 for _, r, _ in results if r.operator_route_full_fallback)
+    avg_ops = sum(n_ops) / total if total else 0.0
+    print(f"Full vocabulary size    : {len(ALL_OPERATOR_NAMES)} operators")
+    print(f"Avg candidate ops sent  : {avg_ops:.1f} ({100.0 * avg_ops / len(ALL_OPERATOR_NAMES):.1f}% of full)")
+    print(f"Full-vocabulary fallback: {n_full}/{total} queries")
+    rule_counts: dict[str, int] = {}
+    for _, r, _ in results:
+        for rule in r.operator_route_matched_rules:
+            rule_counts[rule] = rule_counts.get(rule, 0) + 1
+    if rule_counts:
+        print("\nRule firings across queries:")
+        for rule, count in sorted(rule_counts.items(), key=lambda kv: -kv[1]):
+            print(f"  {rule:<30} {count:>3}")
+
+    avg_route_latency = sum(r.stage_latency_s.get("operator_route", 0.0) for _, r, _ in results) / total if total else 0.0
+    avg_planner_latency = sum(r.ff_planner_latency_s for _, r, _ in results) / total if total else 0.0
+    print(f"\nAvg operator_route latency: {avg_route_latency:.5f}s (deterministic, no LLM call)")
+    print(f"Avg guardrail+plan latency: {avg_planner_latency:.3f}s")
+
     # Aggregate latency
     total_latency = sum(r.latency_s for _, r, _ in results)
     avg_latency = total_latency / total if total > 0 else 0
@@ -232,27 +266,43 @@ def trace_single_query(
         print(r.final_code or "(none)")
         print(f"\nagent_tries={r.agent_tries}")
     else:
+        # --- Deterministic operator router (no LLM call) -----------------------
+        _hr("OPERATOR ROUTER (deterministic, zero-LLM bucket narrowing)")
+        n_candidates = len(r.operator_route_candidate_ops)
+        narrowed_spec_len = len(build_vocabulary_spec(r.operator_route_candidate_ops))
+        full_spec_len = len(OPERATOR_VOCABULARY_SPEC)
+        print(
+            f"candidate_ops     : {n_candidates}/{len(ALL_OPERATOR_NAMES)} "
+            f"({', '.join(sorted(r.operator_route_candidate_ops)) or '(none)'})"
+        )
+        print(f"excluded_buckets  : {r.operator_route_excluded_buckets or '(none)'}")
+        print(f"matched_rules     : {r.operator_route_matched_rules or '(none)'}")
+        print(f"used_full_fallback: {r.operator_route_full_fallback}")
+        print(
+            f"vocabulary spec   : {narrowed_spec_len} chars vs {full_spec_len} full "
+            f"({100.0 * narrowed_spec_len / full_spec_len:.1f}%)"
+        )
+        print(
+            f"router latency    : {r.stage_latency_s.get('operator_route', 0.0):.5f}s"
+        )
+
         # --- Single structured guardrail + plan call --------------------------
         _hr("GUARDRAIL + PLAN (single structured LM call)")
         print(f"execution_path : {r.execution_path or '(unset)'}")
         print(f"plan_source    : {r.plan_source or '(unset)'}")
         print(f"query          : {r.guardrail_input or query_text}")
-        _hr("ROUTER TELEMETRY")
+        _hr("PLANNER TELEMETRY")
         print(
-            "fast_path      : "
-            f"used={r.ff_fast_path_used} "
-            f"latency={r.ff_fast_path_latency_s:.3f}s "
-            f"tokens={r.ff_fast_path_input_tokens}in/"
-                f"{r.ff_fast_path_output_tokens}out "
-                f"cost=${r.ff_fast_path_cost_usd:.6f}"
-        )
-        print(
-            "full_planner   : "
+            "guardrail+plan : "
             f"used={r.ff_planner_used} "
             f"latency={r.ff_planner_latency_s:.3f}s "
             f"tokens={r.ff_planner_input_tokens}in/"
                 f"{r.ff_planner_output_tokens}out "
                 f"cost=${r.ff_planner_cost_usd:.6f}"
+        )
+        print(
+            f"planner_prefix : version={r.planner_prefix_version} "
+            f"sha256={r.planner_prefix_sha256[:12]}..."
         )
         if r.ambiguous_concepts:
             print(f"ambiguous      : {', '.join(r.ambiguous_concepts)}")

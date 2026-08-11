@@ -409,6 +409,14 @@ class RunResult:
     ff_planner_output_tokens: int = 0
     ff_planner_cost_usd: float = 0.0
 
+    # Deterministic operator router (Flash-Fusion only). Every planner failure
+    # must be attributable to the named rule that removed a bucket, so the rules
+    # and the buckets they eliminated are recorded on every run.
+    operator_route_excluded_buckets: list = field(default_factory=list)
+    operator_route_matched_rules: list = field(default_factory=list)
+    operator_route_candidate_ops: list = field(default_factory=list)
+    operator_route_full_fallback: bool = False
+
     # Prompt-prefix / cache provenance
     planner_prefix_version: str = ""
     planner_prefix_sha256: str = ""
@@ -552,7 +560,9 @@ class BaselineRunner:
         elif self.mode == "LLMSENSE_PAPER":
             run_llmsense_paper(query, self.df, self.client, r)
 
-        r.latency_s = time.time() - t0
+        # column_metadata is a one-off DataFrame scan, not query-specific work —
+        # exclude it so latency_s reflects time from schema-known onward.
+        r.latency_s = time.time() - t0 - r.stage_latency_s.get("column_metadata", 0.0)
         r.input_tokens = self.client.total_input_tokens()
         r.output_tokens = self.client.total_output_tokens()
         r.cost_usd = self.client.total_cost_usd()

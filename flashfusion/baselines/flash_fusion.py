@@ -41,28 +41,29 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S
 from flashfusion.pipeline.executor import ExecutionLayer
 from flashfusion.pipeline.loader import build_column_metadata, meta_to_str
+from flashfusion.pipeline.operator_router import (
+    BUCKET_FULL,
+    OperatorRoute,
+    route_operator_bucket,
+)
 from flashfusion.pipeline.operators import (
-    FLASH_FUSION_PLANNER_PREFIX,
     NORMALIZATION_VERSION,
-    PLANNER_PREFIX_SHA256,
-    PLANNER_PREFIX_VERSION,
     DeterministicPlan,
     ParsedGuardrail,
     PlanSchemaError,
     StructuralValidationError,
-    _extract_json_object,
-    _strip_code_fence,
+    build_planner_prefix,
+    build_vocabulary_spec,
     execute_plan,
     log_operator_gap,
     parse_guardrail_response,
+    planner_prefix_digest,
+    planner_prefix_version,
     structural_validate,
     validate_plan_against_dataframe,
 )
 from flashfusion.pipeline.runner import LLMClient, RunResult
-from flashfusion.prompts.templates import (
-    FAST_PATH_PLANNER_TEMPLATE,
-    PLANNER_DYNAMIC_SUFFIX_TEMPLATE,
-)
+from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
 
@@ -83,11 +84,19 @@ PATH_REACT_FALLBACK = "react_fallback"
 #: ReAct fallback cannot conjure a column either, it can only hallucinate one.
 PATH_SCOPE_REJECT = "scope_reject"
 
+#: Used when no query is available to route on (prefix warming).
+_FULL_ROUTE = OperatorRoute(
+    candidate_ops=BUCKET_FULL,
+    excluded_buckets=(),
+    matched_rules=(),
+    used_full_fallback=True,
+)
+
 
 # These caches only prepare immutable, byte-identical message components. They
 # intentionally do not issue an LLM request: warming a provider prompt cache
 # would itself be a billable planning call and distort benchmark comparisons.
-_PLANNER_PREFIX_CACHE: dict[str, SystemMessage] = {}
+_PLANNER_PREFIX_CACHE: dict[tuple[str, str], tuple[SystemMessage, str]] = {}
 _PLANNER_SUFFIX_PREFIX_CACHE: dict[tuple[str, str], str] = {}
 
 
@@ -96,22 +105,32 @@ def _debug(message: str) -> None:
         print(f"[FF_DEBUG] {message}", file=sys.stderr, flush=True)
 
 
-def _planner_prefix_message(client: LLMClient) -> SystemMessage:
-    """Return the stable planner prefix message for one provider session."""
-    session_key = getattr(client, "session_key", "")
-    message = _PLANNER_PREFIX_CACHE.get(session_key)
-    if message is None:
+def _planner_prefix_message(
+    client: LLMClient, route: OperatorRoute | None = None
+) -> tuple[SystemMessage, str]:
+    """Return the planner prefix message and its exact text for one route.
+
+    The prefix is still byte-stable per (session, route), but the prompt cache is
+    now partitioned by operator route instead of being one global entry — the
+    accepted cost of dropping the full vocabulary from every planner call.
+    """
+    route = route or _FULL_ROUTE
+    key = (getattr(client, "session_key", ""), route.route_key)
+    cached = _PLANNER_PREFIX_CACHE.get(key)
+    if cached is None:
+        text = build_planner_prefix(build_vocabulary_spec(route.candidate_ops))
         message = SystemMessage(
             content=[
                 {
                     "type": "text",
-                    "text": FLASH_FUSION_PLANNER_PREFIX,
+                    "text": text,
                     "cache_control": {"type": "ephemeral"},
                 }
             ]
         )
-        _PLANNER_PREFIX_CACHE[session_key] = message
-    return message
+        cached = (message, text)
+        _PLANNER_PREFIX_CACHE[key] = cached
+    return cached
 
 
 def _planner_suffix_prefix(meta_str: str, client: LLMClient, dataset: str = "") -> str:
@@ -131,7 +150,11 @@ def _planner_suffix_prefix(meta_str: str, client: LLMClient, dataset: str = "") 
 
 
 def warm_flash_fusion_prefix(df: pd.DataFrame, client: LLMClient) -> None:
-    """Prepare planner message components for a DataFrame without an LLM call."""
+    """Prepare planner message components for a DataFrame without an LLM call.
+
+    Only the full-vocabulary prefix is warmed: the narrowed prefixes depend on
+    the query, so they are built lazily on first use of each route.
+    """
     meta_str = meta_to_str(build_column_metadata(df))
     _planner_prefix_message(client)
     _planner_suffix_prefix(meta_str, client)
@@ -222,47 +245,21 @@ def _run_with_timeout(
 # ---------------------------------------------------------------------------
 
 
-def attempt_fast_path_plan(
-    query: str, meta_str: str, client: LLMClient
-) -> dict | None:
-    """Zero-shot a plan from the six strict fast-path skeletons, or decline.
-
-    A single lightweight LLM call maps the query onto one of the allowed
-    skeletons. It returns the raw plan dict only when the router is confident;
-    it returns ``None`` when the router emits ``{"fallback": true}``, when the
-    response cannot be parsed as a JSON object, or when the call itself fails.
-    The function never raises — declining just means the full planner runs.
-    """
-    prompt = FAST_PATH_PLANNER_TEMPLATE.format(meta_str=meta_str, query=query)
-    try:
-        # The lightweight model is configured by the caller as ``client.light``.
-        raw_text = client.light.invoke_messages(
-            [HumanMessage(content=prompt)], stage="fast_path_plan"
-        )
-    except Exception as exc:  # noqa: BLE001 — fail open to the full planner
-        _debug(f"Fast-path call failed ({type(exc).__name__}: {exc}).")
-        return None
-    try:
-        payload = json.loads(_extract_json_object(_strip_code_fence(raw_text)))
-    except (ValueError, json.JSONDecodeError):
-        return None
-    if not isinstance(payload, dict) or payload.get("fallback") is True:
-        return None
-    return payload
-
-
 def request_guardrail_and_plan(
-    query: str, meta_str: str, client: LLMClient, dataset: str = ""
-) -> tuple[ParsedGuardrail | None, str, str]:
+    query: str,
+    meta_str: str,
+    client: LLMClient,
+    dataset: str = "",
+    route: OperatorRoute | None = None,
+) -> tuple[ParsedGuardrail | None, str, str, str]:
     """Ask for the scope verdict and a candidate plan in one round-trip.
 
-    The static planner contract goes in the system message and never varies; the
-    dataset schema and the question go in the human message. Providers with
-    prefix caching can therefore reuse the (large) vocabulary across every query.
+    The planner contract goes in the system message and varies only with the
+    operator route; the dataset schema and the question go in the human message.
 
     Returns:
-        (parsed, dynamic_suffix, structural_error). ``parsed`` is None when the
-        response could not be structurally validated (Gate 1 failure).
+        (parsed, dynamic_suffix, structural_error, prefix_text). ``parsed`` is
+        None when the response could not be structurally validated (Gate 1).
     """
     suffix = _planner_suffix_prefix(meta_str, client, dataset) + query
     # Messages are passed as objects, not through a template: the prefix is full
@@ -276,12 +273,13 @@ def request_guardrail_and_plan(
     # OPERATOR_VOCABULARY_SPEC's caching note) only get cache hits with this
     # marker present. OpenRouter translates/drops the field per-provider, so it
     # is safe to always send it.
-    messages = [_planner_prefix_message(client), HumanMessage(content=suffix)]
+    prefix_message, prefix_text = _planner_prefix_message(client, route)
+    messages = [prefix_message, HumanMessage(content=suffix)]
     raw = client.invoke_messages(messages, stage="guardrail_plan")
     try:
-        return parse_guardrail_response(raw), suffix, ""
+        return parse_guardrail_response(raw), suffix, "", prefix_text
     except (StructuralValidationError, ValueError) as exc:
-        return None, suffix, str(exc)
+        return None, suffix, str(exc), prefix_text
 
 
 # ---------------------------------------------------------------------------
@@ -358,11 +356,10 @@ def run_flash_fusion(
         timeout_s if timeout_s is not None else FLASH_FUSION_PREDICTIVE_TIMEOUT_S
     )
     stage_latency_s: dict[str, float] = {
-        "s1": 0.0,
-        "s2": 0.0,
-        "s3": 0.0,
-        "fast_path": 0.0,
+        "column_metadata": 0.0,
+        "operator_route": 0.0,
         "guardrail+plan": 0.0,
+        "schema_validation": 0.0,
         "typed_exec": 0.0,
         "agent": 0.0,
     }
@@ -376,58 +373,32 @@ def run_flash_fusion(
 
     last_stage = "init"
     try:
+        last_stage = "column_metadata"
+        started = time.time()
         meta_str = meta_to_str(build_column_metadata(df))
+        record("column_metadata", started)
         ambiguous: list[str] = []
         gap_stage = ""
         gap_error = ""
         raw_plan_payload: Any = None
 
-        # --- Static fast-path semantic router (fail-open) -------------------
-        # A single cheap LLM call attempts one of five strict skeletons. Any
-        # structural, schema, or execution failure silently delegates to the
-        # full guardrail+planner path below. The fast path can only shortcut the
-        # common case; it never rejects a query or alters the fallback logic.
-        last_stage = "fast_path"
+        # --- Deterministic operator router (no LLM call) --------------------
+        # Elimination, not selection: buckets are dropped only when a named rule
+        # fires against them, and anything ambiguous falls back to the full
+        # vocabulary. The router never decides what the plan is — it only narrows
+        # what the planner is shown.
+        last_stage = "operator_route"
         started = time.time()
-        fast_path_call_start = _call_log_length(client)
-        fast_raw_plan = attempt_fast_path_plan(query, meta_str, client)
-        r.ff_fast_path_latency_s = max(0.0, time.time() - started)
-        _record_call_usage(r, client, fast_path_call_start, "ff_fast_path")
-        record("fast_path", started)
-        if fast_raw_plan is not None:
-            try:
-                fast_plan = structural_validate(fast_raw_plan)
-                validate_plan_against_dataframe(fast_plan, df)
-                fast_started = time.time()
-                fast_exec = execute_plan(df, fast_plan)
-                record("typed_exec", fast_started)
-                if not fast_exec.ok:
-                    raise RuntimeError(fast_exec.error or "fast-path execution failed")
-                stage_latency_s["agent"] = stage_latency_s["typed_exec"]
-                r.stage_latency_s = dict(stage_latency_s)
-                r.plan_source = "fast_path"
-                r.ff_fast_path_used = True
-                r.execution_path = PATH_TYPED_OPERATOR
-                r.plan_validation_stage_failed = ""
-                r.raw_plan = fast_raw_plan
-                r.typed_plan = fast_plan.model_dump(mode="json")
-                r.typed_plan_sha256 = typed_plan_digest(fast_plan)
-                r.operators_used = fast_plan.operators_used
-                r.schema_fingerprint = schema_fingerprint(meta_str)
-                r.answer = _format_typed_execution_value(fast_exec.value)
-                r.trace = fast_exec.trace
-                r.final_code = fast_exec.code
-                r.agent_tries = len(fast_exec.steps)
-                r.execution_attempts = list(fast_exec.steps)
-                r.executed = True
-                r.stages_run.append("fast_path")
-                _debug(f"Fast-path execution ok in {fast_exec.latency_ms:.1f}ms")
-                return r
-            except Exception as exc:  # noqa: BLE001 — fail open to full planner
-                _debug(
-                    "Fast-path declined "
-                    f"({type(exc).__name__}: {exc}); using full planner."
-                )
+        route = route_operator_bucket(query, list(df.columns))
+        record("operator_route", started)
+        r.operator_route_excluded_buckets = list(route.excluded_buckets)
+        r.operator_route_matched_rules = list(route.matched_rules)
+        r.operator_route_full_fallback = route.used_full_fallback
+        r.operator_route_candidate_ops = sorted(route.candidate_ops)
+        _debug(
+            f"Operator route: {len(route.candidate_ops)} ops, "
+            f"excluded={route.excluded_buckets}, rules={route.matched_rules}"
+        )
 
         # --- Single structured call: guardrail verdict + candidate plan -----
         r.plan_source = "llm"
@@ -436,16 +407,19 @@ def run_flash_fusion(
         r.guardrail_input = query
         started = time.time()
         planner_call_start = _call_log_length(client)
-        parsed_result, dynamic_suffix, structural_error = request_guardrail_and_plan(
-            query, meta_str, client
-        )
+        (
+            parsed_result,
+            dynamic_suffix,
+            structural_error,
+            prefix_text,
+        ) = request_guardrail_and_plan(query, meta_str, client, route=route)
         r.ff_planner_latency_s = max(0.0, time.time() - started)
         _record_call_usage(r, client, planner_call_start, "ff_planner")
         record("guardrail+plan", started)
         r.stages_run.append("guardrail_plan")
         r.guardrail_input = dynamic_suffix
-        r.planner_prefix_version = PLANNER_PREFIX_VERSION
-        r.planner_prefix_sha256 = PLANNER_PREFIX_SHA256
+        r.planner_prefix_version = planner_prefix_version(prefix_text)
+        r.planner_prefix_sha256 = planner_prefix_digest(prefix_text)
         r.planner_cache_key = client.session_key
         r.schema_fingerprint = schema_fingerprint(meta_str)
         r.normalization_version = NORMALIZATION_VERSION
@@ -492,14 +466,17 @@ def run_flash_fusion(
         # --- Gate 2: DataFrame schema validation ----------------------------
         if plan is not None:
             last_stage = "schema_validation"
+            started = time.time()
             raw_plan_payload = plan.model_dump(mode="json")
             try:
                 validate_plan_against_dataframe(plan, df)
+                record("schema_validation", started)
                 r.typed_plan = raw_plan_payload
                 r.typed_plan_sha256 = typed_plan_digest(plan)
                 r.operators_used = plan.operators_used
                 r.stages_run.append("plan_validated")
             except PlanSchemaError as exc:
+                record("schema_validation", started)
                 gap_stage, gap_error = "schema", str(exc)
                 plan = None
                 _debug(f"Gate 2 (schema) failed: {exc}")
@@ -559,10 +536,6 @@ def run_flash_fusion(
                 r.executed = False
                 return r
             record("typed_exec", started)
-            # Keep the legacy "agent" latency slot meaningful: it is the
-            # execution phase, whichever engine served it.
-            stage_latency_s["agent"] = stage_latency_s["typed_exec"]
-            r.stage_latency_s = dict(stage_latency_s)
 
             if execution.ok:
                 r.execution_path = PATH_TYPED_OPERATOR

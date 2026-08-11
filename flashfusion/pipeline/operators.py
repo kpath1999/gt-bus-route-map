@@ -31,11 +31,13 @@ import hashlib
 import json
 import math
 import os
+import re
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal, Union, get_args
 
 import numpy as np
 import pandas as pd
@@ -45,6 +47,11 @@ __all__ = [
     "PLAN_VERSION",
     "OPERATOR_VOCABULARY_VERSION",
     "OPERATOR_VOCABULARY_SPEC",
+    "ALL_OPERATOR_NAMES",
+    "build_vocabulary_spec",
+    "build_planner_prefix",
+    "planner_prefix_digest",
+    "planner_prefix_version",
     "FLASH_FUSION_PLANNER_PREFIX",
     "PLANNER_PREFIX_SHA256",
     "PLANNER_PREFIX_VERSION",
@@ -74,7 +81,9 @@ __all__ = [
 PLAN_VERSION = "1"
 
 #: Bumped whenever OPERATOR_VOCABULARY_SPEC or the planner contract text changes.
-OPERATOR_VOCABULARY_VERSION = "2"
+#: "3" — the planner prefix is now assembled from a routed (possibly narrowed)
+#: vocabulary spec rather than always from the full one.
+OPERATOR_VOCABULARY_VERSION = "3"
 
 # ---------------------------------------------------------------------------
 # Scalar vocabularies
@@ -483,6 +492,15 @@ TypedOperator = Annotated[
     ],
     Field(discriminator="op"),
 ]
+
+#: Declaration-ordered inventory of the closed vocabulary. Derived from the union
+#: itself so it can never drift from the operators that actually validate.
+ALL_OPERATOR_NAMES: tuple[str, ...] = tuple(
+    get_args(model.model_fields["op"].annotation)[0]
+    for model in get_args(get_args(TypedOperator)[0])
+)
+
+_ALL_OPERATOR_NAME_SET: frozenset[str] = frozenset(ALL_OPERATOR_NAMES)
 
 
 class DeterministicPlan(BaseModel):
@@ -2498,6 +2516,120 @@ X8. Percentiles as aggregate names.
 
 
 # ---------------------------------------------------------------------------
+# Vocabulary narrowing
+# ---------------------------------------------------------------------------
+#
+# The deterministic router in ``flashfusion.pipeline.operator_router`` decides
+# which operators a query could possibly need. Rendering only those entries keeps
+# the planner contract intact while cutting the prompt down to the operators that
+# survived elimination. Parsing happens once at import time; the render itself is
+# a pure filter over pre-split, immutable chunks.
+
+_OPERATOR_HEADER_RE = re.compile(r'^([A-Z][A-Z0-9_]*)\s+\{"op":')
+_OPERATOR_MENTION_RE = re.compile(r"[A-Z][A-Z0-9_]{3,}")
+#: Lines that start a new rule / example / list item even without a blank line.
+_SPEC_ITEM_MARKER_RE = re.compile(r"^(?:[WX]?\d+\.|-\s|\[)")
+_SPEC_SECTION_HEADER_RE = re.compile(r"^[A-Z][A-Z0-9 ]{3,}[—:]")
+
+
+def _spec_chunks(lines: list[str]) -> tuple[str, ...]:
+    """Group lines into paragraph/list-item chunks that can be dropped as a unit."""
+    chunks: list[str] = []
+    current: list[str] = []
+    previous_blank = True
+    for line in lines:
+        starts_chunk = bool(line.strip()) and not line[:1].isspace() and (
+            previous_blank or _SPEC_ITEM_MARKER_RE.match(line)
+        )
+        if current and starts_chunk:
+            chunks.append("\n".join(current).rstrip())
+            current = [line]
+        else:
+            current.append(line)
+        previous_blank = not line.strip()
+    if current:
+        chunks.append("\n".join(current).rstrip())
+    return tuple(chunk for chunk in chunks if chunk.strip())
+
+
+def _parse_vocabulary_spec(
+    spec: str,
+) -> tuple[tuple[str, ...], tuple[tuple[str, str], ...], tuple[str, ...]]:
+    """Split the spec into (head chunks, operator blocks, tail chunks)."""
+    lines = spec.split("\n")
+    first = next(i for i, line in enumerate(lines) if _OPERATOR_HEADER_RE.match(line))
+
+    end = len(lines)
+    for i in range(first + 1, len(lines)):
+        line = lines[i]
+        if not line.strip() or line[:1].isspace() or _OPERATOR_HEADER_RE.match(line):
+            continue
+        end = i
+        break
+
+    blocks: list[tuple[str, str]] = []
+    name = ""
+    body: list[str] = []
+    for line in lines[first:end]:
+        match = _OPERATOR_HEADER_RE.match(line)
+        if match:
+            if name:
+                blocks.append((name, "\n".join(body).rstrip()))
+            name, body = match.group(1), [line]
+        else:
+            body.append(line)
+    if name:
+        blocks.append((name, "\n".join(body).rstrip()))
+
+    return _spec_chunks(lines[:first]), tuple(blocks), _spec_chunks(lines[end:])
+
+
+_SPEC_HEAD_CHUNKS, _SPEC_OPERATOR_BLOCKS, _SPEC_TAIL_CHUNKS = _parse_vocabulary_spec(
+    OPERATOR_VOCABULARY_SPEC
+)
+
+
+def _mentions_only(chunk: str, candidate_ops: frozenset[str]) -> bool:
+    """True when every operator this chunk names is still part of the vocabulary."""
+    return all(
+        token in candidate_ops
+        for token in _OPERATOR_MENTION_RE.findall(chunk)
+        if token in _ALL_OPERATOR_NAME_SET
+    )
+
+
+def _drop_empty_sections(sections: list[str]) -> list[str]:
+    """Remove section headings whose entire body was filtered away."""
+    kept: list[str] = []
+    for section in reversed(sections):
+        is_header = bool(_SPEC_SECTION_HEADER_RE.match(section))
+        if is_header and (not kept or _SPEC_SECTION_HEADER_RE.match(kept[0])):
+            continue
+        kept.insert(0, section)
+    return kept
+
+
+def build_vocabulary_spec(candidate_ops: Iterable[str]) -> str:
+    """Render the operator vocabulary restricted to ``candidate_ops``.
+
+    Rules, worked examples, and rejected patterns that reference an operator the
+    planner is no longer allowed to emit are dropped with it: a contract that
+    describes operators absent from its own vocabulary invites exactly the
+    hallucinated steps Gate 1 exists to reject. Returns the full spec verbatim
+    (byte-identical) when nothing was narrowed.
+    """
+    ops = frozenset(candidate_ops)
+    if ops >= _ALL_OPERATOR_NAME_SET:
+        return OPERATOR_VOCABULARY_SPEC
+    sections = [
+        *(chunk for chunk in _SPEC_HEAD_CHUNKS if _mentions_only(chunk, ops)),
+        *(block for name, block in _SPEC_OPERATOR_BLOCKS if name in ops),
+        *(chunk for chunk in _SPEC_TAIL_CHUNKS if _mentions_only(chunk, ops)),
+    ]
+    return "\n\n".join(_drop_empty_sections(sections)) + "\n"
+
+
+# ---------------------------------------------------------------------------
 # Immutable planner prefix — the prompt-cache prefix
 # ---------------------------------------------------------------------------
 #
@@ -2565,29 +2697,43 @@ Respond with a single JSON object and nothing else:
   "plan": {"version": "1", "steps": [ ...operators... ]} or null}\
 """
 
-#: Byte-stable planner prefix. Assembled in a fixed order from module constants
-#: only; no environment reads, no clock, no dict iteration.
-FLASH_FUSION_PLANNER_PREFIX: str = "\n\n".join(
-    [
-        _PLANNER_ROLE_CONTRACT,
-        f"PLAN_VERSION: {PLAN_VERSION}\n"
-        f"OPERATOR_VOCABULARY_VERSION: {OPERATOR_VOCABULARY_VERSION}",
-        "Operator vocabulary (this is the COMPLETE set — nothing else exists):\n"
-        + OPERATOR_VOCABULARY_SPEC,
-        _PLANNER_SCOPE_RULES,
-        _PLANNER_OUTPUT_CONTRACT,
-    ]
-)
+def build_planner_prefix(vocabulary_spec: str = OPERATOR_VOCABULARY_SPEC) -> str:
+    """Assemble the planner prefix around a (possibly narrowed) vocabulary spec.
 
-PLANNER_PREFIX_SHA256: str = hashlib.sha256(
-    FLASH_FUSION_PLANNER_PREFIX.encode("utf-8")
-).hexdigest()
+    The prefix stays byte-stable *for a given spec*, so prompt caching still
+    works — but the cache is now partitioned by operator route instead of being
+    a single global entry.
+    """
+    return "\n\n".join(
+        [
+            _PLANNER_ROLE_CONTRACT,
+            f"PLAN_VERSION: {PLAN_VERSION}\n"
+            f"OPERATOR_VOCABULARY_VERSION: {OPERATOR_VOCABULARY_VERSION}",
+            "Operator vocabulary (this is the COMPLETE set — nothing else exists):\n"
+            + vocabulary_spec,
+            _PLANNER_SCOPE_RULES,
+            _PLANNER_OUTPUT_CONTRACT,
+        ]
+    )
 
-PLANNER_PREFIX_VERSION: str = hashlib.sha256(
-    "|".join(
-        (PLAN_VERSION, OPERATOR_VOCABULARY_VERSION, FLASH_FUSION_PLANNER_PREFIX)
-    ).encode("utf-8")
-).hexdigest()[:16]
+
+def planner_prefix_digest(prefix: str) -> str:
+    """Full digest of the exact prefix bytes sent to the provider."""
+    return hashlib.sha256(prefix.encode("utf-8")).hexdigest()
+
+
+def planner_prefix_version(prefix: str) -> str:
+    """Short contract+prefix version, logged so two runs can be compared."""
+    return hashlib.sha256(
+        "|".join((PLAN_VERSION, OPERATOR_VOCABULARY_VERSION, prefix)).encode("utf-8")
+    ).hexdigest()[:16]
+
+
+FLASH_FUSION_PLANNER_PREFIX: str = build_planner_prefix()
+
+PLANNER_PREFIX_SHA256: str = planner_prefix_digest(FLASH_FUSION_PLANNER_PREFIX)
+
+PLANNER_PREFIX_VERSION: str = planner_prefix_version(FLASH_FUSION_PLANNER_PREFIX)
 
 
 def planner_cache_key(model_id: str, environment: str = "dev") -> str:
