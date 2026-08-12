@@ -310,6 +310,7 @@ MIT_ECG_QUERIES: list[dict] = [
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
             "Train a logistic regression model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
+            # "Return the model’s raw predicted annotation value exactly as emitted. Do not map, interpret, or translate labels."
         ),
         "complexity": "predictive",
         "operation": "CHRONO_SPLIT+CLASSIFY",
@@ -322,6 +323,7 @@ MIT_ECG_QUERIES: list[dict] = [
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
             "Train a random forest model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
+            # "Return the model’s raw predicted annotation value exactly as emitted. Do not map, interpret, or translate labels."
         ),
         "complexity": "predictive",
         "operation": "CHRONO_SPLIT+CLASSIFY",
@@ -334,6 +336,7 @@ MIT_ECG_QUERIES: list[dict] = [
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
             "Train a 1-nearest-neighbor model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
+            # "Return the model’s raw predicted annotation value exactly as emitted. Do not map, interpret, or translate labels."
         ),
         "complexity": "predictive",
         "operation": "CHRONO_SPLIT+CLASSIFY",
@@ -346,6 +349,7 @@ MIT_ECG_QUERIES: list[dict] = [
             "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
             "Train a hist gradient boosting model using the features MLII and V1. "
             "Predict whether an annotation is present for the first row in the holdout set."
+            # "Return the model’s raw predicted annotation value exactly as emitted. Do not map, interpret, or translate labels."
         ),
         "complexity": "predictive",
         "operation": "CHRONO_SPLIT+CLASSIFY",
