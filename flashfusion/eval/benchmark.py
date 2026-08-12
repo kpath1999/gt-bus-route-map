@@ -131,6 +131,7 @@ ALL_BASELINES = [
     "REACT_ONLY",
     "AUTOIOT_PAPER",
     "FLASH_FUSION",
+    "FLASH_FUSION_CACHE",
     "HARGPT_PAPER",
     "LLMSENSE_PAPER",
 ]
@@ -260,6 +261,7 @@ def _run_single_benchmark_iteration(
     dataset: str,
     query_defs: list[dict],
     stage12_model: str | None = None,
+    cache_path: str | None = None,
 ) -> tuple[list[RunResult], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Execute one full baseline x query benchmark run and persist artifacts."""
     os.makedirs(output_dir, exist_ok=True)
@@ -293,6 +295,8 @@ def _run_single_benchmark_iteration(
                 mode=baseline,
                 df=df_base.copy(),
                 client=client,
+                dataset=dataset,
+                cache_path=cache_path,
             )
             t0 = time.time()
 
@@ -564,6 +568,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
+            cache_path=getattr(args, "cache_path", None),
         )
         return results
 
@@ -591,6 +596,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
+            cache_path=getattr(args, "cache_path", None),
         )
 
         all_results.extend(run_results)
@@ -743,6 +749,14 @@ def _build_parser() -> argparse.ArgumentParser:
             "Optional lighter model for Flash-Fusion Stages 1 and 2 only "
             "(e.g. qwen/qwen-2.5-7b-instruct). All other stages use --model. "
             "When omitted, every stage uses --model."
+        ),
+    )
+    parser.add_argument(
+        "--cache-path",
+        default=None,
+        help=(
+            "Operator-skeleton cache registry for FLASH_FUSION_CACHE "
+            "(default: flashfusion/eval/cache/cache_registry.json)"
         ),
     )
     parser.add_argument(

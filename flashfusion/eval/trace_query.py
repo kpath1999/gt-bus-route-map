@@ -29,6 +29,10 @@ Usage:
     python -m flashfusion.eval.trace_query --dataset bus --query-id 9 \\
         --model meta-llama/llama-3.3-70b-instruct
 
+    # Cache-first trace: show how the light model refills columns/values into
+    # the cached operator skeleton on an exact-query cache hit
+    python -m flashfusion.eval.trace_query --dataset bus --query-id 4 --cache
+
 Environment:
     OPENROUTER_API_KEY — preferred; GROQ_API_KEY accepted during transition.
 """
@@ -230,11 +234,97 @@ def parse_args() -> argparse.Namespace:
         help="Run REACT_ONLY baseline trace instead of FLASH_FUSION",
     )
     p.add_argument(
+        "--cache",
+        action="store_true",
+        help=(
+            "Run the FLASH_FUSION_CACHE baseline and print the cache section: "
+            "lookup status, cached operator skeleton, the exact grounding prompt, "
+            "the light model's raw JSON, and the revalidated typed plan. "
+            "Falls back to FLASH_FUSION on a miss or any failed gate."
+        ),
+    )
+    p.add_argument(
+        "--cache-path",
+        default=None,
+        help="Override the cache registry path used by --cache",
+    )
+    p.add_argument(
         "--progress",
         action="store_true",
         help="Stream progress updates during execution (useful for diagnosing stalls)",
     )
     return p.parse_args()
+
+
+def _run_cache_traced(query_text: str, df, client: LLMClient, args):
+    """Run FLASH_FUSION_CACHE directly so the cache trace record is observable.
+
+    BaselineRunner cannot surface the grounding trace, and this debug path
+    needs the exact prompt/raw JSON the light model produced.
+    """
+    import time
+
+    from flashfusion.baselines.flash_fusion_cache import (
+        BASELINE_NAME,
+        DEFAULT_CACHE_PATH,
+        CacheGroundingTrace,
+        run_flash_fusion_cache,
+    )
+
+    r = RunResult(baseline=BASELINE_NAME, model=client.model_name, query=query_text)
+    cache_trace = CacheGroundingTrace()
+    t0 = time.time()
+    run_flash_fusion_cache(
+        query_text,
+        df,
+        client,
+        r,
+        dataset=args.dataset,
+        cache_path=args.cache_path or DEFAULT_CACHE_PATH,
+        trace=cache_trace,
+    )
+    r.latency_s = time.time() - t0 - r.stage_latency_s.get("column_metadata", 0.0)
+    r.input_tokens = client.total_input_tokens()
+    r.output_tokens = client.total_output_tokens()
+    r.cost_usd = client.total_cost_usd()
+    r.cached_tokens = client.total_cached_tokens()
+    r.cache_write_tokens = client.total_cache_write_tokens()
+    r.cache_discount_usd = client.total_cache_discount_usd()
+    return r, cache_trace
+
+
+def _print_cache_trace(t) -> None:
+    """Show every cache gate, including the light model's grounding attempt."""
+    _hr("EXACT-QUERY SKELETON CACHE")
+    print(f"registry        : {t.cache_path}")
+    print(f"dataset (canon) : {t.requested_dataset or '(unspecified)'}")
+    print(f"lookup_status   : {t.lookup_status or '(not reached)'}")
+    if t.entry:
+        print(f"entry query_id  : {t.entry.get('query_id')}  dataset={t.entry.get('dataset')}")
+        print(f"agreement       : {t.entry.get('n_runs_agreeing')}/{t.entry.get('n_runs_observed')} runs")
+    print(f"cached skeleton : {t.operator_skeleton or '(none)'}")
+
+    if t.prompt:
+        _hr("CACHE GROUNDING PROMPT (sent to client.light)")
+        print(t.prompt)
+
+    if t.raw_light_output:
+        _hr(f"LIGHT MODEL RAW OUTPUT  ({t.grounding_latency_s:.3f}s)")
+        print(t.raw_light_output)
+
+    if t.validated_plan:
+        _hr("REGROUNDED TYPED PLAN (skeleton preserved, values refilled)")
+        print(json.dumps(t.validated_plan, indent=2))
+    elif t.parsed_plan:
+        _hr("PARSED PLAN (rejected by a validation gate)")
+        print(json.dumps(t.parsed_plan, indent=2))
+
+    _hr("CACHE VERDICT")
+    if t.hit:
+        print(f"✓ CACHE HIT — executed typed plan; value={t.executed_value!r}")
+    else:
+        print("✗ CACHE NOT USED — falling back to the full Flash-Fusion planner")
+        print(f"  reason: {t.failure_reason or t.lookup_status or '(unknown)'}")
 
 
 def trace_single_query(
@@ -258,9 +348,16 @@ def trace_single_query(
     
     if args.progress:
         print(f"\n[PROGRESS] Starting execution for query {query_id}...", file=sys.stderr, flush=True)
-    
-    r = runner.run(query_text)
-    
+
+    cache_trace = None
+    if getattr(args, "cache", False):
+        r, cache_trace = _run_cache_traced(query_text, df, client, args)
+    else:
+        r = runner.run(query_text)
+
+    if cache_trace is not None:
+        _print_cache_trace(cache_trace)
+
     if args.progress:
         print(f"[PROGRESS] Execution complete for query {query_id} ({r.execution_path}, {r.latency_s:.2f}s)", file=sys.stderr, flush=True)
         _hr("REACT_ONLY EXECUTION")
@@ -339,7 +436,11 @@ def trace_single_query(
 
             # --- Execution engine ----------------------------------------------
             _hr("EXECUTION ENGINE")
-            if r.execution_path == "typed_operator":
+            if r.execution_path == "typed_operator_cache":
+                print("✓ TYPED OPERATORS VIA CACHE (skeleton reused, values regrounded)")
+                print(f"  Cache grounding: {r.stage_latency_s.get('cache_grounding', 0):.3f}s")
+                print(f"  Execution time : {r.stage_latency_s.get('typed_exec', 0):.3f}s")
+            elif r.execution_path == "typed_operator":
                 print("✓ TYPED OPERATORS (in-process, no sandbox)")
                 print(f"  Execution time: {r.stage_latency_s.get('typed_exec', 0):.3f}s")
                 print(f"  Agent tries: {r.agent_tries}")
@@ -429,11 +530,30 @@ def main() -> None:
 
     api_key = _resolve_api_key()
     client = LLMClient(model_name=args.model, api_key=api_key, light_model_name=args.stage12_model)
-    baseline_mode = "REACT_ONLY" if args.react else "FLASH_FUSION"
-    runner = BaselineRunner(mode=baseline_mode, df=df, client=client)
+    if args.react and args.cache:
+        raise SystemExit("--react and --cache are mutually exclusive")
+    if args.react:
+        baseline_mode = "REACT_ONLY"
+    elif args.cache:
+        baseline_mode = "FLASH_FUSION_CACHE"
+    else:
+        baseline_mode = "FLASH_FUSION"
+    runner = BaselineRunner(
+        mode=baseline_mode,
+        df=df,
+        client=client,
+        dataset=args.dataset,
+        cache_path=args.cache_path,
+    )
 
     s12_model = client.light.model_name
-    if args.react:
+    if args.cache:
+        print(
+            f"Mode: FLASH_FUSION_CACHE | Cache grounding (client.light) = {s12_model!r}   "
+            f"|   Fallback planner (client) = {client.model_name!r}",
+            file=sys.stderr,
+        )
+    elif args.react:
         print(
             f"Mode: REACT_ONLY   |   Model: {client.model_name!r}",
             file=sys.stderr,

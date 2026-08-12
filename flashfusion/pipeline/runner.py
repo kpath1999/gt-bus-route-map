@@ -453,6 +453,10 @@ class BaselineRunner:
         "REACT_ONLY"  — ReAct: raw query → pandas agent (paper-faithful ReAct)
         "LLMSENSE_PAPER" — narration/summarization + reasoning over narrative text
         "FLASH_FUSION"  — B4: S1 + S2 + S3 + guardrail + agent + judge (+ retry)
+        "FLASH_FUSION_CACHE" — exact-query operator-skeleton cache; on a hit the
+                        light model regrounds the cached skeleton and the plan is
+                        revalidated/executed, otherwise it falls back to
+                        FLASH_FUSION
 
     Rewriting baselines derive features only after schema grounding explicitly
     identifies a computation supported by the raw dataset columns.
@@ -465,6 +469,7 @@ class BaselineRunner:
             "REACT_ONLY",
             "AUTOIOT_PAPER",
             "FLASH_FUSION",
+            "FLASH_FUSION_CACHE",
             "HARGPT_PAPER",
             "LLMSENSE_PAPER",
         }
@@ -477,6 +482,8 @@ class BaselineRunner:
         client: LLMClient,
         data_path: str = "WISDM",
         predictive_timeout_s: float | None = None,
+        dataset: str | None = None,
+        cache_path: str | None = None,
     ) -> None:
         """
         Args:
@@ -484,6 +491,12 @@ class BaselineRunner:
             df:         WISDM DataFrame.
             client:     LLMClient for this run.
             data_path:  Descriptive label injected into agent prefix (not a file path).
+            dataset:    Dataset key ("wisdm" | "mit_ecg" | "bus"). Required by
+                        FLASH_FUSION_CACHE to scope cache lookups; omitting it
+                        allows a hit only when the query text is unique across
+                        datasets in the registry.
+            cache_path: Override for the operator-skeleton cache registry
+                        (FLASH_FUSION_CACHE only).
 
         Raises:
             ValueError: If mode is not in self.MODES.
@@ -501,7 +514,9 @@ class BaselineRunner:
         self.client = client
         self.data_path = data_path
         self.predictive_timeout_s = predictive_timeout_s
-        if self.mode == "FLASH_FUSION":
+        self.dataset = dataset
+        self.cache_path = cache_path
+        if self.mode in ("FLASH_FUSION", "FLASH_FUSION_CACHE"):
             from flashfusion.baselines.flash_fusion import warm_flash_fusion_prefix
 
             warm_flash_fusion_prefix(self.df, self.client)
@@ -551,6 +566,21 @@ class BaselineRunner:
                 self.df,
                 self.client,
                 r,
+                timeout_s=self.predictive_timeout_s,
+            )
+        elif self.mode == "FLASH_FUSION_CACHE":
+            from flashfusion.baselines.flash_fusion_cache import (
+                DEFAULT_CACHE_PATH,
+                run_flash_fusion_cache,
+            )
+
+            run_flash_fusion_cache(
+                query,
+                self.df,
+                self.client,
+                r,
+                dataset=self.dataset,
+                cache_path=self.cache_path or DEFAULT_CACHE_PATH,
                 timeout_s=self.predictive_timeout_s,
             )
         elif self.mode == "HARGPT_PAPER":

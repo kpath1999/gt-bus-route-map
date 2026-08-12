@@ -2692,6 +2692,55 @@ def build_vocabulary_spec(candidate_ops: Iterable[str]) -> str:
     return "\n\n".join(_drop_empty_sections(sections)) + "\n"
 
 
+def _operator_signature(block: str) -> str:
+    """Return only the ``{"op": ...}`` JSON signature lines from an operator block.
+
+    Some signatures (e.g. PARALLEL_AGGREGATE, DERIVE_BIN, DERIVE_DURATION_SECONDS)
+    wrap onto a second line before the JSON object closes. Taking a fixed first
+    line truncates those mid-object, silently dropping trailing fields (e.g.
+    PARALLEL_AGGREGATE's group_by/aggregate/column/result_column) and inviting a
+    light model to invent replacements. Track brace depth instead so the full
+    signature is kept and usage prose after it is dropped.
+    """
+    sig_lines: list[str] = []
+    depth = 0
+    for line in block.split("\n"):
+        sig_lines.append(line)
+        depth += line.count("{") - line.count("}")
+        if depth <= 0:
+            break
+    return "\n".join(sig_lines).strip()
+
+
+def build_compact_operator_spec(candidate_ops: Iterable[str]) -> str:
+    """Field signatures only, in ``candidate_ops`` order — no usage prose or examples.
+
+    ``build_vocabulary_spec`` keeps the full rules/examples prose per operator,
+    which is what a planner needs to *choose* operators. Cache grounding never
+    chooses operators — the skeleton is already fixed — so all that prose is
+    pure noise that a small model can lose the step-count/field-name signal in.
+    Only the literal ``{"op": ...}`` signature (see ``_operator_signature``) is
+    kept per operator, plus the AGG enum line if any signature references it.
+    """
+    lookup = dict(_SPEC_OPERATOR_BLOCKS)
+    seen: set[str] = set()
+    lines: list[str] = []
+    for name in candidate_ops:
+        if name in seen:
+            continue
+        seen.add(name)
+        block = lookup.get(name)
+        if block is None:
+            continue
+        lines.append(_operator_signature(block))
+    spec = "\n".join(lines)
+    if "AGG" in spec:
+        agg_line = next((chunk for chunk in _SPEC_TAIL_CHUNKS if chunk.startswith("AGG is one of")), "")
+        if agg_line:
+            spec += "\n\n" + agg_line
+    return spec
+
+
 # ---------------------------------------------------------------------------
 # Immutable planner prefix — the prompt-cache prefix
 # ---------------------------------------------------------------------------
