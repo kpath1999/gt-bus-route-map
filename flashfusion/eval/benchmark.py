@@ -106,6 +106,7 @@ import sys
 import time
 
 import pandas as pd
+import numpy as np
 
 from flashfusion.eval.ground_truth import load_ground_truth
 from flashfusion.eval.ground_truth_llm_judge import (
@@ -162,6 +163,43 @@ def _is_under_data_root(path: str) -> bool:
     """Return True when path resolves under a data/ segment."""
     normalized = os.path.normpath(path).replace("\\", "/")
     return normalized.startswith("data/") or "/data/" in normalized
+
+
+def _json_serialize(obj):
+    """Custom JSON serializer for pandas/numpy types."""
+    # Pandas types
+    if isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    if isinstance(obj, np.datetime64):
+        return pd.Timestamp(obj).isoformat()
+    
+    # Numpy scalar types - use generic base classes
+    if isinstance(obj, (np.integer, np.floating, np.bool_, np.complexfloating)):
+        return obj.item()
+    
+    # Numpy arrays
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    
+    # Pandas NA/NaT/None
+    try:
+        if pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    
+    # Generic numpy scalar fallback
+    if hasattr(obj, 'item') and callable(obj.item):
+        try:
+            return obj.item()
+        except (TypeError, ValueError):
+            pass
+    
+    # Last resort: try str() for any remaining numpy/pandas types
+    if type(obj).__module__.startswith(('numpy', 'pandas')):
+        return str(obj)
+    
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
 def _baseline_summary(metrics_df: pd.DataFrame) -> pd.DataFrame:
@@ -321,7 +359,7 @@ def _run_single_benchmark_iteration(
             )
 
             with open(raw_results_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(dataclasses.asdict(result)) + "\n")
+                f.write(json.dumps(dataclasses.asdict(result), default=_json_serialize) + "\n")
 
     judge_out_dir = os.path.join(output_dir, "ground_truth_llm_judge")
     rows_for_judge: list[dict] = []
@@ -588,7 +626,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
                         continue
                     payload = json.loads(line)
                     payload["run_id"] = run_id
-                    f.write(json.dumps(payload) + "\n")
+                    f.write(json.dumps(payload, default=_json_serialize) + "\n")
 
     judge_out_dir = os.path.join(args.output, "ground_truth_llm_judge")
     os.makedirs(judge_out_dir, exist_ok=True)

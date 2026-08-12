@@ -196,10 +196,10 @@ class TestExecutionLayer:
         build_agent.assert_not_called()
 
     def test_safe_backend_rejects_before_code_execution(self, minimal_df, mock_client):
-        """A safe codegen REJECT sentinel must avoid Python execution entirely."""
+        """An explicit reject_query action must avoid Python execution entirely."""
         from flashfusion.pipeline.executor import ExecutionLayer
 
-        rejection = "REJECT: Geographic location is not represented in the available columns."
+        rejection = "Missing required dataset concept(s): geographic location."
         mock_client.invoke_chain.return_value = rejection
 
         with patch.dict(
@@ -212,9 +212,13 @@ class TestExecutionLayer:
         ):
             layer = ExecutionLayer(minimal_df, mock_client)
             with patch.object(layer, "_run_safe_code") as run_safe_code:
+                mock_client.invoke_chain.return_value = (
+                    "Action: reject_query\n"
+                    "Action Input: Missing required dataset concept(s): geographic location."
+                )
                 answer, trace, details = layer.execute_single("Where was subject 1600 walking?")
 
-        assert answer == rejection
+        assert answer == "REJECT: Missing required dataset concept(s): geographic location."
         assert "Scope check rejected" in trace
         assert details.final_code == ""
         assert details.tries == 0
@@ -288,7 +292,6 @@ class TestExecutionLayer:
         """
         responses = {
             "safe_codegen_1": "result = int(df.shape[0])",
-            "safe_answer_1": "There are 2 rows in the dataset.",
         }
 
         def _fake_invoke_chain(chain, inputs, stage):
@@ -301,10 +304,208 @@ class TestExecutionLayer:
             layer = ExecutionLayer(minimal_df, mock_client)
             answer, trace, details = layer.execute_single("How many rows?")
 
-        assert "2 rows" in answer
+        assert answer == "The result is: 2"
         assert "Action Input" in trace
         assert details.final_code.strip() == "result = int(df.shape[0])"
         assert details.tries == 1
+        assert details.answer_source == "executed_observation"
+        assert details.rejected is False
+
+    @pytest.mark.parametrize(
+        ("code", "expected_value", "expected_answer"),
+        [
+            ("result = False", False, "The result is: false"),
+            ("result = None", None, "The result is: null"),
+            (
+                "result = 'weather unavailable'",
+                "weather unavailable",
+                "The result is: weather unavailable",
+            ),
+        ],
+    )
+    def test_safe_backend_success_outputs_are_not_structural_rejections(
+        self,
+        minimal_df,
+        mock_client,
+        code,
+        expected_value,
+        expected_answer,
+    ):
+        """python_exec outputs are normal answers unless explicit reject_query is emitted."""
+        responses = {
+            "safe_codegen_1": code,
+        }
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            result = layer.execute_single("Did the event happen?")
+
+        assert result.rejected is False
+        assert result.answer_source == "executed_observation"
+        assert result.executed_value == expected_value
+        assert result.raw_answer == expected_answer
+
+    @pytest.mark.parametrize(
+        ("query", "codegen", "expect_rejected"),
+        [
+            (
+                "Is passenger occupancy correlated with road roughness?",
+                (
+                    "Action: reject_query\n"
+                    "Action Input: Missing required dataset concept(s): passenger occupancy, road roughness."
+                ),
+                True,
+            ),
+            (
+                "Did rain cause instability spikes?",
+                (
+                    "Action: reject_query\n"
+                    "Action Input: Missing required dataset concept(s): weather metadata."
+                ),
+                True,
+            ),
+            (
+                "Which driver was assigned this route by schedule?",
+                (
+                    "Action: reject_query\n"
+                    "Action Input: Missing required dataset concept(s): driver identity, route schedule metadata."
+                ),
+                True,
+            ),
+            (
+                "Forecast pothole repairs next week.",
+                (
+                    "Action: reject_query\n"
+                    "Action Input: Missing required dataset concept(s): pothole repair labels/history."
+                ),
+                True,
+            ),
+            (
+                "Train on chronological rows and predict behavior for first holdout row.",
+                "result = 'moderate'",
+                False,
+            ),
+        ],
+    )
+    def test_safe_backend_terminal_outcomes_for_scope_sensitive_queries(
+        self,
+        minimal_df,
+        mock_client,
+        query,
+        codegen,
+        expect_rejected,
+    ):
+        """Scope-sensitive queries should end in reject_query or grounded python_exec output."""
+        responses = {"safe_codegen_1": codegen}
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            result = layer.execute_single(query)
+
+        assert result.rejected is expect_rejected
+        if expect_rejected:
+            assert result.answer_source == "structured_rejection"
+            assert result.rejection_reason
+        else:
+            assert result.answer_source == "executed_observation"
+            assert "moderate" in result.raw_answer
+
+    @pytest.mark.parametrize(
+        ("code", "expected_answer", "expected_value"),
+        [
+            ("result = 7", "The result is: 7", 7),
+            ("result = True", "The result is: true", True),
+            ("result = [1, 2, 3]", "The result is: [1, 2, 3]", [1, 2, 3]),
+            (
+                "result = {'label': 'moderate', 'score': 0.83}",
+                'The result is: {"label": "moderate", "score": 0.83}',
+                {"label": "moderate", "score": 0.83},
+            ),
+        ],
+    )
+    def test_safe_backend_renders_executed_value_without_llm_hedging(
+        self,
+        minimal_df,
+        mock_client,
+        code,
+        expected_answer,
+        expected_value,
+    ):
+        """Executed observation rendering must be deterministic across value types."""
+        responses = {"safe_codegen_1": code}
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            result = layer.execute_single("Return a computed value")
+
+        assert result.raw_answer == expected_answer
+        assert "insufficient" not in result.raw_answer.lower()
+        assert result.rejected is False
+        assert result.answer_source == "executed_observation"
+        assert result.executed_value == expected_value
+
+    def test_safe_backend_prediction_query_uses_label_renderer(self, minimal_df, mock_client):
+        """Scalar prediction labels should use the direct holdout-label answer template."""
+        responses = {
+            "safe_codegen_1": "result = 'moderate'",
+        }
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            result = layer.execute_single(
+                "Train on chronological rows and predict the behavior label for the first holdout row"
+            )
+
+        assert result.raw_answer == "The predicted behavior label for the first holdout row is: moderate."
+        assert result.answer_source == "executed_observation"
+
+    def test_safe_backend_reject_query_action_is_structural_rejection(self, minimal_df, mock_client):
+        """reject_query terminal action must become structured rejection metadata."""
+        responses = {
+            "safe_codegen_1": (
+                "Action: reject_query\n"
+                "Action Input: Missing required dataset concept(s): weather metadata."
+            ),
+        }
+
+        def _fake_invoke_chain(chain, inputs, stage):
+            return responses[stage]
+
+        mock_client.invoke_chain.side_effect = _fake_invoke_chain
+
+        from flashfusion.pipeline.executor import ExecutionLayer
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(minimal_df, mock_client)
+            result = layer.execute_single("Did rain cause instability?")
+
+        assert result.rejected is True
+        assert result.rejection_reason == "Missing required dataset concept(s): weather metadata."
+        assert result.answer_source == "structured_rejection"
+        assert result.executed_value is None
 
     def test_guardrail_proceed_on_valid_query(self, minimal_df, mock_client):
         """
@@ -346,6 +547,34 @@ class TestExecutionLayer:
                 assert ("SCOPE CHECK" in prefix) is include_abstention_clause
                 assert layer._use_resilient_parser is use_resilient_parser
 
+    def test_safe_backend_receives_react_abstention_policy(self, minimal_df, mock_client):
+        """ReAct-only safe execution receives and honors the scope policy."""
+        captured_inputs = {}
+
+        def fake_invoke_chain(chain, inputs, stage):
+            assert stage == "safe_codegen_1"
+            captured_inputs.update(inputs)
+            return (
+                "Action: reject_query\n"
+                "Action Input: Missing required dataset concept(s): weather metadata."
+            )
+
+        mock_client.invoke_chain.side_effect = fake_invoke_chain
+        from flashfusion.pipeline.executor import ExecutionLayer
+
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "safe"}, clear=False):
+            layer = ExecutionLayer(
+                minimal_df,
+                mock_client,
+                include_abstention_clause=True,
+            )
+            result = layer.execute_single("Did rain cause instability?")
+
+        assert "Action: reject_query" in captured_inputs["abstention_clause"]
+        assert "Never substitute a semantically related sensor feature" in captured_inputs["abstention_clause"]
+        assert result.rejected is True
+        assert result.answer_source == "structured_rejection"
+
     def test_backward_compatible_react_faithful_flag(self, minimal_df, mock_client):
         """The deprecated flag retains its original coupled behavior temporarily."""
         from flashfusion.pipeline.executor import ExecutionLayer
@@ -373,7 +602,11 @@ class TestExecutionLayer:
         assert "forecasting the next observed in-dataset value" in GUARDRAIL_PROMPT
         assert "SCOPE CHECK" in react_prefix
         assert "Action: reject_query" in react_prefix
-        assert "out-of-scope for the available data" in react_prefix
+        assert "Missing required dataset concept(s): <concepts>." in react_prefix
+        assert "Schema-grounding rule:" in react_prefix
+        assert "Never substitute a semantically related sensor feature" in react_prefix
+        assert "Predictive-task rule:" in react_prefix
+        assert "Do not invent labels, proxy targets" in react_prefix
 
     def test_execute_single_returns_structural_rejection_verdict(self, minimal_df, mock_client):
         """A parser-recognized abstention must surface without prose inference."""
@@ -393,6 +626,7 @@ class TestExecutionLayer:
         assert isinstance(result, ReActResult)
         assert result.rejected is True
         assert result.rejection_reason == "Weather is unavailable."
+        assert result.answer_source == "structured_rejection"
 
     def test_reset_agent_creates_fresh_copy(self, minimal_df, mock_client):
         """

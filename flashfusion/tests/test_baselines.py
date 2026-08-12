@@ -6,6 +6,7 @@ Run with: pytest flashfusion/tests/test_baselines.py -v
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import time
 from unittest.mock import MagicMock, patch
@@ -498,6 +499,8 @@ def test_agent_runs_agent_without_guardrail() -> None:
     executor.execute_single.assert_called_once_with(query)
     assert out.executed is True
     assert out.rejected is False
+    assert out.answer_source == "model_final_answer"
+    assert out.execution_path == "react_agent"
     assert out.stages_run == ["react_agent"]
 
 
@@ -522,6 +525,8 @@ def test_react_only_marks_scope_check_abstention_as_rejected() -> None:
     assert out.rejected is True
     assert out.executed is False
     assert out.rejection_reason == abstention
+    assert out.answer_source == "structured_rejection"
+    assert out.execution_path == "react_reject"
     assert out.stages_run == ["react_agent"]
 
 
@@ -543,7 +548,85 @@ def test_react_only_non_abstention_answer_remains_executed() -> None:
 
     assert out.rejected is False
     assert out.executed is True
+    assert out.answer_source == "model_final_answer"
+    assert out.execution_path == "react_agent"
     assert out.stages_run == ["react_agent"]
+
+
+def test_react_only_propagates_structured_executor_outcome() -> None:
+    from flashfusion.baselines.react_only import run_react_only
+    from flashfusion.pipeline.executor import ExecutionDetails, ReActResult
+
+    query = "Predict holdout label"
+    r = _result("REACT_ONLY", query)
+
+    structured = ReActResult(
+        raw_answer="The predicted behavior label for the first holdout row is: moderate.",
+        trace="trace",
+        rejected=False,
+        rejection_reason=None,
+        answer_source="executed_observation",
+        executed_value="moderate",
+        details=ExecutionDetails(
+            final_code="result = 'moderate'",
+            tries=1,
+            attempts=[],
+            rejected=False,
+            rejection_reason=None,
+            answer_source="executed_observation",
+            executed_value="moderate",
+        ),
+    )
+
+    with patch("flashfusion.baselines.react_only.ExecutionLayer") as execution_layer_cls:
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = structured
+
+        out = run_react_only(query, _df(), _client(), r)
+
+    assert out.rejected is False
+    assert out.executed is True
+    assert out.answer_source == "executed_observation"
+    assert out.executed_value == "moderate"
+    assert out.execution_path == "react_agent"
+
+
+def test_react_only_structural_rejection_survives_serialization() -> None:
+    from flashfusion.baselines.react_only import run_react_only
+    from flashfusion.pipeline.executor import ExecutionDetails, ReActResult
+
+    query = "Forecast pothole repairs"
+    r = _result("REACT_ONLY", query)
+
+    structured = ReActResult(
+        raw_answer="REJECT: Missing required dataset concept(s): pothole repair labels/history.",
+        trace="trace",
+        rejected=True,
+        rejection_reason="Missing required dataset concept(s): pothole repair labels/history.",
+        answer_source="structured_rejection",
+        executed_value=None,
+        details=ExecutionDetails(
+            final_code="",
+            tries=0,
+            attempts=[],
+            rejected=True,
+            rejection_reason="Missing required dataset concept(s): pothole repair labels/history.",
+            answer_source="structured_rejection",
+            executed_value=None,
+        ),
+    )
+
+    with patch("flashfusion.baselines.react_only.ExecutionLayer") as execution_layer_cls:
+        executor = execution_layer_cls.return_value
+        executor.execute_single.return_value = structured
+
+        out = run_react_only(query, _df(), _client(), r)
+
+    payload = dataclasses.asdict(out)
+    assert payload["rejected"] is True
+    assert payload["rejection_reason"]
+    assert payload["execution_path"] == "react_reject"
+    assert payload["answer_source"] == "structured_rejection"
 
 
 def test_wellmax_executes_grounded_query_without_guardrail() -> None:

@@ -13,8 +13,10 @@ Reference: chat/playground/playground.py ~lines 660–900.
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import io
+import json
 import multiprocessing as mp
 import os
 import platform
@@ -50,6 +52,24 @@ if TYPE_CHECKING:
     from flashfusion.pipeline.runner import LLMClient
 
 
+SAFE_REACT_ABSTENTION_CLAUSE = """SCOPE CHECK:
+Before writing code, decide if the question is answerable using only the listed
+columns. Every named real-world concept must map to an exact column, an
+explicitly documented derived feature, or a value computed only from those
+grounded columns. Never substitute a semantically related sensor feature for a
+requested concept.
+
+If a required concept, external metadata, historical target labels, or future
+outcome is absent, do not write Python. Return exactly:
+Action: reject_query
+Action Input: Missing required dataset concept(s): <concepts>.
+
+In-dataset predictive tasks are allowed only when the requested target column
+exists and is observed in the training rows. Do not invent proxy targets,
+labels, event definitions, thresholds, future outcomes, maintenance records,
+or external metadata."""
+
+
 def _safe_exec_worker(code: str, df: pd.DataFrame, output_queue) -> None:
     """Execute generated code in an isolated process and return (ok, output)."""
     local_ns: dict[str, Any] = {"df": df.copy(), "pd": pd, "result": None}
@@ -61,13 +81,49 @@ def _safe_exec_worker(code: str, df: pd.DataFrame, output_queue) -> None:
         std_out = stdout_buffer.getvalue().strip()
         if result_obj is None:
             if std_out:
-                output_queue.put((True, std_out))
+                output_queue.put((True, {"value": std_out, "observation": std_out}))
                 return
-            output_queue.put((True, "(no result produced)"))
+            output_queue.put((True, {"value": None, "observation": "(no result produced)"}))
             return
-        output_queue.put((True, str(result_obj)))
+        output_queue.put((True, {"value": result_obj, "observation": str(result_obj)}))
     except Exception as exc:
         output_queue.put((False, f"{type(exc).__name__}: {exc}"))
+
+
+def _coerce_executed_value(observation: str) -> Any:
+    """Convert tool observation text into a typed Python value when possible."""
+    text = (observation or "").strip()
+    if text == "":
+        return ""
+    try:
+        return ast.literal_eval(text)
+    except Exception:
+        return text
+
+
+def _serialize_executed_value(value: object) -> str:
+    """Render scalar and structured Python values deterministically."""
+    if isinstance(value, (dict, list, tuple, bool, int, float)) or value is None:
+        try:
+            return json.dumps(value, ensure_ascii=True)
+        except TypeError:
+            return str(value)
+    return str(value)
+
+
+def render_executed_result(query: str, value: object) -> str:
+    """Serialize a successful Python result as the final ReAct answer.
+
+    This is formatting only: the returned value is exactly the result of the
+    code generated and executed by ReAct. It must not use an LLM.
+    """
+    if isinstance(value, str) and re.search(
+        r"\b(predicted?|prediction|behavior\s+label|holdout)\b",
+        query,
+        re.IGNORECASE,
+    ):
+        return f"The predicted behavior label for the first holdout row is: {value}."
+    return f"The result is: {_serialize_executed_value(value)}"
 
 # ---------------------------------------------------------------------------
 # ExecutionDetails
@@ -80,6 +136,18 @@ class ExecutionDetails:
     tries: int = 0
     attempts: list[dict] = field(default_factory=list)
     safe_execution_s: float = 0.0
+    rejected: bool = False
+    rejection_reason: str | None = None
+    answer_source: str = "model_final_answer"
+    executed_value: Any = None
+
+    def outcome_dict(self) -> dict[str, Any]:
+        return {
+            "rejected": bool(self.rejected),
+            "rejection_reason": self.rejection_reason,
+            "answer_source": self.answer_source,
+            "executed_value": self.executed_value,
+        }
 
 
 @dataclass
@@ -94,12 +162,22 @@ class ReActResult:
     trace: str
     rejected: bool
     rejection_reason: str | None
+    answer_source: str
+    executed_value: Any
     details: ExecutionDetails
 
     def __iter__(self):
         yield self.raw_answer
         yield self.trace
         yield self.details
+
+    def outcome_dict(self) -> dict[str, Any]:
+        return {
+            "rejected": bool(self.rejected),
+            "rejection_reason": self.rejection_reason,
+            "answer_source": self.answer_source,
+            "executed_value": self.executed_value,
+        }
 
 
 def _looks_like_tool_error(output: str) -> bool:
@@ -147,6 +225,8 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         self.action_inputs: list[str] = []
         self.final_output: str = ""
         self.last_successful_action_input: str = ""
+        self.last_observation: str | None = None
+        self.last_observation_ok: bool = False
 
     def on_agent_action(self, action: AgentAction, **kwargs) -> None:
         """Record a Thought + Action cycle."""
@@ -159,10 +239,12 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         """Record an Observation (tool result)."""
         out = str(output)
         self.steps.append(f"Observation: {out}")
-        if not self._looks_like_tool_error(out) and self.action_inputs:
+        self.last_observation = out
+        self.last_observation_ok = not self._looks_like_tool_error(out)
+        if self.last_observation_ok and self.action_inputs:
             self.last_successful_action_input = self.action_inputs[-1]
         if self._parser is not None:
-            self._parser.record_observation(out, not self._looks_like_tool_error(out))
+            self._parser.record_observation(out, self.last_observation_ok)
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs) -> None:
         """Record the agent's final answer."""
@@ -274,6 +356,8 @@ class ResilientReActOutputParser:
                         "output": f"REJECT: {reason}",
                         "rejected": True,
                         "rejection_reason": reason,
+                        "answer_source": "structured_rejection",
+                        "executed_value": None,
                     },
                     text,
                 )
@@ -282,7 +366,16 @@ class ResilientReActOutputParser:
         if includes_answer:
             self._parse_failure_count = 0
             answer = text.split("Final Answer:")[-1].strip()
-            return AgentFinish({"output": answer}, text)
+            return AgentFinish(
+                {
+                    "output": answer,
+                    "rejected": False,
+                    "rejection_reason": None,
+                    "answer_source": "model_final_answer",
+                    "executed_value": None,
+                },
+                text,
+            )
 
         # P0-loop-1: no recognisable format
         self._parse_failure_count += 1
@@ -344,7 +437,16 @@ class ResilientReActOutputParser:
             self._last_observation_ok,
             answer,
         )
-        return AgentFinish(return_values={"output": answer}, log=text)
+        return AgentFinish(
+            return_values={
+                "output": answer,
+                "rejected": False,
+                "rejection_reason": None,
+                "answer_source": "model_final_answer",
+                "executed_value": None,
+            },
+            log=text,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +573,8 @@ class ExecutionLayer:
                     (
                         "system",
                         "You write Python code that runs against an in-memory pandas DataFrame named df. "
-                        "Return only Python code. Do not include markdown fences. "
+                        "Return only Python code, unless the scope-check instruction requires the "
+                        "specified reject_query action. Do not include markdown fences. "
                         "Assign the final answer to a variable named result.\n\n"
                         "{abstention_clause}",
                     ),
@@ -662,9 +765,29 @@ class ExecutionLayer:
                 "Reject ONLY if it needs external data, internet access, outside domain "
                 "knowledge, personal info beyond the schema, or a prediction/forecast whose "
                 "inputs cannot be derived from these columns.\n"
-                "If rejecting, write no code and respond exactly with this format:\n"
+                "If a query cannot be answered from the available dataset columns, do not call\n"
+                "python_exec. Return exactly:\n"
                 "Action: reject_query\n"
-                "Action Input: <one-sentence reason why the request is out-of-scope for the available data>.\n"
+                "Action Input: Missing required dataset concept(s): <concepts>.\n"
+                "\n"
+                "Schema-grounding rule:\n"
+                "Every named real-world concept in the query must map to either:\n"
+                "(1) an exact dataset column,\n"
+                "(2) an explicitly documented derived feature, or\n"
+                "(3) a value computed only from such grounded columns.\n"
+                "\n"
+                "Never substitute a semantically related sensor feature for a requested concept.\n"
+                "If any required concept has no exact or documented mapping, use reject_query.\n"
+                "Do not call python_exec.\n"
+                "\n"
+                "Predictive-task rule:\n"
+                "A predictive query is executable only when the requested target column exists\n"
+                "in the dataset and the target is observed in the training rows.\n"
+                "\n"
+                "Do not invent labels, proxy targets, event definitions, thresholds, future\n"
+                "outcomes, road segments, maintenance records, or external metadata. If the\n"
+                "requested prediction target or its required historical labels are absent, use\n"
+                "reject_query. Do not call python_exec.\n"
             )
         return (
             "You are a data analyst working with a pandas DataFrame named `df`.\n"
@@ -761,8 +884,15 @@ class ExecutionLayer:
         if self._agent_backend == "safe":
             self._debug("executing query with safe backend")
             raw_answer, trace, details = self._execute_single_safe(query)
-            rejection_reason = self._extract_safe_rejection(raw_answer)
-            return ReActResult(raw_answer, trace, rejection_reason is not None, rejection_reason, details)
+            return ReActResult(
+                raw_answer=raw_answer,
+                trace=trace,
+                rejected=bool(details.rejected),
+                rejection_reason=details.rejection_reason,
+                answer_source=details.answer_source,
+                executed_value=details.executed_value,
+                details=details,
+            )
 
         agent_executor = self._ensure_agent()
         handler = ThinkingCaptureHandler(self._resilient_parser)
@@ -776,14 +906,39 @@ class ExecutionLayer:
             raw_answer = f"[ERROR] {e}"
         trace = handler.get_trace()
         final_code, tries = handler.get_execution_details()
-        details = ExecutionDetails(final_code=final_code, tries=tries, attempts=[])
         rejected = bool(result.get("rejected", False)) if isinstance(result, dict) else False
         rejection_reason = result.get("rejection_reason") if isinstance(result, dict) else None
+        answer_source = (
+            str(result.get("answer_source", "model_final_answer"))
+            if isinstance(result, dict)
+            else "model_final_answer"
+        )
+        executed_value = result.get("executed_value") if isinstance(result, dict) else None
+
+        if not rejected and handler.last_observation_ok and handler.last_observation is not None:
+            executed_value = _coerce_executed_value(handler.last_observation)
+            raw_answer = render_executed_result(query, executed_value)
+            answer_source = "executed_observation"
+
+        if rejected:
+            answer_source = "structured_rejection"
+
+        details = ExecutionDetails(
+            final_code=final_code,
+            tries=tries,
+            attempts=[],
+            rejected=rejected,
+            rejection_reason=rejection_reason,
+            answer_source=answer_source,
+            executed_value=executed_value,
+        )
         return ReActResult(
             raw_answer=raw_answer,
             trace=trace,
             rejected=rejected,
             rejection_reason=rejection_reason,
+            answer_source=answer_source,
+            executed_value=executed_value,
             details=details,
         )
 
@@ -802,7 +957,11 @@ class ExecutionLayer:
                     "question": query,
                     "column_metadata": meta_to_str(build_column_metadata(self._df)),
                     "last_error": last_error,
-                    "abstention_clause": os.getenv("REACT_ABSTENTION_CLAUSE", "").strip(),
+                    "abstention_clause": (
+                        SAFE_REACT_ABSTENTION_CLAUSE
+                        if self._include_abstention_clause
+                        else ""
+                    ),
                 },
                 stage=f"safe_codegen_{i}",
             )
@@ -816,6 +975,10 @@ class ExecutionLayer:
                     tries=i - 1,
                     attempts=attempts,
                     safe_execution_s=total_safe_exec_s,
+                    rejected=True,
+                    rejection_reason=rejection,
+                    answer_source="structured_rejection",
+                    executed_value=None,
                 )
 
             code = self._extract_python_code(code_text)
@@ -826,9 +989,15 @@ class ExecutionLayer:
             trace_steps.append(f"Action Input: {code}")
 
             exec_t0 = time.time()
-            ok, exec_out = self._run_safe_code(code)
+            ok, payload = self._run_safe_code(code)
             exec_latency_s = time.time() - exec_t0
             total_safe_exec_s += exec_latency_s
+            if ok:
+                executed_value = payload.get("value")
+                exec_out = str(payload.get("observation", ""))
+            else:
+                executed_value = None
+                exec_out = str(payload)
             attempts.append(
                 {
                     "attempt": i,
@@ -841,17 +1010,17 @@ class ExecutionLayer:
             trace_steps.append(f"Observation: {exec_out}")
 
             if ok:
-                answer = self._client.invoke_chain(
-                    self._safe_answer_chain,
-                    {"question": query, "execution_output": exec_out},
-                    stage=f"safe_answer_{i}",
-                ).strip()
+                answer = render_executed_result(query, executed_value)
                 trace_steps.append(f"Final Answer: {answer}")
                 return answer, "\n".join(trace_steps), ExecutionDetails(
                     final_code=code,
                     tries=i,
                     attempts=attempts,
                     safe_execution_s=total_safe_exec_s,
+                    rejected=False,
+                    rejection_reason=None,
+                    answer_source="executed_observation",
+                    executed_value=executed_value,
                 )
 
             last_error = exec_out
@@ -863,12 +1032,22 @@ class ExecutionLayer:
             tries=AGENT_SAFE_MAX_ATTEMPTS,
             attempts=attempts,
             safe_execution_s=total_safe_exec_s,
+            rejected=False,
+            rejection_reason=None,
+            answer_source="model_final_answer",
+            executed_value=None,
         )
 
     def _extract_safe_rejection(self, text: str) -> str | None:
-        """Return a reason when safe codegen emits the required REJECT sentinel."""
-        match = re.match(r"^\s*REJECT\s*:\s*(.+?)\s*$", text or "", re.DOTALL)
-        return match.group(1).strip() if match else None
+        """Return a reason when safe codegen emits a structured rejection."""
+        action_match = re.search(
+            r"Action\s*:\s*reject_query\s*\n\s*Action\s*Input\s*:\s*(.+)",
+            text or "",
+            re.IGNORECASE | re.DOTALL,
+        )
+        if action_match:
+            return action_match.group(1).strip().strip('"')
+        return None
 
     def _extract_python_code(self, text: str) -> str:
         """Extract python code from raw model output (supports fenced responses)."""
@@ -877,7 +1056,7 @@ class ExecutionLayer:
             return match.group(1).strip()
         return text.strip()
 
-    def _run_safe_code(self, code: str) -> tuple[bool, str]:
+    def _run_safe_code(self, code: str) -> tuple[bool, Any]:
         """
         Execute generated code in a restricted local scope.
 
@@ -911,7 +1090,7 @@ class ExecutionLayer:
 
             try:
                 ok, out = output_queue.get_nowait()
-                return bool(ok), str(out)
+                return bool(ok), out
             except Empty:
                 return (
                     False,

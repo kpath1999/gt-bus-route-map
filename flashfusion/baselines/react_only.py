@@ -82,13 +82,22 @@ def run_react_only(
             trace=trace,
             rejected=legacy_rejection is not None,
             rejection_reason=legacy_rejection,
+            answer_source="structured_rejection" if legacy_rejection else "model_final_answer",
+            executed_value=None,
             details=details,
         )
+    details = result.outcome_dict()
+    assert "rejected" in details
+    assert "answer_source" in details
+
     r.answer = result.raw_answer
     r.trace = result.trace
-    r.executed = not result.rejected
-    r.rejected = result.rejected
-    r.rejection_reason = result.rejection_reason or ""
+    r.executed = not bool(details["rejected"])
+    r.rejected = bool(details["rejected"])
+    r.rejection_reason = details.get("rejection_reason") or ""
+    r.answer_source = str(details["answer_source"])
+    r.executed_value = details.get("executed_value")
+    r.execution_path = "react_reject" if r.rejected else "react_agent"
     r.final_code = result.details.final_code
     r.agent_tries = result.details.tries
     r.execution_attempts = list(result.details.attempts)

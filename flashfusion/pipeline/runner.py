@@ -371,6 +371,8 @@ class RunResult:
     alignment_explanation: str = ""                   # user-facing alignment/rejection rationale
     rejected: bool = False                           # True if guardrail or S2 rejected query
     rejection_reason: str = ""
+    answer_source: str = ""                         # executed_observation | structured_rejection | model_final_answer
+    executed_value: object | None = None
 
     # Agent details
     final_code: str = ""                             # last successfully executed pandas code
@@ -384,7 +386,7 @@ class RunResult:
     # Typed-operator instrumentation (Flash-Fusion). These are the primary
     # signals for the typed-vs-ReAct comparison; stages_run remains a coarse
     # human-readable audit trail only.
-    execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback" | "scope_reject"
+    execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback" | "scope_reject" | "react_agent" | "react_reject"
     plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "scope" | "execution" | "no_plan"
     typed_plan: dict = field(default_factory=dict)   # the validated DeterministicPlan, as JSON
     operators_used: list = field(default_factory=list)  # op names fired, for the offline gap report
