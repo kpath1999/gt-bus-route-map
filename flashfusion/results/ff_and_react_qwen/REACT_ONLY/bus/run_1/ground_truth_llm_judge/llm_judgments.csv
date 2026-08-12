@@ -1,0 +1,353 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,1,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The maximum accel_variance observed in this dataset is 5.869.,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Consistent with deterministic hint and code.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth in both value and referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,2,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The average accel_mean across all recorded samples is 9.283388022969648.,False,True,result = df['accel_mean'].mean(),PASS,1.0,Candidate answer matches the ground truth value and refers to the same quantity (average of accel_mean across all samples).,SOUND,Consistent with deterministic hint and computed mean.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth value and refers to the same quantity (average of accel_mean across all samples)."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and computed mean.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,3,List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.,False,"Maximum accel_stats_z_p99 is 16.7020. Timestamps with this value: ['2025-06-06 16:01:13', '2025-06-06 16:01:16', '2025-06-06 16:01:19', '2025-06-06 16:01:22', '2025-06-06 16:01:25', '2025-06-06 16:01:28', '2025-06-06 16:01:31', '2025-06-06 16:01:34', '2025-06-06 16:01:40', '2025-06-06 16:01:43', '2025-06-06 16:01:46', '2025-06-06 16:01:49', '2025-06-06 16:01:52', '2025-06-06 16:01:55', '2025-06-06 16:01:58', '2025-06-06 16:02:01'].","The timestamps where accel_stats_z_p99 reaches its maximum value across the dataset are:
+
+[Timestamp('2025-06-06 16:01:13'), Timestamp('2025-06-06 16:01:16'), Timestamp('2025-06-06 16:01:19'), Timestamp('2025-06-06 16:01:22'), Timestamp('2025-06-06 16:01:25'), Timestamp('2025-06-06 16:01:28'), Timestamp('2025-06-06 16:01:31'), Timestamp('2025-06-06 16:01:34'), Timestamp('2025-06-06 16:01:40'), Timestamp('2025-06-06 16:01:43'), Timestamp('2025-06-06 16:01:46'), Timestamp('2025-06-06 16:01:49'), Timestamp('2025-06-06 16:01:52'), Timestamp('2025-06-06 16:01:55'), Timestamp('2025-06-06 16:01:58'), Timestamp('2025-06-06 16:02:01')]",False,True,"max_val = df['accel_stats_z_p99'].max()
+result = df[df['accel_stats_z_p99'] == max_val]['timestamp'].tolist()",PASS,1.0,"The candidate answer lists the same timestamps as the ground truth, with only superficial formatting differences (e.g., wrapping in Timestamp()).",SOUND,Matches deterministic sanity hint exactly.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer lists the same timestamps as the ground truth, with only superficial formatting differences (e.g., wrapping in Timestamp())."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic sanity hint exactly.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,4,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,352,False,True,result = (df['accel_variance'] > 0.20).sum(),PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer matches the ground truth in both value and referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,5,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","Yes, the northern half of the route (latitude above the median) is rougher than the southern half based on average acceleration variance.",False,True,"median_lat = df['latitude'].median()
+north_avg_var = df[df['latitude'] > median_lat]['accel_variance'].mean()
+south_avg_var = df[df['latitude'] <= median_lat]['accel_variance'].mean()
+result = north_avg_var > south_avg_var",PASS,1.0,"The candidate answer correctly states that the northern half is rougher, which aligns with the ground truth values (0.37 > 0.163).",SOUND,Values and conclusion are consistent with the provided data and code.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly states that the northern half is rougher, which aligns with the ground truth values (0.37 > 0.163)."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Values and conclusion are consistent with the provided data and code.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,6,"Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.",The location that recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration is at latitude 33.776765 and longitude -84.389963.,False,True,"df['z_percentile_diff'] = df['accel_stats_z_p99'] - df['accel_stats_z_p1']
+idx = df['z_percentile_diff'].idxmax()
+result = (df.loc[idx, 'latitude'], df.loc[idx, 'longitude'])",PASS,1.0,"The candidate answer correctly identifies the location (33.777, -84.39) with the largest z-axis percentile difference, matching the ground truth referent.",SOUND,"Ground truth is consistent with deterministic hint and specifies a clear, verifiable quantity and location.","{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly identifies the location (33.777, -84.39) with the largest z-axis percentile difference, matching the ground truth referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and specifies a clear, verifiable quantity and location.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,7,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,"The average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes is 11.357320758582171.",False,True,"p99_x = df['accel_stats_x_p99'].mean()
+p99_y = df['accel_stats_y_p99'].mean()
+p99_z = df['accel_stats_z_p99'].mean()
+result = (p99_x**2 + p99_y**2 + p99_z**2)**0.5",FAIL,0.0,"The candidate computes the magnitude from averaged 99th percentiles, not the average of individual 3D magnitudes as required.",SOUND,Ground truth correctly describes averaging the per-sample 3D peak magnitudes computed from 99th percentiles.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate computes the magnitude from averaged 99th percentiles, not the average of individual 3D magnitudes as required."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly describes averaging the per-sample 3D peak magnitudes computed from 99th percentiles.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,8,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,2025-06-06 16:01:00,False,True,"df['time_window'] = df['timestamp'].dt.floor('1min')
+result = df.groupby('time_window')['instability_score'].mean().idxmax()",PASS,1.0,"The candidate answer correctly identifies the start time of the 1-minute window with the highest mean instability score, matching the ground truth referent.",SOUND,Matches deterministic hint and is consistent with the query.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly identifies the start time of the 1-minute window with the highest mean instability score, matching the ground truth referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the query.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,9,How does passenger occupancy correlate with road roughness during this trip?,True,Reject: passenger occupancy data is unavailable in this bus dataset.,"Based on the execution output provided, there is no data or result to analyze regarding the correlation between passenger occupancy and road roughness during the trip. Therefore, I cannot provide an answer to the question.",False,True,result = None,FAIL,0.0,Candidate did not clearly reject the query as unanswerable despite expected rejection being true.,SOUND,Ground truth correctly states passenger occupancy data is unavailable.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate did not clearly reject the query as unanswerable despite expected rejection being true."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth correctly states passenger occupancy data is unavailable.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,10,Did rainy weather cause the roughest segments in this route?,True,Reject: weather metadata is unavailable in this bus dataset.,"No, rainy weather did not cause the roughest segments in this route.",False,True,"# Since there is no 'weather' or 'rain' column in the provided DataFrame schema,
+# we cannot directly assess whether rainy weather caused the roughest segments.
+# However, if ""roughness"" is represented by 'instability_score' or 'extreme_event_magnitude',
+# and if rain information were available, we would correlate them.
+
+# But given the current columns, there's no weather data.
+# Therefore, the answer is that we cannot determine this from the given data.
+
+result = False",FAIL,0.0,"The candidate answered 'No' instead of rejecting the query, but weather metadata is unavailable, making the question unanswerable.",SOUND,Correctly identifies missing weather data as reason for rejection.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate answered 'No' instead of rejecting the query, but weather metadata is unavailable, making the question unanswerable."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Correctly identifies missing weather data as reason for rejection.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,11,Which bus driver generated the smoothest driving profile?,True,Reject: driver identity metadata is unavailable in this bus dataset.,Insufficient data to determine schedule compliance.,False,True,"result = ""Insufficient data to determine schedule compliance.""",FAIL,0.0,"Candidate did not reject the query as required; instead, it provided an answer implying partial analysis is possible.",SOUND,"Correctly states driver identity metadata is missing, making the query unanswerable.","{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate did not reject the query as required; instead, it provided an answer implying partial analysis is possible."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Correctly states driver identity metadata is missing, making the query unanswerable.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,12,Predict next week's pothole repairs for the road segments in this dataset.,True,Reject: future road maintenance labels are unavailable in this bus dataset.,"Based on the prediction, next week's pothole repairs for the road segments in this dataset are predicted to be 7.0 for each segment.",False,True,"import pandas as pd
+from datetime import timedelta
+
+# Convert timestamp to date and aggregate pothole-like events per road segment per day
+df['date'] = df['timestamp'].dt.floor('D')
+df['road_segment'] = df.groupby(['latitude', 'longitude']).ngroup()
+
+# Define a pothole event as high instability_score or extreme_event_magnitude above threshold
+threshold_instability = df['instability_score'].quantile(0.95)
+threshold_magnitude = df['extreme_event_magnitude'].quantile(0.95)
+df['is_pothole'] = (df['instability_score'] >= threshold_instability) | (df['extreme_event_magnitude'] >= threshold_magnitude)
+
+# Aggregate daily pothole counts per road segment
+daily_potholes = df[df['is_pothole']].groupby(['road_segment', 'date']).size().reset_index(name='pothole_count')
+
+# Get the last observed date in the dataset
+last_date = df['date'].max()
+next_week_start = last_date + timedelta(days=1)
+next_week_end = last_date + timedelta(days=7)
+next_week_dates = pd.date_range(next_week_start, next_week_end, freq='D')
+
+# Forecast: assume same average daily count per segment continues
+forecast = daily_potholes.groupby('road_segment')['pothole_count'].mean().reset_index()
+forecast['predicted_next_week_total'] = forecast['pothole_count'] * 7
+
+# Map back to original lat/lon for output
+road_segment_map = df[['road_segment', 'latitude', 'longitude']].drop_duplicates()
+result_df = forecast.merge(road_segment_map, on='road_segment')
+
+# Final result: total predicted pothole repairs per road segment next week
+result = result_df[['latitude', 'longitude', 'predicted_next_week_total']].copy()",FAIL,0.0,"The candidate should have rejected the query as future road maintenance labels are unavailable, but instead provided a fabricated prediction.",SOUND,Correctly identifies that future pothole repair data is not present in a bus dataset.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate should have rejected the query as future road maintenance labels are unavailable, but instead provided a fabricated prediction."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Correctly identifies that future pothole repair data is not present in a bus dataset.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,"It seems there was an issue with the execution as the output ""moderate"" does not provide the required information. Let's go through the steps to properly answer the question.
+
+1. Sort the bus rows by timestamp in ascending order.
+2. Split the data into training (80%) and holdout (20%) sets based on the sorted timestamps.
+3. Train a logistic regression model using the acceleration features.
+4. Predict the label in the behavior column for the first row in the holdout set.
+
+Since the execution output is not providing the necessary data, I will outline the steps with placeholder data to demonstrate the process.
+
+```python
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+
+# Placeholder data
+data = {
+    'timestamp': pd.date_range(start='2023-01-01', periods=100, freq='T'),
+    'acceleration_x': range(100),
+    'acceleration_y': range(100, 200),
+    'behavior': ['low'] * 80 + ['high'] * 20
+}
+df = pd.DataFrame(data).sort_values('timestamp')
+
+# Split data
+train_df = df.iloc[:80]
+holdout_df = df.iloc[80:]
+
+# Train logistic regression model
+X_train = train_df[['acceleration_x', 'acceleration_y']]
+y_train = train_df['behavior']
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# Predict for the first row in the holdout set
+X_holdout = holdout_df.iloc[0][['acceleration_x', 'acceleration_y']]
+prediction = model.predict([X_holdout.values])[0]
+
+prediction
+```
+
+Given the placeholder data, the prediction for the first row in the holdout set would be 'low' or 'high' depending on the model training. Without the actual execution output, I cannot provide the exact prediction. If you can provide the actual execution output or the dataset, I can give you the precise prediction.",False,True,"# Sort by timestamp
+df_sorted = df.sort_values('timestamp')
+
+# Identify acceleration-related features (exclude non-acceleration columns)
+accel_features = [col for col in df_sorted.columns if col.startswith('accel_')]
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Prepare training data
+X_train = train_df[accel_features]
+y_train = train_df['behavior']
+
+# Train logistic regression model
+from sklearn.linear_model import LogisticRegression
+model = LogisticRegression(max_iter=1000, random_state=42)
+model.fit(X_train, y_train)
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]]
+X_holdout = first_holdout_row[accel_features]
+prediction = model.predict(X_holdout)[0]
+
+result = prediction",FAIL,0.0,"The candidate answer does not provide a definitive prediction and instead gives a hypothetical explanation using placeholder data, while the ground truth specifies a concrete prediction of 'moderate'.",SOUND,"The deterministic hint confirms the expected prediction is 'moderate', matching the ground truth.","{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate answer does not provide a definitive prediction and instead gives a hypothetical explanation using placeholder data, while the ground truth specifies a concrete prediction of 'moderate'."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""The deterministic hint confirms the expected prediction is 'moderate', matching the ground truth.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,"It seems there was an issue with the execution as the output is ""moderate"" which doesn't provide any useful information. Let's go through the steps to achieve the task:
+
+1. Sort the bus rows by timestamp in ascending order.
+2. Split the data into training and holdout sets.
+3. Train a random forest model using acceleration features.
+4. Predict the label in the behavior column for the first row in the holdout set.
+
+Here is the Python code to perform these steps:
+
+```python
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+
+# Assuming the bus data is in a DataFrame called bus_data
+# Step 1: Sort by timestamp
+bus_data_sorted = bus_data.sort_values(by='timestamp')
+
+# Step 2: Split into training and holdout sets
+train_data, holdout_data = train_test_split(bus_data_sorted, test_size=0.2, shuffle=False)
+
+# Step 3: Train a random forest model using acceleration features
+# Assuming 'acceleration_x', 'acceleration_y', and 'acceleration_z' are the acceleration features
+X_train = train_data[['acceleration_x', 'acceleration_y', 'acceleration_z']]
+y_train = train_data['behavior']
+
+rf_model = RandomForestClassifier()
+rf_model.fit(X_train, y_train)
+
+# Step 4: Predict the label in the behavior column for the first row in the holdout set
+X_holdout = holdout_data[['acceleration_x', 'acceleration_y', 'acceleration_z']].iloc[0].values.reshape(1, -1)
+predicted_label = rf_model.predict(X_holdout)
+
+predicted_label
+```
+
+Since the execution output was not provided, I cannot give a direct answer. However, if you run the above code with your actual data, it will return the predicted label for the first row in the holdout set.",False,True,"# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Select acceleration-related features
+accel_features = [
+    'accel_mean', 'accel_variance',
+    'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99',
+    'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99',
+    'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99',
+    'extreme_event_magnitude', 'instability_score'
+]
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Train Random Forest model
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier(random_state=42)
+model.fit(train_df[accel_features], train_df['behavior'])
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]]
+result = model.predict(first_holdout_row[accel_features])[0]",FAIL,0.0,"Candidate answer does not state the prediction result despite having executed code that would produce it; instead, it claims the output 'moderate' is uninformative and provides generic code.",SOUND,Matches deterministic hint and is internally consistent.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer does not state the prediction result despite having executed code that would produce it; instead, it claims the output 'moderate' is uninformative and provides generic code."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is internally consistent.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,"The execution output ""moderate"" does not provide enough information to answer the question. Please provide the sorted DataFrame and the trained model's prediction for the first row in the holdout set.",False,True,"df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+feature_cols = [col for col in df.columns if col.startswith('accel_')]
+X_train = train_df[feature_cols]
+y_train = train_df['behavior']
+X_holdout = holdout_df[feature_cols].iloc[[0]]
+
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(X_train, y_train)
+result = knn.predict(X_holdout)[0]",FAIL,0.0,The candidate answer incorrectly claims insufficient information despite the code correctly implementing the required steps and producing the expected prediction 'moderate'.,SOUND,Matches deterministic hint and is consistent with correct implementation.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""The candidate answer incorrectly claims insufficient information despite the code correctly implementing the required steps and producing the expected prediction 'moderate'."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with correct implementation.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,16,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,"It seems there was an issue with the execution as the output is ""moderate"" which doesn't provide useful information. Let's go through the steps to properly answer the question:
+
+1. Sort the bus rows by timestamp in ascending order.
+2. Split the data into training (80%) and holdout (20%) sets based on the sorted timestamps.
+3. Train a HistGradientBoosting model using acceleration features.
+4. Predict the label in the behavior column for the first row in the holdout set.
+
+Here is the Python code to achieve this:
+
+```python
+import pandas as pd
+from sklearn.ensemble import HistGradientBoostingClassifier
+
+# Assuming 'bus_data' is the DataFrame containing the bus data
+bus_data_sorted = bus_data.sort_values('timestamp')
+
+# Split the data into training and holdout sets
+split_index = int(len(bus_data_sorted) * 0.8)
+train_data = bus_data_sorted.iloc[:split_index]
+holdout_data = bus_data_sorted.iloc[split_index:]
+
+# Extract features and labels
+X_train = train_data[['acceleration_x', 'acceleration_y', 'acceleration_z']]
+y_train = train_data['behavior']
+X_holdout = holdout_data[['acceleration_x', 'acceleration_y', 'acceleration_z']]
+y_holdout = holdout_data['behavior']
+
+# Train the HistGradientBoosting model
+model = HistGradientBoostingClassifier()
+model.fit(X_train, y_train)
+
+# Predict the label for the first row in the holdout set
+prediction = model.predict(X_holdout.iloc[0].values.reshape(1, -1))
+print(prediction)
+```
+
+Since the execution output was not provided, I cannot run the code here. However, if you run the above code with your actual data, it will give you the predicted label for the first row in the holdout set.",False,True,"# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Select acceleration-related features
+accel_features = [
+    'accel_mean', 'accel_variance',
+    'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99',
+    'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99',
+    'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99',
+    'extreme_event_magnitude', 'instability_score'
+]
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Prepare training data
+X_train = train_df[accel_features]
+y_train = train_df['behavior']
+
+# Train HistGradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
+model = HistGradientBoostingClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]][accel_features]
+prediction = model.predict(first_holdout_row)[0]
+result = prediction",PASS,1.0,"The candidate answer ultimately provides the correct prediction 'moderate' for the first holdout row, consistent with the ground truth.",SOUND,Matches deterministic hint and is internally consistent.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer ultimately provides the correct prediction 'moderate' for the first holdout row, consistent with the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is internally consistent.""
+}"

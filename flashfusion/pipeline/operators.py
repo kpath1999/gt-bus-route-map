@@ -462,6 +462,15 @@ class PredictivePipeline(_Operator):
     target_from_non_empty: bool = False
     target_label: str = Field(default="label", min_length=1)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _default_blank_target_label(cls, data: Any) -> Any:
+        """Planner sometimes emits target_label="" instead of omitting it;
+        treat that the same as omitted rather than failing Gate 1."""
+        if isinstance(data, dict) and not data.get("target_label"):
+            data.pop("target_label", None)
+        return data
+
 
 TypedOperator = Annotated[
     Union[
@@ -1065,11 +1074,14 @@ def _build_predictive_model(model: str):
             )
         case "random_forest":
             return RandomForestClassifier(
-                n_estimators=300, random_state=PREDICTIVE_RANDOM_SEED, n_jobs=-1
+                n_estimators=150,
+                max_depth=20,
+                random_state=PREDICTIVE_RANDOM_SEED,
+                n_jobs=-1,
             )
         case "hist_gradient_boosting":
             return HistGradientBoostingClassifier(
-                max_iter=200,
+                max_iter=120,
                 learning_rate=0.08,
                 max_leaf_nodes=31,
                 l2_regularization=1.0,

@@ -1,0 +1,2 @@
+baseline,gt_score,latency_s,cost_usd,input_tokens,output_tokens,runs
+REACT_ONLY,0.5,9.198786665995916,0.0010631054166666666,1372.2916666666667,223.41666666666666,3

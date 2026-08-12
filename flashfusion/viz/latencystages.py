@@ -160,18 +160,25 @@ def _prompt_for_baseline_roots(defaults: dict[str, str | None]) -> dict[str, str
 
 
 def _resolve_user_path(raw_path: str | None, repo_root: Path) -> Path | None:
-    """Resolve user-entered paths relative to the repository root.
+    """Resolve user-entered paths with repo-relative and cwd-relative semantics.
 
-    Absolute paths remain unchanged. This avoids accidentally resolving an
-    interactive entry such as 'flashfusion/results/...' below flashfusion/viz.
+    Paths that are clearly project-root relative (for example
+    ``flashfusion/results/...`` or ``results/...``) resolve under the repo root.
+    Paths containing ``..`` or ``.`` are treated as relative to the current
+    working directory so commands run from the viz folder still land in the
+    repository's results directory instead of escaping above it.
     """
     if raw_path is None:
         return None
 
     path = Path(raw_path).expanduser()
-    if not path.is_absolute():
-        path = repo_root / path
-    return path.resolve()
+    if path.is_absolute():
+        return path.resolve()
+
+    if path.parts and path.parts[0] in {"flashfusion", "results"}:
+        return (repo_root / path).resolve()
+
+    return (Path.cwd() / path).resolve()
 
 
 def _normalize_bool(series: pd.Series) -> pd.Series:
@@ -877,7 +884,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir / "results" / "primary_visualizations"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
         help="Output folder for primary figures.",
     )
     return parser

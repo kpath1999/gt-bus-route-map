@@ -66,6 +66,7 @@ from flashfusion.pipeline.runner import LLMClient, RunResult
 from flashfusion.prompts.templates import PLANNER_DYNAMIC_SUFFIX_TEMPLATE
 
 FF_DEBUG = os.getenv("FF_DEBUG", "").lower() in ("1", "true", "yes")
+FF_PROGRESS = os.getenv("FF_PROGRESS", "").lower() in ("1", "true", "yes")
 
 #: Run concept extraction + schema grounding before the ReAct fallback. This
 #: costs two extra LLM calls, but only on the small subset the typed vocabulary
@@ -103,6 +104,12 @@ _PLANNER_SUFFIX_PREFIX_CACHE: dict[tuple[str, str], str] = {}
 def _debug(message: str) -> None:
     if FF_DEBUG:
         print(f"[FF_DEBUG] {message}", file=sys.stderr, flush=True)
+
+
+def _progress(message: str) -> None:
+    """Print progress updates when FF_PROGRESS=1, for diagnosing stalls."""
+    if FF_PROGRESS:
+        print(f"[PROGRESS] {message}", file=sys.stderr, flush=True)
 
 
 def _planner_prefix_message(
@@ -275,10 +282,22 @@ def request_guardrail_and_plan(
     # is safe to always send it.
     prefix_message, prefix_text = _planner_prefix_message(client, route)
     messages = [prefix_message, HumanMessage(content=suffix)]
+    
+    # Diagnostic logging for stall investigation
+    _progress(f"  → Prompt size: prefix={len(prefix_text)} chars, suffix={len(suffix)} chars, total={len(prefix_text) + len(suffix)}")
+    _progress(f"  → Calling LLM API (model={client.model_name})...")
+    
     raw = client.invoke_messages(messages, stage="guardrail_plan")
+    
+    _progress(f"  → LLM response received (length={len(str(raw))} chars)")
+    _progress("  → Parsing response...")
+    
     try:
-        return parse_guardrail_response(raw), suffix, "", prefix_text
+        result = parse_guardrail_response(raw), suffix, "", prefix_text
+        _progress("  → Response parsed successfully")
+        return result
     except (StructuralValidationError, ValueError) as exc:
+        _progress(f"  → Response parsing failed: {exc}")
         return None, suffix, str(exc), prefix_text
 
 
@@ -388,6 +407,7 @@ def run_flash_fusion(
         # vocabulary. The router never decides what the plan is — it only narrows
         # what the planner is shown.
         last_stage = "operator_route"
+        _progress("Stage: operator_route (deterministic, no LLM)")
         started = time.time()
         route = route_operator_bucket(query, list(df.columns))
         record("operator_route", started)
@@ -395,6 +415,11 @@ def run_flash_fusion(
         r.operator_route_matched_rules = list(route.matched_rules)
         r.operator_route_full_fallback = route.used_full_fallback
         r.operator_route_candidate_ops = sorted(route.candidate_ops)
+        _progress(
+            f"  → Routed to {len(route.candidate_ops)} operators: {', '.join(sorted(route.candidate_ops))}"
+        )
+        _progress(f"  → Excluded buckets: {route.excluded_buckets or '(none)'}")
+        _progress(f"  → Matched rules: {route.matched_rules or '(none)'}")
         _debug(
             f"Operator route: {len(route.candidate_ops)} ops, "
             f"excluded={route.excluded_buckets}, rules={route.matched_rules}"
@@ -405,6 +430,7 @@ def run_flash_fusion(
         r.ff_planner_used = True
         last_stage = "guardrail_plan"
         r.guardrail_input = query
+        _progress(f"Stage: guardrail+plan (LLM call with {len(route.candidate_ops)} operators)")
         started = time.time()
         planner_call_start = _call_log_length(client)
         (
@@ -466,6 +492,7 @@ def run_flash_fusion(
         # --- Gate 2: DataFrame schema validation ----------------------------
         if plan is not None:
             last_stage = "schema_validation"
+            _progress("Stage: schema_validation (Gate 2)")
             started = time.time()
             raw_plan_payload = plan.model_dump(mode="json")
             try:
@@ -515,6 +542,7 @@ def run_flash_fusion(
         # --- Typed operator execution ---------------------------------------
         if plan is not None:
             last_stage = "typed_exec"
+            _progress(f"Stage: typed_exec (executing {len(plan.operators_used)} operators)")
             started = time.time()
             try:
                 execution = _run_with_timeout(
@@ -555,6 +583,7 @@ def run_flash_fusion(
 
         # --- ReAct fallback --------------------------------------------------
         if plan is None:
+            _progress(f"Stage: react_fallback (reason: {gap_stage})")
             log_operator_gap(
                 query=query,
                 stage=gap_stage or "no_plan",
@@ -576,6 +605,7 @@ def run_flash_fusion(
             r.grounded_query = react_query
 
             last_stage = "agent"
+            _progress("Stage: agent (ReAct execution)")
             started = time.time()
             try:
                 raw_answer, trace, details = _run_with_timeout(

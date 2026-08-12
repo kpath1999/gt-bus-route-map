@@ -13,11 +13,20 @@ cd flashfusion/viz && python llamas.py --output-dir results/primary_visualizatio
 ```
 
 Paths (currently) -- metrics.csv would provide all the details:
-- Flash-Fusion: flashfusion/results/ff_react_operators/FLASH_FUSION
-- ReAct: flashfusion/results/ff_react_operators/REACT_ONLY
+- Flash-Fusion: flashfusion/results/ff_and_react_qwen/FLASH_FUSION
+- ReAct: flashfusion/results/ff_and_react_qwen/REACT_ONLY
 - AutoIOT: flashfusion/results/with_slm_predictive
 - HARGPT: flashfusion/results/july26/HARGPT_PAPER
 - LLMSENSE: flashfusion/results/july26/LLMSENSE_PAPER
+"""
+
+"""
+Run to consider:
+
+cd /Users/kausar/Documents/research/flash-fusion/flashfusion/viz
+python llamas.py --flash-fusion-root flashfusion/results/ff_and_react_qwen/FLASH_FUSION --react-root flashfusion/results/ff_and_react_qwen/REACT_ONLY --output-dir ../../results/primary_visualizations
+python latencystages.py --flash-fusion-root flashfusion/results/ff_and_react_qwen/FLASH_FUSION --react-root flashfusion/results/ff_and_react_qwen/REACT_ONLY --output-dir ../../results/primary_visualizations
+python queryaccuracy.py --results-root flashfusion/results/with_slm_predictive --output ../../results/primary_visualizations/accuracy_by_dataset_query_type_summary.csv
 """
 
 import os
@@ -484,18 +493,27 @@ def _prompt_for_baseline_roots(defaults: dict[str, str | None]) -> dict[str, str
     return roots
 
 def _resolve_user_path(raw_path: str | None, repo_root: Path) -> Path | None:
-    """Resolve user-entered paths relative to the repository root.
+    """Resolve user-entered paths with repo-relative and cwd-relative semantics.
 
-    Absolute paths remain unchanged. This avoids accidentally resolving an
-    interactive entry such as 'flashfusion/results/...' below flashfusion/viz.
+    Paths that are clearly project-root relative (for example
+    ``flashfusion/results/...`` or ``results/...``) resolve under the repo root.
+    Paths containing ``..`` or ``.`` are treated as relative to the current
+    working directory so commands run from the viz folder still land in the
+    repository's results directory instead of escaping above it.
     """
     if raw_path is None:
         return None
 
     path = Path(raw_path).expanduser()
-    if not path.is_absolute():
-        path = repo_root / path
-    return path.resolve()
+    if path.is_absolute():
+        return path.resolve()
+
+    # Resolve project-root-relative paths under the repo.
+    if path.parts and path.parts[0] in {"flashfusion", "results"}:
+        return (repo_root / path).resolve()
+
+    # Preserve common CLI usage from the viz directory, e.g. ../../results/...
+    return (Path.cwd() / path).resolve()
 
 
 def _normalize_bool(series: pd.Series) -> pd.Series:
@@ -742,7 +760,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir / "results" / "primary_visualizations"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
         help="Output folder for primary figures.",
     )
     parser.add_argument(

@@ -229,6 +229,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Run REACT_ONLY baseline trace instead of FLASH_FUSION",
     )
+    p.add_argument(
+        "--progress",
+        action="store_true",
+        help="Stream progress updates during execution (useful for diagnosing stalls)",
+    )
     return p.parse_args()
 
 
@@ -251,13 +256,13 @@ def trace_single_query(
         if gt_entry is None:
             print(f"\n[WARN] No ground-truth entry for query_id={query_id}")
     
+    if args.progress:
+        print(f"\n[PROGRESS] Starting execution for query {query_id}...", file=sys.stderr, flush=True)
+    
     r = runner.run(query_text)
-
-    if not verbose:
-        return (query_id, r, gt_entry)
-
-    # Detailed trace output follows (only when verbose=True)
-    if args.react:
+    
+    if args.progress:
+        print(f"[PROGRESS] Execution complete for query {query_id} ({r.execution_path}, {r.latency_s:.2f}s)", file=sys.stderr, flush=True)
         _hr("REACT_ONLY EXECUTION")
         print("Guardrail planning and typed operators are skipped in this mode.")
         _hr("EXECUTION TRACE")
@@ -402,6 +407,10 @@ def trace_single_query(
 
 def main() -> None:
     args = parse_args()
+    
+    # Enable progress streaming in the pipeline if requested
+    if args.progress:
+        os.environ["FF_PROGRESS"] = "1"
 
     data_path = args.data or DEFAULT_DATA_PATHS[args.dataset]
     gt_path = args.ground_truth or DEFAULT_GROUND_TRUTH_PATHS[args.dataset]
