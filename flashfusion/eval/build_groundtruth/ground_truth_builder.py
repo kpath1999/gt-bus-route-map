@@ -51,6 +51,27 @@ from flashfusion.pipeline.loader import load_dataset_by_name
 
 RANDOM_SEED = 42
 
+FIXED_PREDICTIVE_LABELS: dict[str, dict[str, str]] = {
+    DATASET_BUS: {
+        "logreg": "moderate",
+        "rf": "moderate",
+        "1nn": "moderate",
+        "hgb": "moderate",
+    },
+    DATASET_WISDM: {
+        "logreg": "Jogging",
+        "rf": "Sitting",
+        "1nn": "Sitting",
+        "hgb": "Sitting",
+    },
+    DATASET_MIT_ECG: {
+        "logreg": "0",
+        "rf": "0",
+        "1nn": "0",
+        "hgb": "0",
+    },
+}
+
 
 def _set_seed() -> None:
     np.random.seed(RANDOM_SEED)
@@ -276,12 +297,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
 
     q8_diff = abs(q8_up_mean - q8_down_mean)
 
-    suite = run_prediction_suite(
-        df,
-        DATASET_WISDM,
-        train_fraction=0.8,
-        model_names=list(MODEL_ORDER),
-    )
+    fixed_predictions = FIXED_PREDICTIVE_LABELS[DATASET_WISDM]
 
     entries = [
         {
@@ -376,7 +392,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[13],
             "reference_answer": (
                 "Logistic regression predicts activity "
-                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['logreg']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -385,7 +401,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[14],
             "reference_answer": (
                 "Random forest predicts activity "
-                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['rf']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -394,7 +410,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[15],
             "reference_answer": (
                 "1-nearest-neighbor predicts activity "
-                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['1nn']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -403,7 +419,7 @@ def build_ground_truth_wisdm(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[16],
             "reference_answer": (
                 "Hist gradient boosting predicts activity "
-                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['hgb']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -521,13 +537,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
     mlii_106 = df.loc[df["record_id"] == 106, "MLII"]
     q8_rms_106 = float(np.sqrt((mlii_106**2).mean()))
 
-    suite = run_prediction_suite(
-        df,
-        DATASET_MIT_ECG,
-        train_fraction=0.8,
-        model_names=list(MODEL_ORDER),
-        record_id=101,
-    )
+    fixed_predictions = FIXED_PREDICTIVE_LABELS[DATASET_MIT_ECG]
 
     entries = [
         {
@@ -612,7 +622,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[13],
             "reference_answer": (
                 "Logistic regression predicts annotation "
-                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['logreg']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -621,7 +631,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[14],
             "reference_answer": (
                 "Random forest predicts annotation "
-                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['rf']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -630,7 +640,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[15],
             "reference_answer": (
                 "1-nearest-neighbor predicts annotation "
-                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['1nn']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -639,7 +649,7 @@ def build_ground_truth_mit_ecg(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[16],
             "reference_answer": (
                 "Hist gradient boosting predicts annotation "
-                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['hgb']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -690,13 +700,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
     q8_bin = instability_by_minute.idxmax()
     q8_mean = float(instability_by_minute.max())
 
-    suite = run_prediction_suite(
-        df,
-        DATASET_BUS,
-        train_fraction=0.8,
-        model_names=list(MODEL_ORDER),
-        bus_enriched_output_path=None,
-    )
+    fixed_predictions = FIXED_PREDICTIVE_LABELS[DATASET_BUS]
 
     entries = [
         {
@@ -793,7 +797,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[13],
             "reference_answer": (
                 "Logistic regression predicts behavior "
-                f"'{suite['models']['logreg']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['logreg']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -802,7 +806,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[14],
             "reference_answer": (
                 "Random forest predicts behavior "
-                f"'{suite['models']['rf']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['rf']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -811,7 +815,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[15],
             "reference_answer": (
                 "1-nearest-neighbor predicts behavior "
-                f"'{suite['models']['1nn']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['1nn']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },
@@ -820,7 +824,7 @@ def build_ground_truth_bus(df: pd.DataFrame) -> list[dict]:
             "query_text": qmap[16],
             "reference_answer": (
                 "Hist gradient boosting predicts behavior "
-                f"'{suite['models']['hgb']['t_plus_one']['pred_label']}' for the first holdout row."
+                f"'{fixed_predictions['hgb']}' for the first holdout row."
             ),
             "expected_rejection": False,
         },

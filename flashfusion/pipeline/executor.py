@@ -20,6 +20,7 @@ import os
 import platform
 import re
 import time
+import warnings
 from queue import Empty
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -81,6 +82,49 @@ class ExecutionDetails:
     safe_execution_s: float = 0.0
 
 
+@dataclass
+class ReActResult:
+    """Structured result from a ReAct execution.
+
+    Iteration preserves the historical ``(raw_answer, trace, details)`` return
+    contract while callers migrate to the structural rejection fields.
+    """
+
+    raw_answer: str
+    trace: str
+    rejected: bool
+    rejection_reason: str | None
+    details: ExecutionDetails
+
+    def __iter__(self):
+        yield self.raw_answer
+        yield self.trace
+        yield self.details
+
+
+def _looks_like_tool_error(output: str) -> bool:
+    """Return whether a tool observation appears to be an execution error."""
+    error_keywords = (
+        "Traceback", "Exception", "SyntaxError", "NameError",
+        "ValueError", "KeyError", "AttributeError", "TypeError",
+        "IndexError",
+    )
+    return any(keyword in output for keyword in error_keywords)
+
+
+def _ground_final_answer(
+    last_observation: str | None,
+    last_observation_ok: bool,
+    model_text: str,
+) -> str:
+    """Prefer a successful executed observation to malformed hedging prose."""
+    if last_observation_ok and last_observation and not re.search(
+        r"^\s*Action\s*\d*\s*:", model_text, re.IGNORECASE | re.MULTILINE
+    ):
+        return last_observation.strip()
+    return model_text.strip()
+
+
 # ---------------------------------------------------------------------------
 # ThinkingCaptureHandler
 # ---------------------------------------------------------------------------
@@ -96,8 +140,9 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
     The full class body is specified there — implement exactly as described.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, parser: "ResilientReActOutputParser | None" = None) -> None:
         super().__init__()
+        self._parser = parser
         self.steps: list[str] = []
         self.action_inputs: list[str] = []
         self.final_output: str = ""
@@ -116,6 +161,8 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         self.steps.append(f"Observation: {out}")
         if not self._looks_like_tool_error(out) and self.action_inputs:
             self.last_successful_action_input = self.action_inputs[-1]
+        if self._parser is not None:
+            self._parser.record_observation(out, not self._looks_like_tool_error(out))
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs) -> None:
         """Record the agent's final answer."""
@@ -140,12 +187,7 @@ class ThinkingCaptureHandler(BaseCallbackHandler):
         Error keywords: Error, Traceback, Exception, SyntaxError, NameError,
                         ValueError, KeyError, AttributeError, TypeError
         """
-        error_keywords = (
-            "Traceback", "Exception", "SyntaxError", "NameError",
-            "ValueError", "KeyError", "AttributeError", "TypeError",
-            "IndexError",
-        )
-        return any(k in output for k in error_keywords)
+        return _looks_like_tool_error(output)
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +218,13 @@ class ResilientReActOutputParser:
     def __init__(self) -> None:
         self._output_history: list[str] = []
         self._parse_failure_count: int = 0
+        self._last_observation: str | None = None
+        self._last_observation_ok = False
+
+    def record_observation(self, observation: str, ok: bool) -> None:
+        """Record the most recent tool observation for malformed-output grounding."""
+        self._last_observation = observation
+        self._last_observation_ok = ok
 
     def parse(self, text: str) -> AgentAction | AgentFinish:
         """
@@ -218,6 +267,16 @@ class ResilientReActOutputParser:
             action = action_match.group(1).strip()
             action_input = self._sanitize_action_input(action_match.group(2))
             self._parse_failure_count = 0
+            if action == "reject_query":
+                reason = action_input.strip(' "')
+                return AgentFinish(
+                    {
+                        "output": f"REJECT: {reason}",
+                        "rejected": True,
+                        "rejection_reason": reason,
+                    },
+                    text,
+                )
             return AgentAction(action, action_input.strip(' "'), text)
 
         if includes_answer:
@@ -250,6 +309,8 @@ class ResilientReActOutputParser:
             cleaned = cleaned.split("\nThought:", 1)[0]
         if "\nAction:" in cleaned:
             cleaned = cleaned.split("\nAction:", 1)[0]
+        if "\nFinal Answer:" in cleaned:
+            cleaned = cleaned.split("\nFinal Answer:", 1)[0]
         if "\n\n" in cleaned:
             cleaned = cleaned.split("\n\n", 1)[0]
         return cleaned.strip()
@@ -278,7 +339,12 @@ class ResilientReActOutputParser:
             else:
                 paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
                 answer = paragraphs[-1] if paragraphs else text.strip()
-        return AgentFinish(return_values={"output": answer.strip()}, log=text)
+        answer = _ground_final_answer(
+            self._last_observation,
+            self._last_observation_ok,
+            answer,
+        )
+        return AgentFinish(return_values={"output": answer}, log=text)
 
 
 # ---------------------------------------------------------------------------
@@ -297,17 +363,28 @@ class ExecutionLayer:
     or rejected queries) should not import or construct the pandas agent stack.
     """
 
-    def __init__(self, df: pd.DataFrame, client: "LLMClient", react_faithful: bool = False) -> None:
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        client: "LLMClient",
+        include_abstention_clause: bool = False,
+        use_resilient_parser: bool = True,
+        *,
+        react_faithful: bool | None = None,
+    ) -> None:
         """
         Initialise the execution layer with a DataFrame and LLM client.
 
         Args:
             df:             The WISDM DataFrame (enriched with derived features if adapter applied).
             client:         LLMClient wrapping a chat model client.
-            react_faithful: When True, constructs a paper-faithful ReAct agent:
-                            uses the default ReActSingleInputOutputParser and omits
-                            handle_parsing_errors.  Flash-Fusion and WellMax-Only
-                            leave this False to retain ResilientReActOutputParser.
+            include_abstention_clause: Controls only whether the paper-style
+                out-of-scope abstention protocol is included in the prompt.
+            use_resilient_parser: Controls only whether Flash-Fusion's resilient
+                ReAct output parser is used.
+            react_faithful: Deprecated compatibility flag. Maps to
+                ``include_abstention_clause=react_faithful`` and
+                ``use_resilient_parser=not react_faithful``.
 
         Sets up:
             self._original_df — immutable reference copy for reset_agent()
@@ -317,13 +394,21 @@ class ExecutionLayer:
 
         Agent construction notes (see CLAUDE.md §ExecutionLayer):
             - Tool: PythonAstREPLTool(locals={"df": self._df})
-            - Parser: ResilientReActOutputParser() when react_faithful=False (default)
-                      Default ReActSingleInputOutputParser when react_faithful=True
-            - Wrap in AgentExecutor(max_iterations=6, handle_parsing_errors=True, ...)
-                      when react_faithful=False; handle_parsing_errors omitted when True
+            - Parser selection and prompt content are independent.
         """
+        if react_faithful is not None:
+            warnings.warn(
+                "react_faithful is deprecated; use include_abstention_clause "
+                "and use_resilient_parser instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            include_abstention_clause = react_faithful
+            use_resilient_parser = not react_faithful
         self._client = client
-        self._react_faithful = react_faithful
+        self._include_abstention_clause = include_abstention_clause
+        self._use_resilient_parser = use_resilient_parser
+        self._resilient_parser: ResilientReActOutputParser | None = None
         self._original_df = df.copy()
         self._df = df.copy()
 
@@ -504,13 +589,12 @@ class ExecutionLayer:
 
         self._debug("creating ReAct agent")
         react_agent = create_react_agent(self._client.llm, [tool], prompt)
-        if not self._react_faithful:
-            # Flash-Fusion / WellMax-Only: replace with hardened resilient parser
+        if self._use_resilient_parser:
             try:
-                react_agent.output_parser = ResilientReActOutputParser()
+                self._resilient_parser = ResilientReActOutputParser()
+                react_agent.output_parser = self._resilient_parser
             except Exception:
                 pass
-        # react_faithful=True: keep default ReActSingleInputOutputParser (paper-faithful ReAct)
 
         self._debug("wrapping ReAct agent in AgentExecutor")
         executor_kwargs: dict = dict(
@@ -520,8 +604,7 @@ class ExecutionLayer:
             return_intermediate_steps=True,
             verbose=False,
         )
-        if not self._react_faithful:
-            # Paper-faithful ReAct omits this so parse failures propagate naturally
+        if self._use_resilient_parser:
             executor_kwargs["handle_parsing_errors"] = True
         return AgentExecutor(**executor_kwargs)
 
@@ -529,7 +612,7 @@ class ExecutionLayer:
         """
         Build the agent system prompt prefix injected into the ReAct template.
 
-        When ``react_faithful`` is True (paper-faithful ReAct-Only, which has no
+        When ``include_abstention_clause`` is True (ReAct-Only, which has no
         separate feasibility guardrail), an out-of-scope abstention clause is
         appended so the agent can decline queries that cannot be answered from
         the available columns instead of hallucinating a value.
@@ -537,8 +620,8 @@ class ExecutionLayer:
         col_descriptions = ", ".join(
             f"{c} ({df[c].dtype})" for c in df.columns
         )
-        if self._react_faithful:
-            # Mirrors GUARDRAIL_PROMPT's PROCEED/REJECT criteria (Flash-Fusion's
+        if self._include_abstention_clause:
+            # Mirrors GUARDRAIL_PROMPT's scope criteria (Flash-Fusion's
             # feasibility gate), translated into ReAct's Thought/Action/Final
             # Answer convention since ReAct-Only has no separate guardrail call.
             """
@@ -579,9 +662,9 @@ class ExecutionLayer:
                 "Reject ONLY if it needs external data, internet access, outside domain "
                 "knowledge, personal info beyond the schema, or a prediction/forecast whose "
                 "inputs cannot be derived from these columns.\n"
-                "If rejecting, write no code. Respond exactly:\n"
-                "Final Answer: This request is out-of-scope for the available data because "
-                "<one-sentence reason>.\n"
+                "If rejecting, write no code and respond exactly with this format:\n"
+                "Action: reject_query\n"
+                "Action Input: <one-sentence reason why the request is out-of-scope for the available data>.\n"
             )
         return (
             "You are a data analyst working with a pandas DataFrame named `df`.\n"
@@ -653,7 +736,7 @@ class ExecutionLayer:
             return False, reason
         return True, ""
 
-    def execute_single(self, query: str) -> tuple[str, str, ExecutionDetails]:
+    def execute_single(self, query: str) -> ReActResult:
         """
         Execute a single query against the pandas DataFrame agent.
 
@@ -661,10 +744,8 @@ class ExecutionLayer:
             query: Concrete, column-grounded query for the agent.
 
         Returns:
-            (raw_answer, trace, details)
-            raw_answer — agent's text output
-            trace      — full Thought/Action/Observation trace string
-            details    — ExecutionDetails with final_code and tries
+            ReActResult. It may be unpacked as the historical
+            ``(raw_answer, trace, details)`` tuple.
 
         Implementation:
             1. handler = ThinkingCaptureHandler()
@@ -679,10 +760,13 @@ class ExecutionLayer:
         """
         if self._agent_backend == "safe":
             self._debug("executing query with safe backend")
-            return self._execute_single_safe(query)
+            raw_answer, trace, details = self._execute_single_safe(query)
+            rejection_reason = self._extract_safe_rejection(raw_answer)
+            return ReActResult(raw_answer, trace, rejection_reason is not None, rejection_reason, details)
 
-        handler = ThinkingCaptureHandler()
         agent_executor = self._ensure_agent()
+        handler = ThinkingCaptureHandler(self._resilient_parser)
+        result: Any = {}
         try:
             result = agent_executor.invoke(
                 {"input": query}, config={"callbacks": [handler]}
@@ -692,8 +776,15 @@ class ExecutionLayer:
             raw_answer = f"[ERROR] {e}"
         trace = handler.get_trace()
         final_code, tries = handler.get_execution_details()
-        return raw_answer, trace, ExecutionDetails(
-            final_code=final_code, tries=tries, attempts=[]
+        details = ExecutionDetails(final_code=final_code, tries=tries, attempts=[])
+        rejected = bool(result.get("rejected", False)) if isinstance(result, dict) else False
+        rejection_reason = result.get("rejection_reason") if isinstance(result, dict) else None
+        return ReActResult(
+            raw_answer=raw_answer,
+            trace=trace,
+            rejected=rejected,
+            rejection_reason=rejection_reason,
+            details=details,
         )
 
     def _execute_single_safe(self, query: str) -> tuple[str, str, ExecutionDetails]:

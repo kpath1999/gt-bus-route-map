@@ -141,6 +141,30 @@ class TestResilientReActOutputParser:
         except Exception:
             pass  # Acceptable if parser can't handle this specific case
 
+    def test_resilient_parser_grounds_final_answer_to_observation(self):
+        """Malformed hedging prose must not override a successful observation."""
+        self.parser.record_observation("42", ok=True)
+
+        result = self.parser.parse(
+            "I have insufficient information and cannot determine the answer."
+        )
+
+        assert isinstance(result, AgentFinish)
+        assert result.return_values["output"] == "42"
+
+    def test_reject_query_action_sets_structural_verdict(self):
+        """The abstention action should terminate without invoking a tool."""
+        result = self.parser.parse(
+            "Action: reject_query\n"
+            "Action Input: The weather is not represented by any available column."
+        )
+
+        assert isinstance(result, AgentFinish)
+        assert result.return_values["rejected"] is True
+        assert result.return_values["rejection_reason"] == (
+            "The weather is not represented by any available column."
+        )
+
 
 # ---------------------------------------------------------------------------
 # ExecutionLayer tests
@@ -306,19 +330,69 @@ class TestExecutionLayer:
         assert proceed is False
         assert "heart_rate" in reason
 
+    def test_include_abstention_clause_independent_of_parser(self, minimal_df, mock_client):
+        """Prompt scope protocol and parser choice must be independently selectable."""
+        from flashfusion.pipeline.executor import ExecutionLayer
+
+        for include_abstention_clause in (False, True):
+            for use_resilient_parser in (False, True):
+                layer = ExecutionLayer(
+                    minimal_df,
+                    mock_client,
+                    include_abstention_clause=include_abstention_clause,
+                    use_resilient_parser=use_resilient_parser,
+                )
+                prefix = layer._build_prefix(minimal_df)
+                assert ("SCOPE CHECK" in prefix) is include_abstention_clause
+                assert layer._use_resilient_parser is use_resilient_parser
+
+    def test_backward_compatible_react_faithful_flag(self, minimal_df, mock_client):
+        """The deprecated flag retains its original coupled behavior temporarily."""
+        from flashfusion.pipeline.executor import ExecutionLayer
+
+        with pytest.warns(DeprecationWarning):
+            faithful = ExecutionLayer(minimal_df, mock_client, react_faithful=True)
+        with pytest.warns(DeprecationWarning):
+            non_faithful = ExecutionLayer(minimal_df, mock_client, react_faithful=False)
+
+        assert faithful._include_abstention_clause is True
+        assert faithful._use_resilient_parser is False
+        assert non_faithful._include_abstention_clause is False
+        assert non_faithful._use_resilient_parser is True
+
     def test_react_faithful_prefix_includes_simple_scope_check(self, minimal_df, mock_client):
-        """Paper-faithful ReAct prefix should include a concise out-of-scope abstention rule."""
+        """Paper-faithful ReAct prefix should include a detectable rejection sentinel."""
         from flashfusion.pipeline.executor import ExecutionLayer
         from flashfusion.prompts.templates import GUARDRAIL_PROMPT
 
-        layer = ExecutionLayer(minimal_df, mock_client, react_faithful=True)
+        with pytest.warns(DeprecationWarning):
+            layer = ExecutionLayer(minimal_df, mock_client, react_faithful=True)
         react_prefix = layer._build_prefix(minimal_df)
 
         assert "PROCEED for in-dataset predictive tasks" in GUARDRAIL_PROMPT
         assert "forecasting the next observed in-dataset value" in GUARDRAIL_PROMPT
         assert "SCOPE CHECK" in react_prefix
-        assert "NOT derivable from the columns" in react_prefix
-        assert "Final Answer: This request is out-of-scope" in react_prefix
+        assert "Action: reject_query" in react_prefix
+        assert "out-of-scope for the available data" in react_prefix
+
+    def test_execute_single_returns_structural_rejection_verdict(self, minimal_df, mock_client):
+        """A parser-recognized abstention must surface without prose inference."""
+        from flashfusion.pipeline.executor import ExecutionLayer, ReActResult
+
+        mock_agent = MagicMock()
+        mock_agent.invoke.return_value = {
+            "output": "REJECT: Weather is unavailable.",
+            "rejected": True,
+            "rejection_reason": "Weather is unavailable.",
+        }
+        with patch.dict(os.environ, {"FLASHFUSION_AGENT_BACKEND": "classic"}, clear=False):
+            with patch.object(ExecutionLayer, "_build_agent", return_value=mock_agent):
+                layer = ExecutionLayer(minimal_df, mock_client)
+                result = layer.execute_single("What was the weather?")
+
+        assert isinstance(result, ReActResult)
+        assert result.rejected is True
+        assert result.rejection_reason == "Weather is unavailable."
 
     def test_reset_agent_creates_fresh_copy(self, minimal_df, mock_client):
         """
