@@ -558,6 +558,13 @@ def run_flash_fusion(
                 r.execution_path = PATH_TYPED_OPERATOR
                 r.plan_validation_stage_failed = "execution"
                 r.deterministic_fallback_reason = str(exc)
+                r.typed_execution_certificate = {
+                    "certificate_status": "execution_timeout",
+                    "execution_path": PATH_TYPED_OPERATOR,
+                    "typed_plan_sha256": r.typed_plan_sha256,
+                    "operators_used": list(plan.operators_used),
+                    "error": str(exc),
+                }
                 r.stages_run.append("typed_exec_timeout")
                 r.answer = str(exc)
                 r.trace = f"Timed out after {effective_timeout:.0f}s in typed execution."
@@ -574,10 +581,27 @@ def run_flash_fusion(
                 r.agent_tries = len(execution.steps)
                 r.execution_attempts = list(execution.steps)
                 r.executed = True
+                r.typed_execution_certificate = {
+                    "certificate_status": "ok",
+                    "execution_path": PATH_TYPED_OPERATOR,
+                    "typed_plan_sha256": r.typed_plan_sha256,
+                    "operators_used": list(execution.operators_used),
+                    "rows_scanned": execution.rows_scanned,
+                    "rows_after_filter": execution.rows_after_filter,
+                    "latency_ms": execution.latency_ms,
+                    "result": execution.value,
+                }
                 r.stages_run.append("typed_exec")
                 _debug(f"Typed execution ok in {execution.latency_ms:.1f}ms")
             else:
                 gap_stage, gap_error = "execution", execution.error or "unknown"
+                r.typed_execution_certificate = {
+                    "certificate_status": "execution_error",
+                    "execution_path": PATH_TYPED_OPERATOR,
+                    "typed_plan_sha256": r.typed_plan_sha256,
+                    "operators_used": list(plan.operators_used),
+                    "error": gap_error,
+                }
                 plan = None
                 _debug(f"Typed execution failed: {gap_error}")
 

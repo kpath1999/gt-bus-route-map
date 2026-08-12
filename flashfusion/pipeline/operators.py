@@ -1119,7 +1119,8 @@ class _State:
 
 
 def _run_predictive(step: PredictivePipeline, state: _State) -> tuple[Any, str]:
-    frame = state.original
+    # Predictive execution must honor prior typed filters in the working frame.
+    frame = state.working
     state.use(*step.feature_columns, *step.sort_by, step.target_column)
 
     if step.filter_column is not None:
@@ -1253,17 +1254,25 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             state.use(step.left, step.right)
             left = state.working[step.left]
             right = state.working[step.right]
+            code_expr = ""
             match step.operation:
                 case "add":
                     derived, symbol = left + right, "+"
+                    code_expr = f"df[{step.left!r}] + df[{step.right!r}]"
                 case "subtract":
                     derived, symbol = left - right, "-"
+                    code_expr = f"df[{step.left!r}] - df[{step.right!r}]"
                 case "multiply":
                     derived, symbol = left * right, "*"
+                    code_expr = f"df[{step.left!r}] * df[{step.right!r}]"
                 case "divide":
                     derived, symbol = left / right, "/"
+                    code_expr = f"df[{step.left!r}] / df[{step.right!r}]"
                 case "abs_difference":
                     derived, symbol = (left - right).abs(), "- (abs)"
+                    code_expr = (
+                        f"(df[{step.left!r}] - df[{step.right!r}]).abs()"
+                    )
             # Apply to both working and original so partitions can access derived columns
             state.working = state.working.assign(**{step.result: derived})
             # Only update original if source columns exist there (they may have been created by PARALLEL_AGGREGATE)
@@ -1285,7 +1294,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             state.use(step.result)
             return (
                 f"derived {step.result!r} (rows={len(state.working)})",
-                f"df[{step.result!r}] = df[{step.left!r}] {symbol} df[{step.right!r}]",
+                f"df[{step.result!r}] = {code_expr}",
             )
 
         case DeriveVectorMagnitude():
@@ -1420,7 +1429,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             value = _to_python(_aggregate_series(state.group_result, step.aggregate))
             state.observations.append(value)
             state.scalar_trail.append((f"{state.group_metric} {step.aggregate}", value))
-            return value, f"result = grouped.{step.aggregate}()"
+            return value, f"result = result.{step.aggregate}()"
 
         case RankGroups():
             if state.group_result is None or state.group_result.empty:
@@ -1451,7 +1460,7 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             )
             value[metric_key] = _to_python(ranked.loc[key])
             state.observations.append(value)
-            return value, f"result = grouped.idx{step.direction}()"
+            return value, f"result = result.idx{step.direction}()"
 
         case RankRows():
             state.use(step.column, *step.return_columns)
@@ -2014,6 +2023,47 @@ def _rewrite_single_branch_parallel(
     return out
 
 
+def _rewrite_predictive_prefix_filter(
+    steps: list[Any], actions: list[str]
+) -> list[Any]:
+    """Rewrite FILTER_COMPARE(eq) + PREDICTIVE_PIPELINE into a single predictive step.
+
+    Some sampled plans split the record filter into its own step and leave
+    PREDICTIVE_PIPELINE.filter_column/filter_value null. Predictive execution
+    owns filtering semantics, so this rewrite preserves intent while ensuring
+    downstream execution remains bounded and deterministic.
+    """
+    out: list[Any] = []
+    index = 0
+    while index < len(steps):
+        current = steps[index]
+        nxt = steps[index + 1] if index + 1 < len(steps) else None
+
+        if (
+            isinstance(current, dict)
+            and isinstance(nxt, dict)
+            and current.get("op") == "FILTER_COMPARE"
+            and current.get("comparator") == "eq"
+            and nxt.get("op") == "PREDICTIVE_PIPELINE"
+            and nxt.get("filter_column") is None
+            and nxt.get("filter_value") is None
+        ):
+            merged = dict(nxt)
+            merged["filter_column"] = current.get("column")
+            merged["filter_value"] = current.get("value")
+            out.append(merged)
+            actions.append(
+                "rewrote FILTER_COMPARE + PREDICTIVE_PIPELINE into inline predictive filter"
+            )
+            index += 2
+            continue
+
+        out.append(current)
+        index += 1
+
+    return out
+
+
 def normalize_raw_plan(plan: Any) -> tuple[Any, list[str]]:
     """Canonicalize a raw plan payload. Returns (normalized, actions)."""
     actions: list[str] = []
@@ -2024,6 +2074,7 @@ def normalize_raw_plan(plan: Any) -> tuple[Any, list[str]]:
         return plan, actions
     normalized = [_normalize_step(step, actions) for step in steps]
     normalized = _rewrite_single_branch_parallel(normalized, actions)
+    normalized = _rewrite_predictive_prefix_filter(normalized, actions)
     out = dict(plan)
     out["steps"] = normalized
     out.setdefault("version", PLAN_VERSION)

@@ -213,6 +213,82 @@ def test_typed_plan_executes_filter_then_aggregate() -> None:
     assert execution.rows_after_filter == 1
 
 
+def test_typed_plan_predictive_uses_filtered_working_frame() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    df = pd.DataFrame(
+        {
+            "record_id": [101, 101, 101, 101, 202, 202],
+            "time_s": [0, 1, 2, 3, 4, 5],
+            "MLII": [0.1, 0.2, 0.3, 0.4, 9.0, 9.5],
+            "V1": [0.1, 0.1, 0.2, 0.2, 9.0, 9.0],
+            "annotation": ["N", "", "N", "", "", ""],
+        }
+    )
+    plan = _plan(
+        {"op": "FILTER_COMPARE", "column": "record_id", "comparator": "eq", "value": 101},
+        {
+            "op": "PREDICTIVE_PIPELINE",
+            "model": "logistic_regression",
+            "feature_columns": ["MLII", "V1"],
+            "target_column": "annotation",
+            "sort_by": ["time_s"],
+            "train_fraction": 0.5,
+            "holdout_row": "first",
+            "filter_column": None,
+            "filter_value": None,
+            "target_from_non_empty": True,
+            "target_label": "present",
+        },
+    )
+
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert "split=2/4" in execution.code
+
+
+def test_aggregate_groups_render_does_not_reference_undefined_grouped() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    plan = _plan(
+        {
+            "op": "GROUP_AGGREGATE",
+            "group_by": ["subject_id"],
+            "column": "x",
+            "aggregate": "mean",
+        },
+        {"op": "AGGREGATE_GROUPS", "aggregate": "mean"},
+    )
+
+    execution = execute_plan(_df(), plan)
+
+    assert execution.ok is True
+    assert "grouped." not in execution.code
+    assert "result = result.mean()" in execution.code
+
+
+def test_abs_difference_render_is_explicit_and_valid() -> None:
+    from flashfusion.pipeline.operators import execute_plan
+
+    df = pd.DataFrame({"a": [1.0, -2.0], "b": [-3.0, 4.0]})
+    plan = _plan(
+        {
+            "op": "DERIVE_BINARY",
+            "left": "a",
+            "right": "b",
+            "operation": "abs_difference",
+            "result": "delta",
+        }
+    )
+
+    execution = execute_plan(df, plan)
+
+    assert execution.ok is True
+    assert "(df['a'] - df['b']).abs()" in execution.code
+    assert "(abs)" not in execution.code
+
+
 def test_typed_plan_returns_all_values_at_a_tied_column_maximum() -> None:
     from flashfusion.pipeline.operators import execute_plan, validate_plan_against_dataframe
 

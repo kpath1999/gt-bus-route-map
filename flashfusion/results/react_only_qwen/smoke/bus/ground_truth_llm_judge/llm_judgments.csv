@@ -1,0 +1,149 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],REACT_ONLY,13,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The predicted behavior label for the first holdout row is: moderate.,False,True,"from sklearn.linear_model import LogisticRegression
+import numpy as np
+
+# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Determine split index
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+
+# Define features and target
+feature_cols = [col for col in df.columns if col.startswith('accel_')]
+X = df_sorted[feature_cols]
+y = df_sorted['behavior']
+
+# Split data
+X_train = X.iloc[:split_idx]
+y_train = y.iloc[:split_idx]
+X_holdout = X.iloc[split_idx:]
+y_holdout = y.iloc[split_idx:]
+
+# Train logistic regression model
+model = LogisticRegression(max_iter=1000, random_state=0)
+model.fit(X_train, y_train)
+
+# Predict the first row in the holdout set
+result = model.predict(X_holdout.iloc[[0]])[0]",PASS,1.0,Candidate answer matches the ground truth prediction of 'moderate' for the first holdout row.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction of 'moderate' for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,14,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,The predicted behavior label for the first holdout row is: moderate.,False,True,"# Extract acceleration-related features
+accel_features = [
+    'accel_mean', 'accel_variance',
+    'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99',
+    'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99',
+    'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99'
+]
+
+# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Train Random Forest model
+from sklearn.ensemble import RandomForestClassifier
+X_train = train_df[accel_features]
+y_train = train_df['behavior']
+model = RandomForestClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]]
+X_holdout = first_holdout_row[accel_features]
+prediction = model.predict(X_holdout)[0]
+
+result = prediction",PASS,1.0,Candidate answer matches the ground truth prediction of 'moderate' for the first holdout row.,SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth prediction of 'moderate' for the first holdout row."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,15,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The predicted behavior label for the first holdout row is: moderate.,False,True,"# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Define acceleration features
+accel_features = [
+    'accel_mean', 'accel_variance',
+    'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99',
+    'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99',
+    'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99'
+]
+
+# Train 1-NN model
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier(n_neighbors=1)
+knn.fit(train_df[accel_features], train_df['behavior'])
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]]
+prediction = knn.predict(first_holdout_row[accel_features])[0]
+
+result = prediction",PASS,1.0,"The candidate answer correctly states that the predicted behavior label is 'moderate', matching the ground truth.",SOUND,Consistent with deterministic hint and code logic.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly states that the predicted behavior label is 'moderate', matching the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+}"
+[in_memory_benchmark_run],REACT_ONLY,16,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The predicted behavior label for the first holdout row is: moderate.,False,True,"from sklearn.ensemble import HistGradientBoostingClassifier
+import numpy as np
+
+# Sort by timestamp
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+
+# Identify acceleration-related features (excluding non-acceleration columns)
+accel_features = [
+    'accel_mean',
+    'accel_variance',
+    'accel_stats_x_p1',
+    'accel_stats_x_p10',
+    'accel_stats_x_p90',
+    'accel_stats_x_p99',
+    'accel_stats_y_p1',
+    'accel_stats_y_p10',
+    'accel_stats_y_p90',
+    'accel_stats_y_p99',
+    'accel_stats_z_p1',
+    'accel_stats_z_p10',
+    'accel_stats_z_p90',
+    'accel_stats_z_p99'
+]
+
+# Split into train (80%) and holdout (20%)
+n = len(df_sorted)
+split_idx = int(0.8 * n)
+train_df = df_sorted.iloc[:split_idx]
+holdout_df = df_sorted.iloc[split_idx:]
+
+# Prepare training data
+X_train = train_df[accel_features]
+y_train = train_df['behavior']
+
+# Train model
+model = HistGradientBoostingClassifier(random_state=42)
+model.fit(X_train, y_train)
+
+# Predict behavior for first row in holdout set
+first_holdout_row = holdout_df.iloc[[0]]
+X_holdout_first = first_holdout_row[accel_features]
+prediction = model.predict(X_holdout_first)[0]
+
+result = prediction",PASS,1.0,"The candidate answer correctly states the predicted behavior as 'moderate', matching the ground truth.",SOUND,Consistent with deterministic hint and code output.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer correctly states the predicted behavior as 'moderate', matching the ground truth."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Consistent with deterministic hint and code output.""
+}"

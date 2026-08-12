@@ -1,0 +1,22 @@
+source_file,baseline,query_id,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+[in_memory_benchmark_run],FLASH_FUSION,5,"For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",False,"For record_id 208, the average annotation count per 60-s time_s is 98.064516.",The result is 98.06451612903226,False,True,"TYPED_EXECUTION_CERTIFICATE
+{""certificate_status"": ""ok"", ""typed_plan_sha256"": ""e62326fa5902557012fcb3ef81c7dc8b9479861dfb73ee4311bf3d77645217ad"", ""operators_used"": [""FILTER_COMPARE"", ""FILTER_NOT_EMPTY"", ""DERIVE_BIN"", ""GROUP_AGGREGATE"", ""AGGREGATE_GROUPS""], ""rows_scanned"": 26000000, ""rows_after_filter"": 3040, ""latency_ms"": 603.528, ""result"": 98.06451612903226}",PASS,1.0,The candidate answer 98.065 matches the ground truth 98.065 within acceptable rounding tolerance.,SOUND,Matches deterministic hint and executed result.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer 98.065 matches the ground truth 98.065 within acceptable rounding tolerance."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and executed result.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,6,Which record_id exhibits the largest difference between maximum and minimum MLII?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,"The result is {'record_id': 116, 'MLII_range': 10.235}",False,True,"TYPED_EXECUTION_CERTIFICATE
+{""certificate_status"": ""ok"", ""typed_plan_sha256"": ""708b2035d2f709a7fd2305a1bdb0d64695e518cddd59b878ed7bf2f3e1f24c9c"", ""operators_used"": [""PARALLEL_AGGREGATE"", ""DERIVE_BINARY"", ""RANK_ROWS""], ""rows_scanned"": 26000000, ""rows_after_filter"": 40, ""latency_ms"": 1528.595, ""result"": {""record_id"": 116, ""MLII_range"": 10.235}}",PASS,1.0,"Candidate answer identifies record_id 116 with MLII range 10.235, matching the ground truth's canonical referent.",SOUND,Ground truth is consistent with deterministic hint and code output.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer identifies record_id 116 with MLII range 10.235, matching the ground truth's canonical referent."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and code output.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION,14,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Random forest predicts annotation '0' for the first holdout row.,The result is Random forest predicts present '0' for the first holdout row.,False,True,"TYPED_EXECUTION_CERTIFICATE
+{""certificate_status"": ""ok"", ""typed_plan_sha256"": ""d949a85ced7ea0c4cc5ad03bf90325e853723d5e9a99469ec2540ea606439002"", ""operators_used"": [""PREDICTIVE_PIPELINE""], ""rows_scanned"": 26000000, ""rows_after_filter"": 26000000, ""latency_ms"": 7974.292, ""result"": ""Random forest predicts present '0' for the first holdout row.""}",PASS,1.0,"The candidate answer conveys the same prediction ('0') for the first holdout row as the ground truth, despite minor phrasing differences.",SOUND,Matches deterministic hint and is consistent with expected task output.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer conveys the same prediction ('0') for the first holdout row as the ground truth, despite minor phrasing differences."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with expected task output.""
+}"

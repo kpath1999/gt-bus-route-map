@@ -140,6 +140,37 @@ def test_single_branch_filter_is_preserved_as_an_explicit_filter_step() -> None:
     assert plan["steps"][0]["values"] == [101]
 
 
+def test_predictive_prefix_filter_is_folded_into_predictive_step() -> None:
+    plan, actions = normalize_raw_plan(
+        _plan(
+            {
+                "op": "FILTER_COMPARE",
+                "column": "record_id",
+                "comparator": "eq",
+                "value": 101,
+            },
+            {
+                "op": "PREDICTIVE_PIPELINE",
+                "model": "random_forest",
+                "feature_columns": ["MLII", "V1"],
+                "target_column": "annotation",
+                "sort_by": ["time_s"],
+                "train_fraction": 0.8,
+                "holdout_row": "first",
+                "filter_column": None,
+                "filter_value": None,
+                "target_from_non_empty": True,
+                "target_label": "present",
+            },
+        )
+    )
+
+    assert [step["op"] for step in plan["steps"]] == ["PREDICTIVE_PIPELINE"]
+    assert plan["steps"][0]["filter_column"] == "record_id"
+    assert plan["steps"][0]["filter_value"] == 101
+    assert any("inline predictive filter" in action for action in actions)
+
+
 def test_ambiguous_consumer_leaves_the_plan_untouched() -> None:
     """If the step after the one-branch aggregate does not consume its result
     column, the rewrite would change meaning. Better to fail Gate 1 loudly."""

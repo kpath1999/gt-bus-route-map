@@ -389,6 +389,7 @@ class RunResult:
     execution_path: str = ""                         # "guardrail_reject" | "typed_operator" | "react_fallback" | "scope_reject" | "react_agent" | "react_reject"
     plan_validation_stage_failed: str = ""           # "" | "structural" | "schema" | "scope" | "execution" | "no_plan"
     typed_plan: dict = field(default_factory=dict)   # the validated DeterministicPlan, as JSON
+    typed_execution_certificate: dict = field(default_factory=dict)  # canonical executed typed provenance
     operators_used: list = field(default_factory=list)  # op names fired, for the offline gap report
     plan_source: str = ""                            # "llm" for planner-originated typed plans
     ambiguous_concepts: list = field(default_factory=list)  # concepts the planner could not resolve literally

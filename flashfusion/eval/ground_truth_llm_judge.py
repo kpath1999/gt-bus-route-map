@@ -120,6 +120,23 @@ def _extract_first_json(text: str) -> dict[str, Any]:
 
 def _resolve_candidate_code(row: dict[str, Any]) -> str:
     """Resolve best available generated code from a result row."""
+    cert = row.get("typed_execution_certificate")
+    if (
+        str(row.get("execution_path", "")).strip() == "typed_operator"
+        and isinstance(cert, dict)
+        and cert.get("certificate_status") == "ok"
+    ):
+        payload = {
+            "certificate_status": cert.get("certificate_status"),
+            "typed_plan_sha256": cert.get("typed_plan_sha256", ""),
+            "operators_used": cert.get("operators_used", []),
+            "rows_scanned": cert.get("rows_scanned"),
+            "rows_after_filter": cert.get("rows_after_filter"),
+            "latency_ms": cert.get("latency_ms"),
+            "result": cert.get("result"),
+        }
+        return "TYPED_EXECUTION_CERTIFICATE\n" + json.dumps(payload, ensure_ascii=False)
+
     final_code = str(row.get("final_code", "")).strip()
     if final_code:
         return final_code

@@ -17,6 +17,25 @@ def test_resolve_candidate_code_prefers_final_code():
     assert _resolve_candidate_code(row) == "result = 1"
 
 
+def test_resolve_candidate_code_prefers_typed_execution_certificate():
+    row = {
+        "execution_path": "typed_operator",
+        "typed_execution_certificate": {
+            "certificate_status": "ok",
+            "typed_plan_sha256": "abc123",
+            "operators_used": ["FILTER_COMPARE", "AGGREGATE_COLUMN"],
+            "rows_scanned": 10,
+            "rows_after_filter": 2,
+            "latency_ms": 5.0,
+            "result": 42,
+        },
+        "final_code": "result = broken()",
+    }
+    resolved = _resolve_candidate_code(row)
+    assert resolved.startswith("TYPED_EXECUTION_CERTIFICATE")
+    assert "abc123" in resolved
+
+
 def test_resolve_candidate_code_falls_back_to_last_attempt_code():
     row = {
         "final_code": "",
