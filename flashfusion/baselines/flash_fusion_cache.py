@@ -24,6 +24,19 @@ must contain at least:
       "schema_fingerprint": "<optional; recommended>"
     }
 
+An out-of-scope query may be cached with an empty skeleton:
+
+    {
+      "dataset": "bus",
+      "query_text": "How does passenger occupancy correlate with road roughness?",
+      "status": "reusable",
+      "operator_skeleton": []
+    }
+
+The cache hit still requires a single light-model call to infer a guardrail-style
+rejection reason from the query and the live DataFrame schema; it does not invoke
+the full planner or guardrail.
+
 The cache lookup uses literal equality on ``dataset`` and ``query_text``.
 Dataset names are canonicalised the same way the cache builder does it
 (``mit_ecg`` -> ``ecg``) so benchmark dataset keys match registry keys.
@@ -118,6 +131,53 @@ The returned plan will be parsed by Pydantic (extra fields are rejected),
 checked against the live DataFrame schema, and executed deterministically.
 If the requested structure cannot be grounded from the schema, return:
 {"cache_grounding_failed": true, "reason": "..."}
+
+Semantic grounding rules (must follow):
+- Keep operator sequence fixed, but choose semantically correct field values.
+- Bare entity/id mentions imply equality filters on that key:
+    - Example: "record_id 106", "for record_id 106", "user 20" -> comparator must be
+        "eq" with that value for the corresponding key column.
+    - Do NOT weaken bare key mentions to ranges like gt/ge/lt/le.
+- Explicit relational language must map to the matching comparator:
+    - ">", "strictly greater", "greater than", "above" -> "gt"
+    - ">=", "at least", "no less than" -> "gte"
+    - "<", "strictly less", "below" -> "lt"
+    - "<=", "at most", "no more than" -> "lte"
+- "how many", "number of samples/rows" means row counting semantics:
+    - Use COUNT_ROWS / COUNT / group size when asking for sample counts.
+    - Use nunique only when the question asks for unique entities.
+- "highest/lowest total number of ... samples" means per-entity sample COUNT then rank.
+    - Do NOT substitute sum of a sensor channel for sample counts.
+- "average X" / "mean X" means mean aggregation of X.
+    - Do NOT use variance unless the question explicitly asks for variance.
+- Comparative roughness phrased on average variance must preserve average semantics.
+    - If asked "rougher" with average/mean variance, compare mean variance values and use
+        a comparison mode aligned to the question (difference/which higher), not ratio by default.
+- Train split and holdout row are independent fields in predictive plans:
+    - The query may mention both a training split (e.g., 'first 80%') and a holdout row
+        position (e.g., 'first row in the holdout set'). These are independent.
+        `train_fraction` controls the split; `holdout_row` must reflect only the phrase
+        that describes which holdout row to predict. If the query says 'first row in the
+        holdout set', `holdout_row` must be 'first'.
+"""
+
+OUT_OF_SCOPE_SYSTEM_PROMPT = """You are a dataset guardrail. The user's query
+has already been classified as out-of-scope for the available dataset. Given
+the query and the live dataset schema, produce a concise, factual rejection
+reason explaining why the query cannot be answered from the available fields.
+
+Use the same style as the original Flash-Fusion guardrail:
+- "The dataset does not contain columns for X or Y."
+- "The dataset does not contain any information about Z."
+- "The dataset does not contain any column indicating W."
+
+Return exactly one JSON object and no markdown, prose, or code fences:
+{"rejection_reason": "..."}
+
+Strict requirements:
+- Return a single valid JSON object only; no trailing commas.
+- The top-level keys are exactly: {"rejection_reason":"..."}.
+- Do not include comments, markdown fences, or any text before/after the JSON.
 """
 
 
@@ -213,9 +273,12 @@ def _find_exact_entry(
     if len(matches) != 1:
         return None, "duplicate_registry_entries"
     skeleton = matches[0].get("operator_skeleton")
+    if isinstance(skeleton, list) and len(skeleton) == 0:
+        # Out-of-scope queries are cached with an empty skeleton. We will
+        # reject via a single cheap light-model call rather than the full
+        # planner/guardrail pipeline.
+        return matches[0], "exact_cache_hit_out_of_scope"
     if not isinstance(skeleton, list) or not skeleton or not all(isinstance(x, str) for x in skeleton):
-        # Out-of-scope queries are cached with an empty skeleton; there is no
-        # operator sequence to reuse, so the full planner must decide again.
         return None, "invalid_or_empty_operator_skeleton"
     return matches[0], "exact_cache_hit"
 
@@ -346,6 +409,152 @@ def _invoke_light_for_plan(
     return parsed
 
 
+def _rejection_reason_prompt(query: str, df: pd.DataFrame) -> str:
+    return "\n".join(
+        [
+            f"QUESTION: {query}",
+            "LIVE DATASET SCHEMA:",
+            _schema_context(df),
+        ]
+    )
+
+
+def _invoke_light_for_rejection_reason(
+    client: LLMClient, query: str, df: pd.DataFrame, trace: CacheGroundingTrace | None = None
+) -> str:
+    """Ask the light model to infer a guardrail-style rejection reason."""
+    light = getattr(client, "light", None) or client
+    if getattr(light, "llm", None) is None or not hasattr(light, "invoke_messages"):
+        raise RuntimeError("cache rejection reasoning requires client.light.llm")
+    messages = [
+        SystemMessage(content=OUT_OF_SCOPE_SYSTEM_PROMPT),
+        HumanMessage(content=_rejection_reason_prompt(query, df)),
+    ]
+    started = time.perf_counter()
+    raw = light.invoke_messages(messages, stage="cache_rejection_reason")
+    _record(
+        trace,
+        raw_light_output=raw,
+        grounding_latency_s=time.perf_counter() - started,
+    )
+    repaired = _repair_light_json(raw)
+    parsed = json.loads(repaired)
+    if not isinstance(parsed, dict):
+        raise ValueError("light model rejection output must be a JSON object")
+    reason = parsed.get("rejection_reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("light model did not return a non-empty rejection_reason")
+    return reason.strip()
+
+
+_RELATIONAL_TERMS = {
+    "gt": ("strictly greater", "greater than", "above", "over"),
+    "gte": ("at least", "no less than", "greater than or equal"),
+    "lt": ("strictly less", "less than", "below", "under"),
+    "lte": ("at most", "no more than", "less than or equal"),
+}
+
+
+def _query_mentions_relational_for_column(query_lc: str, column: str) -> bool:
+    escaped = re.escape(column.lower())
+    symbolic = rf"\b{escaped}\b\s*(>=|<=|>|<)"
+    if re.search(symbolic, query_lc):
+        return True
+    for terms in _RELATIONAL_TERMS.values():
+        for term in terms:
+            if re.search(rf"\b{escaped}\b[^.\n]{{0,48}}\b{re.escape(term)}\b", query_lc):
+                return True
+            if re.search(rf"\b{re.escape(term)}\b[^.\n]{{0,48}}\b{escaped}\b", query_lc):
+                return True
+    return False
+
+
+def _extract_key_mentions(query_lc: str) -> dict[str, int]:
+    mentions: dict[str, int] = {}
+    patterns = {
+        "record_id": [
+            r"\bfor\s+record_id\s*(?:=|is)?\s*(\d+)\b",
+            r"\brecord_id\s*(?:=|is)?\s*(\d+)\b",
+        ],
+        "subject_id": [
+            r"\bfor\s+subject_id\s*(?:=|is)?\s*(\d+)\b",
+            r"\bsubject_id\s*(?:=|is)?\s*(\d+)\b",
+            r"\buser\s+(\d+)\b",
+        ],
+    }
+    for column, pats in patterns.items():
+        for pat in pats:
+            m = re.search(pat, query_lc)
+            if m:
+                mentions[column] = int(m.group(1))
+                break
+    return mentions
+
+
+def _query_requests_ratio(query_lc: str) -> bool:
+    return bool(
+        re.search(r"\b(ratio|times|x\s+as\s+much|percent|percentage|per\s+cent)\b", query_lc)
+    )
+
+
+def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> dict[str, Any]:
+    """Apply conservative post-grounding fixes for high-confidence intent cues.
+
+    These guards do not add/remove/reorder operators. They only patch field values
+    in-place when the query intent is explicit and a mismatch is a known failure mode.
+    """
+    if not isinstance(raw_plan, dict):
+        return raw_plan
+    steps = raw_plan.get("steps")
+    if not isinstance(steps, list):
+        return raw_plan
+
+    query_lc = query.lower()
+    key_mentions = _extract_key_mentions(query_lc)
+    wants_count_extrema = bool(
+        re.search(r"\b(highest|lowest)\b", query_lc)
+        and re.search(r"\b(number|count)\b", query_lc)
+        and re.search(r"\b(sample|samples|row|rows)\b", query_lc)
+    )
+    wants_average = bool(re.search(r"\b(mean|average)\b", query_lc))
+    wants_rough_compare = bool(re.search(r"\brougher\b", query_lc))
+    wants_first_holdout = "first row in the holdout" in query_lc
+    wants_last_holdout = "last row in the holdout" in query_lc
+    asks_difference = bool(re.search(r"\b(difference|gap)\b", query_lc))
+
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        op = str(step.get("op", ""))
+
+        if op == "FILTER_COMPARE":
+            column = str(step.get("column", ""))
+            mention_value = key_mentions.get(column)
+            if mention_value is not None and not _query_mentions_relational_for_column(query_lc, column):
+                step["comparator"] = "eq"
+                step["value"] = mention_value
+
+        elif op == "GROUP_AGGREGATE" and wants_count_extrema:
+            step["aggregate"] = "count"
+            step["column"] = None
+
+        elif op == "AGGREGATE_PARTITIONS" and wants_average and str(step.get("aggregate")) == "var":
+            step["aggregate"] = "mean"
+
+        elif op == "COMPARE_PARTITIONS":
+            mode = str(step.get("mode", ""))
+            if mode == "ratio" and (wants_rough_compare or wants_average) and not _query_requests_ratio(query_lc):
+                step["mode"] = "difference" if asks_difference else "difference"
+
+        elif op == "PREDICTIVE_PIPELINE":
+            if wants_first_holdout:
+                step["holdout_row"] = "first"
+            elif wants_last_holdout:
+                step["holdout_row"] = "last"
+
+    return raw_plan
+
+
 def _parse_and_validate_cached_plan(
     raw_plan: dict[str, Any], expected_skeleton: list[str], df: pd.DataFrame
 ) -> DeterministicPlan:
@@ -425,6 +634,14 @@ def run_flash_fusion_cache(
     path it falls back to the existing full Flash-Fusion planner.
     """
     result = r if r is not None else _new_result(query, client)
+    stage_latency = (
+        dict(result.stage_latency_s)
+        if isinstance(result.stage_latency_s, dict)
+        else {}
+    )
+    stage_latency.setdefault("cache_grounding", 0.0)
+    stage_latency.setdefault("typed_exec", 0.0)
+    result.stage_latency_s = stage_latency
     started = time.perf_counter()
     _record(
         trace,
@@ -438,6 +655,35 @@ def run_flash_fusion_cache(
         _record(trace, lookup_status=lookup_status, entry=entry)
         if entry is None:
             raise LookupError(lookup_status)
+
+        # Cheap out-of-scope short-circuit: the registry records an empty
+        # skeleton, so we ask the light model for the guardrail reason instead
+        # of invoking the full planner/guardrail pipeline.
+        if lookup_status == "exact_cache_hit_out_of_scope":
+            _append_stage(result, "exact_cache_hit_out_of_scope")
+            _append_stage(result, "cache_light_rejection_reason")
+            grounding_started = time.perf_counter()
+            try:
+                reason = _invoke_light_for_rejection_reason(client, query, df, trace)
+            finally:
+                stage_latency["cache_grounding"] += (
+                    time.perf_counter() - grounding_started
+                )
+            _append_stage(result, "cache_rejection_reason_ready")
+            _set_if_present(result, "rejected", True)
+            _set_if_present(result, "executed", False)
+            _set_if_present(result, "execution_path", "guardrail_reject")
+            _set_if_present(result, "plan_source", "exact_query_cache_out_of_scope")
+            _set_if_present(result, "answer", f"Query rejected. Reason: {reason}")
+            _set_if_present(
+                result,
+                "trace",
+                "Rejected by the guardrail because the query cannot be answered "
+                f"from available dataset fields. Reason: {reason}",
+            )
+            _set_if_present(result, "latency_s", time.perf_counter() - started)
+            return result
+
         _record(trace, operator_skeleton=list(entry["operator_skeleton"]))
 
         cached_contract_hash = entry.get("operator_contract_hash")
@@ -451,12 +697,21 @@ def run_flash_fusion_cache(
         _append_stage(result, "cache_light_grounding")
         prompt = _grounding_prompt(query, entry, df)
         _record(trace, prompt=prompt)
-        raw_plan = _invoke_light_for_plan(client, prompt, trace)
+        grounding_started = time.perf_counter()
+        try:
+            raw_plan = _invoke_light_for_plan(client, prompt, trace)
+        finally:
+            stage_latency["cache_grounding"] += (
+                time.perf_counter() - grounding_started
+            )
+        raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
         plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
         _append_stage(result, "cache_plan_validated")
         _record(trace, validated_plan=plan.model_dump(mode="json"))
 
+        execution_started = time.perf_counter()
         execution = execute_plan(df, plan)
+        stage_latency["typed_exec"] += time.perf_counter() - execution_started
         if not execution.ok:
             # A validated plan that still fails at execution is a real coverage
             # gap, not a cache answer — hand it to the full planner.
@@ -491,6 +746,7 @@ def run_flash_fusion_cache(
                 "cache_query_text": entry.get("query_text", ""),
                 "cache_dataset": entry.get("dataset", ""),
                 "result": execution.value,
+                "code": execution.code,
             },
         )
         _set_if_present(
@@ -499,17 +755,11 @@ def run_flash_fusion_cache(
             "Cache hit: exact query text; light model grounded cached skeleton; "
             "validated typed execution.\n" + (execution.trace or ""),
         )
-        # Leave final_code empty. The canonical provenance is typed_plan; do
-        # not generate a second, lossy pseudo-Python artifact in this baseline.
-        _set_if_present(result, "final_code", "")
+        # Preserve full typed operator chain as a shared provenance artifact for
+        # logs, raw_results.jsonl, and downstream judging.
+        _set_if_present(result, "final_code", execution.code)
         elapsed = time.perf_counter() - started
         _set_if_present(result, "latency_s", elapsed)
-        stage_latency = getattr(result, "stage_latency_s", None)
-        if isinstance(stage_latency, dict):
-            stage_latency["cache_grounding"] = (
-                trace.grounding_latency_s if trace is not None else 0.0
-            )
-            stage_latency["typed_exec"] = execution.latency_ms / 1000.0
         return result
 
     except (

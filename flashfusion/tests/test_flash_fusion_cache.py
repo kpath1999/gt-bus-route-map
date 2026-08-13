@@ -153,13 +153,14 @@ def test_cross_dataset_lookup_is_a_miss(registry: Path) -> None:
     assert status == "exact_query_miss"
 
 
-def test_empty_skeleton_entry_is_not_reusable(registry: Path) -> None:
+def test_empty_skeleton_entry_is_out_of_scope_hit(registry: Path) -> None:
     entries = ffc._load_entries(registry)
     entry, status = ffc._find_exact_entry(
         entries, "Did rainy weather cause the roughest segments in this route?", "bus"
     )
-    assert entry is None
-    assert status == "invalid_or_empty_operator_skeleton"
+    assert entry is not None
+    assert status == "exact_cache_hit_out_of_scope"
+    assert entry["operator_skeleton"] == []
 
 
 def test_whitespace_only_differences_still_hit(registry: Path) -> None:
@@ -190,7 +191,11 @@ def test_successful_typed_execution_on_cache_hit(df, registry, no_fallback) -> N
     assert result.raw_answer == "3"
     assert "3" in result.answer
     assert result.typed_plan["steps"][0]["column"] == "accel_variance"
-    assert result.final_code == ""
+    assert result.final_code
+    assert "df = df[df['accel_variance'] > 0.2]" in result.final_code
+    assert "result = len(df)" in result.final_code
+    assert result.stage_latency_s["cache_grounding"] >= 0.0
+    assert result.stage_latency_s["typed_exec"] >= 0.0
 
     assert trace.hit is True
     assert trace.operator_skeleton == SKELETON
@@ -203,6 +208,30 @@ def test_code_fenced_light_output_is_accepted(df, registry, no_fallback) -> None
     client = _FakeClient("```json\n" + json.dumps(GOOD_PLAN) + "\n```")
     result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
     assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+
+
+def test_out_of_scope_cache_hit_rejects_without_full_planner(df, registry, no_fallback) -> None:
+    """An empty skeleton means the query is out-of-scope; infer the reason from the light model."""
+    oos_query = "Did rainy weather cause the roughest segments in this route?"
+    reason = "The dataset does not contain any column indicating weather conditions."
+    client = _FakeClient(json.dumps({"rejection_reason": reason}))
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        oos_query, df, client, dataset="bus", cache_path=registry, trace=trace
+    )
+
+    assert result.rejected is True
+    assert result.executed is False
+    assert result.execution_path == "guardrail_reject"
+    assert result.plan_source == "exact_query_cache_out_of_scope"
+    assert result.answer == f"Query rejected. Reason: {reason}"
+    assert "Rejected by the guardrail because" in result.trace
+    assert reason in result.trace
+    # One cheap light-model call for the reason, no planner fallback.
+    assert len(client.light.prompts) == 1
+    assert "LIVE DATASET SCHEMA" in client.light.prompts[0]
+    assert oos_query in client.light.prompts[0]
 
 
 def test_cross_dataset_miss_falls_back_to_full_planner(df, registry, fallback_spy) -> None:
@@ -219,6 +248,14 @@ def test_cross_dataset_miss_falls_back_to_full_planner(df, registry, fallback_sp
     assert "exact_query_miss" in result.deterministic_fallback_reason
     # No light-model call is worth making on a miss.
     assert client.light.prompts == []
+
+
+def test_cache_grounding_timing_survives_fallback(df, registry, fallback_spy) -> None:
+    client = _FakeClient(json.dumps({"cache_grounding_failed": True, "reason": "no column"}))
+    result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
+
+    assert len(fallback_spy) == 1
+    assert result.stage_latency_s["cache_grounding"] >= 0.0
 
 
 def test_skeleton_mutation_is_rejected(df, registry, fallback_spy) -> None:

@@ -374,6 +374,9 @@ def run_flash_fusion(
     effective_timeout = (
         timeout_s if timeout_s is not None else FLASH_FUSION_PREDICTIVE_TIMEOUT_S
     )
+    existing_stage_latency_s = (
+        dict(r.stage_latency_s) if isinstance(r.stage_latency_s, dict) else {}
+    )
     stage_latency_s: dict[str, float] = {
         "column_metadata": 0.0,
         "operator_route": 0.0,
@@ -382,6 +385,7 @@ def run_flash_fusion(
         "typed_exec": 0.0,
         "agent": 0.0,
     }
+    stage_latency_s.update(existing_stage_latency_s)
     r.stage_latency_s = dict(stage_latency_s)
 
     def record(stage: str, started: float) -> None:

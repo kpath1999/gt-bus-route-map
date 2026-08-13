@@ -57,10 +57,11 @@ from measure import (
 
 from typing import Any
 
-TOP3_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
+TOP3_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY"]
 DATASET_FIG_BASELINES = TOP3_BASELINES
 FULL_BASELINES = [
     "FLASH_FUSION",
+    "FLASH_FUSION_CACHE",
     "REACT_ONLY",
     "AUTOIOT_PAPER",
     "HARGPT_PAPER",
@@ -381,7 +382,7 @@ def plot_accuracy_across_datasets(
     _clean_axes(ax)
 
     ax.legend(
-        ncol=min(5, max(1, len(baselines))),
+        ncol=min(3, max(1, len(baselines))),
         loc="upper center",
         bbox_to_anchor=(0.5, -0.20),
         frameon=False,
@@ -480,6 +481,7 @@ def _prompt_for_baseline_roots(defaults: dict[str, str | None]) -> dict[str, str
     """
     labels = {
         "flash_fusion": "Flash-Fusion",
+        "flash_fusion_cache": "FF Cache",
         "react": "ReAct",
         "autoiot": "AutoIOT",
         "hargpt": "HARGPT",
@@ -749,6 +751,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional override root for FLASH_FUSION baseline data.",
     )
     parser.add_argument(
+        "--flash-fusion-cache-root",
+        default=None,
+        help="Optional override root for FLASH_FUSION_CACHE baseline data.",
+    )
+    parser.add_argument(
         "--react-root",
         default=None,
         help="Optional override root for REACT_ONLY baseline data.",
@@ -806,6 +813,7 @@ def main() -> None:
         roots = _prompt_for_baseline_roots(
             {
                 "flash_fusion": args.flash_fusion_root,
+                "flash_fusion_cache": args.flash_fusion_cache_root,
                 "react": args.react_root,
                 "autoiot": args.autoiot_root,
                 "hargpt": args.hargpt_root,
@@ -813,6 +821,7 @@ def main() -> None:
             }
         )
         args.flash_fusion_root = roots["flash_fusion"]
+        args.flash_fusion_cache_root = roots["flash_fusion_cache"]
         args.react_root = roots["react"]
         args.autoiot_root = roots["autoiot"]
         args.hargpt_root = roots["hargpt"]
@@ -846,6 +855,7 @@ def main() -> None:
 
     configured_roots = {
         "FLASH_FUSION": args.flash_fusion_root,
+        "FLASH_FUSION_CACHE": args.flash_fusion_cache_root,
         "REACT_ONLY": args.react_root,
         "AUTOIOT_PAPER": args.autoiot_root,
         "HARGPT_PAPER": args.hargpt_root,

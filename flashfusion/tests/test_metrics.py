@@ -7,6 +7,7 @@ Run with: pytest flashfusion/tests/test_metrics.py -v
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from flashfusion.config import (
     ACCURACY_FAIL_SCORE,
@@ -355,6 +356,15 @@ def test_aggregate_metrics_includes_flash_fusion_router_telemetry() -> None:
     assert bool(row["ff_planner_used"]) is False
 
 
+def test_aggregate_metrics_includes_cache_grounding_latency() -> None:
+    result = make_result(stage_latency_s={"cache_grounding": 0.25})
+
+    row = aggregate_metrics([result]).iloc[0]
+
+    assert float(row["cache_grounding_latency_s"]) == 0.25
+    assert float(row["cache_grounding_latency_ms"]) == 250.0
+
+
 def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
     df = pd.DataFrame(
         [
@@ -380,3 +390,58 @@ def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
     assert float(out["validation_s"]) == 0.0
     assert float(out["execution_s"]) == 4.0
     assert bool(out["is_estimated"]) is True
+
+
+def test_semantic_stage_frame_includes_cache_grounding() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "baseline": "FLASH_FUSION_CACHE",
+                "dataset": "bus",
+                "run_id": 1,
+                "query_type": "Direct",
+                "latency_s": 1.0,
+                "s1_latency_s": 0.0,
+                "s2_latency_s": 0.0,
+                "s3_latency_s": 0.0,
+                "guardrail_latency_s": 0.0,
+                "cache_grounding_latency_s": 0.75,
+                "typed_exec_latency_s": 0.25,
+                "agent_latency_s": 0.0,
+            }
+        ]
+    )
+
+    out = _semantic_stage_frame(df).iloc[0]
+
+    assert float(out["grounding_s"]) == 0.75
+    assert float(out["execution_s"]) == 0.25
+
+
+def test_semantic_stage_frame_uniformly_allocates_flash_fusion_residual() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "baseline": "FLASH_FUSION_CACHE",
+                "dataset": "bus",
+                "run_id": 1,
+                "query_type": "Direct",
+                "latency_s": 1.4,
+                "s1_latency_s": 0.0,
+                "s2_latency_s": 0.0,
+                "s3_latency_s": 0.0,
+                "guardrail_latency_s": 0.0,
+                "cache_grounding_latency_s": 0.75,
+                "typed_exec_latency_s": 0.25,
+                "agent_latency_s": 0.0,
+            }
+        ]
+    )
+
+    out = _semantic_stage_frame(df).iloc[0]
+
+    assert float(out["grounding_s"]) == pytest.approx(0.85)
+    assert float(out["validation_s"]) == pytest.approx(0.10)
+    assert float(out["planning_s"]) == pytest.approx(0.10)
+    assert float(out["execution_s"]) == pytest.approx(0.35)
+    assert float(out[["grounding_s", "validation_s", "planning_s", "execution_s"]].sum()) == pytest.approx(1.4)

@@ -38,6 +38,7 @@ DATASET_ORDER = ["bus", "wisdm", "ecg"]
 SEMANTIC_STAGE_ORDER = ["Grounding", "Validation", "Planning", "Execution"]
 BASELINE_ORDER = [
     "FLASH_FUSION",
+    "FLASH_FUSION_CACHE",
     "AUTOIOT_PAPER",
     "REACT_ONLY",
     "HARGPT_PAPER",
@@ -46,6 +47,7 @@ BASELINE_ORDER = [
 
 BASELINE_LABELS = {
     "FLASH_FUSION": "Flash-Fusion",
+    "FLASH_FUSION_CACHE": "FF-cache",
     "AUTOIOT_PAPER": "AutoIOT",
     "REACT_ONLY": "ReAct",
     "HARGPT_PAPER": "HARGPT",
@@ -53,11 +55,12 @@ BASELINE_LABELS = {
 }
 
 BASELINE_COLORS = {
-    "FLASH_FUSION": "#2f8f57",
-    "AUTOIOT_PAPER": "#4c78a8",
-    "REACT_ONLY": "#7fba00",
-    "HARGPT_PAPER": "#f58518",
-    "LLMSENSE_PAPER": "#b279a2",
+    "FLASH_FUSION": "#1b9e77",
+    "FLASH_FUSION_CACHE": "#3b82f6",
+    "AUTOIOT_PAPER": "#64748b",
+    "REACT_ONLY": "#f59e0b",
+    "HARGPT_PAPER": "#ef4444",
+    "LLMSENSE_PAPER": "#8b5cf6",
 }
 
 # was "//"
@@ -187,8 +190,6 @@ def load_metrics_from_dataset_root(
         return None
 
     df = pd.read_csv(path)
-    if "run_id" not in df.columns:
-        raise ValueError(f"{path} must contain run_id for multi-run aggregation")
     df["baseline"] = df["baseline"].map(normalize_baseline)
     df = df[df["baseline"] == normalize_baseline(baseline)].copy()
     if df.empty:
@@ -699,7 +700,11 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
         "agent_latency_s",
     ]
     sem = df[base_cols].copy()
-    for col in ("typed_exec_latency_s", "agent_latency_ms"):
+    for col in (
+        "cache_grounding_latency_s",
+        "typed_exec_latency_s",
+        "agent_latency_ms",
+    ):
         if col in df.columns:
             sem[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
         else:
@@ -714,15 +719,32 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
     # Flash-Fusion's typed-operator path collapses S1/S2/S3 to 0 and puts all
     # grounding/validation/planning work inside guardrail_latency_s, so the
     # semantic split has to be estimated from that single column instead.
-    ff_mask = sem["baseline"] == "FLASH_FUSION"
+    # This applies to both FLASH_FUSION and FLASH_FUSION_CACHE since they use
+    # the same underlying architecture. Cache grounding is native telemetry;
+    # any remaining query-scoped overhead is spread uniformly so the four
+    # semantic stages reconcile exactly with latency_s.
+    ff_mask = sem["baseline"].isin(["FLASH_FUSION", "FLASH_FUSION_CACHE"])
     ff_guardrail = sem.loc[ff_mask, "guardrail_latency_s"]
-    sem.loc[ff_mask, "grounding_s"] = ff_guardrail * 0.10
+    ff_cache_grounding = sem.loc[ff_mask, "cache_grounding_latency_s"]
+    sem.loc[ff_mask, "grounding_s"] = ff_guardrail * 0.10 + ff_cache_grounding
     sem.loc[ff_mask, "validation_s"] = ff_guardrail * 0.10
     sem.loc[ff_mask, "planning_s"] = ff_guardrail * 0.80
 
     ff_typed_exec = sem.loc[ff_mask, "typed_exec_latency_s"]
     ff_agent_ms_as_s = sem.loc[ff_mask, "agent_latency_ms"] / 1000.0
     sem.loc[ff_mask, "execution_s"] = ff_typed_exec.where(ff_typed_exec != 0.0, ff_agent_ms_as_s)
+
+    ff_semantic_total = sem.loc[ff_mask, [
+        "grounding_s",
+        "validation_s",
+        "planning_s",
+        "execution_s",
+    ]].sum(axis=1)
+    ff_residual_per_stage = (
+        sem.loc[ff_mask, "latency_s"] - ff_semantic_total
+    ) / 4.0
+    for stage in ("grounding_s", "validation_s", "planning_s", "execution_s"):
+        sem.loc[ff_mask, stage] += ff_residual_per_stage
 
     # ReAct has no grounding/planning phase; treat 10% of its end-to-end
     # latency as validation and the rest as execution.
@@ -803,7 +825,8 @@ def aggregate_semantic_stage_latency_by_query_type(
         parts.append(part)
 
     out = pd.concat(parts, ignore_index=True)
-    out["baseline"] = pd.Categorical(out["baseline"], categories=["FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"], ordered=True)
+    baseline_cats = [b for b in BASELINE_ORDER if b in list(baselines)]
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_cats, ordered=True)
     out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
     out["stage"] = pd.Categorical(out["stage"], categories=list(SEMANTIC_STAGE_ORDER), ordered=True)
     return out.sort_values(["query_type", "baseline", "stage"]).reset_index(drop=True)
@@ -835,7 +858,8 @@ def aggregate_semantic_stage_total_latency_by_query_type(
         .copy()
     )
     out["std"] = out["std"].fillna(0.0)
-    out["baseline"] = pd.Categorical(out["baseline"], categories=["FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"], ordered=True)
+    baseline_cats = [b for b in BASELINE_ORDER if b in list(baselines)]
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_cats, ordered=True)
     out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
     return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 
@@ -889,7 +913,8 @@ def aggregate_semantic_stage_latency_overall(
         parts.append(part)
 
     out = pd.concat(parts, ignore_index=True)
-    out["baseline"] = pd.Categorical(out["baseline"], categories=["FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"], ordered=True)
+    baseline_cats = [b for b in BASELINE_ORDER if b in list(baselines)]
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_cats, ordered=True)
     out["stage"] = pd.Categorical(out["stage"], categories=list(SEMANTIC_STAGE_ORDER), ordered=True)
     return out.sort_values(["baseline", "stage"]).reset_index(drop=True)
 
@@ -916,7 +941,8 @@ def aggregate_latency_by_baseline_query_type(
         .copy()
     )
     out["std"] = out["std"].fillna(0.0)
-    out["baseline"] = pd.Categorical(out["baseline"], categories=["FLASH_FUSION", "AUTOIOT_PAPER", "REACT_ONLY"], ordered=True)
+    baseline_cats = [b for b in BASELINE_ORDER if b in list(baselines)]
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_cats, ordered=True)
     out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
     return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 

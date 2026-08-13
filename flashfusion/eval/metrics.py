@@ -95,6 +95,7 @@ def _canonical_stage_latencies_s(result: RunResult) -> dict[str, float]:
         "s2": float(src.get("s2", 0.0) or 0.0),
         "s3": float(src.get("s3", 0.0) or 0.0),
         "guardrail": guardrail_plan,
+        "cache_grounding": float(src.get("cache_grounding", 0.0) or 0.0),
         "typed_exec": float(src.get("typed_exec", 0.0) or 0.0),
         "agent": float(src.get("agent", 0.0) or 0.0),
     }
@@ -262,12 +263,14 @@ def aggregate_metrics(
                 "s2_latency_s": stage_s["s2"],
                 "s3_latency_s": stage_s["s3"],
                 "guardrail_latency_s": stage_s["guardrail"],
+                "cache_grounding_latency_s": stage_s["cache_grounding"],
                 "typed_exec_latency_s": stage_s["typed_exec"],
                 "agent_latency_s": stage_s["agent"],
                 "s1_latency_ms": stage_s["s1"] * 1000.0,
                 "s2_latency_ms": stage_s["s2"] * 1000.0,
                 "s3_latency_ms": stage_s["s3"] * 1000.0,
                 "guardrail_latency_ms": stage_s["guardrail"] * 1000.0,
+                "cache_grounding_latency_ms": stage_s["cache_grounding"] * 1000.0,
                 "typed_exec_latency_ms": stage_s["typed_exec"] * 1000.0,
                 "agent_latency_ms": stage_s["agent"] * 1000.0,
             }

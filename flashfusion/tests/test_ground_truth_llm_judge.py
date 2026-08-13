@@ -19,7 +19,7 @@ def test_resolve_candidate_code_prefers_final_code():
 
 def test_resolve_candidate_code_prefers_typed_execution_certificate():
     row = {
-        "execution_path": "typed_operator",
+        "execution_path": "typed_operator_cache",
         "typed_execution_certificate": {
             "certificate_status": "ok",
             "typed_plan_sha256": "abc123",
@@ -32,19 +32,39 @@ def test_resolve_candidate_code_prefers_typed_execution_certificate():
         "final_code": "result = broken()",
     }
     resolved = _resolve_candidate_code(row)
-    assert resolved.startswith("TYPED_EXECUTION_CERTIFICATE")
-    assert "abc123" in resolved
+    assert resolved == "result = broken()"
 
 
 def test_resolve_candidate_code_falls_back_to_last_attempt_code():
     row = {
         "final_code": "",
         "execution_attempts": [
-            {"code": "result = 10"},
-            {"code": "result = 20"},
+            {"code": "df = df[df['x'] > 0]"},
+            {"code": "result = len(df)"},
         ],
     }
-    assert _resolve_candidate_code(row) == "result = 20"
+    assert _resolve_candidate_code(row) == "df = df[df['x'] > 0]\nresult = len(df)"
+
+
+def test_resolve_candidate_code_uses_typed_execution_certificate_when_code_missing():
+    row = {
+        "execution_path": "typed_operator_cache",
+        "typed_execution_certificate": {
+            "certificate_status": "ok",
+            "typed_plan_sha256": "abc123",
+            "operators_used": ["FILTER_COMPARE", "COUNT_ROWS"],
+            "rows_scanned": 10,
+            "rows_after_filter": 2,
+            "latency_ms": 5.0,
+            "result": 2,
+            "code": "df = df[df['x'] > 0]\nresult = len(df)",
+        },
+        "final_code": "",
+        "execution_attempts": [],
+    }
+    resolved = _resolve_candidate_code(row)
+    assert resolved.startswith("TYPED_EXECUTION_CERTIFICATE")
+    assert "abc123" in resolved
 
 
 def test_resolve_candidate_code_falls_back_to_trace_action_input():

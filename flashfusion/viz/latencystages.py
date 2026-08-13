@@ -37,7 +37,9 @@ from measure import (
     display_baseline,
 )
 
-TWO_WAY_BASELINES = ["FLASH_FUSION", "REACT_ONLY"]
+FF_AND_CACHE_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE"]
+TWO_WAY_BASELINES = FF_AND_CACHE_BASELINES
+THREE_WAY_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY"]
 
 RC: dict[str, Any] = {
     "font.family": "DejaVu Sans",
@@ -70,8 +72,8 @@ SEMANTIC_STAGE_COLORS = {
     "Execution": "#8d67b8",
 }
 
-SEMANTIC_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
-LATENCY_COMPARE_BASELINES = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
+SEMANTIC_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY", "AUTOIOT_PAPER"]
+LATENCY_COMPARE_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY", "AUTOIOT_PAPER"]
 
 
 def _parse_csv_list(raw: str | None) -> list[str] | None:
@@ -148,6 +150,7 @@ def _prompt_for_baseline_roots(defaults: dict[str, str | None]) -> dict[str, str
     """
     labels = {
         "flash_fusion": "Flash-Fusion",
+        "flash_fusion_cache": "FF-cache",
         "react": "ReAct",
         "autoiot": "AutoIOT",
     }
@@ -394,6 +397,7 @@ def _load_baseline_root(
             "s2_latency_s",
             "s3_latency_s",
             "guardrail_latency_s",
+            "cache_grounding_latency_s",
             "agent_latency_s",
             "typed_exec_latency_s",
             "agent_latency_ms",
@@ -617,15 +621,16 @@ def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
     plt.close(fig)
 
 
-def plot_semantic_stage_comparison_overall_two(summary, out_path: Path) -> None:
-    """Stacked horizontal bar for FLASH_FUSION and REACT_ONLY only, linear x-axis.
+def plot_semantic_stage_comparison_overall_two(summary, out_path: Path, baselines: list[str] | None = None) -> None:
+    """Stacked horizontal bar for a subset of baselines, linear x-axis.
 
-    Same as plot_semantic_stage_comparison_overall but restricted to the two
-    baselines in TWO_WAY_BASELINES (drops AutoIOT).
+    Same as plot_semantic_stage_comparison_overall but restricted to specific
+    baselines. Defaults to TWO_WAY_BASELINES if not specified.
     """
     _apply_rc()
 
-    baselines = TWO_WAY_BASELINES
+    if baselines is None:
+        baselines = TWO_WAY_BASELINES
     y = list(range(len(baselines)))
     left = [0.0 for _ in baselines]
 
@@ -849,6 +854,72 @@ def plot_cumulative_latency_comparison(
     plt.close(fig)
 
 
+def plot_cumulative_latency_comparison_linear(
+    summary,
+    out_path: Path,
+    baselines: list[str] | None = None,
+    query_types: list[str] | None = None,
+) -> None:
+    """Same as plot_cumulative_latency_comparison but with linear x-axis instead of log."""
+    _apply_rc()
+
+    if query_types is None:
+        present_query_types = [
+            str(value)
+            for value in summary["query_type"].dropna().unique().tolist()
+            if str(value) in QUERY_TYPE_ORDER
+        ]
+        qtypes = [qt for qt in QUERY_TYPE_ORDER if qt in present_query_types]
+    else:
+        qtypes = [qt for qt in QUERY_TYPE_ORDER if qt in query_types]
+    baselines = baselines or LATENCY_COMPARE_BASELINES
+    y = list(range(len(qtypes)))
+    width = 0.22
+
+    fig, ax = plt.subplots(figsize=(8.8, 4.6))
+    for i, baseline in enumerate(baselines):
+        vals = []
+        stds = []
+        for qt in qtypes:
+            row = summary[(summary["query_type"] == qt) & (summary["baseline"] == baseline)]
+            vals.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
+            stds.append(float(row["std"].iloc[0]) if not row.empty else 0.0)
+
+        vals_arr = np.asarray(vals, dtype=float)
+        stds_arr = np.asarray(stds, dtype=float)
+        lower = np.minimum(stds_arr, np.maximum(vals_arr, 0.0))
+        bounded_xerr = np.vstack([lower, stds_arr])
+
+        ypos = [p - width + i * width for p in y]
+        ax.barh(
+            ypos,
+            vals,
+            height=width,
+            color=BASELINE_COLORS.get(baseline, "#999999"),
+            edgecolor="#333333",
+            linewidth=0.8,
+            label=display_baseline(baseline),
+            xerr=bounded_xerr,
+            error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+        )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(qtypes)
+    ax.invert_yaxis()
+    ax.set_xlabel("Avg Latency (s)")
+    ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(ncol=2, loc="upper left", bbox_to_anchor=(0.2, -0.18), frameon=False, columnspacing=0.8)
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.27)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate latency-stage figures for July26.")
     script_dir = Path(__file__).resolve().parent
@@ -861,6 +932,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--flash-fusion-root",
         default=None,
         help="Optional override root for FLASH_FUSION baseline data.",
+    )
+    parser.add_argument(
+        "--flash-fusion-cache-root",
+        default=None,
+        help="Optional override root for FLASH_FUSION_CACHE baseline data.",
     )
     parser.add_argument(
         "--react-root",
@@ -900,11 +976,13 @@ def main() -> None:
         roots = _prompt_for_baseline_roots(
             {
                 "flash_fusion": args.flash_fusion_root,
+                "flash_fusion_cache": args.flash_fusion_cache_root,
                 "react": args.react_root,
                 "autoiot": args.autoiot_root,
             }
         )
         args.flash_fusion_root = roots["flash_fusion"]
+        args.flash_fusion_cache_root = roots["flash_fusion_cache"]
         args.react_root = roots["react"]
         args.autoiot_root = roots["autoiot"]
 
@@ -924,6 +1002,7 @@ def main() -> None:
 
     configured_roots = {
         "FLASH_FUSION": args.flash_fusion_root,
+        "FLASH_FUSION_CACHE": args.flash_fusion_cache_root,
         "REACT_ONLY": args.react_root,
         "AUTOIOT_PAPER": args.autoiot_root,
     }
@@ -1028,6 +1107,29 @@ def main() -> None:
     plot_semantic_stage_comparison_overall_two(semantic_overall_two, semantic_overall_two_out)
     semantic_overall_two.to_csv(output_dir / "semantic_stage_comparison_overall_two_n3_summary.csv", index=False)
 
+    semantic_three = aggregate_semantic_stage_latency_by_query_type(df, baselines=THREE_WAY_BASELINES)
+    semantic_three_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=THREE_WAY_BASELINES)
+    semantic_three_out = output_dir / "semantic_stage_latency_comparison_by_baseline_three_n3.png"
+    plot_semantic_stage_comparison(
+        semantic_three,
+        semantic_three_out,
+        baselines=THREE_WAY_BASELINES,
+        query_types=selected_query_types,
+        total_summary=semantic_three_total,
+        log_scale=False,
+    )
+    semantic_three.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_three_n3_summary.csv", index=False)
+
+    semantic_overall_three = aggregate_semantic_stage_latency_overall(df, baselines=THREE_WAY_BASELINES)
+    semantic_overall_three_out = output_dir / "semantic_stage_comparison_overall_three_n3.png"
+    plot_semantic_stage_comparison_overall_two(semantic_overall_three, semantic_overall_three_out, baselines=THREE_WAY_BASELINES)
+    semantic_overall_three.to_csv(output_dir / "semantic_stage_comparison_overall_three_n3_summary.csv", index=False)
+
+    semantic_overall_ff_cache = aggregate_semantic_stage_latency_overall(df, baselines=FF_AND_CACHE_BASELINES)
+    semantic_overall_ff_cache_out = output_dir / "semantic_stage_comparison_overall_ff_cache_n3.png"
+    plot_semantic_stage_comparison_overall_two(semantic_overall_ff_cache, semantic_overall_ff_cache_out, baselines=FF_AND_CACHE_BASELINES)
+    semantic_overall_ff_cache.to_csv(output_dir / "semantic_stage_comparison_overall_ff_cache_n3_summary.csv", index=False)
+
     latency_compare = aggregate_latency_by_baseline_query_type(df, baselines=selected_baselines)
     latency_compare_out = output_dir / "cumulative_latency_comparison_log_by_baseline_n3.png"
     plot_cumulative_latency_comparison(
@@ -1038,13 +1140,38 @@ def main() -> None:
     )
     latency_compare.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_n3_summary.csv", index=False)
 
+    latency_compare_three = aggregate_latency_by_baseline_query_type(df, baselines=THREE_WAY_BASELINES)
+    latency_compare_three_out = output_dir / "cumulative_latency_comparison_log_by_baseline_three_n3.png"
+    plot_cumulative_latency_comparison(
+        latency_compare_three,
+        latency_compare_three_out,
+        baselines=THREE_WAY_BASELINES,
+        query_types=selected_query_types,
+    )
+    latency_compare_three.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_three_n3_summary.csv", index=False)
+
+    latency_compare_ff_cache = aggregate_latency_by_baseline_query_type(df, baselines=FF_AND_CACHE_BASELINES)
+    latency_compare_ff_cache_out = output_dir / "cumulative_latency_comparison_ff_cache_n3.png"
+    plot_cumulative_latency_comparison_linear(
+        latency_compare_ff_cache,
+        latency_compare_ff_cache_out,
+        baselines=FF_AND_CACHE_BASELINES,
+        query_types=selected_query_types,
+    )
+    latency_compare_ff_cache.to_csv(output_dir / "cumulative_latency_comparison_ff_cache_n3_summary.csv", index=False)
+
     print(f"Wrote {ff_out}")
     print(f"Wrote {semantic_out}")
     print(f"Wrote {semantic_two_out}")
+    print(f"Wrote {semantic_three_out}")
     print(f"Wrote {semantic_overall_out}")
     print(f"Wrote {semantic_overall_log_out}")
     print(f"Wrote {semantic_overall_two_out}")
+    print(f"Wrote {semantic_overall_three_out}")
+    print(f"Wrote {semantic_overall_ff_cache_out}")
     print(f"Wrote {latency_compare_out}")
+    print(f"Wrote {latency_compare_three_out}")
+    print(f"Wrote {latency_compare_ff_cache_out}")
 
 
 if __name__ == "__main__":

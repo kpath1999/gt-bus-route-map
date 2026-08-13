@@ -44,7 +44,7 @@
       "llm"
     ],
     "query_id": "14",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
     "query_text_source": "llm_judgments",
     "reasons": [],
     "status": "reusable"
@@ -236,7 +236,7 @@
       "llm"
     ],
     "query_id": "13",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
     "query_text_source": "llm_judgments",
     "reasons": [],
     "status": "reusable"
@@ -1234,7 +1234,7 @@
       "llm"
     ],
     "query_id": "16",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
     "query_text_source": "llm_judgments",
     "reasons": [],
     "status": "reusable"
@@ -1802,7 +1802,7 @@
       "llm"
     ],
     "query_id": "15",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.",
+    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
     "query_text_source": "llm_judgments",
     "reasons": [],
     "status": "reusable"

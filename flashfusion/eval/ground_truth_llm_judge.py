@@ -120,9 +120,39 @@ def _extract_first_json(text: str) -> dict[str, Any]:
 
 def _resolve_candidate_code(row: dict[str, Any]) -> str:
     """Resolve best available generated code from a result row."""
+    final_code = str(row.get("final_code", "")).strip()
+    if final_code:
+        return final_code
+
+    attempts = row.get("execution_attempts", [])
+    if isinstance(attempts, list):
+        # Prefer reconstructing a full multi-step typed chain when available.
+        chain_lines: list[str] = []
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            code_line = str(
+                attempt.get("code")
+                or attempt.get("action_input")
+                or attempt.get("generated_code")
+                or ""
+            ).strip()
+            if code_line:
+                chain_lines.append(code_line)
+        if len(chain_lines) > 1:
+            return "\n".join(chain_lines)
+
+        for attempt in reversed(attempts):
+            if not isinstance(attempt, dict):
+                continue
+            for key in ("code", "generated_code", "final_code", "candidate_code", "action_input"):
+                value = str(attempt.get(key, "")).strip()
+                if value:
+                    return value
+
     cert = row.get("typed_execution_certificate")
     if (
-        str(row.get("execution_path", "")).strip() == "typed_operator"
+        str(row.get("execution_path", "")).strip() in {"typed_operator", "typed_operator_cache"}
         and isinstance(cert, dict)
         and cert.get("certificate_status") == "ok"
     ):
@@ -134,22 +164,9 @@ def _resolve_candidate_code(row: dict[str, Any]) -> str:
             "rows_after_filter": cert.get("rows_after_filter"),
             "latency_ms": cert.get("latency_ms"),
             "result": cert.get("result"),
+            "code": cert.get("code", ""),
         }
         return "TYPED_EXECUTION_CERTIFICATE\n" + json.dumps(payload, ensure_ascii=False)
-
-    final_code = str(row.get("final_code", "")).strip()
-    if final_code:
-        return final_code
-
-    attempts = row.get("execution_attempts", [])
-    if isinstance(attempts, list):
-        for attempt in reversed(attempts):
-            if not isinstance(attempt, dict):
-                continue
-            for key in ("code", "generated_code", "final_code", "candidate_code", "action_input"):
-                value = str(attempt.get(key, "")).strip()
-                if value:
-                    return value
 
     trace = str(row.get("trace", ""))
     if "Action Input:" in trace:

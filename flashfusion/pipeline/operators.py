@@ -657,6 +657,23 @@ def _compare(series: pd.Series, comparator: str, value: Any) -> pd.Series:
     raise PlanExecutionError(f"Unsupported comparator: {comparator!r}")
 
 
+def _comparator_symbol(comparator: str) -> str:
+    match comparator:
+        case "eq":
+            return "=="
+        case "ne":
+            return "!="
+        case "gt":
+            return ">"
+        case "gte":
+            return ">="
+        case "lt":
+            return "<"
+        case "lte":
+            return "<="
+    raise PlanExecutionError(f"Unsupported comparator: {comparator!r}")
+
+
 def _aggregate_series(series: pd.Series, aggregate: str) -> Any:
     match aggregate:
         case "rms":
@@ -1183,9 +1200,10 @@ def _execute_step(step: TypedOperator, state: _State) -> tuple[Any, str]:
             state.working = state.working[
                 _compare(state.working[step.column], step.comparator, value)
             ]
+            symbol = _comparator_symbol(step.comparator)
             return (
                 f"rows={len(state.working)}",
-                f"df = df[df[{step.column!r}] {step.comparator} {value!r}]",
+                f"df = df[df[{step.column!r}] {symbol} {value!r}]",
             )
 
         case FilterIn():
@@ -1740,7 +1758,14 @@ def execute_plan(df: pd.DataFrame, plan: DeterministicPlan) -> PlanExecution:
             return _failure(f"{step.op}: {type(exc).__name__}: {exc}")
 
         steps.append(
-            {"step": index, "op": step.op, "ok": True, "output": str(observation)}
+            {
+                "step": index,
+                "op": step.op,
+                "ok": True,
+                "output": str(observation),
+                "code": code,
+                "action_input": code,
+            }
         )
         code_lines.append(code)
         trace_lines.extend(
