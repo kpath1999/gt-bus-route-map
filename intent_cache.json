@@ -1,0 +1,326 @@
+{
+  "version": 1,
+  "generator": "flashfusion/scripts/key_extraction_match.py",
+  "planner_prefix_sha256": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+  "num_entries": 11,
+  "entries": {
+    "op=FILTER+AGGREGATE|agg=MAX|sig=-|filters=user_id=@{user_id}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=MAX|sig=-|filters=user_id=@{user_id}|groupby=-|rank=-",
+      "sig_id": "e0bec059e6",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "MAX",
+        "signals": [],
+        "filters": [
+          {
+            "field": "user_id",
+            "op": "=",
+            "slot": "user_id"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        1
+      ],
+      "examples": [
+        "What is the maximum recorded x-acceleration for user 15?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+COUNT|agg=COUNT|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-": {
+      "signature": "op=FILTER+COUNT|agg=COUNT|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-",
+      "sig_id": "494b25ded4",
+      "intent": {
+        "operation": "FILTER+COUNT",
+        "aggregate": "COUNT",
+        "signals": [
+          "user_id"
+        ],
+        "filters": [
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        2
+      ],
+      "examples": [
+        "How many users have the activity label walking?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+AGGREGATE|agg=AVG|sig=-|filters=activity=@{activity},user_id=@{user_id}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=AVG|sig=-|filters=activity=@{activity},user_id=@{user_id}|groupby=-|rank=-",
+      "sig_id": "22732bb78f",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "AVG",
+        "signals": [],
+        "filters": [
+          {
+            "field": "user_id",
+            "op": "=",
+            "slot": "user_id"
+          },
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        3
+      ],
+      "examples": [
+        "What is the average y-acceleration of user 5 with activity label Sitting?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=COUNT|agg=COUNT|sig=user_id|filters=-|groupby=-|rank=-": {
+      "signature": "op=COUNT|agg=COUNT|sig=user_id|filters=-|groupby=-|rank=-",
+      "sig_id": "573d4ae362",
+      "intent": {
+        "operation": "COUNT",
+        "aggregate": "COUNT",
+        "signals": [
+          "user_id"
+        ],
+        "filters": [],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        4
+      ],
+      "examples": [
+        "Which user has the highest total number of recorded data samples?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER|agg=-|sig=-|filters=activity=@{activity}|groupby=-|rank=-": {
+      "signature": "op=FILTER|agg=-|sig=-|filters=activity=@{activity}|groupby=-|rank=-",
+      "sig_id": "7c54e5ccb4",
+      "intent": {
+        "operation": "FILTER",
+        "aggregate": null,
+        "signals": [],
+        "filters": [
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        5
+      ],
+      "examples": [
+        "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+AGGREGATE|agg=MAX|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=MAX|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-",
+      "sig_id": "5459883344",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "MAX",
+        "signals": [
+          "user_id"
+        ],
+        "filters": [
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        6
+      ],
+      "examples": [
+        "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+AGGREGATE|agg=MEDIAN|sig=-|filters=activity=@{activity},user_id=@{user_id}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=MEDIAN|sig=-|filters=activity=@{activity},user_id=@{user_id}|groupby=-|rank=-",
+      "sig_id": "b8d5bc5f38",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "MEDIAN",
+        "signals": [],
+        "filters": [
+          {
+            "field": "user_id",
+            "op": "=",
+            "slot": "user_id"
+          },
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        7
+      ],
+      "examples": [
+        "What is the median acceleration magnitude for user 20 with activity label Upstairs?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+AGGREGATE|agg=AVG|sig=-|filters=activity=@{activity}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=AVG|sig=-|filters=activity=@{activity}|groupby=-|rank=-",
+      "sig_id": "ff1f047d99",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "AVG",
+        "signals": [],
+        "filters": [
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        8
+      ],
+      "examples": [
+        "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs."
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=FILTER+AGGREGATE|agg=AVG|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-": {
+      "signature": "op=FILTER+AGGREGATE|agg=AVG|sig=user_id|filters=activity=@{activity}|groupby=-|rank=-",
+      "sig_id": "90db1ae480",
+      "intent": {
+        "operation": "FILTER+AGGREGATE",
+        "aggregate": "AVG",
+        "signals": [
+          "user_id"
+        ],
+        "filters": [
+          {
+            "field": "activity",
+            "op": "=",
+            "slot": "activity"
+          }
+        ],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        9
+      ],
+      "examples": [
+        "How does the average walking speed in miles per hour correlate with the age of the users?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=OUT_OF_SCOPE|agg=-|sig=-|filters=-|groupby=-|rank=-": {
+      "signature": "op=OUT_OF_SCOPE|agg=-|sig=-|filters=-|groupby=-|rank=-",
+      "sig_id": "ec982d02c3",
+      "intent": {
+        "operation": "OUT_OF_SCOPE",
+        "aggregate": null,
+        "signals": [],
+        "filters": [],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": true
+      },
+      "query_ids": [
+        10,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "examples": [
+        "Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",
+        "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
+        "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+        "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+        "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+        "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    },
+    "op=SCAN|agg=-|sig=-|filters=-|groupby=-|rank=-": {
+      "signature": "op=SCAN|agg=-|sig=-|filters=-|groupby=-|rank=-",
+      "sig_id": "30c219cbf9",
+      "intent": {
+        "operation": "SCAN",
+        "aggregate": null,
+        "signals": [],
+        "filters": [],
+        "groupby": null,
+        "rank": null,
+        "orderby": null,
+        "out_of_scope": false
+      },
+      "query_ids": [
+        11
+      ],
+      "examples": [
+        "Are female subjects more likely to have a higher cadence during stair climbing than male subjects?"
+      ],
+      "skeleton": null,
+      "source": "offline_build"
+    }
+  }
+}

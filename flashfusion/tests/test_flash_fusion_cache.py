@@ -370,3 +370,120 @@ def test_shipped_registry_entries_are_wellformed() -> None:
         if e.get("status") == "reusable" and e.get("operator_skeleton")
     ]
     assert len(reusable) == len(set(reusable)), "duplicate (dataset, query_text) cache keys"
+
+
+@pytest.fixture
+def semantic_registry(tmp_path: Path) -> Path:
+    path = tmp_path / "semantic_registry.json"
+    payload = {
+        "semantic_1": {
+            "template_id": "tmpl-bus-count-gt",
+            "dataset": "bus",
+            "status": "reusable",
+            "operator_skeleton": SKELETON,
+            "operator_contract_hash": "contract-1",
+            "semantic_signature": {
+                "aggregate": "count",
+                "fields": ["accel_variance"],
+                "predicate_ops": {"accel_variance": "gt"},
+                "output_shape": "scalar",
+            },
+        }
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_semantic_hit_on_exact_miss_uses_existing_grounding_path(
+    df, registry, semantic_registry, no_fallback
+) -> None:
+    client = _FakeClient(json.dumps(GOOD_PLAN))
+    paraphrase = "Count rows with accel_variance > 0.20"
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        paraphrase,
+        df,
+        client,
+        dataset="bus",
+        cache_path=registry,
+        semantic_cache_path=semantic_registry,
+        trace=trace,
+    )
+
+    assert result.executed is True
+    assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+    assert result.plan_source == "semantic_cache_light_grounded"
+    assert trace.lookup_status == "semantic_cache_hit"
+    assert trace.semantic_match_evidence is not None
+    assert trace.semantic_match_evidence["candidate_ids_considered"]
+    assert trace.semantic_match_evidence["abstention_reason"] == ""
+
+
+def test_semantic_aggregate_mismatch_abstains_before_light_call(
+    df, registry, tmp_path, fallback_spy
+) -> None:
+    semantic_path = tmp_path / "semantic_registry_min.json"
+    semantic_path.write_text(
+        json.dumps(
+            {
+                "entry": {
+                    "template_id": "tmpl-bus-min",
+                    "dataset": "bus",
+                    "status": "reusable",
+                    "operator_skeleton": ["FILTER_COMPARE", "AGGREGATE_COLUMN"],
+                    "operator_contract_hash": "contract-1",
+                    "semantic_signature": {
+                        "aggregate": "min",
+                        "fields": ["accel_variance"],
+                        "predicate_ops": {"accel_variance": "gt"},
+                        "output_shape": "scalar",
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    # If semantic gates fail early, no light-model prompt should be sent.
+    client = _FakeClient(json.dumps(GOOD_PLAN))
+    query = "What is the median accel_variance where accel_variance > 0.20?"
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        query,
+        df,
+        client,
+        dataset="bus",
+        cache_path=registry,
+        semantic_cache_path=semantic_path,
+        trace=trace,
+    )
+
+    assert len(fallback_spy) == 1
+    assert "semantic:" in result.deterministic_fallback_reason
+    assert trace.semantic_match_evidence is not None
+    assert trace.semantic_match_evidence["abstention_reason"] == "semantic_gate_reject_all"
+    # No prompt means we abstained before invoking light grounding.
+    assert client.light.prompts == []
+
+
+def test_exact_hit_still_short_circuits_semantic_extraction(
+    df, registry, semantic_registry, no_fallback, monkeypatch
+) -> None:
+    def _boom(*args, **kwargs):
+        raise AssertionError("semantic extractor should not run on exact cache hit")
+
+    monkeypatch.setattr(ffc, "_extract_semantic_signature", _boom)
+    client = _FakeClient(json.dumps(GOOD_PLAN))
+
+    result = ffc.run_flash_fusion_cache(
+        QUERY,
+        df,
+        client,
+        dataset="bus",
+        cache_path=registry,
+        semantic_cache_path=semantic_registry,
+    )
+
+    assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+    assert result.plan_source == "exact_query_cache_light_grounded"

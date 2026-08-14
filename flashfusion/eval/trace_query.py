@@ -33,6 +33,10 @@ Usage:
     # the cached operator skeleton on an exact-query cache hit
     python -m flashfusion.eval.trace_query --dataset bus --query-id 4 --cache
 
+    # Run reworded queries (v2/v3) against semantic cache built offline
+    python -m flashfusion.eval.trace_query --dataset bus --query-id 4 --cache \
+        --query-version v2 --semantic-cache-path flashfusion/eval/cache/semantic_registry_bus_v1.json
+
 Environment:
     OPENROUTER_API_KEY — preferred; GROQ_API_KEY accepted during transition.
 """
@@ -48,7 +52,9 @@ from typing import Any
 from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.benchmark import DEFAULT_DATA_PATHS, DEFAULT_GROUND_TRUTH_PATHS
 from flashfusion.eval.ground_truth import load_ground_truth
-from flashfusion.eval.queries import SUPPORTED_DATASETS, get_queries
+from flashfusion.eval import queries as queries_v1
+from flashfusion.eval import queries_v2, queries_v3
+from flashfusion.eval.queries import SUPPORTED_DATASETS
 from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.operator_router import ALL_OPERATOR_NAMES
@@ -70,17 +76,27 @@ def _resolve_api_key() -> str:
 
 
 def _find_query(dataset: str, query_id: int) -> dict:
-    defs = get_queries(dataset)
+    defs = _get_queries_by_version(dataset, "v1")
     for q in defs:
         if q["id"] == query_id:
             return q
     raise SystemExit(f"Query id {query_id} not found for dataset {dataset!r} (have {[d['id'] for d in defs]})")
 
 
-def _parse_query_ids(query_id_arg: str, dataset: str) -> list[int]:
+def _get_queries_by_version(dataset: str, version: str) -> list[dict]:
+    if version == "v1":
+        return queries_v1.get_queries(dataset)
+    if version == "v2":
+        return queries_v2.get_queries(dataset)
+    if version == "v3":
+        return queries_v3.get_queries(dataset)
+    raise ValueError(f"Unsupported query version {version!r}; expected one of v1,v2,v3")
+
+
+def _parse_query_ids(query_id_arg: str, dataset: str, version: str) -> list[int]:
     """Parse comma-separated query IDs or 'all' into a list of integer IDs."""
     if query_id_arg.lower() == "all":
-        return [q["id"] for q in get_queries(dataset)]
+        return [q["id"] for q in _get_queries_by_version(dataset, version)]
     try:
         return [int(x.strip()) for x in query_id_arg.split(",") if x.strip()]
     except ValueError:
@@ -170,6 +186,15 @@ def _print_summary_table(results: list[tuple[int, RunResult, Any]]) -> None:
     for source, count in sorted(by_source.items()):
         pct = 100.0 * count / total
         print(f"  {source:<25} {count:>3} ({pct:>5.1f}%)")
+
+    exact_hits = by_source.get("exact_query_cache_light_grounded", 0)
+    semantic_hits = by_source.get("semantic_cache_light_grounded", 0)
+    cache_hits = exact_hits + semantic_hits
+    if cache_hits:
+        print("\nCache hit breakdown:")
+        print(f"  exact cache hits         {exact_hits:>3}")
+        print(f"  semantic cache hits      {semantic_hits:>3}")
+        print(f"  total cache hits         {cache_hits:>3} ({100.0 * cache_hits / total:>5.1f}%)")
     
     if gate_failures:
         print("\nValidation failures (fallback triggers):")
@@ -210,6 +235,12 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--dataset", required=True, choices=SUPPORTED_DATASETS)
     p.add_argument(
+        "--query-version",
+        default="v1",
+        choices=("v1", "v2", "v3"),
+        help="Which query wording set to run: v1 (original), v2, or v3 reworded variants.",
+    )
+    p.add_argument(
         "--query-id", 
         required=True, 
         type=str, 
@@ -249,6 +280,14 @@ def parse_args() -> argparse.Namespace:
         help="Override the cache registry path used by --cache",
     )
     p.add_argument(
+        "--semantic-cache-path",
+        default=None,
+        help=(
+            "Optional semantic cache registry used after exact cache miss. "
+            "Useful when running reworded query versions."
+        ),
+    )
+    p.add_argument(
         "--progress",
         action="store_true",
         help="Stream progress updates during execution (useful for diagnosing stalls)",
@@ -281,6 +320,7 @@ def _run_cache_traced(query_text: str, df, client: LLMClient, args):
         r,
         dataset=args.dataset,
         cache_path=args.cache_path or DEFAULT_CACHE_PATH,
+        semantic_cache_path=args.semantic_cache_path,
         trace=cache_trace,
     )
     r.latency_s = time.time() - t0 - r.stage_latency_s.get("column_metadata", 0.0)
@@ -325,6 +365,9 @@ def _print_cache_trace(t) -> None:
     else:
         print("✗ CACHE NOT USED — falling back to the full Flash-Fusion planner")
         print(f"  reason: {t.failure_reason or t.lookup_status or '(unknown)'}")
+    if t.semantic_match_evidence:
+        _hr("SEMANTIC MATCH EVIDENCE")
+        print(json.dumps(t.semantic_match_evidence, indent=2))
 
 
 def trace_single_query(
@@ -516,11 +559,16 @@ def main() -> None:
     data_path = args.data or DEFAULT_DATA_PATHS[args.dataset]
     gt_path = args.ground_truth or DEFAULT_GROUND_TRUTH_PATHS[args.dataset]
 
-    query_ids = _parse_query_ids(args.query_id, args.dataset)
+    query_ids = _parse_query_ids(args.query_id, args.dataset, args.query_version)
     multi_query_mode = len(query_ids) > 1
+    query_defs = _get_queries_by_version(args.dataset, args.query_version)
 
     if multi_query_mode:
-        print(f"Tracing {len(query_ids)} queries from dataset '{args.dataset}'", file=sys.stderr)
+        print(
+            f"Tracing {len(query_ids)} queries from dataset '{args.dataset}' "
+            f"using query_version={args.query_version}",
+            file=sys.stderr,
+        )
     
     ground_truth_by_id = load_ground_truth(gt_path)
 
@@ -550,7 +598,9 @@ def main() -> None:
     if args.cache:
         print(
             f"Mode: FLASH_FUSION_CACHE | Cache grounding (client.light) = {s12_model!r}   "
-            f"|   Fallback planner (client) = {client.model_name!r}",
+            f"|   Fallback planner (client) = {client.model_name!r}   "
+            f"|   query_version={args.query_version}   "
+            f"|   semantic_cache_path={args.semantic_cache_path or '(none)'}",
             file=sys.stderr,
         )
     elif args.react:
@@ -567,7 +617,9 @@ def main() -> None:
     # Execute queries
     results = []
     for query_id in query_ids:
-        query_def = _find_query(args.dataset, query_id)
+        query_def = next((q for q in query_defs if q["id"] == query_id), None)
+        if query_def is None:
+            raise SystemExit(f"Query id {query_id} not found for dataset={args.dataset} version={args.query_version}")
         gt_entry = ground_truth_by_id.get(query_id)
         
         if multi_query_mode:

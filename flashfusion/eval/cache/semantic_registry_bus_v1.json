@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "dataset": "bus",
+  "query_version": "v1",
+  "count": 12,
+  "entries": {
+    "bus:14:v1": {
+      "template_id": "bus:14:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "14",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "out_of_scope",
+        "confidence": 0.95,
+        "aggregate": null,
+        "fields": [],
+        "predicate_ops": {},
+        "output_shape": "unknown"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:2:v1": {
+      "template_id": "bus:2:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "2",
+      "query_text": "What is the average accel_mean across all recorded samples?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "mean",
+        "fields": [
+          "accel_mean"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:13:v1": {
+      "template_id": "bus:13:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "13",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "out_of_scope",
+        "confidence": 0.95,
+        "aggregate": null,
+        "fields": [],
+        "predicate_ops": {},
+        "output_shape": "unknown"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:5:v1": {
+      "template_id": "bus:5:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "5",
+      "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "SPLIT_BY_THRESHOLD",
+        "SPLIT_BY_THRESHOLD",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "median",
+        "fields": [
+          "latitude"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:8:v1": {
+      "template_id": "bus:8:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "8",
+      "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "max",
+        "fields": [
+          "instability_score"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:1:v1": {
+      "template_id": "bus:1:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "1",
+      "query_text": "What is the maximum accel_variance observed in this dataset?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "max",
+        "fields": [
+          "accel_variance"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:4:v1": {
+      "template_id": "bus:4:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "4",
+      "query_text": "How many data samples show an accel_variance strictly greater than 0.20?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "count",
+        "fields": [
+          "accel_variance"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:16:v1": {
+      "template_id": "bus:16:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "16",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "out_of_scope",
+        "confidence": 0.95,
+        "aggregate": null,
+        "fields": [],
+        "predicate_ops": {},
+        "output_shape": "unknown"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:7:v1": {
+      "template_id": "bus:7:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "7",
+      "query_text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "DERIVE_VECTOR_MAGNITUDE",
+        "AGGREGATE_COLUMN"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "max",
+        "fields": [],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:3:v1": {
+      "template_id": "bus:3:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "3",
+      "query_text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "FILTER_EQ_AGGREGATE",
+        "SELECT_COLUMN"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "max",
+        "fields": [
+          "accel_stats_z_p99"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:15:v1": {
+      "template_id": "bus:15:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "15",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "out_of_scope",
+        "confidence": 0.95,
+        "aggregate": null,
+        "fields": [],
+        "predicate_ops": {},
+        "output_shape": "unknown"
+      },
+      "source": "offline_semantic_registry_build"
+    },
+    "bus:6:v1": {
+      "template_id": "bus:6:v1",
+      "dataset": "bus",
+      "status": "reusable",
+      "query_id": "6",
+      "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "query_version": "v1",
+      "operator_skeleton": [
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "schema_fingerprint": null,
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "confidence": 0.85,
+        "aggregate": "max",
+        "fields": [
+          "latitude",
+          "longitude"
+        ],
+        "predicate_ops": {},
+        "output_shape": "scalar"
+      },
+      "source": "offline_semantic_registry_build"
+    }
+  }
+}

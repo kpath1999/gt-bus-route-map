@@ -208,6 +208,7 @@ class CacheGroundingTrace:
     hit: bool = False
     failure_reason: str = ""
     fell_back: bool = False
+    semantic_match_evidence: dict[str, Any] | None = None
 
 
 def _record(trace: CacheGroundingTrace | None, **fields: Any) -> None:
@@ -236,6 +237,8 @@ def _load_entries(cache_path: str | Path) -> list[dict[str, Any]]:
         raw = json.load(f)
     if isinstance(raw, dict) and isinstance(raw.get("entries"), list):
         candidates: Iterable[Any] = raw["entries"]
+    elif isinstance(raw, dict) and isinstance(raw.get("entries"), dict):
+        candidates = raw["entries"].values()
     elif isinstance(raw, dict):
         candidates = raw.values()
     elif isinstance(raw, list):
@@ -281,6 +284,281 @@ def _find_exact_entry(
     if not isinstance(skeleton, list) or not skeleton or not all(isinstance(x, str) for x in skeleton):
         return None, "invalid_or_empty_operator_skeleton"
     return matches[0], "exact_cache_hit"
+
+
+def _detect_aggregate(query_lc: str) -> str | None:
+    if re.search(r"\b(median)\b", query_lc):
+        return "median"
+    if re.search(r"\b(min|minimum|smallest|lowest|least)\b", query_lc):
+        return "min"
+    if re.search(r"\b(max|maximum|largest|highest|greatest|peak)\b", query_lc):
+        return "max"
+    if re.search(r"\b(mean|average)\b", query_lc):
+        return "mean"
+    if re.search(r"\b(sum|total)\b", query_lc):
+        return "sum"
+    if re.search(r"\b(how many|count|number of)\b", query_lc):
+        return "count"
+    return None
+
+
+def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
+    """Extract a conservative schema-aware semantic signature for pre-grounding gates.
+
+    This is intentionally minimal and abstain-first. It only emits fields when
+    they are directly supported by query text and live schema headers.
+    """
+    query_lc = query.lower()
+    if any(marker in query_lc for marker in ("predict", "geographic location", "location where")):
+        return {
+            "admissibility": "out_of_scope",
+            "confidence": 0.95,
+            "aggregate": None,
+            "fields": [],
+            "predicate_ops": {},
+            "output_shape": "unknown",
+        }
+
+    columns = [str(c) for c in df.columns]
+    fields = [c for c in columns if re.search(rf"\b{re.escape(c.lower())}\b", query_lc)]
+    predicate_ops: dict[str, str] = {}
+    for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\s*(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)", query_lc):
+        col = m.group(1)
+        if col not in [c.lower() for c in columns]:
+            continue
+        op = m.group(2)
+        predicate_ops[col] = {
+            ">": "gt",
+            ">=": "gte",
+            "<": "lt",
+            "<=": "lte",
+            "=": "eq",
+        }[op]
+
+    for key_col in ("record_id", "user_id", "subject_id"):
+        if key_col in [c.lower() for c in columns] and re.search(rf"\b{key_col}\s*(?:=|is)?\s*\d+\b", query_lc):
+            predicate_ops.setdefault(key_col, "eq")
+
+    aggregate = _detect_aggregate(query_lc)
+    output_shape = "scalar" if aggregate is not None else "unknown"
+    admissibility = "in_scope" if aggregate or fields or predicate_ops else "unknown"
+    confidence = 0.85 if admissibility == "in_scope" else 0.4
+    return {
+        "admissibility": admissibility,
+        "confidence": confidence,
+        "aggregate": aggregate,
+        "fields": sorted(set(fields)),
+        "predicate_ops": predicate_ops,
+        "output_shape": output_shape,
+    }
+
+
+def extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
+    """Public wrapper used by offline tooling to mirror runtime extraction."""
+    return _extract_semantic_signature(query, df)
+
+
+def _candidate_id(entry: dict[str, Any], index: int) -> str:
+    raw = entry.get("sig_id") or entry.get("template_id") or entry.get("signature")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return f"candidate_{index}"
+
+
+def _semantic_entry_matches(
+    extracted: dict[str, Any],
+    entry: dict[str, Any],
+    expected_operator_contract_hash: str | None,
+    live_schema_fingerprint: str,
+) -> tuple[bool, dict[str, Any], str | None]:
+    """Run hard compatibility gates before invoking the light model."""
+    gates: dict[str, Any] = {}
+
+    skeleton = entry.get("operator_skeleton")
+    gates["has_operator_skeleton"] = isinstance(skeleton, list) and bool(skeleton)
+    if not gates["has_operator_skeleton"]:
+        return False, gates, "invalid_or_empty_operator_skeleton"
+
+    if expected_operator_contract_hash:
+        gates["operator_contract_hash"] = entry.get("operator_contract_hash") == expected_operator_contract_hash
+        if not gates["operator_contract_hash"]:
+            return False, gates, "operator_contract_hash_mismatch"
+
+    cached_schema_fingerprint = entry.get("schema_fingerprint")
+    gates["schema_fingerprint"] = (
+        True
+        if not cached_schema_fingerprint
+        else cached_schema_fingerprint == live_schema_fingerprint
+    )
+    if not gates["schema_fingerprint"]:
+        return False, gates, "schema_fingerprint_mismatch"
+
+    sig = entry.get("semantic_signature") or {}
+    if not isinstance(sig, dict):
+        return False, gates, "missing_semantic_signature"
+
+    cand_agg = sig.get("aggregate")
+    if cand_agg is not None:
+        gates["aggregate"] = extracted.get("aggregate") == cand_agg
+        if not gates["aggregate"]:
+            return False, gates, f"aggregate_mismatch: template={cand_agg}, live={extracted.get('aggregate')}"
+
+    cand_output = sig.get("output_shape")
+    if cand_output is not None:
+        gates["output_shape"] = extracted.get("output_shape") == cand_output
+        if not gates["output_shape"]:
+            return False, gates, f"output_shape_mismatch: template={cand_output}, live={extracted.get('output_shape')}"
+
+    cand_fields = sig.get("fields")
+    if isinstance(cand_fields, list) and cand_fields:
+        extracted_fields = {str(x).lower() for x in extracted.get("fields") or []}
+        template_fields = {str(x).lower() for x in cand_fields}
+        gates["fields"] = template_fields.issubset(extracted_fields)
+        if not gates["fields"]:
+            return False, gates, "field_mismatch"
+
+    cand_predicate_ops = sig.get("predicate_ops")
+    if isinstance(cand_predicate_ops, dict) and cand_predicate_ops:
+        live_ops = {str(k).lower(): str(v) for k, v in (extracted.get("predicate_ops") or {}).items()}
+        for field_name, expected_op in cand_predicate_ops.items():
+            key = str(field_name).lower()
+            gates[f"predicate_op:{key}"] = live_ops.get(key) == expected_op
+            if not gates[f"predicate_op:{key}"]:
+                return False, gates, (
+                    f"predicate_op_mismatch:{key}:template={expected_op},live={live_ops.get(key)}"
+                )
+
+    return True, gates, None
+
+
+def _find_semantic_entry(
+    entries: Iterable[dict[str, Any]],
+    query: str,
+    dataset: str | None,
+    df: pd.DataFrame,
+    expected_operator_contract_hash: str | None,
+) -> tuple[dict[str, Any] | None, str, dict[str, Any]]:
+    wanted = canonical_dataset(dataset)
+    extracted = _extract_semantic_signature(query, df)
+    evidence: dict[str, Any] = {
+        "extracted_signature": extracted,
+        "candidate_ids_considered": [],
+        "hard_gate_results": {},
+        "extraction_confidence": extracted.get("confidence"),
+        "abstention_reason": "",
+    }
+
+    if extracted.get("admissibility") in {"out_of_scope", "ambiguous", "unknown"}:
+        reason = f"admissibility_{extracted.get('admissibility')}"
+        evidence["abstention_reason"] = reason
+        return None, reason, evidence
+
+    live_schema_fp = _schema_fingerprint(df)
+    candidates = [
+        entry
+        for entry in entries
+        if entry.get("status") == "reusable"
+        and (wanted is None or canonical_dataset(entry.get("dataset")) == wanted)
+        and isinstance(entry.get("operator_skeleton"), list)
+        and entry.get("semantic_signature") is not None
+    ]
+    if not candidates:
+        evidence["abstention_reason"] = "semantic_no_candidates"
+        return None, "semantic_no_candidates", evidence
+
+    for index, entry in enumerate(candidates, start=1):
+        cid = _candidate_id(entry, index)
+        evidence["candidate_ids_considered"].append(cid)
+        ok, gates, reason = _semantic_entry_matches(
+            extracted,
+            entry,
+            expected_operator_contract_hash,
+            live_schema_fp,
+        )
+        evidence["hard_gate_results"][cid] = {"ok": ok, "gates": gates, "reason": reason}
+        if ok:
+            evidence["abstention_reason"] = ""
+            return entry, "semantic_cache_hit", evidence
+
+    evidence["abstention_reason"] = "semantic_gate_reject_all"
+    return None, "semantic_gate_reject_all", evidence
+
+
+def _execute_grounded_cache_entry(
+    *,
+    query: str,
+    df: pd.DataFrame,
+    client: LLMClient,
+    result: RunResult,
+    trace: CacheGroundingTrace | None,
+    entry: dict[str, Any],
+    stage_hit: str,
+    plan_source: str,
+    stage_latency: dict[str, float],
+    started: float,
+) -> RunResult:
+    _record(trace, operator_skeleton=list(entry["operator_skeleton"]))
+    _append_stage(result, stage_hit)
+    _append_stage(result, "cache_light_grounding")
+    prompt = _grounding_prompt(query, entry, df)
+    _record(trace, prompt=prompt)
+    grounding_started = time.perf_counter()
+    try:
+        raw_plan = _invoke_light_for_plan(client, prompt, trace)
+    finally:
+        stage_latency["cache_grounding"] += time.perf_counter() - grounding_started
+    raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
+    plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
+    _append_stage(result, "cache_plan_validated")
+    _record(trace, validated_plan=plan.model_dump(mode="json"))
+
+    execution_started = time.perf_counter()
+    execution = execute_plan(df, plan)
+    stage_latency["typed_exec"] += time.perf_counter() - execution_started
+    if not execution.ok:
+        raise PlanExecutionError(execution.error or "typed execution failed")
+    _append_stage(result, "typed_exec")
+    _record(trace, executed_value=execution.value, hit=True)
+
+    answer = _format_typed_execution_value(execution.value)
+    _set_if_present(result, "answer", answer)
+    _set_if_present(result, "raw_answer", str(execution.value))
+    _set_if_present(result, "executed_value", execution.value)
+    _set_if_present(result, "executed", True)
+    _set_if_present(result, "rejected", False)
+    _set_if_present(result, "execution_path", PATH_TYPED_OPERATOR_CACHE)
+    _set_if_present(result, "plan_validation_stage_failed", "")
+    _set_if_present(result, "plan_source", plan_source)
+    _set_if_present(result, "typed_plan", plan.model_dump(mode="json"))
+    _set_if_present(result, "typed_plan_sha256", typed_plan_digest(plan))
+    _set_if_present(result, "operators_used", list(plan.operators_used))
+    _set_if_present(result, "agent_tries", len(execution.steps))
+    _set_if_present(result, "execution_attempts", list(execution.steps))
+    _set_if_present(
+        result,
+        "typed_execution_certificate",
+        {
+            "certificate_status": "ok",
+            "execution_path": PATH_TYPED_OPERATOR_CACHE,
+            "typed_plan_sha256": typed_plan_digest(plan),
+            "operators_used": list(execution.operators_used),
+            "rows_scanned": execution.rows_scanned,
+            "rows_after_filter": execution.rows_after_filter,
+            "cache_query_text": entry.get("query_text", ""),
+            "cache_dataset": entry.get("dataset", ""),
+            "result": execution.value,
+            "code": execution.code,
+        },
+    )
+    _set_if_present(
+        result,
+        "trace",
+        "Cache hit: light model grounded cached skeleton; validated typed execution.\n"
+        + (execution.trace or ""),
+    )
+    _set_if_present(result, "final_code", execution.code)
+    _set_if_present(result, "latency_s", time.perf_counter() - started)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -623,6 +901,7 @@ def run_flash_fusion_cache(
     *,
     dataset: str | None = None,
     cache_path: str | Path = DEFAULT_CACHE_PATH,
+    semantic_cache_path: str | Path | None = None,
     expected_operator_contract_hash: str | None = None,
     trace: CacheGroundingTrace | None = None,
     **flash_fusion_kwargs: Any,
@@ -653,6 +932,27 @@ def run_flash_fusion_cache(
         entries = _load_entries(cache_path)
         entry, lookup_status = _find_exact_entry(entries, query, dataset)
         _record(trace, lookup_status=lookup_status, entry=entry)
+
+        if entry is None and semantic_cache_path is not None:
+            semantic_entries = _load_entries(semantic_cache_path)
+            semantic_entry, semantic_status, semantic_evidence = _find_semantic_entry(
+                semantic_entries,
+                query,
+                dataset,
+                df,
+                expected_operator_contract_hash,
+            )
+            _record(
+                trace,
+                semantic_match_evidence=semantic_evidence,
+            )
+            if semantic_entry is not None:
+                entry = semantic_entry
+                lookup_status = semantic_status
+                _record(trace, lookup_status=lookup_status, entry=entry)
+            else:
+                raise LookupError(f"semantic: {semantic_status}")
+
         if entry is None:
             raise LookupError(lookup_status)
 
@@ -684,83 +984,41 @@ def run_flash_fusion_cache(
             _set_if_present(result, "latency_s", time.perf_counter() - started)
             return result
 
-        _record(trace, operator_skeleton=list(entry["operator_skeleton"]))
-
-        cached_contract_hash = entry.get("operator_contract_hash")
-        if expected_operator_contract_hash and cached_contract_hash != expected_operator_contract_hash:
-            raise LookupError("operator_contract_hash_mismatch")
-        cached_schema_fingerprint = entry.get("schema_fingerprint")
-        if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
-            raise LookupError("schema_fingerprint_mismatch")
-
-        _append_stage(result, "exact_cache_hit")
-        _append_stage(result, "cache_light_grounding")
-        prompt = _grounding_prompt(query, entry, df)
-        _record(trace, prompt=prompt)
-        grounding_started = time.perf_counter()
-        try:
-            raw_plan = _invoke_light_for_plan(client, prompt, trace)
-        finally:
-            stage_latency["cache_grounding"] += (
-                time.perf_counter() - grounding_started
+        if lookup_status == "exact_cache_hit":
+            cached_contract_hash = entry.get("operator_contract_hash")
+            if expected_operator_contract_hash and cached_contract_hash != expected_operator_contract_hash:
+                raise LookupError("operator_contract_hash_mismatch")
+            cached_schema_fingerprint = entry.get("schema_fingerprint")
+            if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
+                raise LookupError("schema_fingerprint_mismatch")
+            return _execute_grounded_cache_entry(
+                query=query,
+                df=df,
+                client=client,
+                result=result,
+                trace=trace,
+                entry=entry,
+                stage_hit="exact_cache_hit",
+                plan_source="exact_query_cache_light_grounded",
+                stage_latency=stage_latency,
+                started=started,
             )
-        raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
-        plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
-        _append_stage(result, "cache_plan_validated")
-        _record(trace, validated_plan=plan.model_dump(mode="json"))
 
-        execution_started = time.perf_counter()
-        execution = execute_plan(df, plan)
-        stage_latency["typed_exec"] += time.perf_counter() - execution_started
-        if not execution.ok:
-            # A validated plan that still fails at execution is a real coverage
-            # gap, not a cache answer — hand it to the full planner.
-            raise PlanExecutionError(execution.error or "typed execution failed")
-        _append_stage(result, "typed_exec")
-        _record(trace, executed_value=execution.value, hit=True)
+        if lookup_status == "semantic_cache_hit":
+            return _execute_grounded_cache_entry(
+                query=query,
+                df=df,
+                client=client,
+                result=result,
+                trace=trace,
+                entry=entry,
+                stage_hit="semantic_cache_hit",
+                plan_source="semantic_cache_light_grounded",
+                stage_latency=stage_latency,
+                started=started,
+            )
 
-        answer = _format_typed_execution_value(execution.value)
-        _set_if_present(result, "answer", answer)
-        _set_if_present(result, "raw_answer", str(execution.value))
-        _set_if_present(result, "executed_value", execution.value)
-        _set_if_present(result, "executed", True)
-        _set_if_present(result, "rejected", False)
-        _set_if_present(result, "execution_path", PATH_TYPED_OPERATOR_CACHE)
-        _set_if_present(result, "plan_validation_stage_failed", "")
-        _set_if_present(result, "plan_source", "exact_query_cache_light_grounded")
-        _set_if_present(result, "typed_plan", plan.model_dump(mode="json"))
-        _set_if_present(result, "typed_plan_sha256", typed_plan_digest(plan))
-        _set_if_present(result, "operators_used", list(plan.operators_used))
-        _set_if_present(result, "agent_tries", len(execution.steps))
-        _set_if_present(result, "execution_attempts", list(execution.steps))
-        _set_if_present(
-            result,
-            "typed_execution_certificate",
-            {
-                "certificate_status": "ok",
-                "execution_path": PATH_TYPED_OPERATOR_CACHE,
-                "typed_plan_sha256": typed_plan_digest(plan),
-                "operators_used": list(execution.operators_used),
-                "rows_scanned": execution.rows_scanned,
-                "rows_after_filter": execution.rows_after_filter,
-                "cache_query_text": entry.get("query_text", ""),
-                "cache_dataset": entry.get("dataset", ""),
-                "result": execution.value,
-                "code": execution.code,
-            },
-        )
-        _set_if_present(
-            result,
-            "trace",
-            "Cache hit: exact query text; light model grounded cached skeleton; "
-            "validated typed execution.\n" + (execution.trace or ""),
-        )
-        # Preserve full typed operator chain as a shared provenance artifact for
-        # logs, raw_results.jsonl, and downstream judging.
-        _set_if_present(result, "final_code", execution.code)
-        elapsed = time.perf_counter() - started
-        _set_if_present(result, "latency_s", elapsed)
-        return result
+        raise LookupError(f"unsupported_lookup_status:{lookup_status}")
 
     except (
         OSError,
