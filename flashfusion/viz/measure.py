@@ -650,6 +650,116 @@ def aggregate_cost_by_query_type(df: pd.DataFrame, scale: float = 1e5) -> pd.Dat
     return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 
 
+def aggregate_cache_hit_rate_by_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate FF-cache hit/miss percentages by dataset.
+
+    Percentages are computed per (dataset, run_id) from cache-hit/cache-miss
+    variant rows, then averaged across runs.
+    """
+    cache_rows = df[df["baseline"].isin(CACHE_BASELINE_VARIANTS)].copy()
+    if cache_rows.empty:
+        return pd.DataFrame(columns=["dataset", "outcome", "mean", "std", "n_runs"])
+
+    per_run = (
+        cache_rows.groupby(["dataset", "run_id", "baseline"], as_index=False, observed=True)
+        .size()
+        .pivot_table(
+            index=["dataset", "run_id"],
+            columns="baseline",
+            values="size",
+            fill_value=0,
+            observed=True,
+        )
+        .reset_index()
+    )
+
+    per_run[CACHE_HIT_BASELINE] = per_run.get(CACHE_HIT_BASELINE, 0)
+    per_run[CACHE_MISS_BASELINE] = per_run.get(CACHE_MISS_BASELINE, 0)
+    denom = per_run[CACHE_HIT_BASELINE] + per_run[CACHE_MISS_BASELINE]
+    nonzero = denom > 0
+    per_run = per_run.loc[nonzero].copy()
+    if per_run.empty:
+        return pd.DataFrame(columns=["dataset", "outcome", "mean", "std", "n_runs"])
+
+    per_run["hit_percent"] = (per_run[CACHE_HIT_BASELINE] / denom.loc[nonzero]) * 100.0
+    per_run["miss_percent"] = 100.0 - per_run["hit_percent"]
+
+    hit = (
+        per_run.groupby("dataset", as_index=False, observed=True)
+        .agg(mean=("hit_percent", "mean"), std=("hit_percent", "std"), n_runs=("run_id", "nunique"))
+        .copy()
+    )
+    hit["outcome"] = "Hit"
+
+    miss = (
+        per_run.groupby("dataset", as_index=False, observed=True)
+        .agg(mean=("miss_percent", "mean"), std=("miss_percent", "std"), n_runs=("run_id", "nunique"))
+        .copy()
+    )
+    miss["outcome"] = "Miss"
+
+    out = pd.concat([hit, miss], ignore_index=True)
+    out["std"] = out["std"].fillna(0.0)
+    out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
+    out["outcome"] = pd.Categorical(out["outcome"], categories=["Hit", "Miss"], ordered=True)
+    return out.sort_values(["dataset", "outcome"]).reset_index(drop=True)
+
+
+def aggregate_cache_hit_rate_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate FF-cache hit/miss percentages by query type.
+
+    Percentages are computed per (dataset, run_id, query_type) from cache
+    variant rows, then averaged across dataset-runs.
+    """
+    cache_rows = df[df["baseline"].isin(CACHE_BASELINE_VARIANTS)].copy()
+    if cache_rows.empty:
+        return pd.DataFrame(columns=["query_type", "outcome", "mean", "std", "n"])
+
+    per_run = (
+        cache_rows.groupby(["dataset", "run_id", "query_type", "baseline"], as_index=False, observed=True)
+        .size()
+        .pivot_table(
+            index=["dataset", "run_id", "query_type"],
+            columns="baseline",
+            values="size",
+            fill_value=0,
+            observed=True,
+        )
+        .reset_index()
+    )
+
+    per_run[CACHE_HIT_BASELINE] = per_run.get(CACHE_HIT_BASELINE, 0)
+    per_run[CACHE_MISS_BASELINE] = per_run.get(CACHE_MISS_BASELINE, 0)
+    denom = per_run[CACHE_HIT_BASELINE] + per_run[CACHE_MISS_BASELINE]
+    nonzero = denom > 0
+    per_run = per_run.loc[nonzero].copy()
+    if per_run.empty:
+        return pd.DataFrame(columns=["query_type", "outcome", "mean", "std", "n"])
+
+    per_run["hit_percent"] = (per_run[CACHE_HIT_BASELINE] / denom.loc[nonzero]) * 100.0
+    per_run["miss_percent"] = 100.0 - per_run["hit_percent"]
+
+    hit = (
+        per_run.groupby("query_type", as_index=False, observed=True)
+        .agg(mean=("hit_percent", "mean"), std=("hit_percent", "std"), n=("hit_percent", "count"))
+        .copy()
+    )
+    hit["outcome"] = "Hit"
+
+    miss = (
+        per_run.groupby("query_type", as_index=False, observed=True)
+        .agg(mean=("miss_percent", "mean"), std=("miss_percent", "std"), n=("miss_percent", "count"))
+        .copy()
+    )
+    miss["outcome"] = "Miss"
+
+    out = pd.concat([hit, miss], ignore_index=True)
+    out["std"] = out["std"].fillna(0.0)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    out["outcome"] = pd.Categorical(out["outcome"], categories=["Hit", "Miss"], ordered=True)
+    return out.sort_values(["query_type", "outcome"]).reset_index(drop=True)
+
+
 def aggregate_accuracy_by_query_type(df: pd.DataFrame) -> pd.DataFrame:
     per_run_dataset = (
         df.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)

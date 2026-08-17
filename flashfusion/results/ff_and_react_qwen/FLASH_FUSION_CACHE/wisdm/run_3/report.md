@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-16T17:30:30+00:00
+Generated: 2026-08-17T19:44:08+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             1.0000 |            6.4021 |           0.0006 |
+| FLASH_FUSION_CACHE |             1.0000 |            4.2495 |           0.0005 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       4 | 25%        |                0 |                  4 |                     5.8 | -                          |
+| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                    8.65 | -                          |
 
 ## Per-Query Results
 
@@ -26,7 +26,7 @@ Generated: 2026-08-16T17:30:30+00:00
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.36s | Cost: $0.00012
+- Latency: 1.05s | Cost: $0.00016
 
 **Agent Trace**
 
@@ -62,7 +62,7 @@ result = df['x'].max()
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,FILTER_COMPARE,COUNT_DISTINCT
-- Latency: 1.40s | Cost: $0.00012
+- Latency: 0.91s | Cost: $0.00045
 
 **Agent Trace**
 
@@ -103,7 +103,7 @@ result = df['subject_id'].nunique()
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 2.15s | Cost: $0.00013
+- Latency: 2.05s | Cost: $0.00017
 
 **Agent Trace**
 
@@ -141,14 +141,15 @@ result = df['y'].mean()
 **Answer:** The result is {'subject_id': 20, 'count': 56632}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 2.63s | Cost: $0.00098
+- Latency: 1.32s | Cost: $0.00047
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (GROUP_AGGREGATE)
 Action: typed_operator_exec
 Action Input: result = df.groupby('subject_id').size()
@@ -179,7 +180,7 @@ result = result.idxmax()
 - Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_NOT_EMPTY,DERIVE_VECTOR_MAGNITUDE,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 5.31s | Cost: $0.00160
+- Latency: 4.42s | Cost: $0.00160
 
 **Agent Trace**
 
@@ -231,10 +232,10 @@ result = compare(dynamic, resting, mode='difference')
 **Answer:** The result is {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_NOT_EMPTY,DERIVE_DURATION_SECONDS,PARALLEL_AGGREGATE,DERIVE_BINARY,FILTER_COMPARE,RANK_ROWS
-- Latency: 8.38s | Cost: $0.00252
+- Latency: 12.88s | Cost: $0.00275
 
 **Agent Trace**
 
@@ -299,7 +300,7 @@ idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resti
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,DERIVE_VECTOR_MAGNITUDE,AGGREGATE_COLUMN
-- Latency: 1.83s | Cost: $0.00013
+- Latency: 3.42s | Cost: $0.00018
 
 **Agent Trace**
 
@@ -339,48 +340,49 @@ result = df['magnitude'].median()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'higher': 'downstairs', 'lower': 'upstairs', 'metric': 'mean z', 'upstairs': 0.323542237509624, 'downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
+**Answer:** The result is {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 6.88s | Cost: $0.00152
+- Latency: 2.93s | Cost: $0.00018
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_NOT_EMPTY)
 Action: typed_operator_exec
-Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
+Action Input: df = df[df['z'].notna() & df['z'].astype(str).str.strip().ne('')]
 Observation: rows=1098198
 Thought: typed operator step 2 (SPLIT_BY_VALUES)
 Action: typed_operator_exec
-Action Input: upstairs = df[df['activity_label'].isin(['Upstairs'])]
-Observation: upstairs: rows=122869
+Action Input: Upstairs = df[df['activity_label'].isin(['Upstairs'])]
+Observation: Upstairs: rows=122869
 Thought: typed operator step 3 (SPLIT_BY_VALUES)
 Action: typed_operator_exec
-Action Input: downstairs = df[df['activity_label'].isin(['Downstairs'])]
-Observation: downstairs: rows=100425
+Action Input: Downstairs = df[df['activity_label'].isin(['Downstairs'])]
+Observation: Downstairs: rows=100425
 Thought: typed operator step 4 (AGGREGATE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = {label: agg(partition) for label in partitions}
-Observation: {'upstairs': 0.323542237509624, 'downstairs': 0.6840876229507197}
+Observation: {'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197}
 Thought: typed operator step 5 (COMPARE_PARTITIONS)
 Action: typed_operator_exec
-Action Input: result = compare(upstairs, downstairs, mode='abs_difference')
-Observation: {'higher': 'downstairs', 'lower': 'upstairs', 'metric': 'mean z', 'upstairs': 0.323542237509624, 'downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
-Final Answer: {'higher': 'downstairs', 'lower': 'upstairs', 'metric': 'mean z', 'upstairs': 0.323542237509624, 'downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
+Action Input: result = compare(Upstairs, Downstairs, mode='abs_difference')
+Observation: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
+Final Answer: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
 ```
 
 **Final Code Executed**
 
 ```python
-df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
-upstairs = df[df['activity_label'].isin(['Upstairs'])]
-downstairs = df[df['activity_label'].isin(['Downstairs'])]
+df = df[df['z'].notna() & df['z'].astype(str).str.strip().ne('')]
+Upstairs = df[df['activity_label'].isin(['Upstairs'])]
+Downstairs = df[df['activity_label'].isin(['Downstairs'])]
 result = {label: agg(partition) for label in partitions}
-result = compare(upstairs, downstairs, mode='abs_difference')
+result = compare(Upstairs, Downstairs, mode='abs_difference')
 ```
 
 ---
@@ -394,7 +396,7 @@ result = compare(upstairs, downstairs, mode='abs_difference')
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.76s | Cost: $0.00004
+- Latency: 0.90s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -408,20 +410,20 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset contains acceleration data (x, y, z) and activity labels but no geographic coordinates or location information; forecasting exact geographic location is impossible without such data.. This request is not supported by the current dataset schema or task scope.
+**Answer:** Query rejected. Reason: The dataset contains acceleration data (x, y, z) and activity labels but no geographic location information; forecasting location is impossible without GPS or location columns.. This request is not supported by the current dataset schema or task scope.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: cache_miss_or_validation_failure,guardrail_plan
 - Path: guardrail_reject
-- Latency: 2.25s | Cost: $0.00066
+- Latency: 2.30s | Cost: $0.00066
 
 **Alignment Explanation**
 
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset contains acceleration data (x, y, z) and activity labels but no geographic coordinates or location information; forecasting exact geographic location is impossible without such data.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset contains acceleration data (x, y, z) and activity labels but no geographic location information; forecasting location is impossible without GPS or location columns.
 
 **Rejection Reasoning**
 
-- The dataset contains acceleration data (x, y, z) and activity labels but no geographic coordinates or location information; forecasting exact geographic location is impossible without such data.
+- The dataset contains acceleration data (x, y, z) and activity labels but no geographic location information; forecasting location is impossible without GPS or location columns.
 
 ---
 
@@ -434,7 +436,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.67s | Cost: $0.00004
+- Latency: 0.64s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -448,20 +450,20 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset contains no information about future activity or historical patterns sufficient to forecast next week's behavior, nor does it define what constitutes 'moderate-to-vigorous physical activity' in terms of the available x/y/z signals.. This request is not supported by the current dataset schema or task scope.
+**Answer:** Query rejected. Reason: The dataset contains no information about WHO guidelines, weekly activity summaries, or future timestamps beyond the recorded sensor data; forecasting next week's compliance requires external criteria and temporal extrapolation not supported by the given schema.. This request is not supported by the current dataset schema or task scope.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: cache_miss_or_validation_failure,guardrail_plan
 - Path: guardrail_reject
-- Latency: 2.71s | Cost: $0.00097
+- Latency: 2.61s | Cost: $0.00092
 
 **Alignment Explanation**
 
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset contains no information about future activity or historical patterns sufficient to forecast next week's behavior, nor does it define what constitutes 'moderate-to-vigorous physical activity' in terms of the available x/y/z signals.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset contains no information about WHO guidelines, weekly activity summaries, or future timestamps beyond the recorded sensor data; forecasting next week's compliance requires external criteria and temporal extrapolation not supported by the given schema.
 
 **Rejection Reasoning**
 
-- The dataset contains no information about future activity or historical patterns sufficient to forecast next week's behavior, nor does it define what constitutes 'moderate-to-vigorous physical activity' in terms of the available x/y/z signals.
+- The dataset contains no information about WHO guidelines, weekly activity summaries, or future timestamps beyond the recorded sensor data; forecasting next week's compliance requires external criteria and temporal extrapolation not supported by the given schema.
 
 ---
 
@@ -475,7 +477,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 5.67s | Cost: $0.00013
+- Latency: 3.82s | Cost: $0.00017
 
 **Agent Trace**
 
@@ -508,7 +510,7 @@ result = "Logistic regression predicts label 'Jogging' for the first holdout row
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 32.79s | Cost: $0.00013
+- Latency: 16.27s | Cost: $0.00017
 
 **Agent Trace**
 
@@ -541,7 +543,7 @@ result = "Random forest predicts label 'Sitting' for the first holdout row."
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.93s | Cost: $0.00013
+- Latency: 2.31s | Cost: $0.00017
 
 **Agent Trace**
 
@@ -574,7 +576,7 @@ result = "1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
 - Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 23.73s | Cost: $0.00013
+- Latency: 10.16s | Cost: $0.00017
 
 **Agent Trace**
 

@@ -142,6 +142,16 @@ Semantic grounding rules (must follow):
     - ">=", "at least", "no less than" -> "gte"
     - "<", "strictly less", "below" -> "lt"
     - "<=", "at most", "no more than" -> "lte"
+- FILTER_COMPARE.comparator accepts ONLY "eq","ne","gt","gte","lt","lte".
+    Never emit "max", "min", "top", or a null value for comparator or value.
+- To select the row(s) with the largest/smallest value of a derived column
+    (e.g. "by the largest margin", "highest", "greatest"), use RANK_ROWS alone.
+    Do NOT precede RANK_ROWS with a FILTER_COMPARE step whose purpose is
+    extremum selection - that logic belongs to RANK_ROWS's direction field only.
+- Any step or branch object that sets non-empty filter_values MUST also set
+    filter_column to the categorical column those values belong to (grounded
+    from the LIVE DATASET SCHEMA, e.g. "activity_label"). Never leave
+    filter_column null when filter_values is non-empty.
 - "how many", "number of samples/rows" means row counting semantics:
     - Use COUNT_ROWS / COUNT / group size when asking for sample counts.
     - Use nunique only when the question asks for unique entities.
@@ -152,6 +162,19 @@ Semantic grounding rules (must follow):
 - Comparative roughness phrased on average variance must preserve average semantics.
     - If asked "rougher" with average/mean variance, compare mean variance values and use
         a comparison mode aligned to the question (difference/which higher), not ratio by default.
+- "A exceeds/is greater than B by the largest margin" implies a SIGNED
+    difference in the stated order (A - B), not abs_difference. Compute
+    DERIVE_BINARY with operation="subtract" in that order, optionally gate
+    with FILTER_COMPARE(comparator="gt", value=0) to enforce the stated
+    direction, then RANK_ROWS on that signed column. Use abs_difference only
+    when the query says "difference" or "contrast" with no stated direction.
+- When comparing two or more named groups of a categorical column (e.g.
+    "compare X between label A and label B"), emit one SPLIT_BY_VALUES step
+    PER GROUP, each with its own distinct label and its own values list.
+    Never reuse the same label across steps and never merge multiple
+    comparison groups' values into a single SPLIT_BY_VALUES call.
+    AGGREGATE_PARTITIONS.partitions must then list every distinct label
+    produced this way (minimum two), never a single repeated label.
 - Train split and holdout row are independent fields in predictive plans:
     - The query may mention both a training split (e.g., 'first 80%') and a holdout row
         position (e.g., 'first row in the holdout set'). These are independent.

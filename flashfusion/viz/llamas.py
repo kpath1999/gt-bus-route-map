@@ -52,6 +52,8 @@ from measure import (
     QUERY_TYPE_ORDER,
     aggregate_accuracy_by_dataset,
     aggregate_accuracy_by_query_type,
+    aggregate_cache_hit_rate_by_dataset,
+    aggregate_cache_hit_rate_by_query_type,
     aggregate_cost_by_dataset,
     aggregate_cost_by_query_type,
     display_baseline,
@@ -351,6 +353,113 @@ def plot_cost_across_query_types(
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
+
+
+def _plot_cache_outcome_percent(
+    summary: pd.DataFrame,
+    out_path: Path,
+    x_col: str,
+    x_labels: list[str],
+    x_tick_labels: list[str],
+    x_axis_label: str,
+) -> None:
+    plt.rcParams.update(RC)
+
+    fig, ax = plt.subplots(figsize=(7.1, 3.8))
+    x = list(range(len(x_labels)))
+    outcomes = ["Hit", "Miss"]
+    colors = {"Hit": "#2563eb", "Miss": "#94a3b8"}
+    width = 0.35
+
+    for i, outcome in enumerate(outcomes):
+        sdf = summary[summary["outcome"] == outcome]
+        means: list[float] = []
+        stds: list[float] = []
+        for label in x_labels:
+            row = sdf[sdf[x_col] == label]
+            if row.empty:
+                means.append(0.0)
+                stds.append(0.0)
+            else:
+                means.append(float(row["mean"].iloc[0]))
+                stds.append(float(row["std"].iloc[0]))
+
+        xpos = [p - (width / 2.0) + i * width for p in x]
+        means_arr = np.asarray(means, dtype=float)
+        stds_arr = np.asarray(stds, dtype=float)
+        upper = np.maximum(0.0, np.minimum(stds_arr, 100.0 - means_arr))
+        lower = np.maximum(0.0, np.minimum(stds_arr, means_arr))
+        bounded_yerr = np.vstack([lower, upper])
+
+        bars = ax.bar(
+            xpos,
+            means,
+            width,
+            label=outcome,
+            color=colors[outcome],
+            edgecolor="#333333",
+            linewidth=0.9,
+            yerr=bounded_yerr,
+            error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+        )
+        for bar, val in zip(bars, means):
+            if val <= 0:
+                continue
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                bar.get_height() + 1.0,
+                f"{val:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=9.0,
+                fontweight="bold",
+            )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_tick_labels)
+    ax.set_xlabel(x_axis_label)
+    ax.set_ylabel("Cache outcome (%)")
+    ax.set_ylim(0, 110)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    ax.legend(
+        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.20),
+        frameon=False,
+    )
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+def plot_cache_outcome_across_datasets(summary: pd.DataFrame, out_path: Path) -> None:
+    _plot_cache_outcome_percent(
+        summary=summary,
+        out_path=out_path,
+        x_col="dataset",
+        x_labels=list(DATASET_ORDER),
+        x_tick_labels=[DATASET_LABELS[d] for d in DATASET_ORDER],
+        x_axis_label="Dataset",
+    )
+
+
+def plot_cache_outcome_across_query_types(summary: pd.DataFrame, out_path: Path) -> None:
+    present = [str(v) for v in summary["query_type"].dropna().unique().tolist() if str(v) in QUERY_TYPE_ORDER]
+    labels = [qt for qt in QUERY_TYPE_ORDER if qt in present]
+    _plot_cache_outcome_percent(
+        summary=summary,
+        out_path=out_path,
+        x_col="query_type",
+        x_labels=labels,
+        x_tick_labels=labels,
+        x_axis_label="Query Type",
+    )
 
 
 def plot_accuracy_across_datasets(
@@ -972,6 +1081,8 @@ def main() -> None:
     by_query_type = aggregate_accuracy_by_query_type(df)
     cost_by_dataset = aggregate_cost_by_dataset(df)
     cost_by_query_type = aggregate_cost_by_query_type(df)
+    cache_rate_by_dataset = aggregate_cache_hit_rate_by_dataset(df)
+    cache_rate_by_query_type = aggregate_cache_hit_rate_by_query_type(df)
 
     if by_dataset.empty:
         raise SystemExit(
@@ -989,6 +1100,9 @@ def main() -> None:
     fig2 = output_dir / "accuracy_vs_baselines_across_query_types.png"
     fig3 = output_dir / "cost_vs_baselines_across_datasets.png"
     fig4 = output_dir / "cost_vs_baselines_across_query_types.png"
+    fig5 = output_dir / "cost_vs_baselines_across_query_types_no_cache_variants.png"
+    fig6 = output_dir / "cache_hit_miss_percent_across_datasets.png"
+    fig7 = output_dir / "cache_hit_miss_percent_across_query_types.png"
 
     plot_accuracy_across_datasets(
         by_dataset,
@@ -1013,6 +1127,33 @@ def main() -> None:
         query_types=selected_query_types,
     )
 
+    cost_query_type_no_cache_variants = [
+        baseline
+        for baseline in cost_query_type_baselines
+        if baseline not in CACHE_BASELINE_VARIANTS
+    ]
+    plot_cost_across_query_types(
+        cost_by_query_type,
+        fig5,
+        baselines=cost_query_type_no_cache_variants,
+        query_types=selected_query_types,
+    )
+
+    if cache_rate_by_dataset.empty or cache_rate_by_query_type.empty:
+        print(
+            "[WARN] Cache hit/miss summary is empty; "
+            "skipping cache outcome percentage plots."
+        )
+    else:
+        plot_cache_outcome_across_datasets(
+            cache_rate_by_dataset,
+            fig6,
+        )
+        plot_cache_outcome_across_query_types(
+            cache_rate_by_query_type,
+            fig7,
+        )
+
     by_dataset.to_csv(
         output_dir / "accuracy_vs_baselines_across_datasets_summary.csv",
         index=False,
@@ -1034,6 +1175,12 @@ def main() -> None:
     print(f"Wrote {fig2}")
     print(f"Wrote {fig3}")
     print(f"Wrote {fig4}")
+    print(f"Wrote {fig5}")
+    if cache_rate_by_dataset.empty or cache_rate_by_query_type.empty:
+        print("Skipped cache hit/miss percent figures due to missing cache variant rows.")
+    else:
+        print(f"Wrote {fig6}")
+        print(f"Wrote {fig7}")
 
 
 if __name__ == "__main__":

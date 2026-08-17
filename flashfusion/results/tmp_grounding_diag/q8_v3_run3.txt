@@ -1,0 +1,5 @@
+OMP: Warning #179: Function Can't set size of /tmp file failed:
+
+Loading dataset...
+Loaded 1098198 rows, columns=['subject_id', 'activity_label', 'timestamp', 'x', 'y', 'z']
+Set OPENROUTER_API_KEY (or GROQ_API_KEY) in the environment before running.
