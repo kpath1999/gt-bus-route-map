@@ -7,7 +7,6 @@ scripts do not duplicate path handling or grouping logic.
 
 from __future__ import annotations
 
-import argparse
 import warnings
 from pathlib import Path
 from typing import Iterable
@@ -36,9 +35,14 @@ QUERY_TYPE_BY_ID = {
 QUERY_TYPE_ORDER = ["Direct", "Reasoning", "Predictive", "Out-of-Scope"]
 DATASET_ORDER = ["bus", "wisdm", "ecg"]
 SEMANTIC_STAGE_ORDER = ["Grounding", "Validation", "Planning", "Execution"]
+CACHE_BASELINE = "FLASH_FUSION_CACHE"
+CACHE_HIT_BASELINE = "FLASH_FUSION_CACHE_HIT"
+CACHE_MISS_BASELINE = "FLASH_FUSION_CACHE_MISS"
+CACHE_BASELINE_VARIANTS = [CACHE_HIT_BASELINE, CACHE_MISS_BASELINE]
 BASELINE_ORDER = [
     "FLASH_FUSION",
-    "FLASH_FUSION_CACHE",
+    CACHE_BASELINE,
+    *CACHE_BASELINE_VARIANTS,
     "AUTOIOT_PAPER",
     "REACT_ONLY",
     "HARGPT_PAPER",
@@ -47,7 +51,9 @@ BASELINE_ORDER = [
 
 BASELINE_LABELS = {
     "FLASH_FUSION": "Flash-Fusion",
-    "FLASH_FUSION_CACHE": "FF-cache",
+    CACHE_BASELINE: "FF-cache",
+    CACHE_HIT_BASELINE: "FF-cache hit",
+    CACHE_MISS_BASELINE: "FF-cache miss",
     "AUTOIOT_PAPER": "AutoIOT",
     "REACT_ONLY": "ReAct",
     "HARGPT_PAPER": "HARGPT",
@@ -56,7 +62,9 @@ BASELINE_LABELS = {
 
 BASELINE_COLORS = {
     "FLASH_FUSION": "#1b9e77",
-    "FLASH_FUSION_CACHE": "#3b82f6",
+    CACHE_BASELINE: "#0f4c81",
+    CACHE_HIT_BASELINE: "#2563eb",
+    CACHE_MISS_BASELINE: "#94a3b8",
     "AUTOIOT_PAPER": "#64748b",
     "REACT_ONLY": "#f59e0b",
     "HARGPT_PAPER": "#ef4444",
@@ -81,6 +89,42 @@ def normalize_baseline(value: object) -> str:
 
 def display_baseline(code: str) -> str:
     return BASELINE_LABELS.get(code, code)
+
+
+def expand_baselines(baselines: Iterable[str]) -> list[str]:
+    """Normalize and de-duplicate explicitly requested chart baselines."""
+    expanded: list[str] = []
+    for baseline in baselines:
+        normalized = normalize_baseline(baseline)
+        if normalized not in expanded:
+            expanded.append(normalized)
+    return expanded
+
+
+def split_cache_baseline_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """Retain averaged FF-cache rows and add hit/miss outcome-specific copies."""
+    out = df.copy()
+    if "baseline" not in out.columns:
+        return out
+    out["baseline"] = out["baseline"].map(normalize_baseline)
+    cache_rows = out["baseline"] == CACHE_BASELINE
+    if not cache_rows.any():
+        return out
+
+    variants = out.loc[cache_rows].copy()
+    if "cache_outcome" in variants.columns:
+        hits = variants["cache_outcome"].astype(str).str.lower().eq("hit")
+    else:
+        plan_source = variants.get("plan_source", pd.Series("", index=variants.index)).fillna("").astype(str)
+        execution_path = variants.get("execution_path", pd.Series("", index=variants.index)).fillna("").astype(str)
+        hits = (
+            execution_path.eq("typed_operator_cache")
+            | plan_source.str.startswith("exact_query_cache_")
+            | plan_source.str.startswith("semantic_cache_")
+        )
+    variants.loc[hits, "baseline"] = CACHE_HIT_BASELINE
+    variants.loc[~hits, "baseline"] = CACHE_MISS_BASELINE
+    return pd.concat([out, variants], ignore_index=True)
 
 
 def _canonical_dataset_name(raw: str) -> str:
@@ -127,6 +171,7 @@ def load_metrics_for_baseline_dataset(
 
     out = df.copy()
     out["baseline"] = out["baseline"].map(normalize_baseline)
+    out = split_cache_baseline_rows(out)
     out["dataset"] = _canonical_dataset_name(dataset)
     out["query_id"] = pd.to_numeric(out["query_id"], errors="coerce").astype("Int64")
     out["run_id"] = pd.to_numeric(out["run_id"], errors="coerce").astype("Int64")
@@ -192,6 +237,7 @@ def load_metrics_from_dataset_root(
     df = pd.read_csv(path)
     df["baseline"] = df["baseline"].map(normalize_baseline)
     df = df[df["baseline"] == normalize_baseline(baseline)].copy()
+    df = split_cache_baseline_rows(df)
     if df.empty:
         return None
 
@@ -407,7 +453,14 @@ def load_all_metrics(
     parts: list[pd.DataFrame] = []
     fallback_roots = fallback_roots or {}
 
-    for baseline in baselines:
+    requested_baselines = expand_baselines(baselines)
+    source_baselines = []
+    for baseline in requested_baselines:
+        source = CACHE_BASELINE if baseline in CACHE_BASELINE_VARIANTS else baseline
+        if source not in source_baselines:
+            source_baselines.append(source)
+
+    for baseline in source_baselines:
         for dataset in datasets:
             df = load_metrics_for_baseline_dataset_safe(results_root, baseline, dataset, run_dir=run_dir)
 
@@ -427,6 +480,8 @@ def load_all_metrics(
         raise ValueError(f"No metrics found in {results_root} or fallback roots")
 
     out = pd.concat(parts, ignore_index=True)
+    out = split_cache_baseline_rows(out)
+    out = out[out["baseline"].isin(requested_baselines)].copy()
     out["baseline"] = pd.Categorical(out["baseline"], categories=list(BASELINE_ORDER), ordered=True)
     out["dataset"] = pd.Categorical(out["dataset"], categories=list(DATASET_ORDER), ordered=True)
     out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
@@ -723,7 +778,11 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
     # the same underlying architecture. Cache grounding is native telemetry;
     # any remaining query-scoped overhead is spread uniformly so the four
     # semantic stages reconcile exactly with latency_s.
-    ff_mask = sem["baseline"].isin(["FLASH_FUSION", "FLASH_FUSION_CACHE"])
+    ff_mask = sem["baseline"].isin([
+        "FLASH_FUSION",
+        CACHE_BASELINE,
+        *CACHE_BASELINE_VARIANTS,
+    ])
     ff_guardrail = sem.loc[ff_mask, "guardrail_latency_s"]
     ff_cache_grounding = sem.loc[ff_mask, "cache_grounding_latency_s"]
     sem.loc[ff_mask, "grounding_s"] = ff_guardrail * 0.10 + ff_cache_grounding

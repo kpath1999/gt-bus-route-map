@@ -120,6 +120,7 @@ from flashfusion.eval.queries import (
     SUPPORTED_DATASETS,
     get_queries,
 )
+from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval.reporter import print_table, save_csv, save_markdown
 from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
@@ -147,6 +148,35 @@ DEFAULT_GROUND_TRUTH_PATHS = {
     "mit_ecg": "flashfusion/eval/ground_truth/ground_truth_mit_ecg.json",
     "bus": "flashfusion/eval/ground_truth/ground_truth_bus.json",
 }
+
+SEMANTIC_CACHE_REGISTRY_PATHS = {
+    "wisdm": "flashfusion/eval/cache/semantic_registry_wisdm_v1.json",
+    "mit_ecg": "flashfusion/eval/cache/semantic_registry_mit_ecg_v1.json",
+    "bus": "flashfusion/eval/cache/semantic_registry_bus_v1.json",
+}
+
+_CACHE_QUERY_VERSIONS = {1: "v1", 2: "v2", 3: "v3"}
+
+
+def _cache_queries_for_run(dataset: str, run_id: int) -> tuple[str, list[dict]]:
+    """Return the cache baseline's query bank for a repeated benchmark run."""
+    version = _CACHE_QUERY_VERSIONS.get(run_id, "v1")
+    if version == "v2":
+        return version, queries_v2.get_queries(dataset)
+    if version == "v3":
+        return version, queries_v3.get_queries(dataset)
+    return version, get_queries(dataset)
+
+
+def _query_defs_for_reporting(
+    query_defs: list[dict], query_defs_by_baseline: dict[str, list[dict]] | None
+) -> list[dict]:
+    """Include reworded query text in the shared query-text-to-ID lookup."""
+    by_text = {str(query["text"]): query for query in query_defs}
+    for definitions in (query_defs_by_baseline or {}).values():
+        for query in definitions:
+            by_text.setdefault(str(query["text"]), query)
+    return list(by_text.values())
 
 class QueryTimeoutError(TimeoutError):
     """Raised when a single query run exceeds the configured latency budget."""
@@ -260,10 +290,13 @@ def _run_single_benchmark_iteration(
     llm_judge_max_code_chars: int,
     dataset: str,
     query_defs: list[dict],
+    query_defs_by_baseline: dict[str, list[dict]] | None = None,
     stage12_model: str | None = None,
     cache_path: str | None = None,
+    semantic_cache_path: str | None = None,
 ) -> tuple[list[RunResult], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Execute one full baseline x query benchmark run and persist artifacts."""
+    report_query_defs = _query_defs_for_reporting(query_defs, query_defs_by_baseline)
     os.makedirs(output_dir, exist_ok=True)
     raw_results_path = os.path.join(output_dir, "raw_results.jsonl")
     if os.path.exists(raw_results_path):
@@ -271,8 +304,9 @@ def _run_single_benchmark_iteration(
 
     results: list[RunResult] = []
     for baseline in baselines:
+        baseline_queries = (query_defs_by_baseline or {}).get(baseline, query_defs)
         for qid in query_ids:
-            query_def = query_defs[qid - 1]
+            query_def = baseline_queries[qid - 1]
             query_text = query_def["text"]
             print(
                 f"\n[{baseline}] Q{qid}: {query_text[:60]}...",
@@ -297,6 +331,7 @@ def _run_single_benchmark_iteration(
                 client=client,
                 dataset=dataset,
                 cache_path=cache_path,
+                semantic_cache_path=semantic_cache_path if baseline == "FLASH_FUSION_CACHE" else None,
             )
             t0 = time.time()
 
@@ -351,6 +386,9 @@ def _run_single_benchmark_iteration(
             finally:
                 signal.setitimer(signal.ITIMER_REAL, 0)
                 signal.signal(signal.SIGALRM, prev_handler)
+            # Query wording changes across v1/v2/v3, but the numeric ID is the
+            # stable benchmark identity used to join results, judgments, and GT.
+            result.query_id = int(qid)
             results.append(result)
 
             j = result.judge_verdict.get("verdict", "N/A") if result.judge_verdict else "N/A"
@@ -406,7 +444,7 @@ def _run_single_benchmark_iteration(
         results,
         llm_judgments_df=judgments_df,
         ground_truth_by_id=ground_truth_by_id,
-        query_defs=query_defs,
+        query_defs=report_query_defs,
     )
 
     save_csv(metrics_df, os.path.join(output_dir, "metrics.csv"))
@@ -414,7 +452,7 @@ def _run_single_benchmark_iteration(
         results,
         os.path.join(output_dir, "report.md"),
         metrics_df=metrics_df,
-        query_defs=query_defs,
+        query_defs=report_query_defs,
     )
     print("\n=== Summary ===")
     print_table(metrics_df)
@@ -527,6 +565,8 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     for b in baselines:
         if b not in ALL_BASELINES:
             sys.exit(f"Error: unknown baseline {b!r}. Options: {ALL_BASELINES}")
+    if args.semantic_cache_path is None and "FLASH_FUSION_CACHE" in baselines:
+        args.semantic_cache_path = SEMANTIC_CACHE_REGISTRY_PATHS[args.dataset]
 
     query_defs = get_queries(args.dataset)
 
@@ -569,6 +609,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
             cache_path=getattr(args, "cache_path", None),
+            semantic_cache_path=getattr(args, "semantic_cache_path", None),
         )
         return results
 
@@ -581,6 +622,14 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     for run_id in range(1, args.runs + 1):
         run_output_dir = os.path.join(args.output, f"run_{run_id}")
         print(f"\n##### Run {run_id}/{args.runs} -> {run_output_dir} #####", flush=True)
+        cache_query_version, cache_query_defs = _cache_queries_for_run(args.dataset, run_id)
+        query_defs_by_baseline = {"FLASH_FUSION_CACHE": cache_query_defs}
+        if "FLASH_FUSION_CACHE" in baselines:
+            print(
+                f"[FLASH_FUSION_CACHE] Query version for run {run_id}: "
+                f"{cache_query_version}; semantic registry: {args.semantic_cache_path}",
+                flush=True,
+            )
         run_results, run_judgments, run_metrics, run_sanity = _run_single_benchmark_iteration(
             baselines=baselines,
             query_ids=query_ids,
@@ -592,11 +641,13 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             data_path=args.data,
             dataset=args.dataset,
             query_defs=query_defs,
+            query_defs_by_baseline=query_defs_by_baseline,
             max_query_latency=args.max_query_latency,
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
             cache_path=getattr(args, "cache_path", None),
+            semantic_cache_path=getattr(args, "semantic_cache_path", None),
         )
 
         all_results.extend(run_results)
@@ -757,6 +808,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Operator-skeleton cache registry for FLASH_FUSION_CACHE "
             "(default: flashfusion/eval/cache/cache_registry.json)"
+        ),
+    )
+    parser.add_argument(
+        "--semantic-cache-path",
+        default=None,
+        help=(
+            "Semantic template registry for FLASH_FUSION_CACHE. Defaults to the "
+            "checked-in v1 registry for --dataset."
         ),
     )
     parser.add_argument(

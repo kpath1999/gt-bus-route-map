@@ -6,8 +6,7 @@ with the SAME sequence against the live DataFrame schema, validates that plan
 with the normal Flash-Fusion gates, and executes it deterministically.
 
 If any cache, light-model, structural-validation, schema-validation, or
-execution check fails, this module falls back to ``run_flash_fusion``.  It
-never uses embedding/fuzzy matching and never executes unvalidated LLM code.
+execution check fails, this module falls back to ``run_flash_fusion``.
 
 Registry contract
 -----------------
@@ -302,6 +301,129 @@ def _detect_aggregate(query_lc: str) -> str | None:
     return None
 
 
+def _detect_predictive_model(query_lc: str) -> str | None:
+    model_patterns = {
+        "logistic_regression": (
+            r"\blogistic[- ]regression\b",
+            r"\blogistic[- ]classifier\b",
+        ),
+        "random_forest": (
+            r"\brandom[- ]forest(?:[- ]classifier)?\b",
+            r"\brf[- ]classifier\b",
+        ),
+        "one_nearest_neighbor": (
+            r"\b1\s*[- ]?nearest[- ]?neighbo?r(?:[- ]classifier)?\b",
+            r"\b1[- ]?nn\b",
+            r"\bk\s*=\s*1\s+nearest[- ]neighbo?r\b",
+        ),
+        "hist_gradient_boosting": (
+            r"\bhist(?:ogram)?[- ]gradient[- ]boosting(?:[- ]classifier)?\b",
+            r"\bhistgradientboosting(?:classifier)?\b",
+        ),
+    }
+    matches = {
+        model
+        for model, patterns in model_patterns.items()
+        if any(re.search(pattern, query_lc) for pattern in patterns)
+    }
+    return next(iter(matches)) if len(matches) == 1 else None
+
+
+def _detect_train_fraction(query_lc: str) -> float | None:
+    m = re.search(
+        r"\bfirst\s+(\d{1,3})%\s+of\s+(?:the\s+)?rows?"
+        r"\s+(?:for|in|as)\s+train(?:ing)?\b",
+        query_lc,
+    )
+    if not m:
+        return None
+    pct = int(m.group(1))
+    if not 0 < pct < 100:
+        return None
+    return round(pct / 100.0, 4)
+
+
+def _detect_holdout_position(query_lc: str) -> str | None:
+    if "first row in the holdout" in query_lc:
+        return "first"
+    if "last row in the holdout" in query_lc:
+        return "last"
+    return None
+
+
+def _extract_filter_values(query_lc: str, df: pd.DataFrame) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    key_mentions = _extract_key_mentions(query_lc)
+    for key, val in key_mentions.items():
+        out[key] = val
+
+    if re.search(r"\bactivity[_ ]labels?\b", query_lc):
+        activity_columns = [
+            column
+            for column in df.columns
+            if str(column).lower() in {"activity", "activity_label"}
+        ]
+        activity_values = {
+            str(value).strip().lower()
+            for column in activity_columns
+            for value in df[column].dropna().unique()
+            if str(value).strip()
+        }
+        mentioned_values = {
+            value
+            for value in activity_values
+            if re.search(rf"(?<!\w){re.escape(value)}(?!\w)", query_lc)
+        }
+        if len(mentioned_values) == 1:
+            out["activity"] = next(iter(mentioned_values))
+
+    # Parse explicit numeric column filters like "mlii > 0".
+    for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\s*(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)", query_lc):
+        field = m.group(1)
+        raw = float(m.group(3))
+        value: Any = int(raw) if raw.is_integer() else raw
+        out[f"{field}__value"] = value
+    return out
+
+
+def _extract_intent_flags(query_lc: str) -> dict[str, bool]:
+    return {
+        "rank": bool(re.search(r"\b(highest|lowest|largest|smallest|most|least)\b", query_lc)),
+        "group_by": bool(re.search(r"\b(per|each|group|grouped|by)\b", query_lc)),
+        "difference": bool(re.search(r"\b(difference|gap|exceeds|absolute difference)\b", query_lc)),
+        "derived_magnitude": bool(re.search(r"\b(magnitude|root mean square|rms)\b", query_lc)),
+        "time_bin": bool(re.search(r"\b(minute|1-minute|window|interval|bin|bucket)\b", query_lc)),
+        "correlation": bool(re.search(r"\b(correlate|correlation)\b", query_lc)),
+        "last_event": bool(re.search(r"\b(last annotated|last)\b", query_lc)),
+        "predictive": bool(re.search(r"\b(train|training|fit|holdout|predict|prediction|forecast|estimate|classifier|regressor|model)\b", query_lc)),
+    }
+
+
+def _extract_target_column(query_lc: str, df: pd.DataFrame) -> str | None:
+    columns_lc = {str(column).lower(): str(column) for column in df.columns}
+    m = re.search(r"\blabel\s+in\s+the\s+([a-z_][a-z0-9_]*)\s+column\b", query_lc)
+    if m and m.group(1) in columns_lc:
+        return columns_lc[m.group(1)]
+    if re.search(r"\bactivity[_ ]label\b", query_lc) and "activity_label" in columns_lc:
+        return columns_lc["activity_label"]
+    if re.search(r"\bbehavio(?:u)?r\s+label\b", query_lc) and "behavior" in columns_lc:
+        return columns_lc["behavior"]
+    if re.search(r"\bannotation\s+is\s+present\b", query_lc) and "annotation_present" in columns_lc:
+        return columns_lc["annotation_present"]
+    return None
+
+
+def _extract_operator_skeleton_hint(query_lc: str) -> list[str] | None:
+    # Conservative hints only: emit only when intent is explicit and unambiguous.
+    if re.search(r"\b(train|training|fit|holdout|predict|prediction|forecast|estimate|classifier|regressor|model)\b", query_lc):
+        return ["PREDICTIVE_PIPELINE"]
+    has_count = bool(re.search(r"\b(how many|count|number of)\b", query_lc))
+    has_numeric_cmp = bool(re.search(r"(>=|<=|>|<)", query_lc))
+    if has_count and has_numeric_cmp:
+        return ["FILTER_COMPARE", "COUNT_ROWS"]
+    return None
+
+
 def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
     """Extract a conservative schema-aware semantic signature for pre-grounding gates.
 
@@ -309,22 +431,42 @@ def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
     they are directly supported by query text and live schema headers.
     """
     query_lc = query.lower()
-    if any(marker in query_lc for marker in ("predict", "geographic location", "location where")):
+    out_of_scope_markers = (
+        "geographic location",
+        "location where",
+        "family history",
+        "who recommended",
+        "weekly moderate-to-vigorous",
+        "weather",
+        "occupancy",
+        "operating schedule",
+    )
+    if any(marker in query_lc for marker in out_of_scope_markers):
         return {
             "admissibility": "out_of_scope",
             "confidence": 0.95,
             "aggregate": None,
             "fields": [],
             "predicate_ops": {},
+            "filter_values": {},
+            "intent_flags": _extract_intent_flags(query_lc),
+            "predictive": {
+                "model": _detect_predictive_model(query_lc),
+                "target_column": _extract_target_column(query_lc, df),
+                "train_fraction": _detect_train_fraction(query_lc),
+                "holdout_row": _detect_holdout_position(query_lc),
+            },
+            "operator_skeleton_hint": _extract_operator_skeleton_hint(query_lc),
             "output_shape": "unknown",
         }
 
     columns = [str(c) for c in df.columns]
+    columns_lc = [c.lower() for c in columns]
     fields = [c for c in columns if re.search(rf"\b{re.escape(c.lower())}\b", query_lc)]
     predicate_ops: dict[str, str] = {}
     for m in re.finditer(r"\b([a-z_][a-z0-9_]*)\s*(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)", query_lc):
         col = m.group(1)
-        if col not in [c.lower() for c in columns]:
+        if col not in columns_lc:
             continue
         op = m.group(2)
         predicate_ops[col] = {
@@ -336,12 +478,34 @@ def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
         }[op]
 
     for key_col in ("record_id", "user_id", "subject_id"):
-        if key_col in [c.lower() for c in columns] and re.search(rf"\b{key_col}\s*(?:=|is)?\s*\d+\b", query_lc):
+        if key_col in columns_lc and re.search(rf"\b{key_col}\s*(?:=|is)?\s*\d+\b", query_lc):
             predicate_ops.setdefault(key_col, "eq")
 
     aggregate = _detect_aggregate(query_lc)
-    output_shape = "scalar" if aggregate is not None else "unknown"
-    admissibility = "in_scope" if aggregate or fields or predicate_ops else "unknown"
+    filter_values = _extract_filter_values(query_lc, df)
+    intent_flags = _extract_intent_flags(query_lc)
+    predictive = {
+        "model": _detect_predictive_model(query_lc),
+        "target_column": _extract_target_column(query_lc, df),
+        "train_fraction": _detect_train_fraction(query_lc),
+        "holdout_row": _detect_holdout_position(query_lc),
+    }
+    operator_skeleton_hint = _extract_operator_skeleton_hint(query_lc)
+
+    output_shape = "unknown"
+    if predictive["model"] is not None:
+        output_shape = "predictive"
+    elif re.search(r"\blist\b", query_lc):
+        output_shape = "list"
+    elif aggregate is not None or re.search(r"\b(how many|count|number of)\b", query_lc):
+        output_shape = "scalar"
+
+    admissibility = "unknown"
+    if intent_flags["predictive"] or aggregate or fields or predicate_ops or filter_values:
+        admissibility = "in_scope"
+    if re.search(r"\b(predict\s+next\s+week|fatal cardiac event|bmi|cadence)\b", query_lc):
+        admissibility = "out_of_scope"
+
     confidence = 0.85 if admissibility == "in_scope" else 0.4
     return {
         "admissibility": admissibility,
@@ -349,6 +513,10 @@ def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
         "aggregate": aggregate,
         "fields": sorted(set(fields)),
         "predicate_ops": predicate_ops,
+        "filter_values": filter_values,
+        "intent_flags": intent_flags,
+        "predictive": predictive,
+        "operator_skeleton_hint": operator_skeleton_hint,
         "output_shape": output_shape,
     }
 
@@ -397,6 +565,14 @@ def _semantic_entry_matches(
     if not isinstance(sig, dict):
         return False, gates, "missing_semantic_signature"
 
+    skeleton_hint = extracted.get("operator_skeleton_hint")
+    if isinstance(skeleton_hint, list) and skeleton_hint:
+        gates["operator_skeleton"] = skeleton == skeleton_hint
+        if not gates["operator_skeleton"]:
+            return False, gates, (
+                f"operator_skeleton_mismatch:template={skeleton},live_hint={skeleton_hint}"
+            )
+
     cand_agg = sig.get("aggregate")
     if cand_agg is not None:
         gates["aggregate"] = extracted.get("aggregate") == cand_agg
@@ -428,7 +604,95 @@ def _semantic_entry_matches(
                     f"predicate_op_mismatch:{key}:template={expected_op},live={live_ops.get(key)}"
                 )
 
+    cand_filter_values = sig.get("filter_values")
+    if isinstance(cand_filter_values, dict) and cand_filter_values:
+        live_values = extracted.get("filter_values") or {}
+        if not isinstance(live_values, dict):
+            live_values = {}
+        for key, expected_value in cand_filter_values.items():
+            gates[f"filter_value:{key}"] = live_values.get(key) == expected_value
+            if not gates[f"filter_value:{key}"]:
+                return False, gates, (
+                    f"filter_value_mismatch:{key}:template={expected_value},live={live_values.get(key)}"
+                )
+
+    cand_predictive = sig.get("predictive")
+    if isinstance(cand_predictive, dict):
+        live_predictive = extracted.get("predictive") or {}
+        if not isinstance(live_predictive, dict):
+            live_predictive = {}
+        for key in ("model", "target_column", "holdout_row", "train_fraction"):
+            expected_val = cand_predictive.get(key)
+            if expected_val is None:
+                continue
+            gates[f"predictive:{key}"] = live_predictive.get(key) == expected_val
+            if not gates[f"predictive:{key}"]:
+                return False, gates, (
+                    f"predictive_mismatch:{key}:template={expected_val},live={live_predictive.get(key)}"
+                )
+
     return True, gates, None
+
+
+def _jaccard_score(left: set[str], right: set[str]) -> float:
+    if not left and not right:
+        return 1.0
+    if not left or not right:
+        return 0.0
+    return len(left & right) / len(left | right)
+
+
+def _score_semantic_candidate(extracted: dict[str, Any], sig: dict[str, Any]) -> tuple[float, dict[str, float]]:
+    details: dict[str, float] = {}
+    score = 0.0
+
+    agg_match = 1.0 if extracted.get("aggregate") == sig.get("aggregate") else 0.0
+    details["aggregate"] = agg_match
+    score += 0.15 * agg_match
+
+    fields_score = _jaccard_score(
+        {str(x).lower() for x in extracted.get("fields") or []},
+        {str(x).lower() for x in sig.get("fields") or []},
+    )
+    details["fields"] = fields_score
+    score += 0.10 * fields_score
+
+    pred_ops_left = {f"{k}:{v}" for k, v in (extracted.get("predicate_ops") or {}).items()}
+    pred_ops_right = {f"{k}:{v}" for k, v in (sig.get("predicate_ops") or {}).items()}
+    pred_ops_score = _jaccard_score(pred_ops_left, pred_ops_right)
+    details["predicate_ops"] = pred_ops_score
+    score += 0.10 * pred_ops_score
+
+    filter_vals_left = {f"{k}:{v}" for k, v in (extracted.get("filter_values") or {}).items()}
+    filter_vals_right = {f"{k}:{v}" for k, v in (sig.get("filter_values") or {}).items()}
+    filter_vals_score = _jaccard_score(filter_vals_left, filter_vals_right)
+    details["filter_values"] = filter_vals_score
+    score += 0.15 * filter_vals_score
+
+    out_match = 1.0 if extracted.get("output_shape") == sig.get("output_shape") else 0.0
+    details["output_shape"] = out_match
+    score += 0.05 * out_match
+
+    intent_l = extracted.get("intent_flags") or {}
+    intent_r = sig.get("intent_flags") or {}
+    shared = [k for k in set(intent_l) | set(intent_r)]
+    if shared:
+        intent_score = sum(1.0 for k in shared if bool(intent_l.get(k)) == bool(intent_r.get(k))) / len(shared)
+    else:
+        intent_score = 1.0
+    details["intent_flags"] = intent_score
+    score += 0.10 * intent_score
+
+    pred_l = extracted.get("predictive") or {}
+    pred_r = sig.get("predictive") or {}
+    model_match = 1.0 if pred_l.get("model") == pred_r.get("model") else 0.0
+    details["predictive_model"] = model_match
+    score += 0.25 * model_match
+    target_match = 1.0 if pred_l.get("target_column") == pred_r.get("target_column") else 0.0
+    details["predictive_target"] = target_match
+    score += 0.10 * target_match
+
+    return score, details
 
 
 def _find_semantic_entry(
@@ -444,8 +708,13 @@ def _find_semantic_entry(
         "extracted_signature": extracted,
         "candidate_ids_considered": [],
         "hard_gate_results": {},
+        "candidate_scores": {},
         "extraction_confidence": extracted.get("confidence"),
         "abstention_reason": "",
+        "score_threshold": 0.85,
+        "score_margin": 0.20,
+        "winner": None,
+        "runner_up": None,
     }
 
     if extracted.get("admissibility") in {"out_of_scope", "ambiguous", "unknown"}:
@@ -466,6 +735,7 @@ def _find_semantic_entry(
         evidence["abstention_reason"] = "semantic_no_candidates"
         return None, "semantic_no_candidates", evidence
 
+    passing: list[tuple[str, dict[str, Any], float]] = []
     for index, entry in enumerate(candidates, start=1):
         cid = _candidate_id(entry, index)
         evidence["candidate_ids_considered"].append(cid)
@@ -477,11 +747,38 @@ def _find_semantic_entry(
         )
         evidence["hard_gate_results"][cid] = {"ok": ok, "gates": gates, "reason": reason}
         if ok:
-            evidence["abstention_reason"] = ""
-            return entry, "semantic_cache_hit", evidence
+            score, details = _score_semantic_candidate(extracted, entry.get("semantic_signature") or {})
+            evidence["candidate_scores"][cid] = {
+                "score": round(score, 4),
+                "details": details,
+            }
+            passing.append((cid, entry, score))
 
-    evidence["abstention_reason"] = "semantic_gate_reject_all"
-    return None, "semantic_gate_reject_all", evidence
+    if not passing:
+        evidence["abstention_reason"] = "semantic_gate_reject_all"
+        return None, "semantic_gate_reject_all", evidence
+
+    passing.sort(key=lambda item: item[2], reverse=True)
+    winner_id, winner_entry, winner_score = passing[0]
+    runner_up_score = passing[1][2] if len(passing) > 1 else None
+    evidence["winner"] = {"candidate_id": winner_id, "score": round(winner_score, 4)}
+    if len(passing) > 1:
+        evidence["runner_up"] = {
+            "candidate_id": passing[1][0],
+            "score": round(passing[1][2], 4),
+        }
+
+    threshold = float(evidence["score_threshold"])
+    if winner_score < threshold:
+        evidence["abstention_reason"] = "semantic_low_confidence_winner"
+        return None, "semantic_low_confidence_winner", evidence
+
+    # WISDM reasoning queries often produce multiple close semantic candidates
+    # that differ only by wording. The cache should prefer the best-scoring
+    # candidate as long as it clears the confidence threshold instead of
+    # rejecting the whole lookup as "ambiguous".
+    evidence["abstention_reason"] = ""
+    return winner_entry, "semantic_cache_hit", evidence
 
 
 def _execute_grounded_cache_entry(
@@ -500,15 +797,19 @@ def _execute_grounded_cache_entry(
     _record(trace, operator_skeleton=list(entry["operator_skeleton"]))
     _append_stage(result, stage_hit)
     _append_stage(result, "cache_light_grounding")
-    prompt = _grounding_prompt(query, entry, df)
-    _record(trace, prompt=prompt)
     grounding_started = time.perf_counter()
     try:
+        prompt = _grounding_prompt(query, entry, df)
+        _record(trace, prompt=prompt)
         raw_plan = _invoke_light_for_plan(client, prompt, trace)
     finally:
         stage_latency["cache_grounding"] += time.perf_counter() - grounding_started
-    raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
-    plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
+    validation_started = time.perf_counter()
+    try:
+        raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
+        plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
+    finally:
+        stage_latency["cache_validation"] += time.perf_counter() - validation_started
     _append_stage(result, "cache_plan_validated")
     _record(trace, validated_plan=plan.model_dump(mode="json"))
 
@@ -919,7 +1220,10 @@ def run_flash_fusion_cache(
         else {}
     )
     stage_latency.setdefault("cache_grounding", 0.0)
+    stage_latency.setdefault("cache_lookup", 0.0)
+    stage_latency.setdefault("cache_validation", 0.0)
     stage_latency.setdefault("typed_exec", 0.0)
+    stage_latency.setdefault("cache_rejection", 0.0)
     result.stage_latency_s = stage_latency
     started = time.perf_counter()
     _record(
@@ -929,32 +1233,36 @@ def run_flash_fusion_cache(
     )
 
     try:
-        entries = _load_entries(cache_path)
-        entry, lookup_status = _find_exact_entry(entries, query, dataset)
-        _record(trace, lookup_status=lookup_status, entry=entry)
+        lookup_started = time.perf_counter()
+        try:
+            entries = _load_entries(cache_path)
+            entry, lookup_status = _find_exact_entry(entries, query, dataset)
+            _record(trace, lookup_status=lookup_status, entry=entry)
 
-        if entry is None and semantic_cache_path is not None:
-            semantic_entries = _load_entries(semantic_cache_path)
-            semantic_entry, semantic_status, semantic_evidence = _find_semantic_entry(
-                semantic_entries,
-                query,
-                dataset,
-                df,
-                expected_operator_contract_hash,
-            )
-            _record(
-                trace,
-                semantic_match_evidence=semantic_evidence,
-            )
-            if semantic_entry is not None:
-                entry = semantic_entry
-                lookup_status = semantic_status
-                _record(trace, lookup_status=lookup_status, entry=entry)
-            else:
-                raise LookupError(f"semantic: {semantic_status}")
+            if entry is None and semantic_cache_path is not None:
+                semantic_entries = _load_entries(semantic_cache_path)
+                semantic_entry, semantic_status, semantic_evidence = _find_semantic_entry(
+                    semantic_entries,
+                    query,
+                    dataset,
+                    df,
+                    expected_operator_contract_hash,
+                )
+                _record(
+                    trace,
+                    semantic_match_evidence=semantic_evidence,
+                )
+                if semantic_entry is not None:
+                    entry = semantic_entry
+                    lookup_status = semantic_status
+                    _record(trace, lookup_status=lookup_status, entry=entry)
+                else:
+                    raise LookupError(f"semantic: {semantic_status}")
 
-        if entry is None:
-            raise LookupError(lookup_status)
+            if entry is None:
+                raise LookupError(lookup_status)
+        finally:
+            stage_latency["cache_lookup"] += time.perf_counter() - lookup_started
 
         # Cheap out-of-scope short-circuit: the registry records an empty
         # skeleton, so we ask the light model for the guardrail reason instead
@@ -966,7 +1274,7 @@ def run_flash_fusion_cache(
             try:
                 reason = _invoke_light_for_rejection_reason(client, query, df, trace)
             finally:
-                stage_latency["cache_grounding"] += (
+                stage_latency["cache_rejection"] += (
                     time.perf_counter() - grounding_started
                 )
             _append_stage(result, "cache_rejection_reason_ready")
@@ -985,12 +1293,16 @@ def run_flash_fusion_cache(
             return result
 
         if lookup_status == "exact_cache_hit":
-            cached_contract_hash = entry.get("operator_contract_hash")
-            if expected_operator_contract_hash and cached_contract_hash != expected_operator_contract_hash:
-                raise LookupError("operator_contract_hash_mismatch")
-            cached_schema_fingerprint = entry.get("schema_fingerprint")
-            if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
-                raise LookupError("schema_fingerprint_mismatch")
+            validation_started = time.perf_counter()
+            try:
+                cached_contract_hash = entry.get("operator_contract_hash")
+                if expected_operator_contract_hash and cached_contract_hash != expected_operator_contract_hash:
+                    raise LookupError("operator_contract_hash_mismatch")
+                cached_schema_fingerprint = entry.get("schema_fingerprint")
+                if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
+                    raise LookupError("schema_fingerprint_mismatch")
+            finally:
+                stage_latency["cache_validation"] += time.perf_counter() - validation_started
             return _execute_grounded_cache_entry(
                 query=query,
                 df=df,

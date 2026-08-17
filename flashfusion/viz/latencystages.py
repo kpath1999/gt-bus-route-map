@@ -26,6 +26,8 @@ import pandas as pd
 from measure import (
     BASELINE_ORDER,
     BASELINE_COLORS,
+    CACHE_BASELINE,
+    CACHE_BASELINE_VARIANTS,
     DATASET_ORDER,
     QUERY_TYPE_ORDER,
     SEMANTIC_STAGE_ORDER,
@@ -35,11 +37,30 @@ from measure import (
     aggregate_semantic_stage_latency_overall,
     aggregate_semantic_stage_total_latency_by_query_type,
     display_baseline,
+    expand_baselines,
+    split_cache_baseline_rows,
 )
 
-FF_AND_CACHE_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE"]
+FF_AND_CACHE_BASELINES = ["FLASH_FUSION", *CACHE_BASELINE_VARIANTS]
 TWO_WAY_BASELINES = FF_AND_CACHE_BASELINES
-THREE_WAY_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY"]
+THREE_WAY_BASELINES = ["FLASH_FUSION", *CACHE_BASELINE_VARIANTS, "REACT_ONLY"]
+CACHE_STAGE_COMPARE_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    *CACHE_BASELINE_VARIANTS,
+]
+CUMULATIVE_LATENCY_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    "REACT_ONLY",
+    "AUTOIOT_PAPER",
+]
+CUMULATIVE_LATENCY_THREE_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    "REACT_ONLY",
+]
+CUMULATIVE_LATENCY_FF_CACHE_BASELINES = ["FLASH_FUSION", CACHE_BASELINE]
 
 RC: dict[str, Any] = {
     "font.family": "DejaVu Sans",
@@ -72,8 +93,14 @@ SEMANTIC_STAGE_COLORS = {
     "Execution": "#8d67b8",
 }
 
-SEMANTIC_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY", "AUTOIOT_PAPER"]
-LATENCY_COMPARE_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY", "AUTOIOT_PAPER"]
+SEMANTIC_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    *CACHE_BASELINE_VARIANTS,
+    "REACT_ONLY",
+    "AUTOIOT_PAPER",
+]
+LATENCY_COMPARE_BASELINES = SEMANTIC_BASELINES
 
 
 def _parse_csv_list(raw: str | None) -> list[str] | None:
@@ -423,7 +450,7 @@ def _load_baseline_root(
             f"No valid benchmark metrics could be loaded below: {root}"
         )
 
-    return pd.concat(frames, ignore_index=True)
+    return split_cache_baseline_rows(pd.concat(frames, ignore_index=True))
 
 
 def _clean_axes(ax) -> None:
@@ -990,12 +1017,12 @@ def main() -> None:
     assert output_dir is not None
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    selected_baselines = [
+    selected_baselines = expand_baselines([
         baseline.strip().upper()
         for baseline in (
             _parse_csv_list(args.baseline_set) or list(LATENCY_COMPARE_BASELINES)
         )
-    ]
+    ])
     selected_query_types = (
         _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
     )
@@ -1008,9 +1035,14 @@ def main() -> None:
     }
 
     frames: list[pd.DataFrame] = []
+    loaded_sources: set[str] = set()
 
     for baseline in selected_baselines:
-        raw_root = configured_roots.get(baseline)
+        source_baseline = CACHE_BASELINE if baseline in CACHE_BASELINE_VARIANTS else baseline
+        if source_baseline in loaded_sources:
+            continue
+        loaded_sources.add(source_baseline)
+        raw_root = configured_roots.get(source_baseline)
 
         if raw_root is None:
             print(f"[INFO] Skipping {baseline}: no results root provided.")
@@ -1020,13 +1052,13 @@ def main() -> None:
         assert root is not None
 
         try:
-            baseline_df = _load_baseline_root(baseline, root)
+            baseline_df = _load_baseline_root(source_baseline, root)
         except (FileNotFoundError, ValueError) as exc:
             print(f"[WARN] Could not load {baseline} from {root}: {exc}")
             continue
 
         print(
-            f"[INFO] Loaded {len(baseline_df)} rows for {baseline} "
+            f"[INFO] Loaded {len(baseline_df)} rows for {source_baseline} "
             f"from {root}"
         )
         frames.append(baseline_df)
@@ -1107,13 +1139,19 @@ def main() -> None:
     plot_semantic_stage_comparison_overall_two(semantic_overall_two, semantic_overall_two_out)
     semantic_overall_two.to_csv(output_dir / "semantic_stage_comparison_overall_two_n3_summary.csv", index=False)
 
-    semantic_three = aggregate_semantic_stage_latency_by_query_type(df, baselines=THREE_WAY_BASELINES)
-    semantic_three_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=THREE_WAY_BASELINES)
+    semantic_three = aggregate_semantic_stage_latency_by_query_type(
+        df,
+        baselines=CACHE_STAGE_COMPARE_BASELINES,
+    )
+    semantic_three_total = aggregate_semantic_stage_total_latency_by_query_type(
+        df,
+        baselines=CACHE_STAGE_COMPARE_BASELINES,
+    )
     semantic_three_out = output_dir / "semantic_stage_latency_comparison_by_baseline_three_n3.png"
     plot_semantic_stage_comparison(
         semantic_three,
         semantic_three_out,
-        baselines=THREE_WAY_BASELINES,
+        baselines=CACHE_STAGE_COMPARE_BASELINES,
         query_types=selected_query_types,
         total_summary=semantic_three_total,
         log_scale=False,
@@ -1130,32 +1168,41 @@ def main() -> None:
     plot_semantic_stage_comparison_overall_two(semantic_overall_ff_cache, semantic_overall_ff_cache_out, baselines=FF_AND_CACHE_BASELINES)
     semantic_overall_ff_cache.to_csv(output_dir / "semantic_stage_comparison_overall_ff_cache_n3_summary.csv", index=False)
 
-    latency_compare = aggregate_latency_by_baseline_query_type(df, baselines=selected_baselines)
+    latency_compare = aggregate_latency_by_baseline_query_type(
+        df,
+        baselines=CUMULATIVE_LATENCY_BASELINES,
+    )
     latency_compare_out = output_dir / "cumulative_latency_comparison_log_by_baseline_n3.png"
     plot_cumulative_latency_comparison(
         latency_compare,
         latency_compare_out,
-        baselines=selected_baselines,
+        baselines=CUMULATIVE_LATENCY_BASELINES,
         query_types=selected_query_types,
     )
     latency_compare.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_n3_summary.csv", index=False)
 
-    latency_compare_three = aggregate_latency_by_baseline_query_type(df, baselines=THREE_WAY_BASELINES)
+    latency_compare_three = aggregate_latency_by_baseline_query_type(
+        df,
+        baselines=CUMULATIVE_LATENCY_THREE_BASELINES,
+    )
     latency_compare_three_out = output_dir / "cumulative_latency_comparison_log_by_baseline_three_n3.png"
     plot_cumulative_latency_comparison(
         latency_compare_three,
         latency_compare_three_out,
-        baselines=THREE_WAY_BASELINES,
+        baselines=CUMULATIVE_LATENCY_THREE_BASELINES,
         query_types=selected_query_types,
     )
     latency_compare_three.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_three_n3_summary.csv", index=False)
 
-    latency_compare_ff_cache = aggregate_latency_by_baseline_query_type(df, baselines=FF_AND_CACHE_BASELINES)
+    latency_compare_ff_cache = aggregate_latency_by_baseline_query_type(
+        df,
+        baselines=CUMULATIVE_LATENCY_FF_CACHE_BASELINES,
+    )
     latency_compare_ff_cache_out = output_dir / "cumulative_latency_comparison_ff_cache_n3.png"
     plot_cumulative_latency_comparison_linear(
         latency_compare_ff_cache,
         latency_compare_ff_cache_out,
-        baselines=FF_AND_CACHE_BASELINES,
+        baselines=CUMULATIVE_LATENCY_FF_CACHE_BASELINES,
         query_types=selected_query_types,
     )
     latency_compare_ff_cache.to_csv(output_dir / "cumulative_latency_comparison_ff_cache_n3_summary.csv", index=False)

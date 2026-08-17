@@ -14,6 +14,7 @@ import glob
 import json
 import os
 from pathlib import Path
+import warnings
 from typing import Any
 
 import pandas as pd
@@ -24,13 +25,69 @@ from flashfusion.config import DEFAULT_MODEL
 from flashfusion.eval.ground_truth import GroundTruthEntry, load_ground_truth
 from flashfusion.eval.build_groundtruth.ground_truth_builder import build_ground_truth
 from flashfusion.eval.queries import DATASET_WISDM, SUPPORTED_DATASETS, get_queries
+from flashfusion.eval.queries_v2 import get_queries as get_queries_v2
+from flashfusion.eval.queries_v3 import get_queries as get_queries_v3
 from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.runner import LLMClient, RunResult
 
 
 def _query_lookup(dataset: str) -> dict[str, int]:
-    return {q["text"]: q["id"] for q in get_queries(dataset)}
+    """Build a guarded text lookup for legacy artifacts without query IDs."""
+    lookup: dict[str, int] = {}
+    for version, queries in (
+        ("v1", get_queries(dataset)),
+        ("v2", get_queries_v2(dataset)),
+        ("v3", get_queries_v3(dataset)),
+    ):
+        for query in queries:
+            text = str(query["text"])
+            query_id = int(query["id"])
+            existing = lookup.get(text)
+            if existing is not None and existing != query_id:
+                raise ValueError(
+                    "Conflicting query identity across catalogs: "
+                    f"dataset={dataset!r}, version={version!r}, text={text!r}, "
+                    f"query_ids=({existing}, {query_id})"
+                )
+            lookup[text] = query_id
+    return lookup
+
+
+def _resolve_query_id(
+    row: dict[str, Any],
+    query_lookup: dict[str, int],
+    ground_truth_by_id: dict[int, GroundTruthEntry],
+) -> tuple[int, str]:
+    """Resolve stable identity, preferring the persisted numeric query ID."""
+    raw_query_id = row.get("query_id")
+    if raw_query_id not in (None, "", 0, "0"):
+        try:
+            query_id = int(raw_query_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid explicit query_id {raw_query_id!r} in row") from exc
+        source = "explicit"
+    else:
+        query_text = str(row.get("query", ""))
+        query_id = query_lookup.get(query_text, 0)
+        if query_id == 0:
+            raise ValueError(
+                "Unable to resolve query identity: result row has no explicit "
+                f"query_id and query text matches no known version: {query_text!r}"
+            )
+        source = "legacy_query_text"
+        warnings.warn(
+            "Result row has no explicit query_id; resolved it from legacy query "
+            f"text as query_id={query_id}. Re-run the benchmark to persist IDs.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
+    if query_id not in ground_truth_by_id:
+        raise ValueError(
+            f"Resolved query_id={query_id} is absent from the loaded ground truth"
+        )
+    return query_id, source
 
 
 def _clip(text: str, limit: int) -> str:
@@ -273,11 +330,12 @@ def judge_rows_with_llm(
 
     judged_rows: list[dict[str, Any]] = []
     for row in rows:
-        query_text = str(row.get("query", ""))
         baseline = str(row.get("baseline", "UNKNOWN"))
-        qid = q_lookup.get(query_text)
-        if qid is None or qid not in ground_truth_by_id:
-            continue
+        qid, query_id_source = _resolve_query_id(
+            row,
+            q_lookup,
+            ground_truth_by_id,
+        )
 
         gt = ground_truth_by_id[qid]
         sanity = sanity_by_id.get(qid, {})
@@ -391,6 +449,7 @@ Candidate generated code:
                 "source_file": str(row.get("_source_file", "")),
                 "baseline": baseline,
                 "query_id": qid,
+                "query_id_source": query_id_source,
                 "query_text": gt.query_text,
                 "expected_rejection": gt.expected_rejection,
                 "gt_reference_answer": gt.reference_answer,

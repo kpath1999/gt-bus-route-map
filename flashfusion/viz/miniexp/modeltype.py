@@ -173,6 +173,7 @@ def _rows_for_judge(results: list[RunResult]) -> list[dict[str, Any]]:
 
 
 def _run_single_query(
+    query_id: int,
     query_text: str,
     sampled_df: pd.DataFrame,
     model: str,
@@ -181,12 +182,15 @@ def _run_single_query(
     client = LLMClient(model_name=model, api_key=api_key)
     runner = BaselineRunner(mode="FLASH_FUSION", df=sampled_df, client=client)
     try:
-        return runner.run(query_text)
+        result = runner.run(query_text)
+        result.query_id = int(query_id)
+        return result
     except Exception as exc:
         r = RunResult(
             baseline="FLASH_FUSION",
             model=model,
             query=query_text,
+            query_id=int(query_id),
             answer=f"[ERROR] {type(exc).__name__}: {exc}",
             executed=False,
             rejected=False,
@@ -460,6 +464,7 @@ def run_experiment(
                 query_text = query_map[qid]
                 print(f"[{dataset}] [{model}] Q{qid}: {query_text[:72]}...", flush=True)
                 rr = _run_single_query(
+                    query_id=qid,
                     query_text=query_text,
                     sampled_df=df_full,
                     model=model,

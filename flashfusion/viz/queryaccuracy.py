@@ -9,6 +9,7 @@ from pathlib import Path
 from measure import (
     BASELINE_ORDER,
     aggregate_accuracy_by_dataset_query_type,
+    expand_baselines,
     load_all_metrics,
 )
 
@@ -57,7 +58,9 @@ def main() -> None:
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent.parent
 
-    baselines = [value.strip().upper() for value in args.baselines.split(",") if value.strip()]
+    baselines = expand_baselines(
+        [value.strip().upper() for value in args.baselines.split(",") if value.strip()]
+    )
     results_root = _resolve_user_path(args.results_root, repo_root)
     if results_root is None:
         raise ValueError("--results-root is required")

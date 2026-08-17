@@ -95,7 +95,10 @@ def _canonical_stage_latencies_s(result: RunResult) -> dict[str, float]:
         "s2": float(src.get("s2", 0.0) or 0.0),
         "s3": float(src.get("s3", 0.0) or 0.0),
         "guardrail": guardrail_plan,
+        "cache_lookup": float(src.get("cache_lookup", 0.0) or 0.0),
         "cache_grounding": float(src.get("cache_grounding", 0.0) or 0.0),
+        "cache_validation": float(src.get("cache_validation", 0.0) or 0.0),
+        "cache_rejection": float(src.get("cache_rejection", 0.0) or 0.0),
         "typed_exec": float(src.get("typed_exec", 0.0) or 0.0),
         "agent": float(src.get("agent", 0.0) or 0.0),
     }
@@ -139,7 +142,7 @@ def aggregate_metrics(
     Returns:
         pd.DataFrame with columns:
             baseline        (str)
-            query_id        (int)   — 1-indexed position in WISDM_QUERIES
+            query_id        (int)   — stable ID shared across query versions
             gt_score        (float) — raw llm_score when present, else 0.0
             gt_method       (str)   — scoring method: llm_judge_score[(_missing)]
             latency_s       (float) — from compute_latency()
@@ -153,12 +156,12 @@ def aggregate_metrics(
 
     Implementation:
         from flashfusion.eval.queries import WISDM_QUERIES
-        Build a lookup: query_text → query_id from WISDM_QUERIES.
+        Build a legacy lookup: query_text → query_id from WISDM_QUERIES.
         For each result:
-            acc = compute_accuracy(result)
+            Prefer result.query_id.
+            If absent, use the legacy text lookup or fail if unmatched.
             lat = compute_latency(result)
             cost = compute_cost(result)
-            query_id = lookup.get(result.query, 0)
             Append row dict to list.
         return pd.DataFrame(rows).sort_values(["baseline", "query_id"]).reset_index(drop=True)
     """
@@ -194,11 +197,20 @@ def aggregate_metrics(
                 judgment_by_key[key] = (raw_score, verdict)
 
     rows: list[dict] = []
-    for idx, r in enumerate(results, start=1):
+    for r in results:
         lat = compute_latency(r)
         cost = compute_cost(r)
         stage_s = _canonical_stage_latencies_s(r)
-        query_id = query_lookup.get(r.query, idx)
+        explicit_query_id = int(getattr(r, "query_id", 0) or 0)
+        if explicit_query_id > 0:
+            query_id = explicit_query_id
+        else:
+            query_id = query_lookup.get(r.query, 0)
+            if query_id == 0:
+                raise ValueError(
+                    "Unable to resolve query identity for metrics: RunResult has "
+                    f"query_id=0 and query text is unknown: {r.query!r}"
+                )
 
         score_and_verdict = judgment_by_key.get((r.baseline, query_id))
         if score_and_verdict is None:
@@ -226,6 +238,18 @@ def aggregate_metrics(
         rows.append(
             {
                 "baseline": r.baseline,
+                "cache_outcome": (
+                    "hit"
+                    if r.baseline == "FLASH_FUSION_CACHE"
+                    and (
+                        r.execution_path == "typed_operator_cache"
+                        or r.plan_source.startswith("exact_query_cache_")
+                        or r.plan_source.startswith("semantic_cache_")
+                    )
+                    else "miss"
+                    if r.baseline == "FLASH_FUSION_CACHE"
+                    else "not_applicable"
+                ),
                 "query_id": query_id,
                 "gt_score": gt_score,
                 "gt_method": gt_method,
@@ -263,14 +287,20 @@ def aggregate_metrics(
                 "s2_latency_s": stage_s["s2"],
                 "s3_latency_s": stage_s["s3"],
                 "guardrail_latency_s": stage_s["guardrail"],
+                "cache_lookup_latency_s": stage_s["cache_lookup"],
                 "cache_grounding_latency_s": stage_s["cache_grounding"],
+                "cache_validation_latency_s": stage_s["cache_validation"],
+                "cache_rejection_latency_s": stage_s["cache_rejection"],
                 "typed_exec_latency_s": stage_s["typed_exec"],
                 "agent_latency_s": stage_s["agent"],
                 "s1_latency_ms": stage_s["s1"] * 1000.0,
                 "s2_latency_ms": stage_s["s2"] * 1000.0,
                 "s3_latency_ms": stage_s["s3"] * 1000.0,
                 "guardrail_latency_ms": stage_s["guardrail"] * 1000.0,
+                "cache_lookup_latency_ms": stage_s["cache_lookup"] * 1000.0,
                 "cache_grounding_latency_ms": stage_s["cache_grounding"] * 1000.0,
+                "cache_validation_latency_ms": stage_s["cache_validation"] * 1000.0,
+                "cache_rejection_latency_ms": stage_s["cache_rejection"] * 1000.0,
                 "typed_exec_latency_ms": stage_s["typed_exec"] * 1000.0,
                 "agent_latency_ms": stage_s["agent"] * 1000.0,
             }

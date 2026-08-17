@@ -45,6 +45,8 @@ from measure import (
     BASELINE_COLORS,
     BASELINE_HATCHES,
     BASELINE_ORDER,
+    CACHE_BASELINE,
+    CACHE_BASELINE_VARIANTS,
     DATASET_LABELS,
     DATASET_ORDER,
     QUERY_TYPE_ORDER,
@@ -53,15 +55,23 @@ from measure import (
     aggregate_cost_by_dataset,
     aggregate_cost_by_query_type,
     display_baseline,
+    expand_baselines,
+    split_cache_baseline_rows,
 )
 
 from typing import Any
 
-TOP3_BASELINES = ["FLASH_FUSION", "FLASH_FUSION_CACHE", "REACT_ONLY"]
+TOP3_BASELINES = ["FLASH_FUSION", CACHE_BASELINE, "REACT_ONLY"]
+COST_QUERY_TYPE_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    *CACHE_BASELINE_VARIANTS,
+    "REACT_ONLY",
+]
 DATASET_FIG_BASELINES = TOP3_BASELINES
 FULL_BASELINES = [
     "FLASH_FUSION",
-    "FLASH_FUSION_CACHE",
+    CACHE_BASELINE,
     "REACT_ONLY",
     "AUTOIOT_PAPER",
     "HARGPT_PAPER",
@@ -735,7 +745,7 @@ def _load_baseline_root(
             f"No valid benchmark metrics could be loaded below: {root}"
         )
 
-    return pd.concat(frames, ignore_index=True)
+    return split_cache_baseline_rows(pd.concat(frames, ignore_index=True))
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Generate July26 primary accuracy figures.")
@@ -796,6 +806,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Comma-separated baseline codes to include in the query-type accuracy figure.",
     )
     parser.add_argument(
+        "--cost-query-type-baseline-set",
+        default=",".join(COST_QUERY_TYPE_BASELINES),
+        help="Comma-separated baseline codes to include in the query-type cost figure.",
+    )
+    parser.add_argument(
         "--query-types",
         default=",".join(QUERY_TYPE_ORDER),
         help="Comma-separated query types to include in figures.",
@@ -831,24 +846,37 @@ def main() -> None:
     assert output_dir is not None
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    selected_baselines = [
+    selected_baselines = expand_baselines([
         baseline.strip().upper()
         for baseline in (
             _parse_csv_list(args.baseline_set) or list(FULL_BASELINES)
         )
-    ]
-    dataset_baselines = [
+    ])
+    dataset_baselines = expand_baselines([
         baseline.strip().upper()
         for baseline in (
             _parse_csv_list(args.dataset_baseline_set) or list(FULL_BASELINES)
         )
-    ]
-    query_type_baselines = [
+    ])
+    query_type_baselines = expand_baselines([
         baseline.strip().upper()
         for baseline in (
             _parse_csv_list(args.query_type_baseline_set) or list(TOP3_BASELINES)
         )
-    ]
+    ])
+    cost_query_type_baselines = expand_baselines([
+        baseline.strip().upper()
+        for baseline in (
+            _parse_csv_list(args.cost_query_type_baseline_set)
+            or list(COST_QUERY_TYPE_BASELINES)
+        )
+    ])
+    required_baselines = list(dict.fromkeys([
+        *selected_baselines,
+        *dataset_baselines,
+        *query_type_baselines,
+        *cost_query_type_baselines,
+    ]))
     selected_query_types = (
         _parse_csv_list(args.query_types) or list(QUERY_TYPE_ORDER)
     )
@@ -863,9 +891,14 @@ def main() -> None:
     }
 
     frames: list[pd.DataFrame] = []
+    loaded_sources: set[str] = set()
 
     for baseline in selected_baselines:
-        raw_root = configured_roots.get(baseline)
+        source_baseline = CACHE_BASELINE if baseline in CACHE_BASELINE_VARIANTS else baseline
+        if source_baseline in loaded_sources:
+            continue
+        loaded_sources.add(source_baseline)
+        raw_root = configured_roots.get(source_baseline)
 
         if raw_root is None:
             print(f"[INFO] Skipping {baseline}: no results root provided.")
@@ -875,13 +908,13 @@ def main() -> None:
         assert root is not None
 
         try:
-            baseline_df = _load_baseline_root(baseline, root)
+            baseline_df = _load_baseline_root(source_baseline, root)
         except (FileNotFoundError, ValueError) as exc:
             print(f"[WARN] Could not load {baseline} from {root}: {exc}")
             continue
 
         print(
-            f"[INFO] Loaded {len(baseline_df)} rows for {baseline} "
+            f"[INFO] Loaded {len(baseline_df)} rows for {source_baseline} "
             f"from {root}"
         )
         frames.append(baseline_df)
@@ -924,7 +957,7 @@ def main() -> None:
 
     df = _filter_metrics(
         df,
-        selected_baselines,
+        required_baselines,
         selected_query_types,
     )
 
@@ -976,7 +1009,7 @@ def main() -> None:
     plot_cost_across_query_types(
         cost_by_query_type,
         fig4,
-        baselines=query_type_baselines,
+        baselines=cost_query_type_baselines,
         query_types=selected_query_types,
     )
 

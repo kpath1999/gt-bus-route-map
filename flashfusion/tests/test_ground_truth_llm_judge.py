@@ -148,3 +148,68 @@ def test_judge_rows_with_llm_accepts_expected_rejection(monkeypatch):
     assert len(judged) == 1
     assert judged.loc[0, "llm_verdict"] == "PASS"
     assert judged.loc[0, "llm_score"] == 1.0
+
+
+def test_judge_rows_with_llm_prefers_explicit_id_over_rewritten_text(monkeypatch):
+    ground_truth_by_id = {
+        2: GroundTruthEntry(
+            query_id=2,
+            query_text="Canonical v1 wording",
+            reference_answer="42",
+            expected_rejection=False,
+        )
+    }
+    rows = [
+        {
+            "baseline": "FLASH_FUSION_CACHE",
+            "query_id": 2,
+            "query": "Rewritten wording that is absent from every catalog",
+            "answer": "42",
+            "executed": True,
+            "rejected": False,
+        }
+    ]
+
+    class _DummyPrompt:
+        def __or__(self, other):
+            return self
+
+    class _DummyLLM:
+        def __ror__(self, other):
+            return self
+
+        def __or__(self, other):
+            return self
+
+    class _DummyClient:
+        def __init__(self, *args, **kwargs) -> None:
+            self.llm = _DummyLLM()
+
+        def invoke_chain(self, chain, inputs, stage: str) -> str:
+            assert inputs["query_text"] == "Canonical v1 wording"
+            return (
+                '{"verdict":"PASS","reason":"Same answer.",'
+                '"ground_truth_sanity":"SOUND","ground_truth_note":""}'
+            )
+
+    monkeypatch.setattr(
+        "flashfusion.eval.ground_truth_llm_judge.ChatPromptTemplate.from_messages",
+        lambda *args, **kwargs: _DummyPrompt(),
+    )
+    monkeypatch.setattr(
+        "flashfusion.eval.ground_truth_llm_judge.LLMClient",
+        _DummyClient,
+    )
+
+    judged = judge_rows_with_llm(
+        rows=rows,
+        ground_truth_by_id=ground_truth_by_id,
+        dataset=DATASET_WISDM,
+        model_name="test-model",
+        api_key="test-key",
+    )
+
+    assert len(judged) == 1
+    assert int(judged.loc[0, "query_id"]) == 2
+    assert judged.loc[0, "query_id_source"] == "explicit"
+    assert judged.loc[0, "llm_score"] == 1.0

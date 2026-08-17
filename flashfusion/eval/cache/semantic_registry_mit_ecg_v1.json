@@ -17,12 +17,45 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
-        "predicate_ops": {},
-        "output_shape": "unknown"
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "logistic_regression",
+          "target_column": null,
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -39,12 +72,45 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
-        "predicate_ops": {},
-        "output_shape": "unknown"
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "one_nearest_neighbor",
+          "target_column": null,
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -71,7 +137,30 @@
           "record_id"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": true,
+          "group_by": false,
+          "difference": true,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "PARALLEL_AGGREGATE",
+          "DERIVE_BINARY",
+          "RANK_ROWS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -99,7 +188,31 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 106
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": true,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -116,12 +229,45 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
-        "predicate_ops": {},
-        "output_shape": "unknown"
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "hist_gradient_boosting",
+          "target_column": null,
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -151,7 +297,36 @@
           "mlii": "gt",
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 106,
+          "mlii__value": 0
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": [
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ],
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -180,7 +355,32 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "unknown"
+        "filter_values": {
+          "record_id": 221
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": true,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "unknown",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "FILTER_NOT_EMPTY",
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -212,7 +412,34 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 208
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": true,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "FILTER_NOT_EMPTY",
+          "DERIVE_BIN",
+          "GROUP_AGGREGATE",
+          "AGGREGATE_GROUPS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -240,7 +467,31 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -270,7 +521,34 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": true,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": true,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "FILTER_NOT_EMPTY",
+          "DERIVE_BIN",
+          "GROUP_AGGREGATE",
+          "RANK_GROUPS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -287,12 +565,45 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
-        "predicate_ops": {},
-        "output_shape": "unknown"
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "random_forest",
+          "target_column": null,
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -320,7 +631,31 @@
         "predicate_ops": {
           "record_id": "eq"
         },
-        "output_shape": "scalar"
+        "filter_values": {
+          "record_id": 234
+        },
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     }

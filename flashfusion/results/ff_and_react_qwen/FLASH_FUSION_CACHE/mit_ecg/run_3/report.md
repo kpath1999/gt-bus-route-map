@@ -1,37 +1,37 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-13T19:04:11+00:00
+Generated: 2026-08-16T17:13:02+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             1.0000 |            2.7284 |           0.0003 |
+| FLASH_FUSION_CACHE |             1.0000 |            4.2018 |           0.0012 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                    7.29 | -                          |
+| FLASH_FUSION_CACHE |        16 |       3 | 19%        |                0 |                  4 |                    6.34 | -                          |
 
 ## Per-Query Results
 
-### Q1: What is the minimum MLII value recorded for record_id 101?
+### Q1: Please provide the lowest MLII value recorded In record_id 101?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is -3.175
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 2.28s | Cost: $0.00034
+- Latency: 2.54s | Cost: $0.00034
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 101]
@@ -52,22 +52,22 @@ result = df['MLII'].min()
 
 ---
 
-### Q2: What is the total recording duration in seconds (maximum time_s) for record_id 234?
+### Q2: Please provide the total recording duration in seconds (highest time_s) In record_id 234?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 1805.5527777777777
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.35s | Cost: $0.00012
+- Latency: 2.61s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 234]
@@ -88,29 +88,28 @@ result = df['time_s'].max()
 
 ---
 
-### Q3: For record_id 106, how many samples have MLII > 0?
+### Q3: In record_id 106, How much of a count of samples have MLII > 0?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 111769
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
-- Path: typed_operator_cache
+- Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_COMPARE,COUNT_ROWS
-- Latency: 1.50s | Cost: $0.00011
+- Latency: 2.58s | Cost: $0.00197
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 106]
 Observation: rows=650000
 Thought: typed operator step 2 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['MLII'] > 0]
+Action Input: df = df[df['MLII'] > 0.0]
 Observation: rows=111769
 Thought: typed operator step 3 (COUNT_ROWS)
 Action: typed_operator_exec
@@ -123,28 +122,28 @@ Final Answer: 111769
 
 ```python
 df = df[df['record_id'] == 106]
-df = df[df['MLII'] > 0]
+df = df[df['MLII'] > 0.0]
 result = len(df)
 ```
 
 ---
 
-### Q4: What is the timestamp (time_s) of the last annotated beat for record_id 221?
+### Q4: Please provide the timestamp (time_s) of the last annotated beat In record_id 221?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 1805.0277777777776
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,AGGREGATE_COLUMN
-- Latency: 1.45s | Cost: $0.00012
+- Latency: 3.53s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 221]
@@ -170,17 +169,17 @@ result = df['time_s'].max()
 
 ---
 
-### Q5: For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?
+### Q5: In record_id 208, Please provide the average count of rows with a non-empty annotation in each 60-second time_s bin?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 98.06451612903226
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,AGGREGATE_GROUPS
-- Latency: 7.62s | Cost: $0.00180
+- Latency: 8.40s | Cost: $0.00180
 
 **Agent Trace**
 
@@ -220,22 +219,22 @@ result = result.mean()
 
 ---
 
-### Q6: Which record_id exhibits the largest difference between maximum and minimum MLII?
+### Q6: Tell me which record_id exhibits the largest difference between highest and lowest MLII?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is {'record_id': 116, 'diff_MLII': 10.235}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PARALLEL_AGGREGATE,DERIVE_BINARY,RANK_ROWS
-- Latency: 4.45s | Cost: $0.00016
+- Latency: 5.09s | Cost: $0.00016
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PARALLEL_AGGREGATE)
 Action: typed_operator_exec
 Action Input: # PARALLEL_AGGREGATE branches:
@@ -267,17 +266,17 @@ idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()
 
 ---
 
-### Q7: For record_id 101, which 10-second interval contains the highest number of annotated beats?
+### Q7: In record_id 101, Tell me which 10-second interval contains the highest number of annotated beats?
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is {'interval_start': 110.0, 'count': 15}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 6.95s | Cost: $0.00175
+- Latency: 8.04s | Cost: $0.00175
 
 **Agent Trace**
 
@@ -317,22 +316,22 @@ result = result.idxmax()
 
 ---
 
-### Q8: Calculate the root mean square (RMS) of the MLII signal for record_id 106.
+### Q8: Work out the root mean square (RMS) of the MLII signal In record_id 106.
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 0.40876962488762447
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.27s | Cost: $0.00012
+- Latency: 2.73s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 106]
@@ -357,130 +356,136 @@ result = df['MLII'].rms()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about fatal cardiac events.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating fatal cardiac events.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.93s | Cost: $0.00003
+- Latency: 2.25s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about fatal cardiac events.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating fatal cardiac events.
 ```
 
 ---
 
-### Q10: Is there a statistical correlation between patient BMI and their maximum MLII amplitude?
+### Q10: Is there a statistical correlation between patient BMI and their highest MLII amplitude?
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating patient BMI.
+**Answer:** Query rejected. Reason: The dataset does not contain a column for patient BMI, which is required to assess correlation with MLII amplitude.. This request is not supported by the current dataset schema or task scope.
 
 - Executed: False | Rejected: True | Judge: N/A
-- Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
+- Stages: cache_miss_or_validation_failure,guardrail_plan
 - Path: guardrail_reject
-- Latency: 0.98s | Cost: $0.00003
+- Latency: 2.44s | Cost: $0.00599
 
-**Agent Trace**
+**Alignment Explanation**
 
-```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating patient BMI.
-```
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain a column for patient BMI, which is required to assess correlation with MLII amplitude.
+
+**Rejection Reasoning**
+
+- The dataset does not contain a column for patient BMI, which is required to assess correlation with MLII amplitude.
 
 ---
 
-### Q11: Which patients in this dataset have a recorded family history of brain cancer?
+### Q11: Tell me which patients in this dataset have a recorded family history of brain cancer?
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating a family history of brain cancer.
+**Answer:** Query rejected. Reason: The dataset does not contain any column related to patient medical history or family history of brain cancer.. This request is not supported by the current dataset schema or task scope.
 
 - Executed: False | Rejected: True | Judge: N/A
-- Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
+- Stages: cache_miss_or_validation_failure,guardrail_plan
 - Path: guardrail_reject
-- Latency: 1.02s | Cost: $0.00003
+- Latency: 2.40s | Cost: $0.00393
 
-**Agent Trace**
+**Alignment Explanation**
 
-```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating a family history of brain cancer.
-```
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column related to patient medical history or family history of brain cancer.
+
+**Rejection Reasoning**
+
+- The dataset does not contain any column related to patient medical history or family history of brain cancer.
 
 ---
 
-### Q12: Estimate the patient's weight during the time of the recording for record_id 105.
+### Q12: Estimate the patient's weight during the time of the recording In record_id 105.
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating patient's weight.
+**Answer:** Query rejected. Reason: The dataset does not contain any column related to patient weight or anthropometric measurements.. This request is not supported by the current dataset schema or task scope.
 
 - Executed: False | Rejected: True | Judge: N/A
-- Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
+- Stages: cache_miss_or_validation_failure,guardrail_plan
 - Path: guardrail_reject
-- Latency: 1.15s | Cost: $0.00003
+- Latency: 2.14s | Cost: $0.00185
 
-**Agent Trace**
+**Alignment Explanation**
 
-```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating patient's weight.
-```
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column related to patient weight or anthropometric measurements.
+
+**Rejection Reasoning**
+
+- The dataset does not contain any column related to patient weight or anthropometric measurements.
 
 ---
 
-### Q13: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.
+### Q13: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a logistic regression model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Logistic regression predicts present '0' for the first holdout row.
+**Answer:** The result is Logistic regression predicts + '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.25s | Cost: $0.00013
+- Latency: 3.33s | Cost: $0.00037
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts present '0' for the first holdout row."
-Observation: Logistic regression predicts present '0' for the first holdout row.
-Final Answer: Logistic regression predicts present '0' for the first holdout row.
+result = "Logistic regression predicts + '0' for the first holdout row."
+Observation: Logistic regression predicts + '0' for the first holdout row.
+Final Answer: Logistic regression predicts + '0' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts present '0' for the first holdout row."
+result = "Logistic regression predicts + '0' for the first holdout row."
 ```
 
 ---
 
-### Q14: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.
+### Q14: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is Random forest predicts label '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 5.49s | Cost: $0.00014
+- Latency: 10.66s | Cost: $0.00037
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
+Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
 result = "Random forest predicts label '0' for the first holdout row."
 Observation: Random forest predicts label '0' for the first holdout row.
 Final Answer: Random forest predicts label '0' for the first holdout row.
@@ -489,28 +494,28 @@ Final Answer: Random forest predicts label '0' for the first holdout row.
 **Final Code Executed**
 
 ```python
-# sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
+# sort_by=['record_id', 'time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
 result = "Random forest predicts label '0' for the first holdout row."
 ```
 
 ---
 
-### Q15: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.
+### Q15: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a 1-nearest-neighbor model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is 1-nearest-neighbor predicts label '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.11s | Cost: $0.00013
+- Latency: 3.31s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
@@ -528,22 +533,22 @@ result = "1-nearest-neighbor predicts label '0' for the first holdout row."
 
 ---
 
-### Q16: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.
+### Q16: Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.
 
 #### FLASH_FUSION_CACHE
 
 **Answer:** The result is Hist gradient boosting predicts label '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Stages: semantic_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.84s | Cost: $0.00013
+- Latency: 5.19s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']

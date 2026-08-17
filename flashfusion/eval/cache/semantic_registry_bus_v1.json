@@ -17,12 +17,38 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
+        "fields": [
+          "behavior",
+          "timestamp"
+        ],
         "predicate_ops": {},
-        "output_shape": "unknown"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "random_forest",
+          "target_column": "behavior",
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -46,7 +72,28 @@
           "accel_mean"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -63,12 +110,38 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
+        "fields": [
+          "behavior",
+          "timestamp"
+        ],
         "predicate_ops": {},
-        "output_shape": "unknown"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "logistic_regression",
+          "target_column": "behavior",
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -95,7 +168,31 @@
           "latitude"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "SPLIT_BY_THRESHOLD",
+          "SPLIT_BY_THRESHOLD",
+          "AGGREGATE_PARTITIONS",
+          "COMPARE_PARTITIONS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -121,7 +218,30 @@
           "instability_score"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": true,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": true,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "DERIVE_BIN",
+          "GROUP_AGGREGATE",
+          "RANK_GROUPS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -145,7 +265,28 @@
           "accel_variance"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -170,7 +311,29 @@
           "accel_variance"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -187,12 +350,38 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
+        "fields": [
+          "behavior",
+          "timestamp"
+        ],
         "predicate_ops": {},
-        "output_shape": "unknown"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "hist_gradient_boosting",
+          "target_column": "behavior",
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -215,7 +404,29 @@
         "aggregate": "max",
         "fields": [],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": true,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "DERIVE_VECTOR_MAGNITUDE",
+          "AGGREGATE_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -240,7 +451,29 @@
           "accel_stats_z_p99"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": false,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "list",
+        "operator_skeleton": [
+          "FILTER_EQ_AGGREGATE",
+          "SELECT_COLUMN"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -257,12 +490,38 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "schema_fingerprint": null,
       "semantic_signature": {
-        "admissibility": "out_of_scope",
-        "confidence": 0.95,
+        "admissibility": "in_scope",
+        "confidence": 0.85,
         "aggregate": null,
-        "fields": [],
+        "fields": [
+          "behavior",
+          "timestamp"
+        ],
         "predicate_ops": {},
-        "output_shape": "unknown"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": false,
+          "group_by": true,
+          "difference": false,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": true
+        },
+        "predictive": {
+          "model": "one_nearest_neighbor",
+          "target_column": "behavior",
+          "train_fraction": 0.8,
+          "holdout_row": "first"
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "operator_skeleton": [
+          "PREDICTIVE_PIPELINE"
+        ]
       },
       "source": "offline_semantic_registry_build"
     },
@@ -289,7 +548,30 @@
           "longitude"
         ],
         "predicate_ops": {},
-        "output_shape": "scalar"
+        "filter_values": {},
+        "intent_flags": {
+          "rank": true,
+          "group_by": false,
+          "difference": true,
+          "derived_magnitude": false,
+          "time_bin": false,
+          "correlation": false,
+          "last_event": false,
+          "predictive": false
+        },
+        "predictive": {
+          "model": null,
+          "target_column": null,
+          "train_fraction": null,
+          "holdout_row": null
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "operator_skeleton": [
+          "PARALLEL_AGGREGATE",
+          "DERIVE_BINARY",
+          "RANK_ROWS"
+        ]
       },
       "source": "offline_semantic_registry_build"
     }

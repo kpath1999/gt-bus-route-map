@@ -349,6 +349,7 @@ class RunResult:
     baseline: str                                    # e.g. "LLM_ONLY"
     model: str                                       # e.g. "llama-3.3-70b-versatile"
     query: str                                       # original query text
+    query_id: int = 0                                # stable identity shared by v1/v2/v3; 0 means legacy/unknown
 
     # Outputs
     answer: str = ""                                 # final natural-language answer
@@ -484,6 +485,7 @@ class BaselineRunner:
         predictive_timeout_s: float | None = None,
         dataset: str | None = None,
         cache_path: str | None = None,
+        semantic_cache_path: str | None = None,
     ) -> None:
         """
         Args:
@@ -496,6 +498,8 @@ class BaselineRunner:
                         allows a hit only when the query text is unique across
                         datasets in the registry.
             cache_path: Override for the operator-skeleton cache registry
+                        (FLASH_FUSION_CACHE only).
+            semantic_cache_path: Optional registry of semantic cache templates
                         (FLASH_FUSION_CACHE only).
 
         Raises:
@@ -516,6 +520,7 @@ class BaselineRunner:
         self.predictive_timeout_s = predictive_timeout_s
         self.dataset = dataset
         self.cache_path = cache_path
+        self.semantic_cache_path = semantic_cache_path
         if self.mode in ("FLASH_FUSION", "FLASH_FUSION_CACHE"):
             from flashfusion.baselines.flash_fusion import warm_flash_fusion_prefix
 
@@ -581,6 +586,7 @@ class BaselineRunner:
                 r,
                 dataset=self.dataset,
                 cache_path=self.cache_path or DEFAULT_CACHE_PATH,
+                semantic_cache_path=self.semantic_cache_path,
                 timeout_s=self.predictive_timeout_s,
             )
         elif self.mode == "HARGPT_PAPER":

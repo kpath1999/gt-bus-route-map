@@ -14,6 +14,8 @@ import pandas as pd
 import pytest
 
 from flashfusion.baselines import flash_fusion_cache as ffc
+from flashfusion.eval import queries as queries_v1
+from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.pipeline.runner import RunResult
 
 SKELETON = ["FILTER_COMPARE", "COUNT_ROWS"]
@@ -194,7 +196,9 @@ def test_successful_typed_execution_on_cache_hit(df, registry, no_fallback) -> N
     assert result.final_code
     assert "df = df[df['accel_variance'] > 0.2]" in result.final_code
     assert "result = len(df)" in result.final_code
+    assert result.stage_latency_s["cache_lookup"] >= 0.0
     assert result.stage_latency_s["cache_grounding"] >= 0.0
+    assert result.stage_latency_s["cache_validation"] >= 0.0
     assert result.stage_latency_s["typed_exec"] >= 0.0
 
     assert trace.hit is True
@@ -225,6 +229,8 @@ def test_out_of_scope_cache_hit_rejects_without_full_planner(df, registry, no_fa
     assert result.executed is False
     assert result.execution_path == "guardrail_reject"
     assert result.plan_source == "exact_query_cache_out_of_scope"
+    assert result.stage_latency_s["cache_lookup"] >= 0.0
+    assert result.stage_latency_s["cache_rejection"] >= 0.0
     assert result.answer == f"Query rejected. Reason: {reason}"
     assert "Rejected by the guardrail because" in result.trace
     assert reason in result.trace
@@ -487,3 +493,276 @@ def test_exact_hit_still_short_circuits_semantic_extraction(
 
     assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
     assert result.plan_source == "exact_query_cache_light_grounded"
+
+
+def test_semantic_ambiguous_candidates_abstain_without_light_call(df, registry, tmp_path, fallback_spy) -> None:
+    semantic_path = tmp_path / "semantic_registry_ambiguous.json"
+    payload = {
+        "a": {
+            "template_id": "tmpl-a",
+            "dataset": "bus",
+            "status": "reusable",
+            "query_id": "4",
+            "operator_skeleton": ["FILTER_COMPARE", "COUNT_ROWS"],
+            "semantic_signature": {
+                "aggregate": "count",
+                "fields": ["accel_variance"],
+                "predicate_ops": {"accel_variance": "gt"},
+                "filter_values": {},
+                "intent_flags": {"predictive": False},
+                "predictive": {"model": None, "target_column": None, "holdout_row": None, "train_fraction": None},
+                "output_shape": "scalar",
+            },
+        },
+        "b": {
+            "template_id": "tmpl-b",
+            "dataset": "bus",
+            "status": "reusable",
+            "query_id": "6",
+            "operator_skeleton": ["FILTER_COMPARE", "COUNT_ROWS"],
+            "semantic_signature": {
+                "aggregate": "count",
+                "fields": ["accel_variance"],
+                "predicate_ops": {"accel_variance": "gt"},
+                "filter_values": {},
+                "intent_flags": {"predictive": False},
+                "predictive": {"model": None, "target_column": None, "holdout_row": None, "train_fraction": None},
+                "output_shape": "scalar",
+            },
+        },
+    }
+    semantic_path.write_text(json.dumps(payload), encoding="utf-8")
+    client = _FakeClient(json.dumps(GOOD_PLAN))
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        "Count rows with accel_variance > 0.20",
+        df,
+        client,
+        dataset="bus",
+        cache_path=registry,
+        semantic_cache_path=semantic_path,
+        trace=trace,
+    )
+
+    assert len(fallback_spy) == 1
+    assert "semantic_ambiguous_candidates" in result.deterministic_fallback_reason
+    assert trace.semantic_match_evidence is not None
+    assert trace.semantic_match_evidence["abstention_reason"] == "semantic_ambiguous_candidates"
+    assert client.light.prompts == []
+
+
+def test_semantic_match_is_registry_order_invariant(df) -> None:
+    entries = [
+        {
+            "template_id": "x2",
+            "dataset": "bus",
+            "status": "reusable",
+            "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+            "semantic_signature": {
+                "aggregate": None,
+                "fields": ["behavior"],
+                "predicate_ops": {},
+                "filter_values": {},
+                "intent_flags": {"predictive": True},
+                "predictive": {
+                    "model": "random_forest",
+                    "target_column": "behavior",
+                    "holdout_row": "first",
+                    "train_fraction": 0.8,
+                },
+                "output_shape": "predictive",
+            },
+        },
+        {
+            "template_id": "x1",
+            "dataset": "bus",
+            "status": "reusable",
+            "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+            "semantic_signature": {
+                "aggregate": None,
+                "fields": ["behavior"],
+                "predicate_ops": {},
+                "filter_values": {},
+                "intent_flags": {"predictive": True},
+                "predictive": {
+                    "model": "logistic_regression",
+                    "target_column": "behavior",
+                    "holdout_row": "first",
+                    "train_fraction": 0.8,
+                },
+                "output_shape": "predictive",
+            },
+        },
+    ]
+    query = (
+        "Sort all bus rows by timestamp in ascending order. "
+        "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+        "Train a random forest model using the acceleration features. "
+        "Predict the label in the behavior column for the first row in the holdout set."
+    )
+
+    e1, s1, _ = ffc._find_semantic_entry(entries, query, "bus", df, expected_operator_contract_hash=None)
+    e2, s2, _ = ffc._find_semantic_entry(list(reversed(entries)), query, "bus", df, expected_operator_contract_hash=None)
+    assert s1 == "semantic_cache_hit"
+    assert s2 == "semantic_cache_hit"
+    assert e1 is not None and e2 is not None
+    assert e1["template_id"] == "x2"
+    assert e2["template_id"] == "x2"
+
+
+def test_semantic_predictive_model_variants_do_not_cross_match(df) -> None:
+    entries = [
+        {
+            "template_id": "lr",
+            "dataset": "bus",
+            "status": "reusable",
+            "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+            "semantic_signature": {
+                "fields": ["behavior"],
+                "filter_values": {},
+                "predictive": {
+                    "model": "logistic_regression",
+                    "target_column": "behavior",
+                    "holdout_row": "first",
+                    "train_fraction": 0.8,
+                },
+                "output_shape": "predictive",
+            },
+        },
+        {
+            "template_id": "rf",
+            "dataset": "bus",
+            "status": "reusable",
+            "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+            "semantic_signature": {
+                "fields": ["behavior"],
+                "filter_values": {},
+                "predictive": {
+                    "model": "random_forest",
+                    "target_column": "behavior",
+                    "holdout_row": "first",
+                    "train_fraction": 0.8,
+                },
+                "output_shape": "predictive",
+            },
+        },
+    ]
+    query = (
+        "Sort all bus rows by timestamp in ascending order. "
+        "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+        "Train a logistic regression model using the acceleration features. "
+        "Predict the label in the behavior column for the first row in the holdout set."
+    )
+    entry, status, _ = ffc._find_semantic_entry(entries, query, "bus", df, expected_operator_contract_hash=None)
+    assert status == "semantic_cache_hit"
+    assert entry is not None
+    assert entry["template_id"] == "lr"
+
+
+@pytest.mark.parametrize("query_module", [queries_v2, queries_v3], ids=["v2", "v3"])
+@pytest.mark.parametrize("query_id", [13, 14, 15, 16])
+def test_wisdm_predictive_paraphrases_select_model_specific_query_id(
+    query_module, query_id: int
+) -> None:
+    wisdm_df = pd.DataFrame(
+        {
+            "subject_id": [1, 2],
+            "activity_label": ["Walking", "Jogging"],
+            "timestamp": [1, 2],
+            "x": [0.1, 0.2],
+            "y": [0.3, 0.4],
+            "z": [0.5, 0.6],
+        }
+    )
+    original_queries = {
+        query["id"]: query
+        for query in queries_v1.get_queries("wisdm")
+        if query["id"] in {13, 14, 15, 16}
+    }
+    entries = [
+        {
+            "template_id": f"wisdm:{candidate_id}:v1",
+            "dataset": "wisdm",
+            "status": "reusable",
+            "query_id": str(candidate_id),
+            "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+            "semantic_signature": ffc.extract_semantic_signature(
+                original_queries[candidate_id]["text"], wisdm_df
+            ),
+        }
+        for candidate_id in (13, 14, 15, 16)
+    ]
+    paraphrase = next(
+        query["text"]
+        for query in query_module.get_queries("wisdm")
+        if query["id"] == query_id
+    )
+
+    entry, status, evidence = ffc._find_semantic_entry(
+        entries,
+        paraphrase,
+        "wisdm",
+        wisdm_df,
+        expected_operator_contract_hash=None,
+    )
+
+    assert status == "semantic_cache_hit"
+    assert entry is not None
+    assert entry["query_id"] == str(query_id)
+    assert evidence["extracted_signature"]["filter_values"] == {}
+
+
+def test_semantic_identifier_value_disambiguates_otherwise_similar_entries(df) -> None:
+    entries = [
+        {
+            "template_id": "ecg-101",
+            "dataset": "ecg",
+            "status": "reusable",
+            "operator_skeleton": ["FILTER_COMPARE", "AGGREGATE_COLUMN"],
+            "semantic_signature": {
+                "aggregate": "min",
+                "fields": ["mlii", "record_id"],
+                "predicate_ops": {"record_id": "eq"},
+                "filter_values": {"record_id": 101},
+                "output_shape": "scalar",
+            },
+        },
+        {
+            "template_id": "ecg-106",
+            "dataset": "ecg",
+            "status": "reusable",
+            "operator_skeleton": ["FILTER_COMPARE", "AGGREGATE_COLUMN"],
+            "semantic_signature": {
+                "aggregate": "min",
+                "fields": ["mlii", "record_id"],
+                "predicate_ops": {"record_id": "eq"},
+                "filter_values": {"record_id": 106},
+                "output_shape": "scalar",
+            },
+        },
+    ]
+    ecg_df = pd.DataFrame({"record_id": [101, 106], "mlii": [0.1, -0.2]})
+    entry, status, _ = ffc._find_semantic_entry(
+        entries,
+        "What is the minimum MLII value recorded for record_id 106?",
+        "mit_ecg",
+        ecg_df,
+        expected_operator_contract_hash=None,
+    )
+    assert status == "semantic_cache_hit"
+    assert entry is not None
+    assert entry["template_id"] == "ecg-106"
+
+
+def test_semantic_out_of_scope_is_recognized_as_safe_abstention(df) -> None:
+    entries = []
+    _, status, evidence = ffc._find_semantic_entry(
+        entries,
+        "Did rainy weather cause the roughest segments in this route?",
+        "bus",
+        df,
+        expected_operator_contract_hash=None,
+    )
+    assert status == "admissibility_out_of_scope"
+    assert evidence["abstention_reason"] == "admissibility_out_of_scope"

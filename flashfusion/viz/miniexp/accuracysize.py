@@ -180,13 +180,16 @@ def _run_single_query(
     client = LLMClient(model_name=model, api_key=api_key)
     runner = BaselineRunner(mode=baseline, df=sampled_df, client=client)
     try:
-        return runner.run(query_text)
+        result = runner.run(query_text)
+        result.query_id = int(query_id)
+        return result
     except Exception as exc:
         # Keep the experiment progressing while recording the failure row.
         r = RunResult(
             baseline=baseline,
             model=model,
             query=query_text,
+            query_id=int(query_id),
             answer=f"[ERROR] {type(exc).__name__}: {exc}",
             executed=False,
             rejected=False,

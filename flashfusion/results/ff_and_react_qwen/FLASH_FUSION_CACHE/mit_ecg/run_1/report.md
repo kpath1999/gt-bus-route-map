@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-13T18:58:23+00:00
+Generated: 2026-08-16T17:01:58+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             1.0000 |            4.6777 |           0.0007 |
+| FLASH_FUSION_CACHE |             1.0000 |            4.4801 |           0.0008 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                    8.28 | -                          |
+| FLASH_FUSION_CACHE |        16 |       3 | 19%        |                0 |                  4 |                    7.38 | -                          |
 
 ## Per-Query Results
 
@@ -26,12 +26,12 @@ Generated: 2026-08-13T18:58:23+00:00
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.77s | Cost: $0.00012
+- Latency: 3.31s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 101]
@@ -62,12 +62,12 @@ result = df['MLII'].min()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.45s | Cost: $0.00012
+- Latency: 2.77s | Cost: $0.00034
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 234]
@@ -95,22 +95,21 @@ result = df['time_s'].max()
 **Answer:** The result is 111769
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
-- Path: typed_operator_cache
+- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_COMPARE,COUNT_ROWS
-- Latency: 1.26s | Cost: $0.00011
+- Latency: 5.47s | Cost: $0.00230
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 106]
 Observation: rows=650000
 Thought: typed operator step 2 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['MLII'] > 0]
+Action Input: df = df[df['MLII'] > 0.0]
 Observation: rows=111769
 Thought: typed operator step 3 (COUNT_ROWS)
 Action: typed_operator_exec
@@ -123,7 +122,7 @@ Final Answer: 111769
 
 ```python
 df = df[df['record_id'] == 106]
-df = df[df['MLII'] > 0]
+df = df[df['MLII'] > 0.0]
 result = len(df)
 ```
 
@@ -139,12 +138,12 @@ result = len(df)
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,AGGREGATE_COLUMN
-- Latency: 1.87s | Cost: $0.00013
+- Latency: 3.74s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 221]
@@ -180,7 +179,7 @@ result = df['time_s'].max()
 - Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,AGGREGATE_GROUPS
-- Latency: 7.94s | Cost: $0.00712
+- Latency: 8.51s | Cost: $0.00717
 
 **Agent Trace**
 
@@ -230,12 +229,12 @@ result = result.mean()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PARALLEL_AGGREGATE,DERIVE_BINARY,RANK_ROWS
-- Latency: 4.11s | Cost: $0.00016
+- Latency: 5.25s | Cost: $0.00016
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PARALLEL_AGGREGATE)
 Action: typed_operator_exec
 Action Input: # PARALLEL_AGGREGATE branches:
@@ -277,7 +276,7 @@ idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()
 - Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 8.62s | Cost: $0.00175
+- Latency: 8.16s | Cost: $0.00175
 
 **Agent Trace**
 
@@ -327,12 +326,12 @@ result = result.idxmax()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.88s | Cost: $0.00012
+- Latency: 2.67s | Cost: $0.00012
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 106]
@@ -357,17 +356,17 @@ result = df['MLII'].rms()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about fatal cardiac events.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating fatal cardiac events.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.02s | Cost: $0.00003
+- Latency: 2.37s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about fatal cardiac events.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating fatal cardiac events.
 ```
 
 ---
@@ -376,17 +375,17 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating patient BMI.
+**Answer:** Query rejected. Reason: The dataset does not contain a column for patient BMI.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.07s | Cost: $0.00003
+- Latency: 2.36s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating patient BMI.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain a column for patient BMI.
 ```
 
 ---
@@ -400,7 +399,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.03s | Cost: $0.00003
+- Latency: 2.57s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -419,7 +418,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.27s | Cost: $0.00003
+- Latency: 2.48s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -433,31 +432,31 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Logistic regression predicts present '0' for the first holdout row.
+**Answer:** The result is Logistic regression predicts + '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.46s | Cost: $0.00013
+- Latency: 3.43s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts present '0' for the first holdout row."
-Observation: Logistic regression predicts present '0' for the first holdout row.
-Final Answer: Logistic regression predicts present '0' for the first holdout row.
+Action Input: # sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
+result = "Logistic regression predicts + '0' for the first holdout row."
+Observation: Logistic regression predicts + '0' for the first holdout row.
+Final Answer: Logistic regression predicts + '0' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
-# sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts present '0' for the first holdout row."
+# sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
+result = "Logistic regression predicts + '0' for the first holdout row."
 ```
 
 ---
@@ -466,31 +465,31 @@ result = "Logistic regression predicts present '0' for the first holdout row."
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Random forest predicts label '0' for the first holdout row.
+**Answer:** The result is Random forest predicts + '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 5.29s | Cost: $0.00013
+- Latency: 10.42s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
-result = "Random forest predicts label '0' for the first holdout row."
-Observation: Random forest predicts label '0' for the first holdout row.
-Final Answer: Random forest predicts label '0' for the first holdout row.
+Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
+result = "Random forest predicts + '0' for the first holdout row."
+Observation: Random forest predicts + '0' for the first holdout row.
+Final Answer: Random forest predicts + '0' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
-# sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
-result = "Random forest predicts label '0' for the first holdout row."
+# sort_by=['record_id', 'time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
+result = "Random forest predicts + '0' for the first holdout row."
 ```
 
 ---
@@ -505,12 +504,12 @@ result = "Random forest predicts label '0' for the first holdout row."
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 31.35s | Cost: $0.00095
+- Latency: 3.23s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
@@ -538,15 +537,15 @@ result = "1-nearest-neighbor predicts label '0' for the first holdout row."
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.44s | Cost: $0.00013
+- Latency: 4.94s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
-Cache hit: exact query text; light model grounded cached skeleton; validated typed execution.
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
+Action Input: # sort_by=['time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
 result = "Hist gradient boosting predicts label '0' for the first holdout row."
 Observation: Hist gradient boosting predicts label '0' for the first holdout row.
 Final Answer: Hist gradient boosting predicts label '0' for the first holdout row.
@@ -555,7 +554,7 @@ Final Answer: Hist gradient boosting predicts label '0' for the first holdout ro
 **Final Code Executed**
 
 ```python
-# sort_by=['record_id', 'time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
+# sort_by=['time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
 result = "Hist gradient boosting predicts label '0' for the first holdout row."
 ```
 

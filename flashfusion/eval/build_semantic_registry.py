@@ -7,6 +7,12 @@ This tool generates intent signatures that can be compared against live
 Typical use:
   python -m flashfusion.eval.build_semantic_registry --dataset bus --query-version v1 \
     --output flashfusion/eval/cache/semantic_registry_bus_v1.json
+
+  python -m flashfusion.eval.build_semantic_registry --dataset wisdm --query-version v1 \
+    --output flashfusion/eval/cache/semantic_registry_wisdm_v1.json
+
+  python -m flashfusion.eval.build_semantic_registry --dataset mit_ecg --query-version v1 \
+    --output flashfusion/eval/cache/semantic_registry_mit_ecg_v1.json
 """
 
 from __future__ import annotations
@@ -15,6 +21,8 @@ import argparse
 import json
 from pathlib import Path
 from typing import Any
+
+import pandas as pd
 
 from flashfusion.baselines.flash_fusion_cache import (
     DEFAULT_CACHE_PATH,
@@ -42,6 +50,8 @@ def _load_entries(path: Path) -> list[dict[str, Any]]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(raw, dict) and isinstance(raw.get("entries"), list):
         candidates = raw["entries"]
+    elif isinstance(raw, dict) and isinstance(raw.get("entries"), dict):
+        candidates = list(raw["entries"].values())
     elif isinstance(raw, dict):
         candidates = list(raw.values())
     elif isinstance(raw, list):
@@ -57,8 +67,10 @@ def build_semantic_registry(
     query_version: str,
     data_path: str,
     cache_path: Path,
+    df: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    df = load_dataset_by_name(data_path, dataset)
+    if df is None:
+        df = load_dataset_by_name(data_path, dataset)
     queries = _get_queries(dataset, query_version)
     q_by_id = {str(q["id"]): q for q in queries}
 
@@ -82,6 +94,7 @@ def build_semantic_registry(
             continue
 
         sem_sig = extract_semantic_signature(text, df)
+        sem_sig["operator_skeleton"] = list(skeleton)
         template_id = f"{target_dataset}:{qid or idx}:{query_version}"
         out[template_id] = {
             "template_id": template_id,

@@ -29,7 +29,7 @@ def make_result(**kwargs) -> RunResult:
     defaults = dict(
         baseline="FLASH_FUSION",
         model="llama-3.3-70b-versatile",
-        query="Test query",
+        query="What is the maximum recorded x-acceleration for user 15?",
         answer="Answer text",
         executed=True,
         rejected=False,
@@ -156,13 +156,14 @@ class TestAggregateMetrics:
         aggregate_metrics() should return a DataFrame with standard columns.
         """
         results = [
-            make_result(baseline="LLM_ONLY", executed=False, rejected=False, query="Q1"),
+            make_result(baseline="LLM_ONLY", executed=False, rejected=False, query="Q1", query_id=1),
             make_result(
                 baseline="FLASH_FUSION",
                 executed=True,
                 rejected=False,
                 judge_verdict={"verdict": "PASS"},
                 query="Q1",
+                query_id=1,
             ),
         ]
         df = aggregate_metrics(results)
@@ -183,24 +184,28 @@ class TestAggregateMetrics:
                 executed=True,
                 rejected=False,
                 query=q1_text,
+                query_id=1,
             ),
             make_result(
                 baseline="FLASH_FUSION",
                 executed=True,
                 rejected=False,
                 query=q2_text,
+                query_id=2,
             ),
             make_result(
                 baseline="WELLMAX_ONLY",
                 executed=True,
                 rejected=False,
                 query=q3_text,
+                query_id=3,
             ),
             make_result(
                 baseline="FLASH_FUSION",
                 executed=True,
                 rejected=False,
                 query=q4_text,
+                query_id=4,
             ),
         ]
 
@@ -251,8 +256,20 @@ class TestAggregateMetrics:
         q1_text = "What is the maximum recorded x-acceleration for user 15?"
         q2_text = "How many total samples in the dataset are classified as the Walking activity?"
         results = [
-            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q1_text),
-            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q2_text),
+            make_result(
+                baseline="FLASH_FUSION",
+                executed=True,
+                rejected=False,
+                query=q1_text,
+                query_id=1,
+            ),
+            make_result(
+                baseline="FLASH_FUSION",
+                executed=True,
+                rejected=False,
+                query=q2_text,
+                query_id=2,
+            ),
         ]
         judgments = pd.DataFrame(
             [
@@ -273,6 +290,41 @@ class TestAggregateMetrics:
         assert float(q2["gt_score"]) == 0.0
         assert str(q2["gt_method"]) == "llm_judge_score_missing"
 
+    def test_explicit_query_id_joins_rewritten_queries_independent_of_order(self):
+        results = [
+            make_result(
+                baseline="FLASH_FUSION_CACHE",
+                query_id=2,
+                query="Rewritten query two",
+            ),
+            make_result(
+                baseline="FLASH_FUSION_CACHE",
+                query_id=1,
+                query="Rewritten query one",
+            ),
+        ]
+        judgments = pd.DataFrame(
+            [
+                {
+                    "baseline": "FLASH_FUSION_CACHE",
+                    "query_id": 1,
+                    "llm_verdict": "PASS",
+                    "llm_score": 1.0,
+                },
+                {
+                    "baseline": "FLASH_FUSION_CACHE",
+                    "query_id": 2,
+                    "llm_verdict": "FAIL",
+                    "llm_score": 0.0,
+                },
+            ]
+        )
+
+        df = aggregate_metrics(results, llm_judgments_df=judgments)
+
+        assert float(df.loc[df["query_id"] == 1, "gt_score"].iloc[0]) == 1.0
+        assert float(df.loc[df["query_id"] == 2, "gt_score"].iloc[0]) == 0.0
+
     def test_rejects_invalid_llm_judgments_schema(self):
         """
         aggregate_metrics() should fail fast when llm_judgments columns are missing.
@@ -292,8 +344,20 @@ class TestAggregateMetrics:
         q1_text = "What is the maximum recorded x-acceleration for user 15?"
         q2_text = "How many total samples in the dataset are classified as the Walking activity?"
         results = [
-            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q1_text),
-            make_result(baseline="FLASH_FUSION", executed=True, rejected=False, query=q2_text),
+            make_result(
+                baseline="FLASH_FUSION",
+                executed=True,
+                rejected=False,
+                query=q1_text,
+                query_id=1,
+            ),
+            make_result(
+                baseline="FLASH_FUSION",
+                executed=True,
+                rejected=False,
+                query=q2_text,
+                query_id=2,
+            ),
         ]
         judgments = pd.DataFrame(
             [
@@ -357,12 +421,25 @@ def test_aggregate_metrics_includes_flash_fusion_router_telemetry() -> None:
 
 
 def test_aggregate_metrics_includes_cache_grounding_latency() -> None:
-    result = make_result(stage_latency_s={"cache_grounding": 0.25})
+    result = make_result(
+        stage_latency_s={
+            "cache_lookup": 0.05,
+            "cache_grounding": 0.25,
+            "cache_validation": 0.10,
+            "cache_rejection": 0.15,
+        }
+    )
 
     row = aggregate_metrics([result]).iloc[0]
 
+    assert float(row["cache_lookup_latency_s"]) == 0.05
+    assert float(row["cache_lookup_latency_ms"]) == 50.0
     assert float(row["cache_grounding_latency_s"]) == 0.25
     assert float(row["cache_grounding_latency_ms"]) == 250.0
+    assert float(row["cache_validation_latency_s"]) == 0.10
+    assert float(row["cache_validation_latency_ms"]) == 100.0
+    assert float(row["cache_rejection_latency_s"]) == 0.15
+    assert float(row["cache_rejection_latency_ms"]) == 150.0
 
 
 def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
