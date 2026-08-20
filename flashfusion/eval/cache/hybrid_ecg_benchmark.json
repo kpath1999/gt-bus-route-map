@@ -1,0 +1,8032 @@
+{
+  "benchmark": {
+    "config_path": "flashfusion/eval/cache/hybrid_match_config.json",
+    "config_version": 1,
+    "datasets": [
+      "mit_ecg"
+    ],
+    "dense_top_k": 20,
+    "lexical_top_k": 20,
+    "mode": "hybrid",
+    "name": "hybrid_cache_end_to_end",
+    "report_k": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "timestamp_utc": "2026-08-20T18:25:02.630149+00:00",
+    "versions": [
+      "v1",
+      "v2",
+      "v3"
+    ]
+  },
+  "failure_breakdown": {
+    "abstention_decisions": {},
+    "ambiguous_decisions": 0,
+    "errors": 0,
+    "expected_absent_from_retrieval_union": 0,
+    "expected_compatible_but_not_final_winner": 0,
+    "expected_retrieved_but_rejected_incompatible": 0,
+    "expected_winner_below_acceptance_floor": 0,
+    "wrong_authorized_reuse": 0
+  },
+  "rows": [
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.538753
+      },
+      "dense_top_k_ids": [
+        "1",
+        "6",
+        "8",
+        "2",
+        "15",
+        "3",
+        "16",
+        "5",
+        "13",
+        "14",
+        "4",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "15",
+          "3",
+          "16",
+          "5",
+          "13",
+          "14"
+        ],
+        "3": [
+          "1",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.433666,
+        "lexical_retrieve_ms": 0.245709,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.0497920009365771,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 10.862754
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "4",
+        "2",
+        "5",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "2",
+          "5",
+          "7"
+        ],
+        "3": [
+          "1",
+          "6",
+          "13"
+        ],
+        "5": [
+          "1",
+          "6",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "1",
+      "query": "What is the minimum MLII value recorded for record_id 101?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the minimum MLII value recorded for record_id 101?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1",
+        "6",
+        "7"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.517361
+      },
+      "dense_top_k_ids": [
+        "1",
+        "6",
+        "8",
+        "2",
+        "15",
+        "3",
+        "5",
+        "16",
+        "13",
+        "14",
+        "7",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "15",
+          "3",
+          "5",
+          "16",
+          "13",
+          "14"
+        ],
+        "3": [
+          "1",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 3.3439590006310027,
+        "dense_retrieve_ms": 6.210875,
+        "lexical_retrieve_ms": 0.106125,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.252832999758539,
+        "total_match_ms": 8.994583999083261,
+        "verify_ms": 0.38712499917892274,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 6.639545
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "8",
+        "3",
+        "4",
+        "2",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8",
+          "3",
+          "4"
+        ],
+        "3": [
+          "1",
+          "6",
+          "13"
+        ],
+        "5": [
+          "1",
+          "6",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "1",
+      "query": "Could you report the minimum MLII value observed for record_id 101?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.382693,
+        "final_score": 0.579788,
+        "lexical_score": 0.409575,
+        "query_id": "6",
+        "retrieval_score": 0.409575,
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.517361,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the minimum MLII value recorded for record_id 101?"
+      },
+      "winner_runner_up_margin": 0.295212
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1",
+        "6",
+        "7"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.509536
+      },
+      "dense_top_k_ids": [
+        "1",
+        "6",
+        "8",
+        "2",
+        "3",
+        "15",
+        "16",
+        "5",
+        "13",
+        "14",
+        "4",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "3",
+          "15",
+          "16",
+          "5",
+          "13",
+          "14"
+        ],
+        "3": [
+          "1",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "6",
+          "8",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.2614580007502809,
+        "dense_retrieve_ms": 5.27925,
+        "lexical_retrieve_ms": 0.102042,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.017749999751686,
+        "total_match_ms": 5.546374999539694,
+        "verify_ms": 0.25616600032662973,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 7.089323
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "8",
+        "2",
+        "6",
+        "5",
+        "3",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8",
+          "2",
+          "6",
+          "5"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "1",
+      "query": "Please provide the lowest MLII value recorded In record_id 101?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.387917,
+        "final_score": 0.568959,
+        "lexical_score": 0.105021,
+        "query_id": "6",
+        "retrieval_score": 0.387917,
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.509536,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the minimum MLII value recorded for record_id 101?"
+      },
+      "winner_runner_up_margin": 0.306041
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.596841
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "8",
+        "4",
+        "5",
+        "16",
+        "15",
+        "14",
+        "13",
+        "3",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "8",
+          "4",
+          "5",
+          "16",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "8",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.267291,
+        "lexical_retrieve_ms": 0.157917,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011416999768698588,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 18.800743
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "5",
+        "4",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "1",
+        "8",
+        "7",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "5",
+          "4",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "1",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "4"
+        ],
+        "5": [
+          "2",
+          "5",
+          "4",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "2",
+      "query": "What is the total recording duration in seconds (maximum time_s) for record_id 234?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "4",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.598365
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "4",
+        "5",
+        "8",
+        "16",
+        "15",
+        "14",
+        "13",
+        "3",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "4",
+          "5",
+          "8",
+          "16",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "4",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.31508400024904404,
+        "dense_retrieve_ms": 5.073959,
+        "lexical_retrieve_ms": 0.1315,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 151.6969580006844,
+        "total_match_ms": 152.2995830000582,
+        "verify_ms": 0.2780840004561469,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 17.120063
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "5",
+        "4",
+        "8",
+        "1",
+        "7",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "5",
+          "4",
+          "8",
+          "1"
+        ],
+        "3": [
+          "2",
+          "13",
+          "14"
+        ],
+        "5": [
+          "2",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "2",
+      "query": "Could you report the total recording duration in seconds (maximum time_s) for record_id 234?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.625,
+        "dense_score": 0.17875,
+        "final_score": 0.401875,
+        "lexical_score": 0.007671,
+        "query_id": "7",
+        "retrieval_score": 0.17875,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.598365,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "winner_runner_up_margin": 0.473125
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.611454
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "8",
+        "4",
+        "5",
+        "16",
+        "15",
+        "14",
+        "13",
+        "3",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "8",
+          "4",
+          "5",
+          "16",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "8",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.32375000046158675,
+        "dense_retrieve_ms": 5.812542,
+        "lexical_retrieve_ms": 0.126625,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.6300420001207385,
+        "total_match_ms": 6.226458999663009,
+        "verify_ms": 0.26270899979863316,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 15.116421
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "7",
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "4",
+        "8",
+        "1",
+        "6",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "4",
+          "8",
+          "1"
+        ],
+        "3": [
+          "2",
+          "7",
+          "13"
+        ],
+        "5": [
+          "2",
+          "7",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "2",
+      "query": "Please provide the total recording duration in seconds (highest time_s) In record_id 234?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.625,
+        "dense_score": 0.168134,
+        "final_score": 0.396567,
+        "lexical_score": 0.165121,
+        "query_id": "7",
+        "retrieval_score": 0.168134,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "2",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "4",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.611454,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "winner_runner_up_margin": 0.478433
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.396574
+      },
+      "dense_top_k_ids": [
+        "1",
+        "8",
+        "6",
+        "2",
+        "3",
+        "15",
+        "5",
+        "16",
+        "4",
+        "13",
+        "14",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3",
+          "15",
+          "5",
+          "16",
+          "4",
+          "13"
+        ],
+        "3": [
+          "1",
+          "8",
+          "6"
+        ],
+        "5": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.428333,
+        "lexical_retrieve_ms": 0.115083,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.00983300014922861,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 16.512875
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "8",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "2",
+        "4",
+        "7",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "8",
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "2",
+          "4"
+        ],
+        "3": [
+          "3",
+          "8",
+          "1"
+        ],
+        "5": [
+          "3",
+          "8",
+          "1",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "For record_id 106, how many samples have MLII > 0?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "3",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "For record_id 106, how many samples have MLII > 0?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.40572
+      },
+      "dense_top_k_ids": [
+        "1",
+        "8",
+        "6",
+        "2",
+        "3",
+        "15",
+        "5",
+        "4",
+        "16",
+        "13",
+        "14",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3",
+          "15",
+          "5",
+          "4",
+          "16",
+          "13"
+        ],
+        "3": [
+          "1",
+          "8",
+          "6"
+        ],
+        "5": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.28812499840569217,
+        "dense_retrieve_ms": 5.314708,
+        "lexical_retrieve_ms": 0.127833,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.444333000923507,
+        "total_match_ms": 6.059416999050882,
+        "verify_ms": 0.3192089989170199,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 11.703002
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "8",
+        "7",
+        "1",
+        "4",
+        "5",
+        "2",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "8",
+          "7",
+          "1",
+          "4",
+          "5",
+          "2",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "3",
+          "8",
+          "7"
+        ],
+        "5": [
+          "3",
+          "8",
+          "7",
+          "1",
+          "4"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "For record_id 106, What number of samples have MLII > 0?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "3",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.333333,
+          "output_shape": 1.0,
+          "predicate_ops": 0.5
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.214123,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "For record_id 106, how many samples have MLII > 0?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.362979
+      },
+      "dense_top_k_ids": [
+        "1",
+        "8",
+        "6",
+        "2",
+        "3",
+        "5",
+        "4",
+        "15",
+        "16",
+        "7",
+        "13",
+        "14"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3",
+          "5",
+          "4",
+          "15",
+          "16",
+          "7"
+        ],
+        "3": [
+          "1",
+          "8",
+          "6"
+        ],
+        "5": [
+          "1",
+          "8",
+          "6",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.290375000986387,
+        "dense_retrieve_ms": 5.40975,
+        "lexical_retrieve_ms": 0.1305,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.948750000243308,
+        "total_match_ms": 6.531625000206986,
+        "verify_ms": 0.2852079996955581,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 15.80745
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "8",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "1",
+        "6",
+        "4",
+        "7"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "8",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "1",
+          "6"
+        ],
+        "3": [
+          "3",
+          "8",
+          "5"
+        ],
+        "5": [
+          "3",
+          "8",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "In record_id 106, How much of a count of samples have MLII > 0?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "3",
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.333333,
+          "output_shape": 1.0,
+          "predicate_ops": 0.5
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.185971,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "For record_id 106, how many samples have MLII > 0?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "4"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.414686
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "5",
+        "6",
+        "4",
+        "15",
+        "16",
+        "14",
+        "13",
+        "8",
+        "3",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4",
+          "15",
+          "16",
+          "14",
+          "13",
+          "8"
+        ],
+        "3": [
+          "2",
+          "1",
+          "5"
+        ],
+        "5": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.780458,
+        "lexical_retrieve_ms": 0.151583,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011041998732252978,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 15.882037
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "5",
+        "2",
+        "7",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8",
+        "3",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "5",
+          "2",
+          "7",
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "8"
+        ],
+        "3": [
+          "4",
+          "5",
+          "2"
+        ],
+        "5": [
+          "4",
+          "5",
+          "2",
+          "7",
+          "1"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "4",
+      "query": "What is the timestamp (time_s) of the last annotated beat for record_id 221?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5"
+        ],
+        "5": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "4",
+        "2",
+        "5",
+        "15",
+        "16",
+        "7",
+        "14",
+        "13"
+      ],
+      "compatible_candidate_count": 8,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.397541
+      },
+      "dense_top_k_ids": [
+        "2",
+        "5",
+        "15",
+        "16",
+        "4",
+        "1",
+        "6",
+        "14",
+        "13",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "5",
+          "15",
+          "16",
+          "4",
+          "1",
+          "6",
+          "14",
+          "13",
+          "3"
+        ],
+        "3": [
+          "2",
+          "5",
+          "15"
+        ],
+        "5": [
+          "2",
+          "5",
+          "15",
+          "16",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.3314160003355937,
+        "dense_retrieve_ms": 5.506417,
+        "lexical_retrieve_ms": 0.126875,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.5685000006633345,
+        "total_match_ms": 6.155582999781473,
+        "verify_ms": 0.24729200049478095,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 14.227407
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "7",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "8",
+        "1",
+        "3",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "7",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "8",
+          "1"
+        ],
+        "3": [
+          "4",
+          "7",
+          "5"
+        ],
+        "5": [
+          "4",
+          "7",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "4",
+      "query": "Could you report the timestamp (time_s) of the last annotated beat for record_id 221?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.397541,
+        "final_score": 0.44877,
+        "lexical_score": 0.080065,
+        "query_id": "2",
+        "retrieval_score": 0.397541,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "15",
+          "2",
+          "4",
+          "5",
+          "7"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.292419,
+        "final_score": 0.75,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?"
+      },
+      "winner_runner_up_margin": 0.30123
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "4",
+        "2",
+        "5",
+        "16",
+        "15",
+        "7",
+        "14",
+        "13"
+      ],
+      "compatible_candidate_count": 8,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.408722
+      },
+      "dense_top_k_ids": [
+        "2",
+        "5",
+        "1",
+        "6",
+        "4",
+        "16",
+        "15",
+        "14",
+        "13",
+        "8",
+        "3",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "5",
+          "1",
+          "6",
+          "4",
+          "16",
+          "15",
+          "14",
+          "13",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "1"
+        ],
+        "5": [
+          "2",
+          "5",
+          "1",
+          "6",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.27637499988486525,
+        "dense_retrieve_ms": 5.394958,
+        "lexical_retrieve_ms": 0.124291,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.488832999617443,
+        "total_match_ms": 6.005166998875211,
+        "verify_ms": 0.23341700034507085,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 14.09087
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "7",
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "2",
+        "8",
+        "1",
+        "6",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "7",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "2",
+          "8",
+          "1"
+        ],
+        "3": [
+          "4",
+          "7",
+          "13"
+        ],
+        "5": [
+          "4",
+          "7",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "4",
+      "query": "Please provide the timestamp (time_s) of the last annotated beat In record_id 221?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.408722,
+        "final_score": 0.454361,
+        "lexical_score": 0.135815,
+        "query_id": "2",
+        "retrieval_score": 0.408722,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "2",
+          "4",
+          "5",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.284993,
+        "final_score": 0.75,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?"
+      },
+      "winner_runner_up_margin": 0.295639
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.383437
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "5",
+        "4",
+        "15",
+        "16",
+        "3",
+        "14",
+        "13",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "5",
+          "4",
+          "15",
+          "16",
+          "3",
+          "14",
+          "13"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "5",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.554333,
+        "lexical_retrieve_ms": 0.2365,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009500001397100277,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 28.617499
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "4",
+        "7",
+        "1",
+        "3",
+        "8",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "7",
+          "1",
+          "3"
+        ],
+        "3": [
+          "5",
+          "13",
+          "14"
+        ],
+        "5": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "5",
+      "query": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.38507
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "5",
+        "6",
+        "4",
+        "15",
+        "3",
+        "16",
+        "14",
+        "7",
+        "13",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4",
+          "15",
+          "3",
+          "16",
+          "14",
+          "7"
+        ],
+        "3": [
+          "2",
+          "1",
+          "5"
+        ],
+        "5": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.4062080006406177,
+        "dense_retrieve_ms": 6.454167,
+        "lexical_retrieve_ms": 0.217791,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 6.604291998883127,
+        "total_match_ms": 7.300082999790902,
+        "verify_ms": 0.2807500004564645,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 27.124819
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "2",
+        "3",
+        "4",
+        "8",
+        "1",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "2",
+          "3",
+          "4",
+          "8"
+        ],
+        "3": [
+          "5",
+          "13",
+          "14"
+        ],
+        "5": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "5",
+      "query": "For record_id 208, Could you report the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.254712,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.404293
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "5",
+        "6",
+        "4",
+        "15",
+        "3",
+        "16",
+        "14",
+        "7",
+        "13",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4",
+          "15",
+          "3",
+          "16",
+          "14",
+          "7"
+        ],
+        "3": [
+          "2",
+          "1",
+          "5"
+        ],
+        "5": [
+          "2",
+          "1",
+          "5",
+          "6",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.35616599961940665,
+        "dense_retrieve_ms": 6.288334,
+        "lexical_retrieve_ms": 0.197375,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 6.476083000961808,
+        "total_match_ms": 7.09258300048532,
+        "verify_ms": 0.25266700140491594,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 27.001645
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "2",
+        "3",
+        "4",
+        "8",
+        "1",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "2",
+          "3",
+          "4",
+          "8"
+        ],
+        "3": [
+          "5",
+          "13",
+          "14"
+        ],
+        "5": [
+          "5",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "5",
+      "query": "In record_id 208, Please provide the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.284443,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "6"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.512595
+      },
+      "dense_top_k_ids": [
+        "6",
+        "1",
+        "8",
+        "2",
+        "3",
+        "7",
+        "15",
+        "5",
+        "4",
+        "16",
+        "14",
+        "13"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3",
+          "7",
+          "15",
+          "5",
+          "4",
+          "16"
+        ],
+        "3": [
+          "6",
+          "1",
+          "8"
+        ],
+        "5": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.337209,
+        "lexical_retrieve_ms": 0.127166,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.008958000762504525,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 17.854178
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "7",
+        "8",
+        "3",
+        "4",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "7",
+          "8",
+          "3"
+        ],
+        "3": [
+          "6",
+          "1",
+          "13"
+        ],
+        "5": [
+          "6",
+          "1",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "6",
+      "query": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "3",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "6"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.512595
+      },
+      "dense_top_k_ids": [
+        "6",
+        "1",
+        "8",
+        "2",
+        "3",
+        "7",
+        "15",
+        "5",
+        "4",
+        "16",
+        "14",
+        "13"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3",
+          "7",
+          "15",
+          "5",
+          "4",
+          "16"
+        ],
+        "3": [
+          "6",
+          "1",
+          "8"
+        ],
+        "5": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.189417,
+        "lexical_retrieve_ms": 0.124708,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.00879199978953693,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 17.854178
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "7",
+        "8",
+        "3",
+        "4",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "7",
+          "8",
+          "3"
+        ],
+        "3": [
+          "6",
+          "1",
+          "13"
+        ],
+        "5": [
+          "6",
+          "1",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "6",
+      "query": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "3",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "6",
+        "7",
+        "1"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.506743
+      },
+      "dense_top_k_ids": [
+        "6",
+        "1",
+        "8",
+        "2",
+        "3",
+        "7",
+        "15",
+        "5",
+        "4",
+        "16",
+        "14",
+        "13"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3",
+          "7",
+          "15",
+          "5",
+          "4",
+          "16"
+        ],
+        "3": [
+          "6",
+          "1",
+          "8"
+        ],
+        "5": [
+          "6",
+          "1",
+          "8",
+          "2",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.317832998916856,
+        "dense_retrieve_ms": 6.210583,
+        "lexical_retrieve_ms": 0.117958,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.413000000771717,
+        "total_match_ms": 5.975791000309982,
+        "verify_ms": 0.2369579997321125,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 14.003006
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "7",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8",
+        "1",
+        "3",
+        "4",
+        "2",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "13",
+          "14",
+          "15",
+          "16",
+          "8",
+          "1",
+          "3",
+          "4"
+        ],
+        "3": [
+          "6",
+          "7",
+          "13"
+        ],
+        "5": [
+          "6",
+          "7",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "6",
+      "query": "Tell me which record_id exhibits the largest difference between highest and lowest MLII?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.833333,
+        "dense_score": 0.235807,
+        "final_score": 0.567243,
+        "lexical_score": 0.301152,
+        "query_id": "7",
+        "retrieval_score": 0.301152,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "3",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 0.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.666667,
+        "dense_score": 0.506743,
+        "final_score": 0.833333,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which record_id exhibits the largest difference between maximum and minimum MLII?"
+      },
+      "winner_runner_up_margin": 0.26609
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.351886
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "15",
+        "5",
+        "16",
+        "14",
+        "4",
+        "13",
+        "3",
+        "8",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5",
+          "16",
+          "14",
+          "4",
+          "13",
+          "3"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.418958,
+        "lexical_retrieve_ms": 0.155959,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.00879199978953693,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 21.343082
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "4",
+        "5",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "8",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "4",
+          "5",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1",
+          "8"
+        ],
+        "3": [
+          "7",
+          "4",
+          "5"
+        ],
+        "5": [
+          "7",
+          "4",
+          "5",
+          "6",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "7",
+      "query": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "15",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.351886
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "15",
+        "5",
+        "16",
+        "14",
+        "4",
+        "13",
+        "3",
+        "8",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5",
+          "16",
+          "14",
+          "4",
+          "13",
+          "3"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.714917,
+        "lexical_retrieve_ms": 0.156083,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.012541999240056612,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 21.343082
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "4",
+        "5",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "8",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "4",
+          "5",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1",
+          "8"
+        ],
+        "3": [
+          "7",
+          "4",
+          "5"
+        ],
+        "5": [
+          "7",
+          "4",
+          "5",
+          "6",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "7",
+      "query": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "15",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7",
+        "2",
+        "1",
+        "6"
+      ],
+      "compatible_candidate_count": 4,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.352002
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "6",
+        "15",
+        "5",
+        "16",
+        "4",
+        "14",
+        "13",
+        "3",
+        "8",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5",
+          "16",
+          "4",
+          "14",
+          "13",
+          "3"
+        ],
+        "3": [
+          "2",
+          "1",
+          "6"
+        ],
+        "5": [
+          "2",
+          "1",
+          "6",
+          "15",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.36412500048754737,
+        "dense_retrieve_ms": 5.636416,
+        "lexical_retrieve_ms": 0.166,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.627791999359033,
+        "total_match_ms": 6.270083000345039,
+        "verify_ms": 0.2700829991226783,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 21.209646
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "5",
+        "4",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "1",
+        "2",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "5",
+          "4",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "1",
+          "2"
+        ],
+        "3": [
+          "7",
+          "5",
+          "4"
+        ],
+        "5": [
+          "7",
+          "5",
+          "4",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "7",
+      "query": "In record_id 101, Tell me which 10-second interval contains the highest number of annotated beats?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.625,
+        "dense_score": 0.352002,
+        "final_score": 0.488501,
+        "lexical_score": 0.04369,
+        "query_id": "2",
+        "retrieval_score": 0.352002,
+        "text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.205523,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?"
+      },
+      "winner_runner_up_margin": 0.386499
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.661811
+      },
+      "dense_top_k_ids": [
+        "8",
+        "1",
+        "2",
+        "6",
+        "3",
+        "5",
+        "16",
+        "15",
+        "4",
+        "14",
+        "13",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3",
+          "5",
+          "16",
+          "15",
+          "4",
+          "14"
+        ],
+        "3": [
+          "8",
+          "1",
+          "2"
+        ],
+        "5": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.335542,
+        "lexical_retrieve_ms": 0.144541,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.00904199987417087,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 18.996052
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "3",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "6",
+        "4",
+        "7",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1",
+          "6",
+          "4"
+        ],
+        "3": [
+          "8",
+          "3",
+          "5"
+        ],
+        "5": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Calculate the root mean square (RMS) of the MLII signal for record_id 106.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the root mean square (RMS) of the MLII signal for record_id 106."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.671129
+      },
+      "dense_top_k_ids": [
+        "8",
+        "1",
+        "2",
+        "6",
+        "3",
+        "5",
+        "16",
+        "15",
+        "4",
+        "14",
+        "13",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3",
+          "5",
+          "16",
+          "15",
+          "4",
+          "14"
+        ],
+        "3": [
+          "8",
+          "1",
+          "2"
+        ],
+        "5": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.29579100009868853,
+        "dense_retrieve_ms": 5.536833,
+        "lexical_retrieve_ms": 0.130542,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.409334000432864,
+        "total_match_ms": 5.973040999379009,
+        "verify_ms": 0.2597500006231712,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 16.553254
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "3",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "6",
+        "4",
+        "7",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1",
+          "6",
+          "4"
+        ],
+        "3": [
+          "8",
+          "3",
+          "5"
+        ],
+        "5": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Compute the root mean square (RMS) of the MLII signal for record_id 106.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.671129,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the root mean square (RMS) of the MLII signal for record_id 106."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.67603
+      },
+      "dense_top_k_ids": [
+        "8",
+        "1",
+        "2",
+        "6",
+        "3",
+        "5",
+        "16",
+        "15",
+        "14",
+        "13",
+        "4",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3",
+          "5",
+          "16",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "8",
+          "1",
+          "2"
+        ],
+        "5": [
+          "8",
+          "1",
+          "2",
+          "6",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.29054200058453716,
+        "dense_retrieve_ms": 5.512292,
+        "lexical_retrieve_ms": 0.136125,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 5.653500000335043,
+        "total_match_ms": 6.209208000655053,
+        "verify_ms": 0.25758300034794956,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 16.414566
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "3",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "1",
+        "6",
+        "4",
+        "7"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "1",
+          "6"
+        ],
+        "3": [
+          "8",
+          "3",
+          "5"
+        ],
+        "5": [
+          "8",
+          "3",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Work out the root mean square (RMS) of the MLII signal In record_id 106.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.67603,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the root mean square (RMS) of the MLII signal for record_id 106."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.322401
+      },
+      "dense_top_k_ids": [
+        "15",
+        "13",
+        "1",
+        "16",
+        "2",
+        "14",
+        "6",
+        "5",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "1",
+          "16",
+          "2",
+          "14",
+          "6",
+          "5",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "13",
+          "1"
+        ],
+        "5": [
+          "15",
+          "13",
+          "1",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.08575,
+        "lexical_retrieve_ms": 0.448667,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.008875000276020728,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 37.032668
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.320119
+      },
+      "dense_top_k_ids": [
+        "15",
+        "13",
+        "1",
+        "16",
+        "2",
+        "14",
+        "6",
+        "5",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "1",
+          "16",
+          "2",
+          "14",
+          "6",
+          "5",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "13",
+          "1"
+        ],
+        "5": [
+          "15",
+          "13",
+          "1",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6233330004761228,
+        "dense_retrieve_ms": 8.220792,
+        "lexical_retrieve_ms": 0.431458,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.445625000604196,
+        "total_match_ms": 9.377000000313274,
+        "verify_ms": 0.30041699938010424,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 36.146514
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.302132,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.358515
+      },
+      "dense_top_k_ids": [
+        "15",
+        "13",
+        "16",
+        "1",
+        "14",
+        "2",
+        "6",
+        "5",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "16",
+          "1",
+          "14",
+          "2",
+          "6",
+          "5",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "13",
+          "16"
+        ],
+        "5": [
+          "15",
+          "13",
+          "16",
+          "1",
+          "14"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6249580001167487,
+        "dense_retrieve_ms": 9.235959,
+        "lexical_retrieve_ms": 0.41025,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.706082999196951,
+        "total_match_ms": 9.635250000428641,
+        "verify_ms": 0.29545899997174274,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 35.106836
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a logistic regression model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.339333,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.344635
+      },
+      "dense_top_k_ids": [
+        "15",
+        "14",
+        "16",
+        "1",
+        "13",
+        "6",
+        "5",
+        "2",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "16",
+          "1",
+          "13",
+          "6",
+          "5",
+          "2",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "14",
+          "16"
+        ],
+        "5": [
+          "15",
+          "14",
+          "16",
+          "1",
+          "13"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.034334,
+        "lexical_retrieve_ms": 0.448875,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009583000064594671,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 37.032668
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.341504
+      },
+      "dense_top_k_ids": [
+        "15",
+        "14",
+        "1",
+        "16",
+        "2",
+        "6",
+        "13",
+        "5",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "1",
+          "16",
+          "2",
+          "6",
+          "13",
+          "5",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "14",
+          "1"
+        ],
+        "5": [
+          "15",
+          "14",
+          "1",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6369999991875375,
+        "dense_retrieve_ms": 8.249875,
+        "lexical_retrieve_ms": 0.441167,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.570750000217231,
+        "total_match_ms": 9.515707999526057,
+        "verify_ms": 0.2989589993376285,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 36.146514
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.33408,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": false,
+        "query_id": "15",
+        "score": 0.383982
+      },
+      "dense_top_k_ids": [
+        "15",
+        "14",
+        "16",
+        "1",
+        "13",
+        "5",
+        "6",
+        "2",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "16",
+          "1",
+          "13",
+          "5",
+          "6",
+          "2",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "14",
+          "16"
+        ],
+        "5": [
+          "15",
+          "14",
+          "16",
+          "1",
+          "13"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6064580011297949,
+        "dense_retrieve_ms": 7.977708,
+        "lexical_retrieve_ms": 0.417708,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.364499999515829,
+        "total_match_ms": 9.249875000023167,
+        "verify_ms": 0.2716670005611377,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 35.106836
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.372599,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.356449
+      },
+      "dense_top_k_ids": [
+        "15",
+        "1",
+        "6",
+        "16",
+        "14",
+        "5",
+        "2",
+        "13",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "1",
+          "6",
+          "16",
+          "14",
+          "5",
+          "2",
+          "13",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "1",
+          "6"
+        ],
+        "5": [
+          "15",
+          "1",
+          "6",
+          "16",
+          "14"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.275042,
+        "lexical_retrieve_ms": 0.457458,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.01129200063587632,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 38.634311
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.352428
+      },
+      "dense_top_k_ids": [
+        "15",
+        "1",
+        "6",
+        "16",
+        "2",
+        "14",
+        "5",
+        "13",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "1",
+          "6",
+          "16",
+          "2",
+          "14",
+          "5",
+          "13",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "1",
+          "6"
+        ],
+        "5": [
+          "15",
+          "1",
+          "6",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6555830004799645,
+        "dense_retrieve_ms": 8.202333,
+        "lexical_retrieve_ms": 0.455333,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.499999999912689,
+        "total_match_ms": 9.469958000408951,
+        "verify_ms": 0.30604200037487317,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 37.753279
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.352428,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.403275
+      },
+      "dense_top_k_ids": [
+        "15",
+        "1",
+        "16",
+        "6",
+        "14",
+        "5",
+        "13",
+        "2",
+        "4",
+        "3",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "1",
+          "16",
+          "6",
+          "14",
+          "5",
+          "13",
+          "2",
+          "4",
+          "3"
+        ],
+        "3": [
+          "15",
+          "1",
+          "16"
+        ],
+        "5": [
+          "15",
+          "1",
+          "16",
+          "6",
+          "14"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6287910000537522,
+        "dense_retrieve_ms": 8.027375,
+        "lexical_retrieve_ms": 0.421833,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.431125001152395,
+        "total_match_ms": 9.354666999570327,
+        "verify_ms": 0.28666599973803386,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 36.719387
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a 1-nearest-neighbor model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.403275,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.356205
+      },
+      "dense_top_k_ids": [
+        "16",
+        "15",
+        "6",
+        "14",
+        "1",
+        "5",
+        "13",
+        "2",
+        "3",
+        "7",
+        "4",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "15",
+          "6",
+          "14",
+          "1",
+          "5",
+          "13",
+          "2",
+          "3",
+          "7"
+        ],
+        "3": [
+          "16",
+          "15",
+          "6"
+        ],
+        "5": [
+          "16",
+          "15",
+          "6",
+          "14",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 7.940334,
+        "lexical_retrieve_ms": 0.456792,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009291999958804809,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 38.634311
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.353844
+      },
+      "dense_top_k_ids": [
+        "16",
+        "15",
+        "6",
+        "1",
+        "14",
+        "5",
+        "13",
+        "2",
+        "3",
+        "4",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "15",
+          "6",
+          "1",
+          "14",
+          "5",
+          "13",
+          "2",
+          "3",
+          "4"
+        ],
+        "3": [
+          "16",
+          "15",
+          "6"
+        ],
+        "5": [
+          "16",
+          "15",
+          "6",
+          "1",
+          "14"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6749589992978144,
+        "dense_retrieve_ms": 8.005209,
+        "lexical_retrieve_ms": 0.439917,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.75645800078928,
+        "total_match_ms": 9.726374999445397,
+        "verify_ms": 0.28779199965356383,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 37.753279
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.353844,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "mit_ecg",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.389968
+      },
+      "dense_top_k_ids": [
+        "16",
+        "15",
+        "6",
+        "14",
+        "5",
+        "1",
+        "13",
+        "3",
+        "2",
+        "4",
+        "7",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "15",
+          "6",
+          "14",
+          "5",
+          "1",
+          "13",
+          "3",
+          "2",
+          "4"
+        ],
+        "3": [
+          "16",
+          "15",
+          "6"
+        ],
+        "5": [
+          "16",
+          "15",
+          "6",
+          "14",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6518750014947727,
+        "dense_retrieve_ms": 8.244584,
+        "lexical_retrieve_ms": 0.431583,
+        "model_load_ms": 1566.4425420000043,
+        "registry_load_ms": 0.017084001228795387,
+        "retrieve_ms": 8.495707999827573,
+        "total_match_ms": 9.443041000849917,
+        "verify_ms": 0.2867919993150281,
+        "warm_up_ms": 20.34958400145115
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 36.719387
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "5",
+        "1",
+        "2",
+        "4",
+        "6",
+        "7",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5",
+          "1",
+          "2",
+          "4",
+          "6",
+          "7"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "13",
+        "15",
+        "6",
+        "8",
+        "16",
+        "3",
+        "4",
+        "5",
+        "1",
+        "7",
+        "14",
+        "2"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "6"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "6"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.389968,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    }
+  ],
+  "summary": {
+    "by_dataset": {
+      "mit_ecg": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 8.683061,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.722222,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.658031,
+        "potential_ambiguity_rate": 0.222222,
+        "total_live_queries": 36,
+        "true_positives": 36,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_dataset_and_version": {
+      "mit_ecg/v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.013118,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.666667,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 0.028686,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "mit_ecg/v2": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 18.741055,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.75,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 73.884319,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "mit_ecg/v3": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 7.29501,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.75,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.529535,
+        "potential_ambiguity_rate": 0.416667,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_version": {
+      "v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.013118,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.666667,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 0.028686,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v2": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 18.741055,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.75,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 73.884319,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v3": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 7.29501,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.5,
+          "10": 0.916667,
+          "3": 0.75,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.5,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.529535,
+        "potential_ambiguity_rate": 0.416667,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "initialization_ms_by_dataset": {
+      "mit_ecg": 4394.922083
+    },
+    "overall": {
+      "abstention_rate": 0.0,
+      "ambiguity_rate": 0.0,
+      "authorization_rate": 1.0,
+      "authorized_hit_precision": 1.0,
+      "authorized_hit_recall": 1.0,
+      "average_match_ms": 8.683061,
+      "correct_but_abstained_rate": 0.0,
+      "dense_recall_at_k": {
+        "1": 0.5,
+        "10": 0.916667,
+        "3": 0.722222,
+        "5": 0.916667
+      },
+      "dense_top_1_accuracy": 0.5,
+      "error_count": 0,
+      "false_negatives": 0,
+      "false_positive_reuse_rate": 0.0,
+      "false_positives": 0,
+      "lexical_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      },
+      "lexical_top_1_accuracy": 1.0,
+      "p95_match_ms": 9.658031,
+      "potential_ambiguity_rate": 0.222222,
+      "total_live_queries": 36,
+      "true_positives": 36,
+      "union_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      }
+    },
+    "total_live_queries": 36
+  }
+}

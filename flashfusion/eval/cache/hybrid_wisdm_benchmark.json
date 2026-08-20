@@ -1,0 +1,7952 @@
+{
+  "benchmark": {
+    "config_path": "flashfusion/eval/cache/hybrid_match_config.json",
+    "config_version": 1,
+    "datasets": [
+      "wisdm"
+    ],
+    "dense_top_k": 20,
+    "lexical_top_k": 20,
+    "mode": "hybrid",
+    "name": "hybrid_cache_end_to_end",
+    "report_k": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "timestamp_utc": "2026-08-20T18:30:04.911852+00:00",
+    "versions": [
+      "v1",
+      "v2",
+      "v3"
+    ]
+  },
+  "failure_breakdown": {
+    "abstention_decisions": {
+      "low_confidence_candidate": 4
+    },
+    "ambiguous_decisions": 0,
+    "errors": 0,
+    "expected_absent_from_retrieval_union": 0,
+    "expected_compatible_but_not_final_winner": 0,
+    "expected_retrieved_but_rejected_incompatible": 0,
+    "expected_winner_below_acceptance_floor": 1,
+    "wrong_authorized_reuse": 0
+  },
+  "rows": [
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.518293
+      },
+      "dense_top_k_ids": [
+        "1",
+        "3",
+        "4",
+        "2",
+        "6",
+        "16",
+        "14",
+        "15",
+        "13",
+        "7",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "3",
+          "4",
+          "2",
+          "6",
+          "16",
+          "14",
+          "15",
+          "13",
+          "7"
+        ],
+        "3": [
+          "1",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "3",
+          "4",
+          "2",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.55725,
+        "lexical_retrieve_ms": 0.2445,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.02670800131454598,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 15.082918
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "7",
+        "3",
+        "4",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8",
+        "5",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "7",
+          "3",
+          "4",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "8"
+        ],
+        "3": [
+          "1",
+          "7",
+          "3"
+        ],
+        "5": [
+          "1",
+          "7",
+          "3",
+          "4",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "1",
+      "query": "What is the maximum recorded x-acceleration for user 15?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "3",
+          "4",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1",
+        "4",
+        "6"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.486469
+      },
+      "dense_top_k_ids": [
+        "1",
+        "3",
+        "4",
+        "2",
+        "6",
+        "16",
+        "14",
+        "15",
+        "13",
+        "7",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "3",
+          "4",
+          "2",
+          "6",
+          "16",
+          "14",
+          "15",
+          "13",
+          "7"
+        ],
+        "3": [
+          "1",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "3",
+          "4",
+          "2",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 3.2722500000090804,
+        "dense_retrieve_ms": 5.964375,
+        "lexical_retrieve_ms": 0.094458,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.048208999141934,
+        "total_match_ms": 8.684709000590374,
+        "verify_ms": 0.3532089995132992,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 10.449459
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "7",
+        "13",
+        "14",
+        "15",
+        "16",
+        "3",
+        "4",
+        "8",
+        "5",
+        "6",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "7",
+          "13",
+          "14",
+          "15",
+          "16",
+          "3",
+          "4",
+          "8",
+          "5"
+        ],
+        "3": [
+          "1",
+          "7",
+          "13"
+        ],
+        "5": [
+          "1",
+          "7",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "1",
+      "query": "Could you report the maximum observed x-acceleration for user 15?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.199559,
+        "final_score": 0.34978,
+        "lexical_score": 0.099949,
+        "query_id": "4",
+        "retrieval_score": 0.199559,
+        "text": "Which user has the highest total number of recorded data samples?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "3",
+          "4",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.486469,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "winner_runner_up_margin": 0.52522
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "1",
+        "4",
+        "6"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.505312
+      },
+      "dense_top_k_ids": [
+        "1",
+        "3",
+        "4",
+        "6",
+        "2",
+        "16",
+        "14",
+        "15",
+        "13",
+        "7",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "3",
+          "4",
+          "6",
+          "2",
+          "16",
+          "14",
+          "15",
+          "13",
+          "7"
+        ],
+        "3": [
+          "1",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "3",
+          "4",
+          "6",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.2621669991640374,
+        "dense_retrieve_ms": 5.330666,
+        "lexical_retrieve_ms": 0.097166,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.006667000998277,
+        "total_match_ms": 5.508958000064013,
+        "verify_ms": 0.2285409991600318,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 8.636305
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "4",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "7",
+        "3",
+        "8",
+        "5",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "7",
+          "3",
+          "8"
+        ],
+        "3": [
+          "1",
+          "4",
+          "13"
+        ],
+        "5": [
+          "1",
+          "4",
+          "13",
+          "14",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "1",
+      "query": "Please provide the highest recorded x-acceleration In user 15?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.204977,
+        "final_score": 0.554693,
+        "lexical_score": 0.609385,
+        "query_id": "4",
+        "retrieval_score": 0.609385,
+        "text": "Which user has the highest total number of recorded data samples?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "13",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "2",
+          "3",
+          "4",
+          "6"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.505312,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "winner_runner_up_margin": 0.320307
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.31413
+      },
+      "dense_top_k_ids": [
+        "2",
+        "3",
+        "1",
+        "4",
+        "15",
+        "16",
+        "14",
+        "13",
+        "7",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "15",
+          "16",
+          "14",
+          "13",
+          "7",
+          "6"
+        ],
+        "3": [
+          "2",
+          "3",
+          "1"
+        ],
+        "5": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 4.906125,
+        "lexical_retrieve_ms": 0.098667,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.01195799995912239,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 13.863927
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "5",
+        "6",
+        "7",
+        "3",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8",
+        "4",
+        "1"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "3",
+          "13",
+          "14",
+          "15",
+          "16",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6"
+        ],
+        "5": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "2",
+      "query": "How many users have the activity label walking?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "15",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "How many users have the activity label walking?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.309495
+      },
+      "dense_top_k_ids": [
+        "2",
+        "3",
+        "1",
+        "4",
+        "15",
+        "16",
+        "14",
+        "7",
+        "13",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "15",
+          "16",
+          "14",
+          "7",
+          "13",
+          "6"
+        ],
+        "3": [
+          "2",
+          "3",
+          "1"
+        ],
+        "5": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.25387499954376835,
+        "dense_retrieve_ms": 5.171916,
+        "lexical_retrieve_ms": 0.106875,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.473625000377069,
+        "total_match_ms": 5.992541000523488,
+        "verify_ms": 0.25433300106669776,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 8.691384
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "3",
+        "4",
+        "7",
+        "6",
+        "1",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "4",
+          "7",
+          "6",
+          "1",
+          "5",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "2",
+          "3",
+          "4"
+        ],
+        "5": [
+          "2",
+          "3",
+          "4",
+          "7",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "2",
+      "query": "What number of users have the activity label walking?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "15",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.309495,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "How many users have the activity label walking?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.334491
+      },
+      "dense_top_k_ids": [
+        "2",
+        "3",
+        "4",
+        "1",
+        "15",
+        "14",
+        "7",
+        "16",
+        "13",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "4",
+          "1",
+          "15",
+          "14",
+          "7",
+          "16",
+          "13",
+          "6"
+        ],
+        "3": [
+          "2",
+          "3",
+          "4"
+        ],
+        "5": [
+          "2",
+          "3",
+          "4",
+          "1",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.24679099988134112,
+        "dense_retrieve_ms": 5.006959,
+        "lexical_retrieve_ms": 0.121666,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.021875000238651,
+        "total_match_ms": 5.509958000402548,
+        "verify_ms": 0.23083399901224766,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 13.863927
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "3",
+        "5",
+        "7",
+        "8",
+        "4",
+        "1"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6",
+          "3",
+          "5",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "13",
+          "14"
+        ],
+        "5": [
+          "2",
+          "13",
+          "14",
+          "15",
+          "16"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "2",
+      "query": "How much of a count of users have the activity label walking?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "2",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.334491,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "How many users have the activity label walking?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 0.454906
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "7",
+        "16",
+        "14",
+        "15",
+        "13",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "7",
+          "16",
+          "14",
+          "15",
+          "13",
+          "6"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "7"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.048042,
+        "lexical_retrieve_ms": 0.151417,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009958001101040281,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 17.685822
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "7",
+        "1",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "8",
+        "4",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "7",
+          "1",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "8"
+        ],
+        "3": [
+          "3",
+          "7",
+          "1"
+        ],
+        "5": [
+          "3",
+          "7",
+          "1",
+          "6",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "What is the average y-acceleration of user 5 with activity label Sitting?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "What is the average y-acceleration of user 5 with activity label Sitting?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 0.457235
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "16",
+        "14",
+        "15",
+        "13",
+        "7",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "16",
+          "14",
+          "15",
+          "13",
+          "7",
+          "6"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "16"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.3169170013279654,
+        "dense_retrieve_ms": 5.03575,
+        "lexical_retrieve_ms": 0.126042,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.1523749989428325,
+        "total_match_ms": 5.750583999542869,
+        "verify_ms": 0.2727089995460119,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 14.772261
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "7",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "1",
+        "8",
+        "4",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "7",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "1",
+          "8"
+        ],
+        "3": [
+          "3",
+          "7",
+          "6"
+        ],
+        "5": [
+          "3",
+          "7",
+          "6",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "Could you report the average y-acceleration of user 5 with activity label Sitting?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.7,
+        "dense_score": 0.457235,
+        "final_score": 0.85,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "What is the average y-acceleration of user 5 with activity label Sitting?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 0.469434
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "7",
+        "16",
+        "14",
+        "13",
+        "15",
+        "6",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "7",
+          "16",
+          "14",
+          "13",
+          "15",
+          "6"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "7"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.28812500022468157,
+        "dense_retrieve_ms": 4.921167,
+        "lexical_retrieve_ms": 0.1215,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.431415998828015,
+        "total_match_ms": 5.999208000503131,
+        "verify_ms": 0.2712920013436815,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 14.772261
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "7",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "5",
+        "1",
+        "8",
+        "4",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "7",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "5",
+          "1",
+          "8"
+        ],
+        "3": [
+          "3",
+          "7",
+          "6"
+        ],
+        "5": [
+          "3",
+          "7",
+          "6",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "3",
+      "query": "Please provide the average y-acceleration of user 5 with activity label Sitting?",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.7,
+        "dense_score": 0.469434,
+        "final_score": 0.85,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "What is the average y-acceleration of user 5 with activity label Sitting?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "4"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 0.42061
+      },
+      "dense_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "3",
+        "13",
+        "15",
+        "14",
+        "6",
+        "16",
+        "7",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13",
+          "15",
+          "14",
+          "6",
+          "16",
+          "7"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.140208,
+        "lexical_retrieve_ms": 0.121208,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009542000043438748,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 20.831978
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "6",
+        "1",
+        "3",
+        "7",
+        "8",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "6",
+          "1",
+          "3",
+          "7",
+          "8",
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "3": [
+          "4",
+          "6",
+          "1"
+        ],
+        "5": [
+          "4",
+          "6",
+          "1",
+          "3",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "4",
+      "query": "Which user has the highest total number of recorded data samples?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "Which user has the highest total number of recorded data samples?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": true,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": false,
+      "compatibility_candidate_ids": [
+        "4",
+        "1",
+        "6"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": false,
+      "correct_but_abstained": true,
+      "dataset": "wisdm",
+      "decision": "low_confidence_candidate",
+      "dense_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 0.40441
+      },
+      "dense_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "3",
+        "13",
+        "15",
+        "6",
+        "14",
+        "16",
+        "7",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13",
+          "15",
+          "6",
+          "14",
+          "16",
+          "7"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.26816699937626254,
+        "dense_retrieve_ms": 5.109666,
+        "lexical_retrieve_ms": 0.113125,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.207250000239583,
+        "total_match_ms": 5.6698329990467755,
+        "verify_ms": 0.18645899945113342,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 19.246584
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "6",
+        "3",
+        "1",
+        "7",
+        "8",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "6",
+          "3",
+          "1",
+          "7",
+          "8",
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "3": [
+          "4",
+          "6",
+          "3"
+        ],
+        "5": [
+          "4",
+          "6",
+          "3",
+          "1",
+          "7"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "4",
+      "query": "Which user has the highest total number of observed data samples?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.351332,
+        "final_score": 0.675666,
+        "lexical_score": 0.052913,
+        "query_id": "1",
+        "retrieval_score": 0.351332,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.40441,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "Which user has the highest total number of recorded data samples?"
+      },
+      "winner_runner_up_margin": 0.324334
+    },
+    {
+      "abstained": true,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": false,
+      "compatibility_candidate_ids": [
+        "4",
+        "1",
+        "6"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": false,
+      "correct_but_abstained": true,
+      "dataset": "wisdm",
+      "decision": "low_confidence_candidate",
+      "dense_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 0.433717
+      },
+      "dense_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "3",
+        "13",
+        "14",
+        "15",
+        "6",
+        "16",
+        "7",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13",
+          "14",
+          "15",
+          "6",
+          "16",
+          "7"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "3",
+          "13"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.2818749999278225,
+        "dense_retrieve_ms": 6.303708,
+        "lexical_retrieve_ms": 0.119875,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.453166999359382,
+        "total_match_ms": 5.936334000580246,
+        "verify_ms": 0.19241699919803068,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 20.831978
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "6",
+        "1",
+        "3",
+        "7",
+        "8",
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "5"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "6",
+          "1",
+          "3",
+          "7",
+          "8",
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "3": [
+          "4",
+          "6",
+          "1"
+        ],
+        "5": [
+          "4",
+          "6",
+          "1",
+          "3",
+          "7"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "4",
+      "query": "Tell me which user has the highest total number of recorded data samples?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.374445,
+        "final_score": 0.687223,
+        "lexical_score": 0.123169,
+        "query_id": "1",
+        "retrieval_score": 0.374445,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "6"
+        ],
+        "5": [
+          "1",
+          "13",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.433717,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "Which user has the highest total number of recorded data samples?"
+      },
+      "winner_runner_up_margin": 0.312777
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.252163
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "15",
+        "16",
+        "14",
+        "6",
+        "13",
+        "4",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "15",
+          "16",
+          "14",
+          "6",
+          "13",
+          "4"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.89575,
+        "lexical_retrieve_ms": 0.175375,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011125001037726179,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 24.331215
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "8",
+        "7",
+        "3",
+        "2",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3",
+          "2",
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "5",
+      "query": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "15",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.252163
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "15",
+        "16",
+        "14",
+        "6",
+        "13",
+        "4",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "15",
+          "16",
+          "14",
+          "6",
+          "13",
+          "4"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.575125,
+        "lexical_retrieve_ms": 0.173,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009542000043438748,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 24.331215
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "8",
+        "7",
+        "3",
+        "2",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3",
+          "2",
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "5",
+      "query": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "15",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": true,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": false,
+      "compatibility_candidate_ids": [
+        "5",
+        "6",
+        "8",
+        "3",
+        "7",
+        "1",
+        "2",
+        "13",
+        "14",
+        "15",
+        "16",
+        "4"
+      ],
+      "compatible_candidate_count": 12,
+      "correct_authorized_hit": false,
+      "correct_but_abstained": true,
+      "dataset": "wisdm",
+      "decision": "low_confidence_candidate",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.246363
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "16",
+        "15",
+        "6",
+        "14",
+        "13",
+        "4",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "16",
+          "15",
+          "6",
+          "14",
+          "13",
+          "4"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "16"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.37220899866952095,
+        "dense_retrieve_ms": 5.638709,
+        "lexical_retrieve_ms": 0.15675,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.614166000668774,
+        "total_match_ms": 6.1585419989569345,
+        "verify_ms": 0.16391700046369806,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": true,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 21.990731
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "8",
+        "7",
+        "3",
+        "2",
+        "1",
+        "13",
+        "14",
+        "15",
+        "16",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3",
+          "2",
+          "1",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "5",
+          "6",
+          "8",
+          "7",
+          "3"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "5",
+      "query": "Contrast the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {},
+        "contract_score": 0.0,
+        "dense_score": 0.023902,
+        "final_score": 0.303195,
+        "lexical_score": 0.60639,
+        "query_id": "6",
+        "retrieval_score": 0.60639,
+        "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "8"
+        ],
+        "5": [
+          "1",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {},
+        "contract_score": 0.0,
+        "dense_score": 0.000259,
+        "final_score": 0.5,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."
+      },
+      "winner_runner_up_margin": 0.196805
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "6"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.242486
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "6",
+        "14",
+        "15",
+        "13",
+        "16",
+        "7",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6",
+          "14",
+          "15",
+          "13",
+          "16",
+          "7"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 7.465333,
+        "lexical_retrieve_ms": 0.231916,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009625000529922545,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 36.93922
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "5",
+        "4",
+        "3",
+        "8",
+        "7",
+        "1",
+        "2",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8",
+          "7",
+          "1",
+          "2",
+          "13",
+          "14"
+        ],
+        "3": [
+          "6",
+          "5",
+          "4"
+        ],
+        "5": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "6",
+      "query": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": true,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": false,
+      "compatibility_candidate_ids": [
+        "6",
+        "1",
+        "4"
+      ],
+      "compatible_candidate_count": 3,
+      "correct_authorized_hit": false,
+      "correct_but_abstained": true,
+      "dataset": "wisdm",
+      "decision": "low_confidence_candidate",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.223041
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "6",
+        "14",
+        "15",
+        "13",
+        "7",
+        "16",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6",
+          "14",
+          "15",
+          "13",
+          "7",
+          "16"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.480665999930352,
+        "dense_retrieve_ms": 6.4765,
+        "lexical_retrieve_ms": 0.211542,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 6.510916000479483,
+        "total_match_ms": 7.182999999713502,
+        "verify_ms": 0.18362500122748315,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 33.452688
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "5",
+        "4",
+        "3",
+        "8",
+        "7",
+        "2",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8",
+          "7",
+          "2",
+          "13",
+          "14",
+          "15"
+        ],
+        "3": [
+          "6",
+          "5",
+          "4"
+        ],
+        "5": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_query_id": "6",
+      "query": "Determine the user whose total observed duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.217991,
+        "final_score": 0.608995,
+        "lexical_score": 0.0,
+        "query_id": "1",
+        "retrieval_score": 0.217991,
+        "text": "What is the maximum recorded x-acceleration for user 15?"
+      },
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.107022,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
+      },
+      "winner_runner_up_margin": 0.391005
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "6"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.242486
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "4",
+        "6",
+        "14",
+        "15",
+        "13",
+        "16",
+        "7",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6",
+          "14",
+          "15",
+          "13",
+          "16",
+          "7"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "4",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.37425,
+        "lexical_retrieve_ms": 0.222625,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009082999895326793,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 36.93922
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "5",
+        "4",
+        "3",
+        "8",
+        "7",
+        "1",
+        "2",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8",
+          "7",
+          "1",
+          "2",
+          "13",
+          "14"
+        ],
+        "3": [
+          "6",
+          "5",
+          "4"
+        ],
+        "5": [
+          "6",
+          "5",
+          "4",
+          "3",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "6",
+      "query": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.413483
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "4",
+        "16",
+        "6",
+        "15",
+        "14",
+        "13",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4",
+          "16",
+          "6",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.251,
+        "lexical_retrieve_ms": 0.140667,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.008708000677870587,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 16.835407
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "3",
+        "1",
+        "5",
+        "8",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "3",
+          "1",
+          "5",
+          "8",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6"
+        ],
+        "3": [
+          "7",
+          "3",
+          "1"
+        ],
+        "5": [
+          "7",
+          "3",
+          "1",
+          "5",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "7",
+      "query": "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.403949
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "4",
+        "16",
+        "15",
+        "6",
+        "14",
+        "13",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4",
+          "16",
+          "15",
+          "6",
+          "14",
+          "13"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.34383300044282805,
+        "dense_retrieve_ms": 5.203541,
+        "lexical_retrieve_ms": 0.122125,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.341416999726789,
+        "total_match_ms": 5.975124999167747,
+        "verify_ms": 0.28170800032967236,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 13.921846
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "3",
+        "5",
+        "1",
+        "8",
+        "13",
+        "14",
+        "15",
+        "16",
+        "6",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "3",
+          "5",
+          "1",
+          "8",
+          "13",
+          "14",
+          "15",
+          "16",
+          "6"
+        ],
+        "3": [
+          "7",
+          "3",
+          "5"
+        ],
+        "5": [
+          "7",
+          "3",
+          "5",
+          "1",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "7",
+      "query": "Could you report the median acceleration magnitude for user 20 with activity label Upstairs?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.6,
+        "dense_score": 0.211536,
+        "final_score": 0.8,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.445535
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "4",
+        "16",
+        "6",
+        "15",
+        "14",
+        "13",
+        "5",
+        "8"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4",
+          "16",
+          "6",
+          "15",
+          "14",
+          "13"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.32179099980567116,
+        "dense_retrieve_ms": 5.199208,
+        "lexical_retrieve_ms": 0.12375,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.339540999557357,
+        "total_match_ms": 5.935040999247576,
+        "verify_ms": 0.26504099878366105,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 13.152319
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "3",
+        "5",
+        "13",
+        "14",
+        "15",
+        "16",
+        "8",
+        "1",
+        "6",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "3",
+          "5",
+          "13",
+          "14",
+          "15",
+          "16",
+          "8",
+          "1",
+          "6"
+        ],
+        "3": [
+          "7",
+          "3",
+          "5"
+        ],
+        "5": [
+          "7",
+          "3",
+          "5",
+          "13",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "7",
+      "query": "Please provide the median acceleration magnitude In user 20 with activity label Upstairs?",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "7"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.6,
+        "dense_score": 0.256968,
+        "final_score": 0.8,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.289479
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "6",
+        "15",
+        "16",
+        "4",
+        "14",
+        "13",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "6",
+          "15",
+          "16",
+          "4",
+          "14",
+          "13"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.198958,
+        "lexical_retrieve_ms": 0.157459,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009499999578110874,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 22.716023
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "5",
+        "3",
+        "7",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1"
+        ],
+        "3": [
+          "8",
+          "5",
+          "3"
+        ],
+        "5": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.294715
+      },
+      "dense_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "7",
+        "6",
+        "15",
+        "16",
+        "14",
+        "4",
+        "8",
+        "13",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "6",
+          "15",
+          "16",
+          "14",
+          "4",
+          "8"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "7",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.32170799931918737,
+        "dense_retrieve_ms": 5.502042,
+        "lexical_retrieve_ms": 0.147833,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.456833998323418,
+        "total_match_ms": 6.027333000020008,
+        "verify_ms": 0.23920799867482856,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 20.375539
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "5",
+        "3",
+        "7",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1"
+        ],
+        "3": [
+          "8",
+          "5",
+          "3"
+        ],
+        "5": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Compute the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.833333,
+        "dense_score": 0.039894,
+        "final_score": 0.916667,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "3",
+        "is_expected": false,
+        "query_id": "3",
+        "score": 0.268215
+      },
+      "dense_top_k_ids": [
+        "3",
+        "2",
+        "1",
+        "7",
+        "15",
+        "16",
+        "6",
+        "14",
+        "13",
+        "4",
+        "8",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "2",
+          "1",
+          "7",
+          "15",
+          "16",
+          "6",
+          "14",
+          "13",
+          "4"
+        ],
+        "3": [
+          "3",
+          "2",
+          "1"
+        ],
+        "5": [
+          "3",
+          "2",
+          "1",
+          "7",
+          "15"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.34412500099278986,
+        "dense_retrieve_ms": 5.353416,
+        "lexical_retrieve_ms": 0.150875,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 5.395874999521766,
+        "total_match_ms": 5.964707999737584,
+        "verify_ms": 0.21604100038530305,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 20.375539
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "5",
+        "3",
+        "7",
+        "6",
+        "13",
+        "14",
+        "15",
+        "16",
+        "1",
+        "2",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6",
+          "13",
+          "14",
+          "15",
+          "16",
+          "1"
+        ],
+        "3": [
+          "8",
+          "5",
+          "3"
+        ],
+        "5": [
+          "8",
+          "5",
+          "3",
+          "7",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "8",
+      "query": "Work out the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "5",
+          "8"
+        ],
+        "5": [
+          "1",
+          "15",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.833333,
+        "dense_score": 0.005202,
+        "final_score": 0.916667,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.405448
+      },
+      "dense_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "4",
+        "2",
+        "1",
+        "6",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "2",
+          "1",
+          "6",
+          "3",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 10.054375,
+        "lexical_retrieve_ms": 0.41475,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009625000529922545,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 37.17649
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.389462
+      },
+      "dense_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "4",
+        "2",
+        "1",
+        "6",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "2",
+          "1",
+          "6",
+          "3",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6708329983666772,
+        "dense_retrieve_ms": 8.275167,
+        "lexical_retrieve_ms": 0.393084,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.606874998804415,
+        "total_match_ms": 9.596208001312334,
+        "verify_ms": 0.308832999508013,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 35.419564
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.389462,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.417543
+      },
+      "dense_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "2",
+        "6",
+        "3",
+        "4",
+        "1",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "6",
+          "3",
+          "4",
+          "1",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6470829994214,
+        "dense_retrieve_ms": 8.52125,
+        "lexical_retrieve_ms": 0.371583,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.341791999555426,
+        "total_match_ms": 9.277416000259109,
+        "verify_ms": 0.28004200066789053,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 33.678787
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "3",
+        "7",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "3",
+          "7",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "13",
+      "query": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a logistic regression model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.417543,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.426419
+      },
+      "dense_top_k_ids": [
+        "14",
+        "15",
+        "13",
+        "16",
+        "4",
+        "2",
+        "6",
+        "1",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "4",
+          "2",
+          "6",
+          "1",
+          "3",
+          "8"
+        ],
+        "3": [
+          "14",
+          "15",
+          "13"
+        ],
+        "5": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.047625,
+        "lexical_retrieve_ms": 0.406125,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.00941700091061648,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 37.17649
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.413494
+      },
+      "dense_top_k_ids": [
+        "14",
+        "15",
+        "13",
+        "16",
+        "4",
+        "2",
+        "6",
+        "1",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "4",
+          "2",
+          "6",
+          "1",
+          "3",
+          "8"
+        ],
+        "3": [
+          "14",
+          "15",
+          "13"
+        ],
+        "5": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "4"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6329169991659,
+        "dense_retrieve_ms": 7.987209,
+        "lexical_retrieve_ms": 0.381125,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.385125000131666,
+        "total_match_ms": 9.327416000814992,
+        "verify_ms": 0.30183299895725213,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 35.419564
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "4",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.413494,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.449396
+      },
+      "dense_top_k_ids": [
+        "14",
+        "15",
+        "13",
+        "16",
+        "2",
+        "4",
+        "6",
+        "3",
+        "1",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2",
+          "4",
+          "6",
+          "3",
+          "1",
+          "8"
+        ],
+        "3": [
+          "14",
+          "15",
+          "13"
+        ],
+        "5": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.5826659999002004,
+        "dense_retrieve_ms": 8.085334,
+        "lexical_retrieve_ms": 0.363708,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.580958001402905,
+        "total_match_ms": 9.453082999243634,
+        "verify_ms": 0.28095800007577054,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 33.678787
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "15",
+        "16",
+        "3",
+        "7",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "3",
+          "7",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "15"
+        ],
+        "5": [
+          "14",
+          "13",
+          "15",
+          "16",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "14",
+      "query": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.449396,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.404747
+      },
+      "dense_top_k_ids": [
+        "15",
+        "14",
+        "13",
+        "16",
+        "2",
+        "4",
+        "6",
+        "1",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "2",
+          "4",
+          "6",
+          "1",
+          "3",
+          "8"
+        ],
+        "3": [
+          "15",
+          "14",
+          "13"
+        ],
+        "5": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.034333,
+        "lexical_retrieve_ms": 0.416042,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009833998774411157,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 38.760115
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": false,
+        "query_id": "14",
+        "score": 0.390729
+      },
+      "dense_top_k_ids": [
+        "14",
+        "15",
+        "13",
+        "16",
+        "2",
+        "4",
+        "1",
+        "6",
+        "3",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2",
+          "4",
+          "1",
+          "6",
+          "3",
+          "8"
+        ],
+        "3": [
+          "14",
+          "15",
+          "13"
+        ],
+        "5": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6510420007543871,
+        "dense_retrieve_ms": 8.021542,
+        "lexical_retrieve_ms": 0.39275,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.705917000042973,
+        "total_match_ms": 9.670165998613811,
+        "verify_ms": 0.3047499994863756,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 37.013756
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.388277,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": false,
+        "query_id": "14",
+        "score": 0.431942
+      },
+      "dense_top_k_ids": [
+        "14",
+        "15",
+        "13",
+        "16",
+        "2",
+        "4",
+        "6",
+        "3",
+        "1",
+        "8",
+        "7",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2",
+          "4",
+          "6",
+          "3",
+          "1",
+          "8"
+        ],
+        "3": [
+          "14",
+          "15",
+          "13"
+        ],
+        "5": [
+          "14",
+          "15",
+          "13",
+          "16",
+          "2"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6450000000768341,
+        "dense_retrieve_ms": 8.210875,
+        "lexical_retrieve_ms": 0.405292,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.45504099925165,
+        "total_match_ms": 9.389582999574486,
+        "verify_ms": 0.2806249995046528,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 35.282164
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "13",
+        "14",
+        "16",
+        "3",
+        "7",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "3",
+          "7",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "15",
+          "13",
+          "14"
+        ],
+        "5": [
+          "15",
+          "13",
+          "14",
+          "16",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "15",
+      "query": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a 1-nearest-neighbor model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "14",
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.43076,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.378563
+      },
+      "dense_top_k_ids": [
+        "16",
+        "14",
+        "15",
+        "13",
+        "1",
+        "4",
+        "2",
+        "6",
+        "3",
+        "8",
+        "5",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1",
+          "4",
+          "2",
+          "6",
+          "3",
+          "8"
+        ],
+        "3": [
+          "16",
+          "14",
+          "15"
+        ],
+        "5": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 7.985125,
+        "lexical_retrieve_ms": 0.4125,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009666000551078469,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 38.760115
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.367702
+      },
+      "dense_top_k_ids": [
+        "16",
+        "14",
+        "15",
+        "13",
+        "1",
+        "4",
+        "6",
+        "2",
+        "3",
+        "5",
+        "8",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1",
+          "4",
+          "6",
+          "2",
+          "3",
+          "5"
+        ],
+        "3": [
+          "16",
+          "14",
+          "15"
+        ],
+        "5": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6621250013267854,
+        "dense_retrieve_ms": 7.947291,
+        "lexical_retrieve_ms": 0.396125,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.356915999684134,
+        "total_match_ms": 9.305208001023857,
+        "verify_ms": 0.2779580008791527,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 37.013756
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "7",
+        "3",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "7",
+          "3",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.367702,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "dataset": "wisdm",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.399608
+      },
+      "dense_top_k_ids": [
+        "16",
+        "14",
+        "15",
+        "13",
+        "1",
+        "6",
+        "3",
+        "2",
+        "4",
+        "5",
+        "8",
+        "7"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1",
+          "6",
+          "3",
+          "2",
+          "4",
+          "5"
+        ],
+        "3": [
+          "16",
+          "14",
+          "15"
+        ],
+        "5": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.662124999507796,
+        "dense_retrieve_ms": 8.31875,
+        "lexical_retrieve_ms": 0.377625,
+        "model_load_ms": 1652.234375000262,
+        "registry_load_ms": 0.02208399928349536,
+        "retrieve_ms": 8.616666000307305,
+        "total_match_ms": 9.565459000441479,
+        "verify_ms": 0.2784159987641033,
+        "warm_up_ms": 105.87699999996403
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 35.282164
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "13",
+        "14",
+        "15",
+        "3",
+        "7",
+        "8",
+        "1",
+        "6",
+        "2",
+        "5",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "3",
+          "7",
+          "8",
+          "1",
+          "6",
+          "2"
+        ],
+        "3": [
+          "16",
+          "13",
+          "14"
+        ],
+        "5": [
+          "16",
+          "13",
+          "14",
+          "15",
+          "3"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_query_id": "16",
+      "query": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "15",
+        "7",
+        "8",
+        "16",
+        "2",
+        "6",
+        "13",
+        "14",
+        "4",
+        "1",
+        "3",
+        "5"
+      ],
+      "runner_up": null,
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "3"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 0.833333,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.766667,
+        "dense_score": 0.399608,
+        "final_score": 0.883333,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    }
+  ],
+  "summary": {
+    "by_dataset": {
+      "wisdm": {
+        "abstention_rate": 0.111111,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 0.888889,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 0.888889,
+        "average_match_ms": 4.500964,
+        "correct_but_abstained_rate": 0.111111,
+        "dense_recall_at_k": {
+          "1": 0.611111,
+          "10": 0.861111,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.611111,
+        "error_count": 0,
+        "false_negatives": 4,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.573146,
+        "potential_ambiguity_rate": 0.166667,
+        "total_live_queries": 36,
+        "true_positives": 32,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_dataset_and_version": {
+      "wisdm/v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.011306,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.666667,
+          "10": 0.833333,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.666667,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 0.018596,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "wisdm/v2": {
+        "abstention_rate": 0.166667,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 0.833333,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 0.833333,
+        "average_match_ms": 6.932639,
+        "correct_but_abstained_rate": 0.166667,
+        "dense_recall_at_k": {
+          "1": 0.583333,
+          "10": 0.916667,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.583333,
+        "error_count": 0,
+        "false_negatives": 2,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.629489,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 10,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "wisdm/v3": {
+        "abstention_rate": 0.166667,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 0.833333,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 0.833333,
+        "average_match_ms": 6.558948,
+        "correct_but_abstained_rate": 0.166667,
+        "dense_recall_at_k": {
+          "1": 0.583333,
+          "10": 0.833333,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.583333,
+        "error_count": 0,
+        "false_negatives": 2,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.503652,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 10,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_version": {
+      "v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.011306,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.666667,
+          "10": 0.833333,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.666667,
+        "error_count": 0,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 0.018596,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v2": {
+        "abstention_rate": 0.166667,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 0.833333,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 0.833333,
+        "average_match_ms": 6.932639,
+        "correct_but_abstained_rate": 0.166667,
+        "dense_recall_at_k": {
+          "1": 0.583333,
+          "10": 0.916667,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.583333,
+        "error_count": 0,
+        "false_negatives": 2,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.629489,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 10,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v3": {
+        "abstention_rate": 0.166667,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 0.833333,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 0.833333,
+        "average_match_ms": 6.558948,
+        "correct_but_abstained_rate": 0.166667,
+        "dense_recall_at_k": {
+          "1": 0.583333,
+          "10": 0.833333,
+          "3": 0.666667,
+          "5": 0.833333
+        },
+        "dense_top_1_accuracy": 0.583333,
+        "error_count": 0,
+        "false_negatives": 2,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "p95_match_ms": 9.503652,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 10,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "initialization_ms_by_dataset": {
+      "wisdm": 7925.363792
+    },
+    "overall": {
+      "abstention_rate": 0.111111,
+      "ambiguity_rate": 0.0,
+      "authorization_rate": 0.888889,
+      "authorized_hit_precision": 1.0,
+      "authorized_hit_recall": 0.888889,
+      "average_match_ms": 4.500964,
+      "correct_but_abstained_rate": 0.111111,
+      "dense_recall_at_k": {
+        "1": 0.611111,
+        "10": 0.861111,
+        "3": 0.666667,
+        "5": 0.833333
+      },
+      "dense_top_1_accuracy": 0.611111,
+      "error_count": 0,
+      "false_negatives": 4,
+      "false_positive_reuse_rate": 0.0,
+      "false_positives": 0,
+      "lexical_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      },
+      "lexical_top_1_accuracy": 1.0,
+      "p95_match_ms": 9.573146,
+      "potential_ambiguity_rate": 0.166667,
+      "total_live_queries": 36,
+      "true_positives": 32,
+      "union_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      }
+    },
+    "total_live_queries": 36
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "retrieval": {
+    "model_name": "all-MiniLM-L6-v2",
+    "dense_top_k": 20,
+    "lexical_top_k": 20
+  },
+  "thresholds": {
+    "extractor_confidence_floor": 0.55,
+    "acceptance_floor": 0.75,
+    "ambiguity_margin": 0.08,
+    "fuzzy_threshold": 0.72,
+    "fuzzy_margin": 0.05
+  },
+  "weights": {
+    "retrieval": 0.5,
+    "contract": 0.5
+  }
+}

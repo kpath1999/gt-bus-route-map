@@ -1,0 +1,6032 @@
+{
+  "reports": [
+    {
+      "dataset": "bus",
+      "fails": 0,
+      "passes": 36,
+      "registry": "flashfusion/eval/cache/semantic_registry_bus_v1.json",
+      "rows": [
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.45,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "accel_mean"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_EQ_AGGREGATE",
+              "SELECT_COLUMN"
+            ],
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.5,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.833333,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_EQ_AGGREGATE",
+              "SELECT_COLUMN"
+            ],
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.5,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.833333,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_EQ_AGGREGATE",
+              "SELECT_COLUMN"
+            ],
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.5,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.833333,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "accel_stats_z_p99",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "list",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.6,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {
+              "accel_variance": "0.20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "accel_variance": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.6,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {
+              "accel_variance": "0.20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "accel_variance": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.6,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "accel_variance"
+            ],
+            "filter_values": {
+              "accel_variance": "0.20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "accel_variance": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "SPLIT_BY_THRESHOLD",
+              "SPLIT_BY_THRESHOLD",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "latitude": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "SPLIT_BY_THRESHOLD",
+              "SPLIT_BY_THRESHOLD",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "latitude": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "SPLIT_BY_THRESHOLD",
+              "SPLIT_BY_THRESHOLD",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0,
+            "predicate_ops": 0.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "latitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "latitude": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "latitude",
+              "longitude"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {
+              "*": "1"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {
+              "*": "1"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "instability_score"
+            ],
+            "filter_values": {
+              "*": "1"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.8,
+          "dataset": "bus",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "behavior",
+              "timestamp"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "behavior"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        }
+      ],
+      "total_checks": 36
+    },
+    {
+      "dataset": "wisdm",
+      "fails": 0,
+      "passes": 36,
+      "registry": "flashfusion/eval/cache/semantic_registry_wisdm_v1.json",
+      "rows": [
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "subject_id": 15
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "*": "15"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "subject_id": 15
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "*": "15"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "subject_id": 15
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "x"
+            ],
+            "filter_values": {
+              "*": "15"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [],
+            "filter_values": {
+              "activity": "walking"
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "FILTER_COMPARE",
+              "COUNT_DISTINCT"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [],
+            "filter_values": {
+              "activity": "walking"
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "FILTER_COMPARE",
+              "COUNT_DISTINCT"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [],
+            "filter_values": {
+              "activity": "walking"
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "FILTER_COMPARE",
+              "COUNT_DISTINCT"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "y"
+            ],
+            "filter_values": {
+              "activity": "sitting",
+              "subject_id": 5
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.666667,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "y"
+            ],
+            "filter_values": {
+              "*": "5"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "y"
+            ],
+            "filter_values": {
+              "activity": "sitting",
+              "subject_id": 5
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.666667,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "y"
+            ],
+            "filter_values": {
+              "*": "5"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "y"
+            ],
+            "filter_values": {
+              "activity": "sitting",
+              "subject_id": 5
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.666667,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "y"
+            ],
+            "filter_values": {
+              "*": "5"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {},
+          "confidence": 0.15,
+          "contract_score": 0.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {},
+          "confidence": 0.15,
+          "contract_score": 0.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {},
+          "confidence": 0.15,
+          "contract_score": 0.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_DURATION_SECONDS",
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "FILTER_COMPARE",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_DURATION_SECONDS",
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "FILTER_COMPARE",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "DERIVE_DURATION_SECONDS",
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "FILTER_COMPARE",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.35,
+          "contract_score": 1.0,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [],
+            "filter_values": {
+              "activity": "upstairs",
+              "subject_id": 20
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.95,
+          "contract_score": 0.6,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {
+              "*": "20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [],
+            "filter_values": {
+              "activity": "upstairs",
+              "subject_id": 20
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.95,
+          "contract_score": 0.6,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {
+              "*": "20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "median",
+            "fields": [],
+            "filter_values": {
+              "activity": "upstairs",
+              "subject_id": 20
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "DERIVE_VECTOR_MAGNITUDE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 0.95,
+          "contract_score": 0.6,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "median",
+            "fields": [
+              "activity",
+              "activity_label"
+            ],
+            "filter_values": {
+              "*": "20"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.777778,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.777778,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_NOT_EMPTY",
+              "SPLIT_BY_VALUES",
+              "SPLIT_BY_VALUES",
+              "AGGREGATE_PARTITIONS",
+              "COMPARE_PARTITIONS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 0.3333333333333333,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.777778,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "activity",
+              "activity_label",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 0.7142857142857143,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.742857,
+          "dataset": "wisdm",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "activity",
+              "activity_label",
+              "subject_id",
+              "timestamp",
+              "x",
+              "y",
+              "z"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": "activity_label"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        }
+      ],
+      "total_checks": 36
+    },
+    {
+      "dataset": "mit_ecg",
+      "fails": 0,
+      "passes": 36,
+      "registry": "flashfusion/eval/cache/semantic_registry_mit_ecg_v1.json",
+      "rows": [
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "min",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "min",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "min",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "1",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 234
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "234"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 234
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "234"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 234
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "234"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "2",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "mlii__value": 0,
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt",
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.3333333333333333,
+            "output_shape": 1.0,
+            "predicate_ops": 0.5
+          },
+          "confidence": 0.95,
+          "contract_score": 0.766667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106",
+              "mlii": "0"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "mlii__value": 0,
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt",
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.3333333333333333,
+            "output_shape": 1.0,
+            "predicate_ops": 0.5
+          },
+          "confidence": 0.95,
+          "contract_score": 0.766667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106",
+              "mlii": "0"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "count",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "mlii__value": 0,
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_COMPARE",
+              "COUNT_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt",
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.3333333333333333,
+            "output_shape": 1.0,
+            "predicate_ops": 0.5
+          },
+          "confidence": 0.95,
+          "contract_score": 0.766667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "count",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106",
+              "mlii": "0"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "mlii": "gt"
+            },
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "3",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 221
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.5,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "221"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 221
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.5,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "221"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 221
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "unknown",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.5,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "221"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": null,
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "4",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 208
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "AGGREGATE_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "60"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 208
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "AGGREGATE_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "60"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 208
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "AGGREGATE_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.85,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "*": "60"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "5",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 0.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.666667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 0.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.666667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "min",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PARALLEL_AGGREGATE",
+              "DERIVE_BINARY",
+              "RANK_ROWS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 0.0,
+            "fields": 1.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.55,
+          "contract_score": 0.666667,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {},
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "6",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "FILTER_NOT_EMPTY",
+              "DERIVE_BIN",
+              "GROUP_AGGREGATE",
+              "RANK_GROUPS"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.65,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "max",
+            "fields": [
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "101"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "7",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "MLII",
+              "record_id"
+            ],
+            "filter_values": {
+              "record_id": 106
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "FILTER_COMPARE",
+              "AGGREGATE_COLUMN"
+            ],
+            "output_shape": "scalar",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": null,
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "aggregate": 1.0,
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "output_shape": 1.0
+          },
+          "confidence": 0.75,
+          "contract_score": 0.75,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": "mean",
+            "fields": [
+              "mlii",
+              "record_id"
+            ],
+            "filter_values": {
+              "*": "106"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": null,
+            "output_shape": "scalar",
+            "predicate_ops": {},
+            "predictive": {},
+            "schema_fingerprint": null
+          },
+          "query_id": "8",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "logistic_regression",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "logistic_regression"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "13",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "random_forest",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "random_forest",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "random_forest",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "random_forest"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "14",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "one_nearest_neighbor",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "one_nearest_neighbor"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "15",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v1"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v2"
+        },
+        {
+          "admissibility": "in_scope",
+          "candidate_contract": {
+            "aggregate": null,
+            "fields": [
+              "MLII",
+              "V1",
+              "annotation",
+              "record_id",
+              "time_s"
+            ],
+            "filter_values": {
+              "record_id": 101
+            },
+            "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {
+              "record_id": "eq"
+            },
+            "predictive": {
+              "model": "hist_gradient_boosting",
+              "target_column": null
+            },
+            "schema_fingerprint": null
+          },
+          "component_scores": {
+            "fields": 1.0,
+            "filter_values": 0.0,
+            "operator_skeleton": 1.0,
+            "output_shape": 1.0,
+            "predictive": 1.0
+          },
+          "confidence": 1.0,
+          "contract_score": 0.8,
+          "dataset": "mit_ecg",
+          "live_contract": {
+            "aggregate": null,
+            "fields": [
+              "annotation",
+              "mlii",
+              "record_id",
+              "time_s",
+              "v1"
+            ],
+            "filter_values": {
+              "*": "80"
+            },
+            "operator_contract_hash": null,
+            "operator_skeleton": [
+              "PREDICTIVE_PIPELINE"
+            ],
+            "output_shape": "predictive",
+            "predicate_ops": {},
+            "predictive": {
+              "model": "hist_gradient_boosting"
+            },
+            "schema_fingerprint": null
+          },
+          "query_id": "16",
+          "safety_failures": [],
+          "safety_ok": true,
+          "version": "v3"
+        }
+      ],
+      "total_checks": 36
+    }
+  ],
+  "summary": {
+    "datasets": [
+      "bus",
+      "wisdm",
+      "mit_ecg"
+    ],
+    "fails": 0,
+    "passes": 108,
+    "total_checks": 108
+  }
+}
