@@ -886,8 +886,9 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
     # semantic split has to be estimated from that single column instead.
     # This applies to both FLASH_FUSION and FLASH_FUSION_CACHE since they use
     # the same underlying architecture. Cache grounding is native telemetry;
-    # any remaining query-scoped overhead is spread uniformly so the four
-    # semantic stages reconcile exactly with latency_s.
+    # any remaining query-scoped overhead is spread uniformly so the semantic
+    # stages reconcile with latency_s, except that cache hits have no planning
+    # stage and must not receive a planning allocation.
     ff_mask = sem["baseline"].isin([
         "FLASH_FUSION",
         CACHE_BASELINE,
@@ -914,6 +915,11 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
     ) / 4.0
     for stage in ("grounding_s", "validation_s", "planning_s", "execution_s"):
         sem.loc[ff_mask, stage] += ff_residual_per_stage
+
+    # Cache hits reuse a validated cached skeleton and do not invoke the
+    # planner. Do not turn the residual display allocation into planning time.
+    cache_hit_mask = sem["baseline"] == CACHE_HIT_BASELINE
+    sem.loc[cache_hit_mask, "planning_s"] = 0.0
 
     # ReAct has no grounding/planning phase; treat 10% of its end-to-end
     # latency as validation and the rest as execution.

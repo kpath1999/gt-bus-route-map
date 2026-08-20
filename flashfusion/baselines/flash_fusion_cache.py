@@ -314,7 +314,7 @@ def _detect_aggregate(query_lc: str) -> str | None:
     if re.search(r"\b(min|minimum|smallest|lowest|least)\b", query_lc):
         return "min"
     if re.search(r"\b(max|maximum|largest|highest|greatest|peak)\b", query_lc):
-        return "max"
+        return "max"#
     if re.search(r"\b(mean|average)\b", query_lc):
         return "mean"
     if re.search(r"\b(sum|total)\b", query_lc):

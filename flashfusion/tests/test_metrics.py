@@ -522,3 +522,29 @@ def test_semantic_stage_frame_uniformly_allocates_flash_fusion_residual() -> Non
     assert float(out["planning_s"]) == pytest.approx(0.10)
     assert float(out["execution_s"]) == pytest.approx(0.35)
     assert float(out[["grounding_s", "validation_s", "planning_s", "execution_s"]].sum()) == pytest.approx(1.4)
+
+
+def test_semantic_stage_frame_excludes_planning_for_cache_hits() -> None:
+    df = pd.DataFrame(
+        [
+            {
+                "baseline": "FLASH_FUSION_CACHE_HIT",
+                "dataset": "bus",
+                "run_id": 1,
+                "query_type": "Direct",
+                "latency_s": 1.4,
+                "s1_latency_s": 0.0,
+                "s2_latency_s": 0.0,
+                "s3_latency_s": 0.0,
+                "guardrail_latency_s": 0.0,
+                "cache_grounding_latency_s": 0.75,
+                "typed_exec_latency_s": 0.25,
+                "agent_latency_s": 0.0,
+            }
+        ]
+    )
+
+    out = _semantic_stage_frame(df).iloc[0]
+
+    assert float(out["planning_s"]) == 0.0
+    assert float(out[["grounding_s", "validation_s", "planning_s", "execution_s"]].sum()) == pytest.approx(1.3)
