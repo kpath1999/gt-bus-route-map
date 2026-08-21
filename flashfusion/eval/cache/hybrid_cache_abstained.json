@@ -1,0 +1,156 @@
+
+(.venv) kausar@Kausars-MacBook-Air flash-fusion % python -m flashfusion.eval.benchmark_hybrid_cache \
+--dataset wisdm \
+--output flashfusion/eval/cache/hybrid_wisdm_benchmark.json \
+--verbose
+
+Hybrid cache benchmark
+overall: n=36 precision=1.0 recall=0.972222 fpr=0.0 abstention=0.027778 ambiguity=0.0
+by dataset:
+  wisdm: n=36 precision=1.0 recall=0.972222
+by version:
+  v1: n=12 precision=1.0 recall=1.0
+  v2: n=12 precision=1.0 recall=1.0
+  v3: n=12 precision=1.0 recall=0.916667
+failures:
+  wrong_authorized_reuse: 0
+  abstention_decisions: {'low_confidence_candidate': 1}
+  ambiguous_decisions: 0
+  expected_absent_from_retrieval_union: 0
+  expected_retrieved_but_rejected_incompatible: 0
+  expected_compatible_but_not_final_winner: 0
+  expected_winner_below_acceptance_floor: 1
+  errors: 0
+{"abstained": true, "acceptance_floor": 0.75, "ambiguity_margin": 0.08, "ambiguous": false, "authorized_hit": false, "compatibility_candidate_ids": ["5", "6", "8", "3", "7", "1", "2", "13", "14", "15", "16", "4"], "compatible_candidate_count": 12, "correct_authorized_hit": false, "correct_but_abstained": true, "dataset": "wisdm", "decision": "low_confidence_candidate", "dense_top_1": {"candidate_id": "3", "is_expected": false, "query_id": "3", "score": 0.246363}, "dense_top_k_ids": ["3", "1", "2", "7", "16", "15", "6", "14", "13", "4", "5", "8"], "dense_top_k_ids_by_report_k": {"1": ["3"], "10": ["3", "1", "2", "7", "16", "15", "6", "14", "13", "4"], "3": ["3", "1", "2"], "5": ["3", "1", "2", "7", "16"]}, "elapsed_ms": {"contract_extract_ms": 0.2569999996921979, "dense_retrieve_ms": 3.397958, "lexical_retrieve_ms": 0.091833, "model_load_ms": 1284.9796250011423, "registry_load_ms": 0.013541999578592367, "retrieve_ms": 3.43133399837825, "total_match_ms": 3.7864159985474544, "verify_ms": 0.09374999899591785, "warm_up_ms": 80.9904159996222}, "expected_compatible_but_not_final_winner": false, "expected_in_dense_top_1": false, "expected_in_dense_top_k": true, "expected_in_lexical_top_1": true, "expected_in_lexical_top_k": true, "expected_in_retrieval_union": true, "expected_is_compatible": true, "expected_query_id": "5", "expected_retrieved_but_rejected_incompatible": false, "expected_winner_below_acceptance_floor": true, "false_positive_reuse": false, "final_winner_is_expected": true, "lexical_top_1": {"candidate_id": "5", "is_expected": true, "query_id": "5", "score": 21.990731}, "lexical_top_k_ids": ["5", "6", "8", "7", "3", "2", "1", "13", "14", "15", "16", "4"], "lexical_top_k_ids_by_report_k": {"1": ["5"], "10": ["5", "6", "8", "7", "3", "2", "1", "13", "14", "15"], "3": ["5", "6", "8"], "5": ["5", "6", "8", "7", "3"]}, "potential_ambiguity": true, "predicted_query_id": "5", "query": "Contrast the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.", "query_id": "5", "retrieval_union_ids": ["15", "7", "8", "16", "2", "6", "13", "14", "4", "1", "3", "5"], "runner_up": {"candidate_id": "6", "compatibility": true, "compatibility_failures": [], "component_scores": {}, "contract_score": 0.0, "dense_score": 0.023902, "final_score": 0.303195, "lexical_score": 0.60639, "query_id": "6", "retrieval_score": 0.60639, "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin."}, "union_ids_by_report_k": {"1": ["3", "5"], "10": ["1", "13", "14", "15", "16", "2", "3", "4", "5", "6", "7", "8"], "3": ["1", "2", "3", "5", "6", "8"], "5": ["1", "16", "2", "3", "5", "6", "7", "8"]}, "version": "v3", "winner": {"candidate_id": "5", "compatibility": true, "compatibility_failures": [], "component_scores": {}, "contract_score": 0.0, "dense_score": 0.000259, "final_score": 0.5, "lexical_score": 1.0, "query_id": "5", "retrieval_score": 1.0, "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states."}, "winner_runner_up_margin": 0.196805}
+
+
+(.venv) kausar@Kausars-MacBook-Air flash-fusion % python3 -m flashfusion.eval.trace_hybrid_cache --registry flashfusion/eval/cache/semantic_registry_wisdm_v1.json --dataset wisdm --query-id 5 --version v3 --explain
+{
+  "mode": "hybrid",
+  "decision": "low_confidence_candidate",
+  "query_id": "5",
+  "version": "v3",
+  "query": "Contrast the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+  "prediction": "5",
+  "false_positive": false,
+  "single_query_false_positive_rate": 0.0,
+  "config_path": "flashfusion/eval/cache/hybrid_match_config.json",
+  "config_version": 1,
+  "calibration_split": "test",
+  "elapsed_ms": {
+    "registry_load_ms": 0.01049999991664663,
+    "model_load_ms": 1382.9972080002335,
+    "warm_up_ms": 89.59570899969549,
+    "contract_extract_ms": 2.196124998590676,
+    "retrieve_ms": 6.199292000019341,
+    "verify_ms": 0.164167000548332,
+    "total_match_ms": 8.573749999413849
+  },
+  "winner": {
+    "candidate_id": "5",
+    "query_id": "5",
+    "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+    "dense_score": 0.000259,
+    "lexical_score": 1.0,
+    "retrieval_score": 1.0,
+    "contract_score": 0.0,
+    "compatibility": true,
+    "compatibility_failures": [],
+    "component_scores": {},
+    "final_score": 0.5
+  },
+  "runner_up": {
+    "candidate_id": "6",
+    "query_id": "6",
+    "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+    "dense_score": 0.023902,
+    "lexical_score": 0.60639,
+    "retrieval_score": 0.60639,
+    "contract_score": 0.0,
+    "compatibility": true,
+    "compatibility_failures": [],
+    "component_scores": {},
+    "final_score": 0.303195
+  },
+  "candidate_ids": [
+    "5",
+    "6",
+    "8",
+    "3",
+    "7",
+    "1",
+    "2",
+    "13",
+    "14",
+    "15",
+    "16",
+    "4"
+  ],
+  "candidates": [
+    {
+      "candidate_id": "5",
+      "query_id": "5",
+      "text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "dense_score": 0.000259,
+      "lexical_score": 1.0,
+      "retrieval_score": 1.0,
+      "contract_score": 0.0,
+      "compatibility": true,
+      "compatibility_failures": [],
+      "component_scores": {},
+      "final_score": 0.5
+    },
+    {
+      "candidate_id": "6",
+      "query_id": "6",
+      "text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "dense_score": 0.023902,
+      "lexical_score": 0.60639,
+      "retrieval_score": 0.60639,
+      "contract_score": 0.0,
+      "compatibility": true,
+      "compatibility_failures": [],
+      "component_scores": {},
+      "final_score": 0.303195
+    },
+    {
+      "candidate_id": "8",
+      "query_id": "8",
+      "text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "dense_score": 0.0,
+      "lexical_score": 0.275904,
+      "retrieval_score": 0.275904,
+      "contract_score": 0.0,
+      "compatibility": true,
+      "compatibility_failures": [],
+      "component_scores": {},
+      "final_score": 0.137952
+    },
+    {
+      "candidate_id": "3",
+      "query_id": "3",
+      "text": "What is the average y-acceleration of user 5 with activity label Sitting?",
+      "dense_score": 0.246363,
+      "lexical_score": 0.135291,
+      "retrieval_score": 0.246363,
+      "contract_score": 0.0,
+      "compatibility": true,
+      "compatibility_failures": [],
+      "component_scores": {},
+      "final_score": 0.123181
+    },
+    {
+      "candidate_id": "7",
+      "query_id": "7",
+      "text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
+      "dense_score": 0.069702,
+      "lexical_score": 0.201093,
+      "retrieval_score": 0.201093,
+      "contract_score": 0.0,
+      "compatibility": true,
+      "compatibility_failures": [],
+      "component_scores": {},
+      "final_score": 0.100546
+    }
+  ]
+}

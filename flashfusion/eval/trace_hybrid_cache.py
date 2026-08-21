@@ -45,6 +45,8 @@ class QueryContract:
     output_shape: str | None
     predictive: tuple[tuple[str, str], ...]
     confidence: float
+    applicable_evidence_count: int
+    matched_evidence_count: int
 
 
 @dataclass
@@ -125,6 +127,13 @@ class ContractExtractor:
         "total": "sum",
         "mean": "mean",
         "peak": "max",
+    }
+
+    MODEL_PATTERNS: dict[str, str] = {
+        "logistic_regression": r"\blogistic[- ]regression\b",
+        "random_forest": r"\brandom[- ]forest\b",
+        "one_nearest_neighbor": r"\b(?:1\s*[- ]?nearest[- ]?neighbo?r|1[- ]?nn)\b",
+        "hist_gradient_boosting": r"\bhist(?:ogram)?[- ]gradient[- ]boosting\b",
     }
 
     def __init__(self, schema_columns: Iterable[str] | None) -> None:
@@ -262,15 +271,31 @@ class ContractExtractor:
         best = min(matches, key=lambda item: (item[0], item[1]))
         return best[2]
 
+    def _has_aggregate_cue(self, query_lc: str) -> bool:
+        return any(
+            re.search(rf"(?<![a-z0-9_]){re.escape(phrase)}(?![a-z0-9_])", query_lc)
+            for phrase in self.AGGREGATE_PHRASES
+        )
+
+    def _has_comparison_cue(self, query: str) -> bool:
+        query_lc = query.lower()
+        if re.search(r"(?:<=|>=|!=|==|=|<|>)", query_lc):
+            return True
+        return any(
+            re.search(rf"(?<![a-z0-9_]){re.escape(phrase)}(?![a-z0-9_])", query_lc)
+            for phrase in self.COMPARISON_PHRASES
+        )
+
+    @staticmethod
+    def _has_numeric_literal(query_lc: str) -> bool:
+        return bool(re.search(r"(?<![a-z0-9_])-?\d+(?:\.\d+)?(?![a-z0-9_]|st\b|nd\b|rd\b|th\b)", query_lc))
+
+    def _has_model_name_cue(self, query_lc: str) -> bool:
+        return any(re.search(pattern, query_lc) for pattern in self.MODEL_PATTERNS.values())
+
     def _extract_predictive(self, query_lc: str) -> tuple[tuple[str, str], ...]:
         pairs: list[tuple[str, str]] = []
-        model_patterns = {
-            "logistic_regression": r"\blogistic[- ]regression\b",
-            "random_forest": r"\brandom[- ]forest\b",
-            "one_nearest_neighbor": r"\b(?:1\s*[- ]?nearest[- ]?neighbo?r|1[- ]?nn)\b",
-            "hist_gradient_boosting": r"\bhist(?:ogram)?[- ]gradient[- ]boosting\b",
-        }
-        for model_name, pattern in model_patterns.items():
+        for model_name, pattern in self.MODEL_PATTERNS.items():
             if re.search(pattern, query_lc):
                 pairs.append(("model", model_name))
                 break
@@ -325,18 +350,24 @@ class ContractExtractor:
         if any(key == "model" for key, _value in predictive):
             operator_skeleton_hint = ("PREDICTIVE_PIPELINE",)
 
-        confidence = 0.15
+        applicable_evidence_count = 0
+        matched_evidence_count = 0
         if fields:
-            confidence += min(0.45, 0.1 * len(fields))
-        if aggregate is not None:
-            confidence += 0.2
-        if predicate_ops:
-            confidence += 0.2
-        if filter_values:
-            confidence += 0.2
-        if predictive:
-            confidence += 0.2
-        confidence = max(0.0, min(1.0, confidence))
+            applicable_evidence_count += 1
+            matched_evidence_count += 1
+        if self._has_aggregate_cue(query_lc):
+            applicable_evidence_count += 1
+            matched_evidence_count += int(aggregate is not None)
+        if self._has_comparison_cue(query):
+            applicable_evidence_count += 1
+            matched_evidence_count += int(bool(predicate_ops))
+        if self._has_numeric_literal(query_lc):
+            applicable_evidence_count += 1
+            matched_evidence_count += int(bool(filter_values))
+        if self._has_model_name_cue(query_lc):
+            applicable_evidence_count += 1
+            matched_evidence_count += int(bool(predictive))
+        confidence = matched_evidence_count / applicable_evidence_count if applicable_evidence_count else 0.0
 
         if not query.strip():
             admissibility = "out_of_scope"
@@ -357,6 +388,8 @@ class ContractExtractor:
             output_shape=output_shape,
             predictive=predictive,
             confidence=confidence,
+            applicable_evidence_count=applicable_evidence_count,
+            matched_evidence_count=matched_evidence_count,
         )
 
     def _extract_predicate_ops(self, query: str) -> set[tuple[str, str]]:

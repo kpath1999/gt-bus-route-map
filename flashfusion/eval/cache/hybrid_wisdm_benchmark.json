@@ -15,7 +15,7 @@
       5,
       10
     ],
-    "timestamp_utc": "2026-08-20T18:30:04.911852+00:00",
+    "timestamp_utc": "2026-08-21T17:49:23.481519+00:00",
     "versions": [
       "v1",
       "v2",
@@ -24,7 +24,7 @@
   },
   "failure_breakdown": {
     "abstention_decisions": {
-      "low_confidence_candidate": 4
+      "low_confidence_candidate": 1
     },
     "ambiguous_decisions": 0,
     "errors": 0,
@@ -100,12 +100,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 5.55725,
-        "lexical_retrieve_ms": 0.2445,
+        "dense_retrieve_ms": 5.33675,
+        "lexical_retrieve_ms": 0.16225,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.02670800131454598,
+        "total_match_ms": 0.022541000362252817,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -305,15 +305,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 3.2722500000090804,
-        "dense_retrieve_ms": 5.964375,
-        "lexical_retrieve_ms": 0.094458,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.048208999141934,
-        "total_match_ms": 8.684709000590374,
-        "verify_ms": 0.3532089995132992,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 2.149624999219668,
+        "dense_retrieve_ms": 5.803958,
+        "lexical_retrieve_ms": 0.064166,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 4.197958000077051,
+        "total_match_ms": 6.582292000530288,
+        "verify_ms": 0.2269589986099163,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -536,15 +536,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.2621669991640374,
-        "dense_retrieve_ms": 5.330666,
-        "lexical_retrieve_ms": 0.097166,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.006667000998277,
-        "total_match_ms": 5.508958000064013,
-        "verify_ms": 0.2285409991600318,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.20220899932610337,
+        "dense_retrieve_ms": 5.309167,
+        "lexical_retrieve_ms": 0.068167,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.9282080015254905,
+        "total_match_ms": 4.289667000193731,
+        "verify_ms": 0.15204200099105947,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -763,12 +763,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 4.906125,
-        "lexical_retrieve_ms": 0.098667,
+        "dense_retrieve_ms": 4.202875,
+        "lexical_retrieve_ms": 0.105166,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.01195799995912239,
+        "total_match_ms": 0.008125000022118911,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -970,15 +970,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.25387499954376835,
-        "dense_retrieve_ms": 5.171916,
-        "lexical_retrieve_ms": 0.106875,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.473625000377069,
-        "total_match_ms": 5.992541000523488,
-        "verify_ms": 0.25433300106669776,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.19187500038242433,
+        "dense_retrieve_ms": 4.786875,
+        "lexical_retrieve_ms": 0.076458,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.913874999852851,
+        "total_match_ms": 4.263541999534937,
+        "verify_ms": 0.15145799989113584,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -1178,15 +1178,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.24679099988134112,
-        "dense_retrieve_ms": 5.006959,
-        "lexical_retrieve_ms": 0.121666,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.021875000238651,
-        "total_match_ms": 5.509958000402548,
-        "verify_ms": 0.23083399901224766,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.19283300025563221,
+        "dense_retrieve_ms": 5.352375,
+        "lexical_retrieve_ms": 0.075459,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.69966699872748,
+        "total_match_ms": 4.051999998409883,
+        "verify_ms": 0.15287499991245568,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -1390,12 +1390,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 5.048042,
-        "lexical_retrieve_ms": 0.151417,
+        "dense_retrieve_ms": 4.220167,
+        "lexical_retrieve_ms": 0.095542,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009958001101040281,
+        "total_match_ms": 0.0075000007200287655,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -1595,15 +1595,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.3169170013279654,
-        "dense_retrieve_ms": 5.03575,
-        "lexical_retrieve_ms": 0.126042,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.1523749989428325,
-        "total_match_ms": 5.750583999542869,
-        "verify_ms": 0.2727089995460119,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.2239580007881159,
+        "dense_retrieve_ms": 3.723041,
+        "lexical_retrieve_ms": 0.088375,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.7864170008106157,
+        "total_match_ms": 4.180208999969182,
+        "verify_ms": 0.1647079989197664,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -1808,15 +1808,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.28812500022468157,
-        "dense_retrieve_ms": 4.921167,
-        "lexical_retrieve_ms": 0.1215,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.431415998828015,
-        "total_match_ms": 5.999208000503131,
-        "verify_ms": 0.2712920013436815,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.2088330002152361,
+        "dense_retrieve_ms": 3.429375,
+        "lexical_retrieve_ms": 0.091542,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.546915999322664,
+        "total_match_ms": 3.9239580000867136,
+        "verify_ms": 0.16320800023095217,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -2021,12 +2021,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 5.140208,
-        "lexical_retrieve_ms": 0.121208,
+        "dense_retrieve_ms": 3.382791,
+        "lexical_retrieve_ms": 0.076958,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009542000043438748,
+        "total_match_ms": 0.005583999154623598,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -2162,21 +2162,21 @@
       "winner_runner_up_margin": null
     },
     {
-      "abstained": true,
+      "abstained": false,
       "acceptance_floor": 0.75,
       "ambiguity_margin": 0.08,
       "ambiguous": false,
-      "authorized_hit": false,
+      "authorized_hit": true,
       "compatibility_candidate_ids": [
         "4",
         "1",
         "6"
       ],
       "compatible_candidate_count": 3,
-      "correct_authorized_hit": false,
-      "correct_but_abstained": true,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
       "dataset": "wisdm",
-      "decision": "low_confidence_candidate",
+      "decision": "hybrid_hit",
       "dense_top_1": {
         "candidate_id": "4",
         "is_expected": true,
@@ -2227,15 +2227,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.26816699937626254,
-        "dense_retrieve_ms": 5.109666,
-        "lexical_retrieve_ms": 0.113125,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.207250000239583,
-        "total_match_ms": 5.6698329990467755,
-        "verify_ms": 0.18645899945113342,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.18854100017051678,
+        "dense_retrieve_ms": 3.246791,
+        "lexical_retrieve_ms": 0.070167,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.327624999656109,
+        "total_match_ms": 3.6304160003055586,
+        "verify_ms": 0.10929100062639918,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -2386,21 +2386,21 @@
       "winner_runner_up_margin": 0.324334
     },
     {
-      "abstained": true,
+      "abstained": false,
       "acceptance_floor": 0.75,
       "ambiguity_margin": 0.08,
       "ambiguous": false,
-      "authorized_hit": false,
+      "authorized_hit": true,
       "compatibility_candidate_ids": [
         "4",
         "1",
         "6"
       ],
       "compatible_candidate_count": 3,
-      "correct_authorized_hit": false,
-      "correct_but_abstained": true,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
       "dataset": "wisdm",
-      "decision": "low_confidence_candidate",
+      "decision": "hybrid_hit",
       "dense_top_1": {
         "candidate_id": "4",
         "is_expected": true,
@@ -2451,15 +2451,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.2818749999278225,
-        "dense_retrieve_ms": 6.303708,
-        "lexical_retrieve_ms": 0.119875,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.453166999359382,
-        "total_match_ms": 5.936334000580246,
-        "verify_ms": 0.19241699919803068,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.1879579995147651,
+        "dense_retrieve_ms": 4.447333,
+        "lexical_retrieve_ms": 0.076542,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.372916000444093,
+        "total_match_ms": 3.6691660006908933,
+        "verify_ms": 0.10362499961047433,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -2673,12 +2673,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 6.89575,
-        "lexical_retrieve_ms": 0.175375,
+        "dense_retrieve_ms": 5.195833,
+        "lexical_retrieve_ms": 0.097625,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.011125001037726179,
+        "total_match_ms": 0.00508299854118377,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -2883,12 +2883,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 5.575125,
-        "lexical_retrieve_ms": 0.173,
+        "dense_retrieve_ms": 3.328208,
+        "lexical_retrieve_ms": 0.099083,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009542000043438748,
+        "total_match_ms": 0.005125000825501047,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -3103,15 +3103,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.37220899866952095,
-        "dense_retrieve_ms": 5.638709,
-        "lexical_retrieve_ms": 0.15675,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.614166000668774,
-        "total_match_ms": 6.1585419989569345,
-        "verify_ms": 0.16391700046369806,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.2569999996921979,
+        "dense_retrieve_ms": 3.397958,
+        "lexical_retrieve_ms": 0.091833,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.43133399837825,
+        "total_match_ms": 3.7864159985474544,
+        "verify_ms": 0.09374999899591785,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -3324,12 +3324,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 7.465333,
-        "lexical_retrieve_ms": 0.231916,
+        "dense_retrieve_ms": 5.149791,
+        "lexical_retrieve_ms": 0.141042,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009625000529922545,
+        "total_match_ms": 0.005416999556473456,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -3469,21 +3469,21 @@
       "winner_runner_up_margin": null
     },
     {
-      "abstained": true,
+      "abstained": false,
       "acceptance_floor": 0.75,
       "ambiguity_margin": 0.08,
       "ambiguous": false,
-      "authorized_hit": false,
+      "authorized_hit": true,
       "compatibility_candidate_ids": [
         "6",
         "1",
         "4"
       ],
       "compatible_candidate_count": 3,
-      "correct_authorized_hit": false,
-      "correct_but_abstained": true,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
       "dataset": "wisdm",
-      "decision": "low_confidence_candidate",
+      "decision": "hybrid_hit",
       "dense_top_1": {
         "candidate_id": "3",
         "is_expected": false,
@@ -3534,15 +3534,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.480665999930352,
-        "dense_retrieve_ms": 6.4765,
-        "lexical_retrieve_ms": 0.211542,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 6.510916000479483,
-        "total_match_ms": 7.182999999713502,
-        "verify_ms": 0.18362500122748315,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.3188339996995637,
+        "dense_retrieve_ms": 3.9765,
+        "lexical_retrieve_ms": 0.1275,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.859541000565514,
+        "total_match_ms": 4.286332999981823,
+        "verify_ms": 0.1039160015352536,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -3760,12 +3760,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 6.37425,
-        "lexical_retrieve_ms": 0.222625,
+        "dense_retrieve_ms": 3.699292,
+        "lexical_retrieve_ms": 0.13525,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009082999895326793,
+        "total_match_ms": 0.004749999789055437,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -3969,12 +3969,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 5.251,
-        "lexical_retrieve_ms": 0.140667,
+        "dense_retrieve_ms": 3.209666,
+        "lexical_retrieve_ms": 0.087291,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.008708000677870587,
+        "total_match_ms": 0.005416999556473456,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -4175,15 +4175,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.34383300044282805,
-        "dense_retrieve_ms": 5.203541,
-        "lexical_retrieve_ms": 0.122125,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.341416999726789,
-        "total_match_ms": 5.975124999167747,
-        "verify_ms": 0.28170800032967236,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.21441599892568775,
+        "dense_retrieve_ms": 3.2275,
+        "lexical_retrieve_ms": 0.074708,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.362750001542736,
+        "total_match_ms": 3.7299590003385674,
+        "verify_ms": 0.14820799879089464,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -4387,15 +4387,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.32179099980567116,
-        "dense_retrieve_ms": 5.199208,
-        "lexical_retrieve_ms": 0.12375,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.339540999557357,
-        "total_match_ms": 5.935040999247576,
-        "verify_ms": 0.26504099878366105,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.2174580004066229,
+        "dense_retrieve_ms": 3.174834,
+        "lexical_retrieve_ms": 0.072625,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.222540999558987,
+        "total_match_ms": 3.5869580005964963,
+        "verify_ms": 0.14216599993233103,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -4601,12 +4601,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 6.198958,
-        "lexical_retrieve_ms": 0.157459,
+        "dense_retrieve_ms": 5.148292,
+        "lexical_retrieve_ms": 0.094584,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009499999578110874,
+        "total_match_ms": 0.00545799957762938,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -4808,15 +4808,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.32170799931918737,
-        "dense_retrieve_ms": 5.502042,
-        "lexical_retrieve_ms": 0.147833,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.456833998323418,
-        "total_match_ms": 6.027333000020008,
-        "verify_ms": 0.23920799867482856,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.24208299873862416,
+        "dense_retrieve_ms": 3.571458,
+        "lexical_retrieve_ms": 0.088209,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.415250001125969,
+        "total_match_ms": 3.800417000093148,
+        "verify_ms": 0.13837500046065543,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -5018,15 +5018,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.34412500099278986,
-        "dense_retrieve_ms": 5.353416,
-        "lexical_retrieve_ms": 0.150875,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 5.395874999521766,
-        "total_match_ms": 5.964707999737584,
-        "verify_ms": 0.21604100038530305,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.24200000007112976,
+        "dense_retrieve_ms": 3.397,
+        "lexical_retrieve_ms": 0.091834,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 3.284332999101025,
+        "total_match_ms": 3.6463750002440065,
+        "verify_ms": 0.11574999916774686,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -5230,12 +5230,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 10.054375,
-        "lexical_retrieve_ms": 0.41475,
+        "dense_retrieve_ms": 7.91275,
+        "lexical_retrieve_ms": 0.2475,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009625000529922545,
+        "total_match_ms": 0.0051249990065116435,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -5432,15 +5432,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6708329983666772,
-        "dense_retrieve_ms": 8.275167,
-        "lexical_retrieve_ms": 0.393084,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.606874998804415,
-        "total_match_ms": 9.596208001312334,
-        "verify_ms": 0.308832999508013,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4695000006904593,
+        "dense_retrieve_ms": 4.649833,
+        "lexical_retrieve_ms": 0.231125,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.0865000011981465,
+        "total_match_ms": 5.730332999519305,
+        "verify_ms": 0.17012500029522926,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -5639,15 +5639,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6470829994214,
-        "dense_retrieve_ms": 8.52125,
-        "lexical_retrieve_ms": 0.371583,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.341791999555426,
-        "total_match_ms": 9.277416000259109,
-        "verify_ms": 0.28004200066789053,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4697090007539373,
+        "dense_retrieve_ms": 7.700084,
+        "lexical_retrieve_ms": 0.228042,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.432666999695357,
+        "total_match_ms": 6.078624999645399,
+        "verify_ms": 0.17195799955516122,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -5847,12 +5847,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 8.047625,
-        "lexical_retrieve_ms": 0.406125,
+        "dense_retrieve_ms": 5.132292,
+        "lexical_retrieve_ms": 0.262417,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.00941700091061648,
+        "total_match_ms": 0.006374999429681338,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -6049,15 +6049,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6329169991659,
-        "dense_retrieve_ms": 7.987209,
-        "lexical_retrieve_ms": 0.381125,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.385125000131666,
-        "total_match_ms": 9.327416000814992,
-        "verify_ms": 0.30183299895725213,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4791250012203818,
+        "dense_retrieve_ms": 5.16025,
+        "lexical_retrieve_ms": 0.243834,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.434291999335983,
+        "total_match_ms": 6.084874999942258,
+        "verify_ms": 0.16620899987174198,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -6256,15 +6256,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.5826659999002004,
-        "dense_retrieve_ms": 8.085334,
-        "lexical_retrieve_ms": 0.363708,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.580958001402905,
-        "total_match_ms": 9.453082999243634,
-        "verify_ms": 0.28095800007577054,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.46170899986464065,
+        "dense_retrieve_ms": 4.977708,
+        "lexical_retrieve_ms": 0.224958,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.098124998767162,
+        "total_match_ms": 5.730291999498149,
+        "verify_ms": 0.16558300012547988,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -6464,12 +6464,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 8.034333,
-        "lexical_retrieve_ms": 0.416042,
+        "dense_retrieve_ms": 4.8955,
+        "lexical_retrieve_ms": 0.258583,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009833998774411157,
+        "total_match_ms": 0.00545799957762938,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -6666,15 +6666,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6510420007543871,
-        "dense_retrieve_ms": 8.021542,
-        "lexical_retrieve_ms": 0.39275,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.705917000042973,
-        "total_match_ms": 9.670165998613811,
-        "verify_ms": 0.3047499994863756,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.48108299961313605,
+        "dense_retrieve_ms": 4.964875,
+        "lexical_retrieve_ms": 0.251417,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.294500000672997,
+        "total_match_ms": 5.942583000432933,
+        "verify_ms": 0.16237500130955596,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -6874,15 +6874,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6450000000768341,
-        "dense_retrieve_ms": 8.210875,
-        "lexical_retrieve_ms": 0.405292,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.45504099925165,
-        "total_match_ms": 9.389582999574486,
-        "verify_ms": 0.2806249995046528,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4798339996341383,
+        "dense_retrieve_ms": 4.968625,
+        "lexical_retrieve_ms": 0.237042,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.267874999844935,
+        "total_match_ms": 5.912499998885323,
+        "verify_ms": 0.1601250005478505,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": false,
@@ -7083,12 +7083,12 @@
       },
       "elapsed_ms": {
         "contract_extract_ms": 0.0,
-        "dense_retrieve_ms": 7.985125,
-        "lexical_retrieve_ms": 0.4125,
+        "dense_retrieve_ms": 4.935917,
+        "lexical_retrieve_ms": 0.26075,
         "model_load_ms": 0.0,
-        "registry_load_ms": 0.02208399928349536,
+        "registry_load_ms": 0.013541999578592367,
         "retrieve_ms": 0.0,
-        "total_match_ms": 0.009666000551078469,
+        "total_match_ms": 0.00545799957762938,
         "verify_ms": 0.0,
         "warm_up_ms": 0.0
       },
@@ -7286,15 +7286,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.6621250013267854,
-        "dense_retrieve_ms": 7.947291,
-        "lexical_retrieve_ms": 0.396125,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.356915999684134,
-        "total_match_ms": 9.305208001023857,
-        "verify_ms": 0.2779580008791527,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4969589990651002,
+        "dense_retrieve_ms": 5.0165,
+        "lexical_retrieve_ms": 0.242042,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.161875000339933,
+        "total_match_ms": 5.829792000440648,
+        "verify_ms": 0.1663330003793817,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -7495,15 +7495,15 @@
         ]
       },
       "elapsed_ms": {
-        "contract_extract_ms": 0.662124999507796,
-        "dense_retrieve_ms": 8.31875,
-        "lexical_retrieve_ms": 0.377625,
-        "model_load_ms": 1652.234375000262,
-        "registry_load_ms": 0.02208399928349536,
-        "retrieve_ms": 8.616666000307305,
-        "total_match_ms": 9.565459000441479,
-        "verify_ms": 0.2784159987641033,
-        "warm_up_ms": 105.87699999996403
+        "contract_extract_ms": 0.4755000009026844,
+        "dense_retrieve_ms": 5.034125,
+        "lexical_retrieve_ms": 0.23425,
+        "model_load_ms": 1284.9796250011423,
+        "registry_load_ms": 0.013541999578592367,
+        "retrieve_ms": 5.251208000117913,
+        "total_match_ms": 5.892499999390566,
+        "verify_ms": 0.16062500071711838,
+        "warm_up_ms": 80.9904159996222
       },
       "expected_compatible_but_not_final_winner": false,
       "expected_in_dense_top_1": true,
@@ -7644,13 +7644,13 @@
   "summary": {
     "by_dataset": {
       "wisdm": {
-        "abstention_rate": 0.111111,
+        "abstention_rate": 0.027778,
         "ambiguity_rate": 0.0,
-        "authorization_rate": 0.888889,
+        "authorization_rate": 0.972222,
         "authorized_hit_precision": 1.0,
-        "authorized_hit_recall": 0.888889,
-        "average_match_ms": 4.500964,
-        "correct_but_abstained_rate": 0.111111,
+        "authorized_hit_recall": 0.972222,
+        "average_match_ms": 2.909073,
+        "correct_but_abstained_rate": 0.027778,
         "dense_recall_at_k": {
           "1": 0.611111,
           "10": 0.861111,
@@ -7659,7 +7659,7 @@
         },
         "dense_top_1_accuracy": 0.611111,
         "error_count": 0,
-        "false_negatives": 4,
+        "false_negatives": 1,
         "false_positive_reuse_rate": 0.0,
         "false_positives": 0,
         "lexical_recall_at_k": {
@@ -7669,10 +7669,10 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 9.573146,
+        "p95_match_ms": 6.080187,
         "potential_ambiguity_rate": 0.166667,
         "total_live_queries": 36,
-        "true_positives": 32,
+        "true_positives": 35,
         "union_recall_at_k": {
           "1": 1.0,
           "10": 1.0,
@@ -7688,7 +7688,7 @@
         "authorization_rate": 1.0,
         "authorized_hit_precision": 1.0,
         "authorized_hit_recall": 1.0,
-        "average_match_ms": 0.011306,
+        "average_match_ms": 0.007295,
         "correct_but_abstained_rate": 0.0,
         "dense_recall_at_k": {
           "1": 0.666667,
@@ -7708,7 +7708,7 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 0.018596,
+        "p95_match_ms": 0.014612,
         "potential_ambiguity_rate": 0.0,
         "total_live_queries": 12,
         "true_positives": 12,
@@ -7720,13 +7720,13 @@
         }
       },
       "wisdm/v2": {
-        "abstention_rate": 0.166667,
+        "abstention_rate": 0.0,
         "ambiguity_rate": 0.0,
-        "authorization_rate": 0.833333,
+        "authorization_rate": 1.0,
         "authorized_hit_precision": 1.0,
-        "authorized_hit_recall": 0.833333,
-        "average_match_ms": 6.932639,
-        "correct_but_abstained_rate": 0.166667,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.50549,
+        "correct_but_abstained_rate": 0.0,
         "dense_recall_at_k": {
           "1": 0.583333,
           "10": 0.916667,
@@ -7735,7 +7735,7 @@
         },
         "dense_top_1_accuracy": 0.583333,
         "error_count": 0,
-        "false_negatives": 2,
+        "false_negatives": 0,
         "false_positive_reuse_rate": 0.0,
         "false_positives": 0,
         "lexical_recall_at_k": {
@@ -7745,10 +7745,10 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 9.629489,
+        "p95_match_ms": 6.308713,
         "potential_ambiguity_rate": 0.25,
         "total_live_queries": 12,
-        "true_positives": 10,
+        "true_positives": 12,
         "union_recall_at_k": {
           "1": 1.0,
           "10": 1.0,
@@ -7757,13 +7757,13 @@
         }
       },
       "wisdm/v3": {
-        "abstention_rate": 0.166667,
+        "abstention_rate": 0.083333,
         "ambiguity_rate": 0.0,
-        "authorization_rate": 0.833333,
+        "authorization_rate": 0.916667,
         "authorized_hit_precision": 1.0,
-        "authorized_hit_recall": 0.833333,
-        "average_match_ms": 6.558948,
-        "correct_but_abstained_rate": 0.166667,
+        "authorized_hit_recall": 0.916667,
+        "average_match_ms": 4.214434,
+        "correct_but_abstained_rate": 0.083333,
         "dense_recall_at_k": {
           "1": 0.583333,
           "10": 0.833333,
@@ -7772,7 +7772,7 @@
         },
         "dense_top_1_accuracy": 0.583333,
         "error_count": 0,
-        "false_negatives": 2,
+        "false_negatives": 1,
         "false_positive_reuse_rate": 0.0,
         "false_positives": 0,
         "lexical_recall_at_k": {
@@ -7782,10 +7782,10 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 9.503652,
+        "p95_match_ms": 5.987256,
         "potential_ambiguity_rate": 0.25,
         "total_live_queries": 12,
-        "true_positives": 10,
+        "true_positives": 11,
         "union_recall_at_k": {
           "1": 1.0,
           "10": 1.0,
@@ -7801,7 +7801,7 @@
         "authorization_rate": 1.0,
         "authorized_hit_precision": 1.0,
         "authorized_hit_recall": 1.0,
-        "average_match_ms": 0.011306,
+        "average_match_ms": 0.007295,
         "correct_but_abstained_rate": 0.0,
         "dense_recall_at_k": {
           "1": 0.666667,
@@ -7821,7 +7821,7 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 0.018596,
+        "p95_match_ms": 0.014612,
         "potential_ambiguity_rate": 0.0,
         "total_live_queries": 12,
         "true_positives": 12,
@@ -7833,13 +7833,13 @@
         }
       },
       "v2": {
-        "abstention_rate": 0.166667,
+        "abstention_rate": 0.0,
         "ambiguity_rate": 0.0,
-        "authorization_rate": 0.833333,
+        "authorization_rate": 1.0,
         "authorized_hit_precision": 1.0,
-        "authorized_hit_recall": 0.833333,
-        "average_match_ms": 6.932639,
-        "correct_but_abstained_rate": 0.166667,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.50549,
+        "correct_but_abstained_rate": 0.0,
         "dense_recall_at_k": {
           "1": 0.583333,
           "10": 0.916667,
@@ -7848,7 +7848,7 @@
         },
         "dense_top_1_accuracy": 0.583333,
         "error_count": 0,
-        "false_negatives": 2,
+        "false_negatives": 0,
         "false_positive_reuse_rate": 0.0,
         "false_positives": 0,
         "lexical_recall_at_k": {
@@ -7858,10 +7858,10 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 9.629489,
+        "p95_match_ms": 6.308713,
         "potential_ambiguity_rate": 0.25,
         "total_live_queries": 12,
-        "true_positives": 10,
+        "true_positives": 12,
         "union_recall_at_k": {
           "1": 1.0,
           "10": 1.0,
@@ -7870,13 +7870,13 @@
         }
       },
       "v3": {
-        "abstention_rate": 0.166667,
+        "abstention_rate": 0.083333,
         "ambiguity_rate": 0.0,
-        "authorization_rate": 0.833333,
+        "authorization_rate": 0.916667,
         "authorized_hit_precision": 1.0,
-        "authorized_hit_recall": 0.833333,
-        "average_match_ms": 6.558948,
-        "correct_but_abstained_rate": 0.166667,
+        "authorized_hit_recall": 0.916667,
+        "average_match_ms": 4.214434,
+        "correct_but_abstained_rate": 0.083333,
         "dense_recall_at_k": {
           "1": 0.583333,
           "10": 0.833333,
@@ -7885,7 +7885,7 @@
         },
         "dense_top_1_accuracy": 0.583333,
         "error_count": 0,
-        "false_negatives": 2,
+        "false_negatives": 1,
         "false_positive_reuse_rate": 0.0,
         "false_positives": 0,
         "lexical_recall_at_k": {
@@ -7895,10 +7895,10 @@
           "5": 1.0
         },
         "lexical_top_1_accuracy": 1.0,
-        "p95_match_ms": 9.503652,
+        "p95_match_ms": 5.987256,
         "potential_ambiguity_rate": 0.25,
         "total_live_queries": 12,
-        "true_positives": 10,
+        "true_positives": 11,
         "union_recall_at_k": {
           "1": 1.0,
           "10": 1.0,
@@ -7908,16 +7908,16 @@
       }
     },
     "initialization_ms_by_dataset": {
-      "wisdm": 7925.363792
+      "wisdm": 4870.685
     },
     "overall": {
-      "abstention_rate": 0.111111,
+      "abstention_rate": 0.027778,
       "ambiguity_rate": 0.0,
-      "authorization_rate": 0.888889,
+      "authorization_rate": 0.972222,
       "authorized_hit_precision": 1.0,
-      "authorized_hit_recall": 0.888889,
-      "average_match_ms": 4.500964,
-      "correct_but_abstained_rate": 0.111111,
+      "authorized_hit_recall": 0.972222,
+      "average_match_ms": 2.909073,
+      "correct_but_abstained_rate": 0.027778,
       "dense_recall_at_k": {
         "1": 0.611111,
         "10": 0.861111,
@@ -7926,7 +7926,7 @@
       },
       "dense_top_1_accuracy": 0.611111,
       "error_count": 0,
-      "false_negatives": 4,
+      "false_negatives": 1,
       "false_positive_reuse_rate": 0.0,
       "false_positives": 0,
       "lexical_recall_at_k": {
@@ -7936,10 +7936,10 @@
         "5": 1.0
       },
       "lexical_top_1_accuracy": 1.0,
-      "p95_match_ms": 9.573146,
+      "p95_match_ms": 6.080187,
       "potential_ambiguity_rate": 0.166667,
       "total_live_queries": 36,
-      "true_positives": 32,
+      "true_positives": 35,
       "union_recall_at_k": {
         "1": 1.0,
         "10": 1.0,

@@ -52,6 +52,37 @@ def test_contract_extractor_parses_phrase_comparison_and_binding() -> None:
     assert contract.output_shape == "scalar"
 
 
+def test_contract_extractor_normalizes_confidence_for_complete_sparse_evidence() -> None:
+    extractor = ContractExtractor(schema_columns=["accel_variance", "timestamp"])
+
+    contract = extractor.extract("What is the maximum accel_variance?")
+
+    assert contract.applicable_evidence_count == 2
+    assert contract.matched_evidence_count == 2
+    assert contract.confidence == 1.0
+
+
+def test_contract_extractor_does_not_treat_ordinal_statistics_as_filter_literals() -> None:
+    extractor = ContractExtractor(schema_columns=["accel_variance"])
+
+    contract = extractor.extract("What is the maximum accel_variance at the 99th percentile?")
+
+    assert contract.applicable_evidence_count == 2
+    assert contract.matched_evidence_count == 2
+    assert contract.confidence == 1.0
+
+
+def test_contract_extractor_penalizes_unmatched_applicable_aggregate_cue() -> None:
+    extractor = ContractExtractor(schema_columns=["accel_variance"])
+    extractor._extract_aggregate = lambda _query: None  # type: ignore[method-assign]
+
+    contract = extractor.extract("What is the maximum accel_variance?")
+
+    assert contract.applicable_evidence_count == 2
+    assert contract.matched_evidence_count == 1
+    assert contract.confidence == 0.5
+
+
 def test_component_scores_exclude_unknown_dimensions() -> None:
     matcher = _make_matcher()
     live = {
