@@ -101,6 +101,7 @@ import argparse
 import dataclasses
 import json
 import os
+import random
 import signal
 import sys
 import time
@@ -166,6 +167,22 @@ def _cache_queries_for_run(dataset: str, run_id: int) -> tuple[str, list[dict]]:
     if version == "v3":
         return version, queries_v3.get_queries(dataset)
     return version, get_queries(dataset)
+
+
+def _cache_query_order_for_run(
+    *,
+    query_ids: list[int],
+    run_id: int,
+    randomize: bool,
+    base_seed: int,
+) -> tuple[list[int], int | None]:
+    ordered = list(query_ids)
+    if not randomize:
+        return ordered, None
+    seed = int(base_seed) + int(run_id) - 1
+    rng = random.Random(seed)
+    rng.shuffle(ordered)
+    return ordered, seed
 
 
 def _query_defs_for_reporting(
@@ -290,10 +307,12 @@ def _run_single_benchmark_iteration(
     llm_judge_max_code_chars: int,
     dataset: str,
     query_defs: list[dict],
+    query_ids_by_baseline: dict[str, list[int]] | None = None,
     query_defs_by_baseline: dict[str, list[dict]] | None = None,
     stage12_model: str | None = None,
     cache_path: str | None = None,
     semantic_cache_path: str | None = None,
+    prewarm_cache_runtime: bool = True,
 ) -> tuple[list[RunResult], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Execute one full baseline x query benchmark run and persist artifacts."""
     report_query_defs = _query_defs_for_reporting(query_defs, query_defs_by_baseline)
@@ -305,8 +324,33 @@ def _run_single_benchmark_iteration(
     results: list[RunResult] = []
     for baseline in baselines:
         baseline_queries = (query_defs_by_baseline or {}).get(baseline, query_defs)
-        for qid in query_ids:
-            query_def = baseline_queries[qid - 1]
+        baseline_query_lookup = {int(query["id"]): query for query in baseline_queries}
+        baseline_query_ids = list((query_ids_by_baseline or {}).get(baseline, query_ids))
+
+        if baseline == "FLASH_FUSION_CACHE" and prewarm_cache_runtime:
+            from flashfusion.baselines.flash_fusion_cache import (
+                DEFAULT_CACHE_PATH,
+                prewarm_hybrid_cache_runtime,
+            )
+
+            warm = prewarm_hybrid_cache_runtime(
+                df=df_base,
+                dataset=dataset,
+                cache_path=cache_path or DEFAULT_CACHE_PATH,
+                semantic_cache_path=semantic_cache_path,
+            )
+            print(
+                "[FLASH_FUSION_CACHE] prewarm complete: "
+                f"model_load_ms={warm.get('model_load_ms', 0.0):.2f} "
+                f"warm_up_ms={warm.get('warm_up_ms', 0.0):.2f} "
+                f"dense_index_build_ms={warm.get('dense_index_build_ms', 0.0):.2f}",
+                flush=True,
+            )
+
+        for qid in baseline_query_ids:
+            query_def = baseline_query_lookup.get(int(qid))
+            if query_def is None:
+                raise ValueError(f"Query id {qid} was not found in baseline query definitions.")
             query_text = query_def["text"]
             print(
                 f"\n[{baseline}] Q{qid}: {query_text[:60]}...",
@@ -593,9 +637,25 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         print(f"[DEBUG] WARNING: df_base is EMPTY after loading!", flush=True)
     os.makedirs(args.output, exist_ok=True)
     if args.runs == 1:
+        cache_order_ids, cache_order_seed = _cache_query_order_for_run(
+            query_ids=query_ids,
+            run_id=1,
+            randomize=bool(args.cache_random_order),
+            base_seed=int(args.cache_order_base_seed),
+        )
+        if "FLASH_FUSION_CACHE" in baselines:
+            order_manifest = {
+                "randomized": bool(args.cache_random_order),
+                "seed": cache_order_seed,
+                "query_order": cache_order_ids,
+            }
+            with open(os.path.join(args.output, "flash_fusion_cache_query_order.json"), "w", encoding="utf-8") as fh:
+                json.dump(order_manifest, fh, indent=2)
+
         results, _, _, _ = _run_single_benchmark_iteration(
             baselines=baselines,
             query_ids=query_ids,
+            query_ids_by_baseline={"FLASH_FUSION_CACHE": cache_order_ids},
             df_base=df_base,
             output_dir=args.output,
             model_name=args.model,
@@ -610,6 +670,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             stage12_model=args.stage12_model,
             cache_path=getattr(args, "cache_path", None),
             semantic_cache_path=getattr(args, "semantic_cache_path", None),
+            prewarm_cache_runtime=bool(args.cache_prewarm_hybrid),
         )
         return results
 
@@ -623,16 +684,39 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         run_output_dir = os.path.join(args.output, f"run_{run_id}")
         print(f"\n##### Run {run_id}/{args.runs} -> {run_output_dir} #####", flush=True)
         cache_query_version, cache_query_defs = _cache_queries_for_run(args.dataset, run_id)
+        cache_order_ids, cache_order_seed = _cache_query_order_for_run(
+            query_ids=query_ids,
+            run_id=run_id,
+            randomize=bool(args.cache_random_order),
+            base_seed=int(args.cache_order_base_seed),
+        )
         query_defs_by_baseline = {"FLASH_FUSION_CACHE": cache_query_defs}
+        query_ids_by_baseline = {"FLASH_FUSION_CACHE": cache_order_ids}
         if "FLASH_FUSION_CACHE" in baselines:
             print(
                 f"[FLASH_FUSION_CACHE] Query version for run {run_id}: "
-                f"{cache_query_version}; semantic registry: {args.semantic_cache_path}",
+                f"{cache_query_version}; semantic registry: {args.semantic_cache_path}; "
+                f"random_seed={cache_order_seed}; query_order={cache_order_ids}",
                 flush=True,
             )
+            os.makedirs(run_output_dir, exist_ok=True)
+            order_manifest = {
+                "run_id": run_id,
+                "randomized": bool(args.cache_random_order),
+                "seed": cache_order_seed,
+                "query_order": cache_order_ids,
+                "query_version": cache_query_version,
+            }
+            with open(
+                os.path.join(run_output_dir, "flash_fusion_cache_query_order.json"),
+                "w",
+                encoding="utf-8",
+            ) as fh:
+                json.dump(order_manifest, fh, indent=2)
         run_results, run_judgments, run_metrics, run_sanity = _run_single_benchmark_iteration(
             baselines=baselines,
             query_ids=query_ids,
+            query_ids_by_baseline=query_ids_by_baseline,
             df_base=df_base,
             output_dir=run_output_dir,
             model_name=args.model,
@@ -648,6 +732,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             stage12_model=args.stage12_model,
             cache_path=getattr(args, "cache_path", None),
             semantic_cache_path=getattr(args, "semantic_cache_path", None),
+            prewarm_cache_runtime=bool(args.cache_prewarm_hybrid),
         )
 
         all_results.extend(run_results)
@@ -828,6 +913,47 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=1,
         help="Number of repeated benchmark runs to execute (default: 1)",
+    )
+    parser.add_argument(
+        "--cache-random-order",
+        dest="cache_random_order",
+        action="store_true",
+        default=True,
+        help=(
+            "Randomize FLASH_FUSION_CACHE query order per run with reproducible seeds "
+            "(default: enabled)."
+        ),
+    )
+    parser.add_argument(
+        "--no-cache-random-order",
+        dest="cache_random_order",
+        action="store_false",
+        help="Disable randomized FLASH_FUSION_CACHE query order and preserve explicit query order.",
+    )
+    parser.add_argument(
+        "--cache-order-base-seed",
+        type=int,
+        default=20260821,
+        help=(
+            "Base seed for FLASH_FUSION_CACHE query-order randomization; "
+            "effective seed per run is base_seed + run_id - 1."
+        ),
+    )
+    parser.add_argument(
+        "--cache-prewarm-hybrid",
+        dest="cache_prewarm_hybrid",
+        action="store_true",
+        default=True,
+        help=(
+            "Prewarm FLASH_FUSION_CACHE hybrid runtime before timed queries so model load/warm-up "
+            "are not charged to per-query latency (default: enabled)."
+        ),
+    )
+    parser.add_argument(
+        "--no-cache-prewarm-hybrid",
+        dest="cache_prewarm_hybrid",
+        action="store_false",
+        help="Disable FLASH_FUSION_CACHE benchmark prewarm of the hybrid matcher runtime.",
     )
     parser.add_argument(
         "--ground-truth",

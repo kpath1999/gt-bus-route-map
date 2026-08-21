@@ -65,6 +65,7 @@ existing baseline's optional RunResult parameter.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import inspect
 import json
 import re
@@ -94,6 +95,7 @@ from flashfusion.pipeline.runner import LLMClient, RunResult
 
 BASELINE_NAME = "FLASH_FUSION_CACHE"
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parents[1] / "eval" / "cache" / "cache_registry.json"
+DEFAULT_HYBRID_CONFIG_PATH = Path(__file__).resolve().parents[1] / "eval" / "cache" / "hybrid_match_config.json"
 
 #: Execution path recorded on a successful cache-grounded typed run. Distinct
 #: from ``typed_operator`` so cache wins are never confused with planner wins.
@@ -103,6 +105,17 @@ PATH_TYPED_OPERATOR_CACHE = "typed_operator_cache"
 #: ``build_operator_skeleton_cache.canonical_dataset_dir_name`` so a benchmark
 #: ``--dataset mit_ecg`` run matches the ``ecg`` entries the builder wrote.
 _DATASET_ALIASES = {"mit_ecg": "ecg", "ecg": "ecg", "bus": "bus", "wisdm": "wisdm"}
+
+
+@dataclass
+class _HybridMatcherRuntime:
+    matcher: Any
+    cache_key: str
+    entry_fingerprint: str
+    warmup: dict[str, float]
+
+
+_HYBRID_RUNTIME: dict[str, _HybridMatcherRuntime] = {}
 
 GROUNDING_SYSTEM_PROMPT = """You ground values into a fixed Flash-Fusion typed
 operator skeleton. Return exactly one JSON object and no markdown, prose, or
@@ -268,6 +281,353 @@ def _load_entries(cache_path: str | Path) -> list[dict[str, Any]]:
     else:
         raise ValueError("cache registry must be a list, a key->record mapping, or {'entries': [...]}")
     return [x for x in candidates if isinstance(x, dict)]
+
+
+def _entry_fingerprint(entries: Iterable[dict[str, Any]]) -> str:
+    payload: list[tuple[Any, ...]] = []
+    for entry in entries:
+        payload.append(
+            (
+                canonical_dataset(entry.get("dataset")),
+                str(entry.get("query_text") or "").strip(),
+                entry.get("status"),
+                tuple(entry.get("operator_skeleton") or ()),
+                entry.get("operator_contract_hash"),
+                entry.get("schema_fingerprint"),
+            )
+        )
+    payload.sort()
+    return hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _invalidate_hybrid_runtime(*, cache_path: str | Path, dataset: str | None) -> None:
+    prefix = f"{Path(cache_path)}::{canonical_dataset(dataset)}::"
+    doomed = [key for key in _HYBRID_RUNTIME if key.startswith(prefix)]
+    for key in doomed:
+        _HYBRID_RUNTIME.pop(key, None)
+
+
+def _query_contract_to_signature(contract: Any) -> dict[str, Any]:
+    predictive = {k: v for k, v in getattr(contract, "predictive", ())}
+    return {
+        "admissibility": getattr(contract, "admissibility", "unknown"),
+        "confidence": float(getattr(contract, "confidence", 0.0) or 0.0),
+        "aggregate": getattr(contract, "aggregate", None),
+        "fields": sorted(list(getattr(contract, "fields", ()) or ())),
+        "predicate_ops": {k: v for k, v in getattr(contract, "predicate_ops", ())},
+        "filter_values": {k: v for k, v in getattr(contract, "filter_values", ())},
+        "output_shape": getattr(contract, "output_shape", None),
+        "predictive": {
+            "model": predictive.get("model"),
+            "target_column": predictive.get("target_column"),
+            "holdout_row": predictive.get("holdout_row"),
+            "train_fraction": predictive.get("train_fraction"),
+        },
+        "operator_skeleton_hint": list(getattr(contract, "operator_skeleton_hint", ()) or ()) or None,
+        "applicable_evidence_count": int(getattr(contract, "applicable_evidence_count", 0) or 0),
+        "matched_evidence_count": int(getattr(contract, "matched_evidence_count", 0) or 0),
+    }
+
+
+def _merge_semantic_overlays(
+    *,
+    entries: list[dict[str, Any]],
+    semantic_entries: list[dict[str, Any]] | None,
+    df: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    overlay_by_key: dict[tuple[str | None, str], dict[str, Any]] = {}
+    if semantic_entries:
+        for item in semantic_entries:
+            if item.get("status") != "reusable":
+                continue
+            query_text = str(item.get("query_text") or "").strip()
+            if not query_text:
+                continue
+            key = (canonical_dataset(item.get("dataset")), query_text)
+            overlay_by_key[key] = item
+
+    out: list[dict[str, Any]] = []
+    for entry in entries:
+        merged = dict(entry)
+        if not str(merged.get("query_text") or "").strip():
+            qid = merged.get("query_id")
+            if qid is not None:
+                try:
+                    from flashfusion.eval.trace_hybrid_cache import resolve_query
+
+                    merged["query_text"] = resolve_query(
+                        query_id=str(qid),
+                        version="v1",
+                        dataset=str(canonical_dataset(merged.get("dataset")) or ""),
+                        override=None,
+                    )
+                except Exception:
+                    merged["query_text"] = str(qid)
+        query_text = str(merged.get("query_text") or "").strip()
+        key = (canonical_dataset(merged.get("dataset")), query_text)
+        overlay = overlay_by_key.get(key)
+        if overlay is not None:
+            if merged.get("semantic_signature") is None and isinstance(overlay.get("semantic_signature"), dict):
+                merged["semantic_signature"] = overlay["semantic_signature"]
+            if merged.get("retrieval_contract") is None and isinstance(overlay.get("retrieval_contract"), dict):
+                merged["retrieval_contract"] = overlay["retrieval_contract"]
+        if merged.get("semantic_signature") is None and query_text:
+            merged["semantic_signature"] = _extract_semantic_signature(query_text, df)
+        out.append(merged)
+    return out
+
+
+def _build_hybrid_runtime(
+    *,
+    entries: list[dict[str, Any]],
+    dataset: str | None,
+    df: pd.DataFrame,
+    cache_path: str | Path,
+    semantic_cache_path: str | Path | None,
+) -> _HybridMatcherRuntime:
+    _require_sentence_transformers()
+    from flashfusion.eval.trace_hybrid_cache import HybridMatcher, load_config
+
+    usable = [
+        entry
+        for entry in entries
+        if entry.get("status") == "reusable"
+        and isinstance(entry.get("operator_skeleton"), list)
+        and bool(entry.get("operator_skeleton"))
+    ]
+    semantic_entries: list[dict[str, Any]] | None = None
+    if semantic_cache_path is not None and Path(semantic_cache_path).exists():
+        semantic_entries = _load_entries(semantic_cache_path)
+
+    hybrid_entries = _merge_semantic_overlays(
+        entries=usable,
+        semantic_entries=semantic_entries,
+        df=df,
+    )
+    fingerprint = _entry_fingerprint(hybrid_entries)
+    ds = canonical_dataset(dataset)
+    schema_fp = _schema_fingerprint(df)
+    cols_fp = hashlib.sha256(
+        json.dumps([str(c) for c in df.columns], separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:16]
+    runtime_key = f"{Path(cache_path)}::{ds}::{schema_fp}::{cols_fp}::{Path(semantic_cache_path) if semantic_cache_path else ''}"
+    cached = _HYBRID_RUNTIME.get(runtime_key)
+    if cached is not None and cached.entry_fingerprint == fingerprint:
+        return cached
+
+    matcher = HybridMatcher(
+        entries=hybrid_entries,
+        config=load_config(DEFAULT_HYBRID_CONFIG_PATH),
+        dataset=dataset,
+        schema_columns=[str(column) for column in df.columns],
+        schema_fingerprint=schema_fp,
+        device="cpu",
+        no_warmup=False,
+        mode="hybrid",
+        dense_top_k_override=None,
+        lexical_top_k_override=None,
+    )
+    warm = matcher.warm_up()
+    runtime = _HybridMatcherRuntime(
+        matcher=matcher,
+        cache_key=runtime_key,
+        entry_fingerprint=fingerprint,
+        warmup={k: float(v) for k, v in warm.items()},
+    )
+    _HYBRID_RUNTIME[runtime_key] = runtime
+    return runtime
+
+
+def _require_sentence_transformers() -> None:
+    try:
+        importlib.import_module("sentence_transformers")
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Hybrid cache matching requires sentence_transformers. "
+            "Install it in the active environment before running FLASH_FUSION_CACHE."
+        ) from exc
+
+
+def prewarm_hybrid_cache_runtime(
+    *,
+    df: pd.DataFrame,
+    dataset: str | None,
+    cache_path: str | Path = DEFAULT_CACHE_PATH,
+    semantic_cache_path: str | Path | None = None,
+) -> dict[str, float]:
+    """Preload and warm the hybrid matcher runtime for this dataset/schema.
+
+    This is intended for benchmark setup so dense model load and warm-up are
+    completed outside per-query timing.
+    """
+    entries = _load_entries(cache_path)
+    runtime = _build_hybrid_runtime(
+        entries=entries,
+        dataset=dataset,
+        df=df,
+        cache_path=cache_path,
+        semantic_cache_path=semantic_cache_path,
+    )
+    warm = dict(runtime.warmup)
+    warm.setdefault("model_load_ms", 0.0)
+    warm.setdefault("warm_up_ms", 0.0)
+    warm.setdefault("dense_index_build_ms", 0.0)
+    return {
+        "model_load_ms": float(warm.get("model_load_ms", 0.0) or 0.0),
+        "warm_up_ms": float(warm.get("warm_up_ms", 0.0) or 0.0),
+        "dense_index_build_ms": float(warm.get("dense_index_build_ms", 0.0) or 0.0),
+    }
+
+
+def _hybrid_decision_to_status(decision: str) -> str:
+    mapping = {
+        "exact_hit": "semantic_cache_hit",
+        "hybrid_hit": "semantic_cache_hit",
+        "out_of_scope_hit": "admissibility_out_of_scope",
+        "ambiguous_multi_candidate": "semantic_ambiguous_candidates",
+        "low_confidence_candidate": "semantic_low_confidence_winner",
+        "incompatible_candidate": "semantic_gate_reject_all",
+        "complete_miss": "semantic_no_candidates",
+    }
+    return mapping.get(decision, f"semantic_{decision}")
+
+
+def _hybrid_evidence(
+    *,
+    matcher: Any,
+    query: str,
+    result: Any,
+    decision_status: str,
+) -> dict[str, Any]:
+    query_contract = _query_contract_to_signature(matcher.extractor.extract(query))
+    candidate_scores = {
+        c.candidate_id: {
+            "score": float(c.final_score),
+            "details": dict(c.component_scores),
+            "dense_score": float(c.dense_score),
+            "lexical_score": float(c.lexical_score),
+            "contract_score": float(c.contract_score),
+            "retrieval_score": float(c.retrieval_score),
+        }
+        for c in result.candidates
+    }
+    hard_gate_results = {
+        c.candidate_id: {
+            "ok": bool(c.compatibility),
+            "gates": {},
+            "reason": ",".join(c.compatibility_failures),
+        }
+        for c in result.candidates
+    }
+    elapsed_ms = {k: float(v) for k, v in (result.elapsed_ms or {}).items()}
+    elapsed_ms["model_load_ms"] = 0.0
+    elapsed_ms["warm_up_ms"] = 0.0
+    return {
+        "decision": result.decision,
+        "status": decision_status,
+        "extracted_signature": query_contract,
+        "candidate_ids_considered": [c.candidate_id for c in result.candidates],
+        "hard_gate_results": hard_gate_results,
+        "candidate_scores": candidate_scores,
+        "extraction_confidence": query_contract.get("confidence"),
+        "abstention_reason": "" if decision_status == "semantic_cache_hit" else decision_status,
+        "score_threshold": float(matcher.thresholds.get("acceptance_floor", 0.75)),
+        "score_margin": float(matcher.thresholds.get("ambiguity_margin", 0.08)),
+        "winner": None
+        if result.winner is None
+        else {
+            "candidate_id": result.winner.candidate_id,
+            "query_id": result.winner.query_id,
+            "score": float(result.winner.final_score),
+        },
+        "runner_up": None
+        if result.runner_up is None
+        else {
+            "candidate_id": result.runner_up.candidate_id,
+            "query_id": result.runner_up.query_id,
+            "score": float(result.runner_up.final_score),
+        },
+        "elapsed_ms": elapsed_ms,
+    }
+
+
+def _extract_cached_skeleton_from_result(result: RunResult) -> list[str]:
+    steps = result.typed_plan.get("steps") if isinstance(result.typed_plan, dict) else None
+    if not isinstance(steps, list):
+        return []
+    skeleton: list[str] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            return []
+        op = step.get("op")
+        if not isinstance(op, str) or not op.strip():
+            return []
+        skeleton.append(op)
+    return skeleton
+
+
+def _upsert_reusable_cache_entry(
+    *,
+    cache_path: str | Path,
+    dataset: str | None,
+    query: str,
+    skeleton: list[str],
+    df: pd.DataFrame,
+    expected_operator_contract_hash: str | None,
+    query_id: int | None,
+) -> None:
+    path = Path(cache_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    payload: dict[str, Any]
+    if path.exists():
+        with path.open(encoding="utf-8") as f:
+            raw = json.load(f)
+    else:
+        raw = {"entries": []}
+
+    if isinstance(raw, dict) and isinstance(raw.get("entries"), list):
+        entries = [x for x in raw["entries"] if isinstance(x, dict)]
+    elif isinstance(raw, dict):
+        entries = [x for x in raw.values() if isinstance(x, dict)]
+    elif isinstance(raw, list):
+        entries = [x for x in raw if isinstance(x, dict)]
+    else:
+        entries = []
+
+    wanted_ds = canonical_dataset(dataset)
+    wanted_q = _normalise_query(query)
+    now_sig = _extract_semantic_signature(query, df)
+    base = {
+        "dataset": wanted_ds,
+        "query_text": query,
+        "status": "reusable",
+        "operator_skeleton": list(skeleton),
+        "schema_fingerprint": _schema_fingerprint(df),
+        "semantic_signature": now_sig,
+    }
+    if expected_operator_contract_hash:
+        base["operator_contract_hash"] = expected_operator_contract_hash
+    if query_id and query_id > 0:
+        base["query_id"] = str(query_id)
+
+    replaced = False
+    for idx, entry in enumerate(entries):
+        if (
+            canonical_dataset(entry.get("dataset")) == wanted_ds
+            and isinstance(entry.get("query_text"), str)
+            and entry["query_text"].strip() == wanted_q
+        ):
+            merged = dict(entry)
+            merged.update(base)
+            entries[idx] = merged
+            replaced = True
+            break
+    if not replaced:
+        entries.append(base)
+
+    payload = {"entries": entries}
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _normalise_query(query: str) -> str:
@@ -556,168 +916,6 @@ def _candidate_id(entry: dict[str, Any], index: int) -> str:
     return f"candidate_{index}"
 
 
-def _semantic_entry_matches(
-    extracted: dict[str, Any],
-    entry: dict[str, Any],
-    expected_operator_contract_hash: str | None,
-    live_schema_fingerprint: str,
-) -> tuple[bool, dict[str, Any], str | None]:
-    """Run hard compatibility gates before invoking the light model."""
-    gates: dict[str, Any] = {}
-
-    skeleton = entry.get("operator_skeleton")
-    gates["has_operator_skeleton"] = isinstance(skeleton, list) and bool(skeleton)
-    if not gates["has_operator_skeleton"]:
-        return False, gates, "invalid_or_empty_operator_skeleton"
-
-    if expected_operator_contract_hash:
-        gates["operator_contract_hash"] = entry.get("operator_contract_hash") == expected_operator_contract_hash
-        if not gates["operator_contract_hash"]:
-            return False, gates, "operator_contract_hash_mismatch"
-
-    cached_schema_fingerprint = entry.get("schema_fingerprint")
-    gates["schema_fingerprint"] = (
-        True
-        if not cached_schema_fingerprint
-        else cached_schema_fingerprint == live_schema_fingerprint
-    )
-    if not gates["schema_fingerprint"]:
-        return False, gates, "schema_fingerprint_mismatch"
-
-    sig = entry.get("semantic_signature") or {}
-    if not isinstance(sig, dict):
-        return False, gates, "missing_semantic_signature"
-
-    skeleton_hint = extracted.get("operator_skeleton_hint")
-    if isinstance(skeleton_hint, list) and skeleton_hint:
-        gates["operator_skeleton"] = skeleton == skeleton_hint
-        if not gates["operator_skeleton"]:
-            return False, gates, (
-                f"operator_skeleton_mismatch:template={skeleton},live_hint={skeleton_hint}"
-            )
-
-    cand_agg = sig.get("aggregate")
-    if cand_agg is not None:
-        gates["aggregate"] = extracted.get("aggregate") == cand_agg
-        if not gates["aggregate"]:
-            return False, gates, f"aggregate_mismatch: template={cand_agg}, live={extracted.get('aggregate')}"
-
-    cand_output = sig.get("output_shape")
-    if cand_output is not None:
-        gates["output_shape"] = extracted.get("output_shape") == cand_output
-        if not gates["output_shape"]:
-            return False, gates, f"output_shape_mismatch: template={cand_output}, live={extracted.get('output_shape')}"
-
-    cand_fields = sig.get("fields")
-    if isinstance(cand_fields, list) and cand_fields:
-        extracted_fields = {str(x).lower() for x in extracted.get("fields") or []}
-        template_fields = {str(x).lower() for x in cand_fields}
-        gates["fields"] = template_fields.issubset(extracted_fields)
-        if not gates["fields"]:
-            return False, gates, "field_mismatch"
-
-    cand_predicate_ops = sig.get("predicate_ops")
-    if isinstance(cand_predicate_ops, dict) and cand_predicate_ops:
-        live_ops = {str(k).lower(): str(v) for k, v in (extracted.get("predicate_ops") or {}).items()}
-        for field_name, expected_op in cand_predicate_ops.items():
-            key = str(field_name).lower()
-            gates[f"predicate_op:{key}"] = live_ops.get(key) == expected_op
-            if not gates[f"predicate_op:{key}"]:
-                return False, gates, (
-                    f"predicate_op_mismatch:{key}:template={expected_op},live={live_ops.get(key)}"
-                )
-
-    cand_filter_values = sig.get("filter_values")
-    if isinstance(cand_filter_values, dict) and cand_filter_values:
-        live_values = extracted.get("filter_values") or {}
-        if not isinstance(live_values, dict):
-            live_values = {}
-        for key, expected_value in cand_filter_values.items():
-            gates[f"filter_value:{key}"] = live_values.get(key) == expected_value
-            if not gates[f"filter_value:{key}"]:
-                return False, gates, (
-                    f"filter_value_mismatch:{key}:template={expected_value},live={live_values.get(key)}"
-                )
-
-    cand_predictive = sig.get("predictive")
-    if isinstance(cand_predictive, dict):
-        live_predictive = extracted.get("predictive") or {}
-        if not isinstance(live_predictive, dict):
-            live_predictive = {}
-        for key in ("model", "target_column", "holdout_row", "train_fraction"):
-            expected_val = cand_predictive.get(key)
-            if expected_val is None:
-                continue
-            gates[f"predictive:{key}"] = live_predictive.get(key) == expected_val
-            if not gates[f"predictive:{key}"]:
-                return False, gates, (
-                    f"predictive_mismatch:{key}:template={expected_val},live={live_predictive.get(key)}"
-                )
-
-    return True, gates, None
-
-
-def _jaccard_score(left: set[str], right: set[str]) -> float:
-    if not left and not right:
-        return 1.0
-    if not left or not right:
-        return 0.0
-    return len(left & right) / len(left | right)
-
-
-def _score_semantic_candidate(extracted: dict[str, Any], sig: dict[str, Any]) -> tuple[float, dict[str, float]]:
-    details: dict[str, float] = {}
-    score = 0.0
-
-    agg_match = 1.0 if extracted.get("aggregate") == sig.get("aggregate") else 0.0
-    details["aggregate"] = agg_match
-    score += 0.15 * agg_match
-
-    fields_score = _jaccard_score(
-        {str(x).lower() for x in extracted.get("fields") or []},
-        {str(x).lower() for x in sig.get("fields") or []},
-    )
-    details["fields"] = fields_score
-    score += 0.10 * fields_score
-
-    pred_ops_left = {f"{k}:{v}" for k, v in (extracted.get("predicate_ops") or {}).items()}
-    pred_ops_right = {f"{k}:{v}" for k, v in (sig.get("predicate_ops") or {}).items()}
-    pred_ops_score = _jaccard_score(pred_ops_left, pred_ops_right)
-    details["predicate_ops"] = pred_ops_score
-    score += 0.10 * pred_ops_score
-
-    filter_vals_left = {f"{k}:{v}" for k, v in (extracted.get("filter_values") or {}).items()}
-    filter_vals_right = {f"{k}:{v}" for k, v in (sig.get("filter_values") or {}).items()}
-    filter_vals_score = _jaccard_score(filter_vals_left, filter_vals_right)
-    details["filter_values"] = filter_vals_score
-    score += 0.15 * filter_vals_score
-
-    out_match = 1.0 if extracted.get("output_shape") == sig.get("output_shape") else 0.0
-    details["output_shape"] = out_match
-    score += 0.05 * out_match
-
-    intent_l = extracted.get("intent_flags") or {}
-    intent_r = sig.get("intent_flags") or {}
-    shared = [k for k in set(intent_l) | set(intent_r)]
-    if shared:
-        intent_score = sum(1.0 for k in shared if bool(intent_l.get(k)) == bool(intent_r.get(k))) / len(shared)
-    else:
-        intent_score = 1.0
-    details["intent_flags"] = intent_score
-    score += 0.10 * intent_score
-
-    pred_l = extracted.get("predictive") or {}
-    pred_r = sig.get("predictive") or {}
-    model_match = 1.0 if pred_l.get("model") == pred_r.get("model") else 0.0
-    details["predictive_model"] = model_match
-    score += 0.25 * model_match
-    target_match = 1.0 if pred_l.get("target_column") == pred_r.get("target_column") else 0.0
-    details["predictive_target"] = target_match
-    score += 0.10 * target_match
-
-    return score, details
-
-
 def _find_semantic_entry(
     entries: Iterable[dict[str, Any]],
     query: str,
@@ -725,83 +923,50 @@ def _find_semantic_entry(
     df: pd.DataFrame,
     expected_operator_contract_hash: str | None,
 ) -> tuple[dict[str, Any] | None, str, dict[str, Any]]:
-    wanted = canonical_dataset(dataset)
-    extracted = _extract_semantic_signature(query, df)
-    evidence: dict[str, Any] = {
-        "extracted_signature": extracted,
-        "candidate_ids_considered": [],
-        "hard_gate_results": {},
-        "candidate_scores": {},
-        "extraction_confidence": extracted.get("confidence"),
-        "abstention_reason": "",
-        "score_threshold": 0.85,
-        "score_margin": 0.20,
-        "winner": None,
-        "runner_up": None,
-    }
-
-    if extracted.get("admissibility") in {"out_of_scope", "ambiguous", "unknown"}:
-        reason = f"admissibility_{extracted.get('admissibility')}"
-        evidence["abstention_reason"] = reason
-        return None, reason, evidence
-
-    live_schema_fp = _schema_fingerprint(df)
-    candidates = [
-        entry
-        for entry in entries
-        if entry.get("status") == "reusable"
-        and (wanted is None or canonical_dataset(entry.get("dataset")) == wanted)
-        and isinstance(entry.get("operator_skeleton"), list)
-        and entry.get("semantic_signature") is not None
-    ]
-    if not candidates:
-        evidence["abstention_reason"] = "semantic_no_candidates"
+    _require_sentence_transformers()
+    candidates = [x for x in entries if isinstance(x, dict)]
+    overlayed = _merge_semantic_overlays(entries=candidates, semantic_entries=None, df=df)
+    if not overlayed:
+        evidence = {
+            "decision": "complete_miss",
+            "status": "semantic_no_candidates",
+            "extracted_signature": _extract_semantic_signature(query, df),
+            "candidate_ids_considered": [],
+            "hard_gate_results": {},
+            "candidate_scores": {},
+            "extraction_confidence": 0.0,
+            "abstention_reason": "semantic_no_candidates",
+            "score_threshold": 0.75,
+            "score_margin": 0.08,
+            "winner": None,
+            "runner_up": None,
+            "elapsed_ms": {"model_load_ms": 0.0, "warm_up_ms": 0.0},
+        }
         return None, "semantic_no_candidates", evidence
 
-    passing: list[tuple[str, dict[str, Any], float]] = []
-    for index, entry in enumerate(candidates, start=1):
-        cid = _candidate_id(entry, index)
-        evidence["candidate_ids_considered"].append(cid)
-        ok, gates, reason = _semantic_entry_matches(
-            extracted,
-            entry,
-            expected_operator_contract_hash,
-            live_schema_fp,
-        )
-        evidence["hard_gate_results"][cid] = {"ok": ok, "gates": gates, "reason": reason}
-        if ok:
-            score, details = _score_semantic_candidate(extracted, entry.get("semantic_signature") or {})
-            evidence["candidate_scores"][cid] = {
-                "score": round(score, 4),
-                "details": details,
-            }
-            passing.append((cid, entry, score))
+    from flashfusion.eval.trace_hybrid_cache import HybridMatcher, load_config
 
-    if not passing:
-        evidence["abstention_reason"] = "semantic_gate_reject_all"
-        return None, "semantic_gate_reject_all", evidence
+    matcher = HybridMatcher(
+        entries=overlayed,
+        config=load_config(DEFAULT_HYBRID_CONFIG_PATH),
+        dataset=dataset,
+        schema_columns=[str(column) for column in df.columns],
+        schema_fingerprint=_schema_fingerprint(df),
+        device="cpu",
+        no_warmup=False,
+        mode="hybrid",
+        dense_top_k_override=None,
+        lexical_top_k_override=None,
+    )
+    matcher.warm_up()
+    result = matcher.match(query, expected_contract_hash=expected_operator_contract_hash)
+    status = _hybrid_decision_to_status(result.decision)
+    evidence = _hybrid_evidence(matcher=matcher, query=query, result=result, decision_status=status)
+    evidence["extracted_signature"] = _query_contract_to_signature(matcher.extractor.extract(query))
 
-    passing.sort(key=lambda item: item[2], reverse=True)
-    winner_id, winner_entry, winner_score = passing[0]
-    runner_up_score = passing[1][2] if len(passing) > 1 else None
-    evidence["winner"] = {"candidate_id": winner_id, "score": round(winner_score, 4)}
-    if len(passing) > 1:
-        evidence["runner_up"] = {
-            "candidate_id": passing[1][0],
-            "score": round(passing[1][2], 4),
-        }
-
-    threshold = float(evidence["score_threshold"])
-    if winner_score < threshold:
-        evidence["abstention_reason"] = "semantic_low_confidence_winner"
-        return None, "semantic_low_confidence_winner", evidence
-
-    # WISDM reasoning queries often produce multiple close semantic candidates
-    # that differ only by wording. The cache should prefer the best-scoring
-    # candidate as long as it clears the confidence threshold instead of
-    # rejecting the whole lookup as "ambiguous".
-    evidence["abstention_reason"] = ""
-    return winner_entry, "semantic_cache_hit", evidence
+    if result.entry is None:
+        return None, status, evidence
+    return result.entry, "semantic_cache_hit", evidence
 
 
 def _execute_grounded_cache_entry(
@@ -1262,25 +1427,36 @@ def run_flash_fusion_cache(
             entry, lookup_status = _find_exact_entry(entries, query, dataset)
             _record(trace, lookup_status=lookup_status, entry=entry)
 
-            if entry is None and semantic_cache_path is not None:
-                semantic_entries = _load_entries(semantic_cache_path)
-                semantic_entry, semantic_status, semantic_evidence = _find_semantic_entry(
-                    semantic_entries,
+            if entry is None:
+                runtime = _build_hybrid_runtime(
+                    entries=entries,
+                    dataset=dataset,
+                    df=df,
+                    cache_path=cache_path,
+                    semantic_cache_path=semantic_cache_path,
+                )
+                hybrid_result = runtime.matcher.match(
                     query,
-                    dataset,
-                    df,
-                    expected_operator_contract_hash,
+                    expected_contract_hash=expected_operator_contract_hash,
                 )
-                _record(
-                    trace,
-                    semantic_match_evidence=semantic_evidence,
+                hybrid_status = _hybrid_decision_to_status(hybrid_result.decision)
+                hybrid_evidence = _hybrid_evidence(
+                    matcher=runtime.matcher,
+                    query=query,
+                    result=hybrid_result,
+                    decision_status=hybrid_status,
                 )
-                if semantic_entry is not None:
-                    entry = semantic_entry
-                    lookup_status = semantic_status
+                elapsed_ms = hybrid_result.elapsed_ms if isinstance(hybrid_result.elapsed_ms, dict) else {}
+                stage_latency["cache_validation"] += float(elapsed_ms.get("verify_ms", 0.0) or 0.0) / 1000.0
+                _record(trace, semantic_match_evidence=hybrid_evidence)
+
+                if hybrid_result.entry is not None and hybrid_status == "semantic_cache_hit":
+                    entry = hybrid_result.entry
+                    lookup_status = "semantic_cache_hit"
                     _record(trace, lookup_status=lookup_status, entry=entry)
                 else:
-                    raise LookupError(f"semantic: {semantic_status}")
+                    _append_stage(result, f"hybrid_{hybrid_status}")
+                    raise LookupError(f"semantic: {hybrid_status}")
 
             if entry is None:
                 raise LookupError(lookup_status)
@@ -1347,7 +1523,7 @@ def run_flash_fusion_cache(
                 result=result,
                 trace=trace,
                 entry=entry,
-                stage_hit="semantic_cache_hit",
+                stage_hit="hybrid_cache_hit",
                 plan_source="semantic_cache_light_grounded",
                 stage_latency=stage_latency,
                 started=started,
@@ -1369,4 +1545,26 @@ def run_flash_fusion_cache(
     ) as exc:
         _record(trace, failure_reason=f"{type(exc).__name__}: {exc}", fell_back=True)
         _record_cache_failure(result, str(exc))
-        return _run_normal_flash_fusion(query, df, client, result, **flash_fusion_kwargs)
+        fallback_result = _run_normal_flash_fusion(query, df, client, result, **flash_fusion_kwargs)
+        skeleton = _extract_cached_skeleton_from_result(fallback_result)
+        if (
+            fallback_result.executed
+            and not fallback_result.rejected
+            and fallback_result.execution_path == "typed_operator"
+            and skeleton
+        ):
+            try:
+                _upsert_reusable_cache_entry(
+                    cache_path=cache_path,
+                    dataset=dataset,
+                    query=query,
+                    skeleton=skeleton,
+                    df=df,
+                    expected_operator_contract_hash=expected_operator_contract_hash,
+                    query_id=getattr(fallback_result, "query_id", 0),
+                )
+                _invalidate_hybrid_runtime(cache_path=cache_path, dataset=dataset)
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                # Cache write failures are non-fatal: the baseline answer remains valid.
+                pass
+        return fallback_result

@@ -1,1862 +1,2558 @@
 {
-  "00487270e53d5b18efb9e44604c3215225a7566b695d0bc1bd1409e595ef1734": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "10",
-    "query_text": "Did rainy weather cause the roughest segments in this route?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "01168c1ac43aa98169a03b7a2928900db55e2a7417958be531f7993fd13e774d": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "14",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "0814667c7a7cbb879b6f865f7fc3061bead354d1faabe3a82359617844c1f11c": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "13",
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "0d5c9257772de661ada83593f3d355a72f1e71fda158ab35a1caf49a7d047639": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "15",
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "1606679c6567b804afb5e81f588e1d3bd9c0a8fedb1288983aa6970f34c18c31": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "2",
-    "query_text": "What is the average accel_mean across all recorded samples?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "16a6a69e06e4c8de56c7b0eecc77cdb06ad324ba1419155070b938eca477a088": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "12",
-    "query_text": "Predict next week's pothole repairs for the road segments in this dataset.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "1a1520d88ce8ac539d289a93a5bde7ef0c0faf5bd2193171ea55848a88f2b47f": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "12",
-    "query_text": "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "1ab1a16d7a737626a7bb09a0fdc6ad623b4eaae502ad40f4c5a87d1fc94473ab": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "13",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "20fcf1b16c7435103724eb317fd4dc6a374ccd2750d2e482a0ed47f5bbf32e21": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "12",
-    "query_text": "Estimate the patient's weight during the time of the recording for record_id 105.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "2899dcd7452a14224ba537a5ff4d33991db0988c7b84db0b201ae3be865eed7d": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "9",
-    "query_text": "How does passenger occupancy correlate with road roughness during this trip?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "2b1d40cf999baa0e75f40596caeb77b164c5d40b14598026a496e786f3724464": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "15",
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "2f08c9e2fa901e67130d3b947f3ec0c42db24e68c2e303dfabd27f677576d1a9": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+  "entries": [
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "10",
+      "query_text": "Did rainy weather cause the roughest segments in this route?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "14",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "13",
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "15",
+      "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "2",
+      "query_text": "What is the average accel_mean across all recorded samples?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "12",
+      "query_text": "Predict next week's pothole repairs for the road segments in this dataset.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "12",
+      "query_text": "Predict whether user 3 will meet the WHO recommended weekly moderate-to-vigorous physical activity guideline next week.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "13",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "12",
+      "query_text": "Estimate the patient's weight during the time of the recording for record_id 105.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "9",
+      "query_text": "How does passenger occupancy correlate with road roughness during this trip?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "15",
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "DERIVE_VECTOR_MAGNITUDE",
+          "slots": [
+            "columns",
+            "result"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "DERIVE_VECTOR_MAGNITUDE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "7",
+      "query_text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "SPLIT_BY_THRESHOLD",
+          "slots": [
+            "column",
+            "comparator",
+            "label",
+            "threshold"
+          ]
+        },
+        {
+          "op": "SPLIT_BY_THRESHOLD",
+          "slots": [
+            "column",
+            "comparator",
+            "label",
+            "threshold"
+          ]
+        },
+        {
+          "op": "AGGREGATE_PARTITIONS",
+          "slots": [
+            "aggregate",
+            "column",
+            "partitions"
+          ]
+        },
+        {
+          "op": "COMPARE_PARTITIONS",
+          "slots": [
+            "mode"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "SPLIT_BY_THRESHOLD",
+        "SPLIT_BY_THRESHOLD",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "5",
+      "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "11",
+      "query_text": "Are female subjects more likely to have a higher cadence during stair climbing than male subjects?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PARALLEL_AGGREGATE",
+          "slots": [
+            "branches"
+          ]
+        },
+        {
+          "op": "DERIVE_BINARY",
+          "slots": [
+            "left",
+            "operation",
+            "result",
+            "right"
+          ]
+        },
+        {
+          "op": "RANK_ROWS",
+          "slots": [
+            "column",
+            "direction",
+            "return_columns"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "6",
+      "query_text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "11",
+      "query_text": "Which bus driver generated the smoothest driving profile?",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "8",
+      "query_text": "Calculate the root mean square (RMS) of the MLII signal for record_id 106.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "8",
+      "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability score?",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_NOT_EMPTY",
+          "slots": [
+            "column"
+          ]
+        },
+        {
+          "op": "SPLIT_BY_VALUES",
+          "slots": [
+            "column",
+            "label",
+            "values"
+          ]
+        },
+        {
+          "op": "SPLIT_BY_VALUES",
+          "slots": [
+            "column",
+            "label",
+            "values"
+          ]
+        },
+        {
+          "op": "AGGREGATE_PARTITIONS",
+          "slots": [
+            "aggregate",
+            "column",
+            "partitions"
+          ]
+        },
+        {
+          "op": "COMPARE_PARTITIONS",
+          "slots": [
+            "mode"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "8",
+      "query_text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "16",
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "hist_gradient_boosting",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
       },
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "16",
+      "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_NOT_EMPTY",
+          "slots": [
+            "column"
+          ]
+        },
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "COUNT_DISTINCT",
+          "slots": [
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "FILTER_COMPARE",
+        "COUNT_DISTINCT"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "2",
+      "query_text": "How many users have the activity label walking?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "1",
+      "query_text": "What is the maximum accel_variance observed in this dataset?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_DURATION_SECONDS",
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "FILTER_COMPARE",
+        "RANK_ROWS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "6",
+      "query_text": "Identify the user whose total recorded duration of resting states exceeds their duration of dynamic movements by the largest margin.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "13",
+      "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "COUNT_ROWS",
+          "slots": []
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "4",
+      "query_text": "How many data samples show an accel_variance strictly greater than 0.20?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "COUNT_ROWS",
+          "slots": []
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "3",
+      "query_text": "For record_id 106, how many samples have MLII > 0?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_NOT_EMPTY",
+          "slots": [
+            "column"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "4",
+      "query_text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "9",
+      "query_text": "How does the average walking speed in miles per hour correlate with the age of the users?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_NOT_EMPTY",
+          "slots": [
+            "column"
+          ]
+        },
+        {
+          "op": "DERIVE_BIN",
+          "slots": [
+            "column",
+            "epoch_unit",
+            "freq",
+            "kind",
+            "result",
+            "width"
+          ]
+        },
+        {
+          "op": "GROUP_AGGREGATE",
+          "slots": [
+            "aggregate",
+            "column",
+            "freq",
+            "group_by"
+          ]
+        },
+        {
+          "op": "AGGREGATE_GROUPS",
+          "slots": [
+            "aggregate"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "AGGREGATE_GROUPS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "5",
+      "query_text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 208
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "DERIVE_VECTOR_MAGNITUDE",
-        "slots": [
-          "columns",
-          "result"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "11",
+      "query_text": "Which patients in this dataset have a recorded family history of brain cancer?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "10",
+      "query_text": "Is there a statistical correlation between patient BMI and their maximum MLII amplitude?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "16",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "1",
+      "query_text": "What is the minimum MLII value recorded for record_id 101?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_NOT_EMPTY",
+          "slots": [
+            "column"
+          ]
+        },
+        {
+          "op": "DERIVE_BIN",
+          "slots": [
+            "column",
+            "epoch_unit",
+            "freq",
+            "kind",
+            "result",
+            "width"
+          ]
+        },
+        {
+          "op": "GROUP_AGGREGATE",
+          "slots": [
+            "aggregate",
+            "column",
+            "freq",
+            "group_by"
+          ]
+        },
+        {
+          "op": "RANK_GROUPS",
+          "slots": [
+            "direction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "7",
+      "query_text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "record_id"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_COMPARE",
-      "DERIVE_VECTOR_MAGNITUDE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "7",
-    "query_text": "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "32b1b4305fee4a6eb2156cf49dfeb873a08f9072c63e463c80a53e40c0c9e3a1": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "SPLIT_BY_THRESHOLD",
-        "slots": [
-          "column",
-          "comparator",
-          "label",
-          "threshold"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "14",
+      "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "10",
+      "query_text": "Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "9",
+      "query_text": "Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "GROUP_AGGREGATE",
+          "slots": [
+            "aggregate",
+            "column",
+            "freq",
+            "group_by"
+          ]
+        },
+        {
+          "op": "RANK_GROUPS",
+          "slots": [
+            "direction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "4",
+      "query_text": "Which user has the highest total number of recorded data samples?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "DERIVE_VECTOR_MAGNITUDE",
+          "slots": [
+            "columns",
+            "result"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "DERIVE_VECTOR_MAGNITUDE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "7",
+      "query_text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "1",
+      "query_text": "What is the maximum recorded x-acceleration for user 15?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_EQ_AGGREGATE",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        },
+        {
+          "op": "SELECT_COLUMN",
+          "slots": [
+            "column",
+            "distinct"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_EQ_AGGREGATE",
+        "SELECT_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "3",
+      "query_text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "3",
+      "query_text": "What is the average y-acceleration of user 5 with activity label Sitting?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "y"
+        ],
+        "filter_values": {
+          "activity": "sitting",
+          "subject_id": 5
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": "activity_label",
+          "train_fraction": null
+        }
       },
-      {
-        "op": "SPLIT_BY_THRESHOLD",
-        "slots": [
-          "column",
-          "comparator",
-          "label",
-          "threshold"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PREDICTIVE_PIPELINE",
+          "slots": [
+            "feature_columns",
+            "filter_column",
+            "filter_value",
+            "holdout_row",
+            "model",
+            "sort_by",
+            "target_column",
+            "target_from_non_empty",
+            "target_label",
+            "train_fraction"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "14",
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "FILTER_COMPARE",
+          "slots": [
+            "column",
+            "comparator",
+            "value"
+          ]
+        },
+        {
+          "op": "AGGREGATE_COLUMN",
+          "slots": [
+            "aggregate",
+            "column"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "2",
+      "query_text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_VECTOR_MAGNITUDE",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "5",
+      "query_text": "Compare the overall acceleration magnitude between dynamic movements and resting states.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": null,
+      "n_runs_agreeing": 6,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "15",
+      "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_text_source": "llm_judgments",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "example_run_ids": [
+        "single_run",
+        "single_run",
+        "single_run",
+        "run_1",
+        "run_2",
+        "run_3"
+      ],
+      "field_level_skeleton": [
+        {
+          "op": "PARALLEL_AGGREGATE",
+          "slots": [
+            "branches"
+          ]
+        },
+        {
+          "op": "DERIVE_BINARY",
+          "slots": [
+            "left",
+            "operation",
+            "result",
+            "right"
+          ]
+        },
+        {
+          "op": "RANK_ROWS",
+          "slots": [
+            "column",
+            "direction",
+            "return_columns"
+          ]
+        }
+      ],
+      "n_runs_agreeing": 2,
+      "n_runs_observed": 6,
+      "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
+      "operator_skeleton": [
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "plan_source_modes": [
+        "llm"
+      ],
+      "query_id": "6",
+      "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "query_text_source": "raw_results",
+      "reasons": [],
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "instability_score"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "AGGREGATE_PARTITIONS",
-        "slots": [
-          "aggregate",
-          "column",
-          "partitions"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "query_text": "If we group the data into 1-minute intervals, Tell me which time window has the highest mean instability_score?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "instability_score"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "COMPARE_PARTITIONS",
-        "slots": [
-          "mode"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "SPLIT_BY_THRESHOLD",
-      "SPLIT_BY_THRESHOLD",
-      "AGGREGATE_PARTITIONS",
-      "COMPARE_PARTITIONS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "5",
-    "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "3af80889ad55cf53fbb0f3058a732512e87e7b0a069c4be561a225fbbfedf1ea": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "11",
-    "query_text": "Are female subjects more likely to have a higher cadence during stair climbing than male subjects?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "4c46d7521e42585f3d8d6fe51ea3388eff63a653b65dca0d6b66e99373610bc7": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PARALLEL_AGGREGATE",
-        "slots": [
-          "branches"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "FILTER_EQ_AGGREGATE",
+        "SELECT_COLUMN"
+      ],
+      "query_text": "List all timestamps where accel_stats_z_p99 reaches its highest value across the dataset.",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_stats_z_p99"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "list",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "DERIVE_BINARY",
-        "slots": [
-          "left",
-          "operation",
-          "result",
-          "right"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_VECTOR_MAGNITUDE",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "query_text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "unknown",
+        "aggregate": null,
+        "confidence": 0.4,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": true,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "unknown",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "RANK_ROWS",
-        "slots": [
-          "column",
-          "direction",
-          "return_columns"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PARALLEL_AGGREGATE",
-      "DERIVE_BINARY",
-      "RANK_ROWS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "6",
-    "query_text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "4e2ce2dd62c5f1b1e646960a88274d0b045fd20a9bf53f9791934d5005855c51": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "11",
-    "query_text": "Which bus driver generated the smoothest driving profile?",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "50332177b285eecd3008212064b0b8c89fa6cc4f6929eb2f1705112ab04c688f": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "subject_id",
+          "timestamp",
+          "x",
+          "y",
+          "z"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": "first",
+          "model": "random_forest",
+          "target_column": "activity_label",
+          "train_fraction": 0.8
+        }
       },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "8",
-    "query_text": "Calculate the root mean square (RMS) of the MLII signal for record_id 106.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "5288691bcb9d8a4fae2fcb09c5fe968058a364281fdcf066aa3b9f60a6932114": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "DERIVE_BIN",
-      "GROUP_AGGREGATE",
-      "RANK_GROUPS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "8",
-    "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability score?",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "5cc5ef6112336b637d3b76d5a39f5a0d82c251c79ee7e9e1f42cb9182eb12d7a": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_NOT_EMPTY",
-        "slots": [
-          "column"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_DURATION_SECONDS",
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "FILTER_COMPARE",
+        "RANK_ROWS"
+      ],
+      "query_text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "SPLIT_BY_VALUES",
-        "slots": [
-          "column",
-          "label",
-          "values"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "subject_id",
+          "timestamp",
+          "x",
+          "y",
+          "z"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": "first",
+          "model": "random_forest",
+          "target_column": "activity_label",
+          "train_fraction": 0.8
+        }
       },
-      {
-        "op": "SPLIT_BY_VALUES",
-        "slots": [
-          "column",
-          "label",
-          "values"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_VECTOR_MAGNITUDE",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "query_text": "Contrast the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "unknown",
+        "aggregate": null,
+        "confidence": 0.4,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": true,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "unknown",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "AGGREGATE_PARTITIONS",
-        "slots": [
-          "aggregate",
-          "column",
-          "partitions"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "random_forest",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
       },
-      {
-        "op": "COMPARE_PARTITIONS",
-        "slots": [
-          "mode"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_NOT_EMPTY",
-      "SPLIT_BY_VALUES",
-      "SPLIT_BY_VALUES",
-      "AGGREGATE_PARTITIONS",
-      "COMPARE_PARTITIONS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "8",
-    "query_text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "76629b999240bfd92cbc4075ce6af23a1178532b4a192a31511f104a8146b82f": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "16",
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "7a6f75e6e688c4ecab0e9fb93e577ee2e549f46ab0f5c55520e3572d61dc7de3": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "16",
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "802170309f3f6736838cd414e2d5bc5b7363614b365f82a67237c13aabcec15d": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_NOT_EMPTY",
-        "slots": [
-          "column"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "AGGREGATE_GROUPS"
+      ],
+      "query_text": "For record_id 208, Could you report the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 208
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "query_text": "In record_id 101, Tell me which 10-second interval contains the highest number of annotated beats?",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "record_id"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "COUNT_DISTINCT",
-        "slots": [
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_NOT_EMPTY",
-      "FILTER_COMPARE",
-      "COUNT_DISTINCT"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "2",
-    "query_text": "How many users have the activity label walking?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "8358bb3e8d1c64bf6fc73de6d85b8aca45774468375d3de862ef28e37a829580": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "1",
-    "query_text": "What is the maximum accel_variance observed in this dataset?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "86bd786454749dc1d5819d701b03b5e375f4ed10d006aa701b74d1c3e98827e9": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_NOT_EMPTY",
-      "DERIVE_DURATION_SECONDS",
-      "PARALLEL_AGGREGATE",
-      "DERIVE_BINARY",
-      "FILTER_COMPARE",
-      "RANK_ROWS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "6",
-    "query_text": "Identify the user whose total recorded duration of resting states exceeds their duration of dynamic movements by the largest margin.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "875d7d3a78ba80726f386515326a5a5c06b135a51e7828eacc8991764d914f74": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "13",
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "92f8c99ad298e7ce72cb60f32dbd537539847b9179d3431f23c1a8885ab58740": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "random_forest",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
       },
-      {
-        "op": "COUNT_ROWS",
-        "slots": []
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "COUNT_ROWS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "4",
-    "query_text": "How many data samples show an accel_variance strictly greater than 0.20?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "954ea8a82f519f3447a3fa18394047d51fd8c3ae4451d4e4ba4cb71c705e21cb": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_NOT_EMPTY",
+        "DERIVE_BIN",
+        "GROUP_AGGREGATE",
+        "AGGREGATE_GROUPS"
+      ],
+      "query_text": "In record_id 208, Please provide the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 208
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": true
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
       },
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "COUNT_ROWS",
-        "slots": []
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_COMPARE",
-      "COUNT_ROWS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "3",
-    "query_text": "For record_id 106, how many samples have MLII > 0?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "981e2fb907950738ef0b6db65e6f02263273110c2d48685f30f2565df1ba7883": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "FILTER_NOT_EMPTY",
-        "slots": [
-          "column"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_NOT_EMPTY",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "4",
-    "query_text": "What is the timestamp (time_s) of the last annotated beat for record_id 221?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "98e747e3f29ba9ba1ccc949a7dd1e8531db382097f3ebb57f5d4c0147959c9c8": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "9",
-    "query_text": "How does the average walking speed in miles per hour correlate with the age of the users?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "996d9751b29f4e0f259c93a9036c6edcd139e1e4cdc703ad5d3c6ba39d38857b": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "FILTER_NOT_EMPTY",
-        "slots": [
-          "column"
-        ]
-      },
-      {
-        "op": "DERIVE_BIN",
-        "slots": [
-          "column",
-          "epoch_unit",
-          "freq",
-          "kind",
-          "result",
-          "width"
-        ]
-      },
-      {
-        "op": "GROUP_AGGREGATE",
-        "slots": [
-          "aggregate",
-          "column",
-          "freq",
-          "group_by"
-        ]
-      },
-      {
-        "op": "AGGREGATE_GROUPS",
-        "slots": [
-          "aggregate"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_NOT_EMPTY",
-      "DERIVE_BIN",
-      "GROUP_AGGREGATE",
-      "AGGREGATE_GROUPS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "5",
-    "query_text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "a6ece3361a60eb492f1b10375abe5bd66bee9e03ed5b74a65345f42214a4196c": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "11",
-    "query_text": "Which patients in this dataset have a recorded family history of brain cancer?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "ad93e5d9a455cf3374c3d2a7fa08d2b8703cb9021c12781b53f4e9ed98f54821": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "10",
-    "query_text": "Is there a statistical correlation between patient BMI and their maximum MLII amplitude?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "b9dc57f6c16f616e60fc6668df2d03fb6726a256a06ad5f558eb3c2d033b14c8": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "16",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "bae407708d589ca492be063ce55da53699fb8cfd3fa0fb1a4adc5efd400494e4": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "1",
-    "query_text": "What is the minimum MLII value recorded for record_id 101?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "c13492ce2907564f65c03c14b12b5d42a16fab63c0b398eef37a9f1fc4267ffd": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "FILTER_NOT_EMPTY",
-        "slots": [
-          "column"
-        ]
-      },
-      {
-        "op": "DERIVE_BIN",
-        "slots": [
-          "column",
-          "epoch_unit",
-          "freq",
-          "kind",
-          "result",
-          "width"
-        ]
-      },
-      {
-        "op": "GROUP_AGGREGATE",
-        "slots": [
-          "aggregate",
-          "column",
-          "freq",
-          "group_by"
-        ]
-      },
-      {
-        "op": "RANK_GROUPS",
-        "slots": [
-          "direction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_NOT_EMPTY",
-      "DERIVE_BIN",
-      "GROUP_AGGREGATE",
-      "RANK_GROUPS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "7",
-    "query_text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "c1a45f3de90f1304ba20e1773834a269c7129ce7720000f785f3977e45e6f412": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "14",
-    "query_text": "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "cd6a0617fecc966558865c447bbd0b995f763c3aa1540633a744bcc6d091bc74": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "10",
-    "query_text": "Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "d5fa7cbff972d4e483f955b3280e24865d5603add8ad0ec4dc4f5e7dcea3649e": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "9",
-    "query_text": "Did the patient corresponding to record_id 101 experience a fatal cardiac event within a year?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "d788c930875d4f2cef39fe18f9cbb6340ba2f45eb27aff7d02943ce1342e27b5": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "GROUP_AGGREGATE",
-        "slots": [
-          "aggregate",
-          "column",
-          "freq",
-          "group_by"
-        ]
-      },
-      {
-        "op": "RANK_GROUPS",
-        "slots": [
-          "direction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "GROUP_AGGREGATE",
-      "RANK_GROUPS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "4",
-    "query_text": "Which user has the highest total number of recorded data samples?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "db427ba10d60f7b5df837d35f12fccd1092bc589abb03fc8a8c834bc1a0ab6b9": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "DERIVE_VECTOR_MAGNITUDE",
-        "slots": [
-          "columns",
-          "result"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "DERIVE_VECTOR_MAGNITUDE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "7",
-    "query_text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "dd25aabd5be1d6c030b2a60a422218c0ac835792b7dac8d9d6c065cf4beabe49": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "1",
-    "query_text": "What is the maximum recorded x-acceleration for user 15?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "ddf112fe252262b0aef4873a5cf4ad74b47a8316e3b8aaa909ffdab9d055a055": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_EQ_AGGREGATE",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      },
-      {
-        "op": "SELECT_COLUMN",
-        "slots": [
-          "column",
-          "distinct"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_EQ_AGGREGATE",
-      "SELECT_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "3",
-    "query_text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "e3b81f88742aebb172328a802fbf05e6bb221166d223d36afdbb712df8e08cea": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "FILTER_COMPARE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "3",
-    "query_text": "What is the average y-acceleration of user 5 with activity label Sitting?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "e6431c01171e6249d8a68739c3571d50c16dae0058d736c2f229715831586497": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PREDICTIVE_PIPELINE",
-        "slots": [
-          "feature_columns",
-          "filter_column",
-          "filter_value",
-          "holdout_row",
-          "model",
-          "sort_by",
-          "target_column",
-          "target_from_non_empty",
-          "target_label",
-          "train_fraction"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "14",
-    "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "e7487d5ea2db745d813feb563c644fe205c08dacf0faf96bc1dc3d02d0a62a73": {
-    "dataset": "ecg",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "FILTER_COMPARE",
-        "slots": [
-          "column",
-          "comparator",
-          "value"
-        ]
-      },
-      {
-        "op": "AGGREGATE_COLUMN",
-        "slots": [
-          "aggregate",
-          "column"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_COMPARE",
-      "AGGREGATE_COLUMN"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "2",
-    "query_text": "What is the total recording duration in seconds (maximum time_s) for record_id 234?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "e7f19f617bc46e14f1682a5d67460c76edabb5f5c813f1865277a149f0d4cd56": {
-    "dataset": "wisdm",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "FILTER_NOT_EMPTY",
-      "DERIVE_VECTOR_MAGNITUDE",
-      "SPLIT_BY_VALUES",
-      "SPLIT_BY_VALUES",
-      "AGGREGATE_PARTITIONS",
-      "COMPARE_PARTITIONS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "5",
-    "query_text": "Compare the overall acceleration magnitude between dynamic movements and resting states.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "e84a6ba64bf4e6a6e9c5ca9f3d2af9e2a25ea06fa276159ac8e8547388463bef": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": null,
-    "n_runs_agreeing": 6,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PREDICTIVE_PIPELINE"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "15",
-    "query_text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
-    "query_text_source": "llm_judgments",
-    "reasons": [],
-    "status": "reusable"
-  },
-  "edf57a960880e6b178ab498f80a16f5df8df9aef288b5ee495fff88af68187be": {
-    "dataset": "bus",
-    "example_run_ids": [
-      "single_run",
-      "single_run",
-      "single_run",
-      "run_1",
-      "run_2",
-      "run_3"
-    ],
-    "field_level_skeleton": [
-      {
-        "op": "PARALLEL_AGGREGATE",
-        "slots": [
-          "branches"
-        ]
-      },
-      {
-        "op": "DERIVE_BINARY",
-        "slots": [
-          "left",
-          "operation",
-          "result",
-          "right"
-        ]
-      },
-      {
-        "op": "RANK_ROWS",
-        "slots": [
-          "column",
-          "direction",
-          "return_columns"
-        ]
-      }
-    ],
-    "n_runs_agreeing": 2,
-    "n_runs_observed": 6,
-    "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
-    "operator_skeleton": [
-      "PARALLEL_AGGREGATE",
-      "DERIVE_BINARY",
-      "RANK_ROWS"
-    ],
-    "plan_source_modes": [
-      "llm"
-    ],
-    "query_id": "6",
-    "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
-    "query_text_source": "raw_results",
-    "reasons": [],
-    "status": "reusable"
-  }
+      "status": "reusable"
+    }
+  ]
 }
