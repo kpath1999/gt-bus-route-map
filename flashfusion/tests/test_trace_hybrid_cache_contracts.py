@@ -86,6 +86,7 @@ def test_contract_extractor_penalizes_unmatched_applicable_aggregate_cue() -> No
 def test_component_scores_exclude_unknown_dimensions() -> None:
     matcher = _make_matcher()
     live = {
+        "admissibility": "in_scope",
         "aggregate": "count",
         "fields": ["accel_variance"],
         "predicate_ops": {"accel_variance": "gt"},
@@ -108,6 +109,31 @@ def test_component_scores_exclude_unknown_dimensions() -> None:
 
     assert set(scores) == {"aggregate", "fields", "predicate_ops", "filter_values", "output_shape"}
     assert contract_score == 1.0
+
+
+def test_out_of_scope_empty_skeleton_is_a_high_contract_match() -> None:
+    matcher = _make_matcher()
+    live = {"admissibility": "out_of_scope", "operator_skeleton": None}
+    cand = {"operator_skeleton": []}
+
+    scores, contract_score = matcher._component_scores(live, cand)
+    ok, failures = matcher._safety_critical_agreement(live, cand)
+
+    assert scores == {"out_of_scope_match": 1.0}
+    assert contract_score == 1.0
+    assert ok
+    assert failures == []
+
+
+def test_in_scope_query_rejects_empty_skeleton_candidate() -> None:
+    matcher = _make_matcher()
+    live = {"admissibility": "in_scope", "operator_skeleton": None}
+    cand = {"operator_skeleton": []}
+
+    ok, failures = matcher._safety_critical_agreement(live, cand)
+
+    assert not ok
+    assert failures == ["out_of_scope_candidate_for_in_scope_query"]
 
 
 def test_unkeyed_live_filter_values_do_not_hard_fail() -> None:

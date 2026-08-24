@@ -549,7 +549,7 @@
         "llm"
       ],
       "query_id": "11",
-      "query_text": "Which bus driver generated the smoothest driving profile?",
+      "query_text": "Was the bus driver complying with their operating schedule?",
       "query_text_source": "llm_judgments",
       "reasons": [],
       "status": "reusable"

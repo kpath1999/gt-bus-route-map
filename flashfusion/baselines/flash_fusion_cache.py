@@ -377,6 +377,11 @@ def _merge_semantic_overlays(
     return out
 
 
+def _is_out_of_scope_entry(entry: dict[str, Any]) -> bool:
+    """Return whether a reusable entry represents a guardrail rejection."""
+    return entry.get("operator_skeleton") == []
+
+
 def _build_hybrid_runtime(
     *,
     entries: list[dict[str, Any]],
@@ -384,6 +389,7 @@ def _build_hybrid_runtime(
     df: pd.DataFrame,
     cache_path: str | Path,
     semantic_cache_path: str | Path | None,
+    out_of_scope_only: bool = False,
 ) -> _HybridMatcherRuntime:
     _require_sentence_transformers()
     from flashfusion.eval.trace_hybrid_cache import HybridMatcher, load_config
@@ -393,7 +399,7 @@ def _build_hybrid_runtime(
         for entry in entries
         if entry.get("status") == "reusable"
         and isinstance(entry.get("operator_skeleton"), list)
-        and bool(entry.get("operator_skeleton"))
+        and (not out_of_scope_only or _is_out_of_scope_entry(entry))
     ]
     semantic_entries: list[dict[str, Any]] | None = None
     if semantic_cache_path is not None and Path(semantic_cache_path).exists():
@@ -410,7 +416,10 @@ def _build_hybrid_runtime(
     cols_fp = hashlib.sha256(
         json.dumps([str(c) for c in df.columns], separators=(",", ":")).encode("utf-8")
     ).hexdigest()[:16]
-    runtime_key = f"{Path(cache_path)}::{ds}::{schema_fp}::{cols_fp}::{Path(semantic_cache_path) if semantic_cache_path else ''}"
+    runtime_key = (
+        f"{Path(cache_path)}::{ds}::{schema_fp}::{cols_fp}::"
+        f"{Path(semantic_cache_path) if semantic_cache_path else ''}::oos={out_of_scope_only}"
+    )
     cached = _HYBRID_RUNTIME.get(runtime_key)
     if cached is not None and cached.entry_fingerprint == fingerprint:
         return cached
@@ -467,6 +476,7 @@ def prewarm_hybrid_cache_runtime(
         df=df,
         cache_path=cache_path,
         semantic_cache_path=semantic_cache_path,
+        out_of_scope_only=False,
     )
     warm = dict(runtime.warmup)
     warm.setdefault("model_load_ms", 0.0)
@@ -886,10 +896,13 @@ def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
     admissibility = "unknown"
     if intent_flags["predictive"] or aggregate or fields or predicate_ops or filter_values:
         admissibility = "in_scope"
-    if re.search(r"\b(predict\s+next\s+week|fatal cardiac event|bmi|cadence)\b", query_lc):
+    if re.search(
+        r"\b(?:predict|forecast)\s+next\s+week(?:'s)?\b|\b(?:fatal cardiac event|bmi|cadence)\b",
+        query_lc,
+    ):
         admissibility = "out_of_scope"
 
-    confidence = 0.85 if admissibility == "in_scope" else 0.4
+    confidence = 0.95 if admissibility == "out_of_scope" else 0.85 if admissibility == "in_scope" else 0.4
     return {
         "admissibility": admissibility,
         "confidence": confidence,
@@ -924,13 +937,32 @@ def _find_semantic_entry(
     expected_operator_contract_hash: str | None,
 ) -> tuple[dict[str, Any] | None, str, dict[str, Any]]:
     _require_sentence_transformers()
+    live_signature = _extract_semantic_signature(query, df)
+    if live_signature.get("admissibility") == "out_of_scope":
+        evidence = {
+            "decision": "out_of_scope_hit",
+            "status": "admissibility_out_of_scope",
+            "extracted_signature": live_signature,
+            "candidate_ids_considered": [],
+            "hard_gate_results": {},
+            "candidate_scores": {},
+            "extraction_confidence": float(live_signature.get("confidence", 0.0) or 0.0),
+            "abstention_reason": "admissibility_out_of_scope",
+            "score_threshold": 0.75,
+            "score_margin": 0.08,
+            "winner": None,
+            "runner_up": None,
+            "elapsed_ms": {"model_load_ms": 0.0, "warm_up_ms": 0.0},
+        }
+        return None, "admissibility_out_of_scope", evidence
+
     candidates = [x for x in entries if isinstance(x, dict)]
     overlayed = _merge_semantic_overlays(entries=candidates, semantic_entries=None, df=df)
     if not overlayed:
         evidence = {
             "decision": "complete_miss",
             "status": "semantic_no_candidates",
-            "extracted_signature": _extract_semantic_signature(query, df),
+            "extracted_signature": live_signature,
             "candidate_ids_considered": [],
             "hard_gate_results": {},
             "candidate_scores": {},
@@ -1301,9 +1333,15 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
                 step["comparator"] = "eq"
                 step["value"] = mention_value
 
-        elif op == "GROUP_AGGREGATE" and wants_count_extrema:
-            step["aggregate"] = "count"
-            step["column"] = None
+        elif op == "GROUP_AGGREGATE":
+            if isinstance(step.get("aggregate"), dict):
+                agg_dict = step["aggregate"]
+                step["aggregate"] = agg_dict.get("op") or agg_dict.get("aggregate")
+                if not step.get("column") and "column" in agg_dict:
+                    step["column"] = agg_dict["column"]
+            if wants_count_extrema:
+                step["aggregate"] = "count"
+                step["column"] = None
 
         elif op == "AGGREGATE_PARTITIONS" and wants_average and str(step.get("aggregate")) == "var":
             step["aggregate"] = "mean"
@@ -1428,16 +1466,25 @@ def run_flash_fusion_cache(
             _record(trace, lookup_status=lookup_status, entry=entry)
 
             if entry is None:
+                semantic_signature = _extract_semantic_signature(query, df)
+                admissibility_hint = (
+                    "out_of_scope"
+                    if semantic_signature.get("admissibility") == "out_of_scope"
+                    and float(semantic_signature.get("confidence", 0.0) or 0.0) >= 0.9
+                    else None
+                )
                 runtime = _build_hybrid_runtime(
                     entries=entries,
                     dataset=dataset,
                     df=df,
                     cache_path=cache_path,
                     semantic_cache_path=semantic_cache_path,
+                    out_of_scope_only=admissibility_hint == "out_of_scope",
                 )
                 hybrid_result = runtime.matcher.match(
                     query,
                     expected_contract_hash=expected_operator_contract_hash,
+                    admissibility_hint=admissibility_hint,
                 )
                 hybrid_status = _hybrid_decision_to_status(hybrid_result.decision)
                 hybrid_evidence = _hybrid_evidence(
@@ -1454,6 +1501,10 @@ def run_flash_fusion_cache(
                     entry = hybrid_result.entry
                     lookup_status = "semantic_cache_hit"
                     _record(trace, lookup_status=lookup_status, entry=entry)
+                elif hybrid_result.entry is not None and hybrid_status == "admissibility_out_of_scope":
+                    entry = hybrid_result.entry
+                    lookup_status = "semantic_cache_hit_out_of_scope"
+                    _record(trace, lookup_status=lookup_status, entry=entry)
                 else:
                     _append_stage(result, f"hybrid_{hybrid_status}")
                     raise LookupError(f"semantic: {hybrid_status}")
@@ -1466,8 +1517,8 @@ def run_flash_fusion_cache(
         # Cheap out-of-scope short-circuit: the registry records an empty
         # skeleton, so we ask the light model for the guardrail reason instead
         # of invoking the full planner/guardrail pipeline.
-        if lookup_status == "exact_cache_hit_out_of_scope":
-            _append_stage(result, "exact_cache_hit_out_of_scope")
+        if lookup_status in {"exact_cache_hit_out_of_scope", "semantic_cache_hit_out_of_scope"}:
+            _append_stage(result, lookup_status)
             _append_stage(result, "cache_light_rejection_reason")
             grounding_started = time.perf_counter()
             try:
@@ -1480,7 +1531,13 @@ def run_flash_fusion_cache(
             _set_if_present(result, "rejected", True)
             _set_if_present(result, "executed", False)
             _set_if_present(result, "execution_path", "guardrail_reject")
-            _set_if_present(result, "plan_source", "exact_query_cache_out_of_scope")
+            _set_if_present(
+                result,
+                "plan_source",
+                "exact_query_cache_out_of_scope"
+                if lookup_status == "exact_cache_hit_out_of_scope"
+                else "semantic_query_cache_out_of_scope",
+            )
             _set_if_present(result, "answer", f"Query rejected. Reason: {reason}")
             _set_if_present(
                 result,

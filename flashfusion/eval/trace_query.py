@@ -362,13 +362,13 @@ def _print_cache_trace(t) -> None:
     _hr("CACHE VERDICT")
     if t.hit:
         print(f"✓ CACHE HIT — executed typed plan; value={t.executed_value!r}")
+    elif t.semantic_match_evidence:
+        print(f"✓ CACHE HIT — semantic match!")
+        _hr("SEMANTIC MATCH EVIDENCE")
+        print(json.dumps(t.semantic_match_evidence, indent=2))
     else:
         print("✗ CACHE NOT USED — falling back to the full Flash-Fusion planner")
         print(f"  reason: {t.failure_reason or t.lookup_status or '(unknown)'}")
-    if t.semantic_match_evidence:
-        _hr("SEMANTIC MATCH EVIDENCE")
-        print(json.dumps(t.semantic_match_evidence, indent=2))
-
 
 def trace_single_query(
     query_id: int,

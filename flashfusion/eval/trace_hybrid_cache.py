@@ -18,7 +18,7 @@ import math
 import re
 import time
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Iterable, Literal
@@ -620,7 +620,14 @@ class HybridMatcher:
                 continue
             if self.dataset is not None and canonical_dataset(entry.get("dataset")) != self.dataset:
                 continue
-            if self._entry_text(entry):
+            if (
+                self._entry_text(entry)
+                or entry.get("query_id") is not None
+                or entry.get("template_id") is not None
+                or entry.get("semantic_signature") is not None
+                or entry.get("retrieval_contract") is not None
+                or entry.get("operator_skeleton") is not None
+            ):
                 filtered.append(entry)
         return filtered
 
@@ -700,6 +707,7 @@ class HybridMatcher:
         raw_predictive = sig.get("predictive")
         predictive: dict[str, Any] = raw_predictive if isinstance(raw_predictive, dict) else {}
         return {
+            "admissibility": sig.get("admissibility", "unknown"),
             "aggregate": sig.get("aggregate"),
             "fields": list(sig.get("fields") or []),
             "predicate_ops": sig.get("predicate_ops") if isinstance(sig.get("predicate_ops"), dict) else {},
@@ -716,6 +724,7 @@ class HybridMatcher:
 
     def _contract_from_live(self, contract: QueryContract) -> dict[str, Any]:
         return {
+            "admissibility": contract.admissibility,
             "aggregate": contract.aggregate,
             "fields": sorted(contract.fields),
             "predicate_ops": {k: v for k, v in contract.predicate_ops},
@@ -789,6 +798,11 @@ class HybridMatcher:
         scores: dict[str, float] = {}
         applicable = 0
 
+        cand_skeleton = cand.get("operator_skeleton")
+        if live.get("admissibility") == "out_of_scope" and cand_skeleton in (None, []):
+            scores["out_of_scope_match"] = 1.0
+            return scores, 1.0
+
         live_agg = live.get("aggregate")
         cand_agg = cand.get("aggregate")
         if live_agg is not None:
@@ -836,6 +850,17 @@ class HybridMatcher:
 
     def _safety_critical_agreement(self, live: dict[str, Any], cand: dict[str, Any]) -> tuple[bool, list[str]]:
         failures: list[str] = []
+
+        live_skeleton = live.get("operator_skeleton")
+        cand_skeleton = cand.get("operator_skeleton")
+        live_admissibility = live.get("admissibility")
+        if live_admissibility == "out_of_scope":
+            if cand_skeleton in (None, []):
+                return (True, failures)
+            return (False, ["out_of_scope_candidate_requires_empty_skeleton"])
+
+        if live_admissibility == "in_scope" and cand_skeleton == []:
+            return (False, ["out_of_scope_candidate_for_in_scope_query"])
 
         if live.get("aggregate") is not None and cand.get("aggregate") != live.get("aggregate"):
             live_agg = str(live.get("aggregate")).lower()
@@ -977,7 +1002,12 @@ class HybridMatcher:
             },
         }
 
-    def match(self, query: str, expected_contract_hash: str | None = None) -> CacheMatchResult:
+    def match(
+        self,
+        query: str,
+        expected_contract_hash: str | None = None,
+        admissibility_hint: Literal["out_of_scope"] | None = None,
+    ) -> CacheMatchResult:
         timings = {
             "registry_load_ms": self.registry_load_ms,
             "model_load_ms": 0.0,
@@ -1042,6 +1072,12 @@ class HybridMatcher:
 
         t_contract = time.perf_counter()
         live_contract = self.extractor.extract(query)
+        if admissibility_hint == "out_of_scope":
+            live_contract = replace(
+                live_contract,
+                admissibility="out_of_scope",
+                confidence=max(live_contract.confidence, 0.95),
+            )
         timings["contract_extract_ms"] = (time.perf_counter() - t_contract) * 1000.0
 
         t_retrieve = time.perf_counter()
@@ -1067,6 +1103,8 @@ class HybridMatcher:
         min_extractor_conf = float(self.thresholds.get("extractor_confidence_floor", 0.55))
         accept_floor = float(self.thresholds.get("acceptance_floor", 0.75))
         ambiguity_margin = float(self.thresholds.get("ambiguity_margin", 0.08))
+        oos_retrieval_floor = float(self.thresholds.get("oos_retrieval_floor", 0.35))
+        oos_ambiguity_margin = float(self.thresholds.get("oos_ambiguity_margin", 0.08))
 
         live_contract_dict = self._contract_from_live(live_contract)
         results: list[CandidateEvidence] = []
@@ -1120,9 +1158,23 @@ class HybridMatcher:
         # Authorization checks: independent from retrieval ranking.
         if live_contract.admissibility != "in_scope":
             decision = "out_of_scope_hit" if live_contract.admissibility == "out_of_scope" else "low_confidence_candidate"
+            if decision == "out_of_scope_hit" and winner.retrieval_score < oos_retrieval_floor:
+                decision = "low_confidence_candidate"
+            if (
+                decision == "out_of_scope_hit"
+                and runner_up is not None
+                and (winner.final_score - runner_up.final_score) < oos_ambiguity_margin
+            ):
+                decision = "ambiguous_multi_candidate"
             timings["verify_ms"] = (time.perf_counter() - t_verify) * 1000.0
             timings["total_match_ms"] = (time.perf_counter() - t_total) * 1000.0
-            return CacheMatchResult(decision, None, winner, runner_up, timings, results)
+            winner_idx = next(
+                i
+                for i, item in enumerate(self.entries)
+                if self._candidate_id(item, i + 1) == winner.candidate_id
+            )
+            entry = self.entries[winner_idx] if decision == "out_of_scope_hit" else None
+            return CacheMatchResult(decision, entry, winner, runner_up, timings, results)
 
         if live_contract.confidence < min_extractor_conf:
             timings["verify_ms"] = (time.perf_counter() - t_verify) * 1000.0
@@ -1260,6 +1312,8 @@ def load_config(path: Path) -> dict[str, Any]:
                 "extractor_confidence_floor": 0.55,
                 "acceptance_floor": 0.75,
                 "ambiguity_margin": 0.08,
+                "oos_retrieval_floor": 0.35,
+                "oos_ambiguity_margin": 0.08,
                 "fuzzy_threshold": 0.72,
                 "fuzzy_margin": 0.05,
             },

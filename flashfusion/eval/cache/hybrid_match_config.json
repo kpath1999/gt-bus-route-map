@@ -9,6 +9,8 @@
     "extractor_confidence_floor": 0.55,
     "acceptance_floor": 0.75,
     "ambiguity_margin": 0.08,
+    "oos_retrieval_floor": 0.35,
+    "oos_ambiguity_margin": 0.08,
     "fuzzy_threshold": 0.72,
     "fuzzy_margin": 0.05
   },

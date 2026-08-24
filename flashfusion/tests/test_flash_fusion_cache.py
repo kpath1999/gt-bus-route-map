@@ -16,6 +16,7 @@ import pytest
 from flashfusion.baselines import flash_fusion_cache as ffc
 from flashfusion.eval import queries as queries_v1
 from flashfusion.eval import queries_v2, queries_v3
+from flashfusion.eval import trace_hybrid_cache as thc
 from flashfusion.pipeline.runner import RunResult
 
 SKELETON = ["FILTER_COMPARE", "COUNT_ROWS"]
@@ -238,6 +239,28 @@ def test_out_of_scope_cache_hit_rejects_without_full_planner(df, registry, no_fa
     assert len(client.light.prompts) == 1
     assert "LIVE DATASET SCHEMA" in client.light.prompts[0]
     assert oos_query in client.light.prompts[0]
+
+
+def test_semantic_out_of_scope_match_rejects_without_full_planner(df, registry, no_fallback) -> None:
+    """A near-match to a cached OOS query should still route to the rejection reason path."""
+    oos_query = "Did weather cause the roughest stretches on this route?"
+    reason = "The dataset does not contain any column indicating weather conditions."
+    client = _FakeClient(json.dumps({"rejection_reason": reason}))
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        oos_query, df, client, dataset="bus", cache_path=registry, trace=trace
+    )
+
+    assert result.rejected is True
+    assert result.executed is False
+    assert result.execution_path == "guardrail_reject"
+    assert result.plan_source == "semantic_query_cache_out_of_scope"
+    assert result.stage_latency_s["cache_lookup"] >= 0.0
+    assert result.stage_latency_s["cache_rejection"] >= 0.0
+    assert result.answer == f"Query rejected. Reason: {reason}"
+    assert reason in result.trace
+    assert len(client.light.prompts) == 1
 
 
 def test_cross_dataset_miss_falls_back_to_full_planner(df, registry, fallback_spy) -> None:
@@ -766,3 +789,34 @@ def test_semantic_out_of_scope_is_recognized_as_safe_abstention(df) -> None:
     )
     assert status == "admissibility_out_of_scope"
     assert evidence["abstention_reason"] == "admissibility_out_of_scope"
+
+
+def test_forecast_next_week_is_high_confidence_out_of_scope(df) -> None:
+    signature = ffc.extract_semantic_signature(
+        "Forecast next week's pothole repairs in the road segments in this dataset.",
+        df,
+    )
+
+    assert signature["admissibility"] == "out_of_scope"
+    assert signature["confidence"] == 0.95
+
+
+def test_out_of_scope_runtime_indexes_only_empty_skeleton_entries(df, registry, monkeypatch) -> None:
+    entries = ffc._load_entries(registry)
+    monkeypatch.setattr(
+        thc.HybridMatcher,
+        "warm_up",
+        lambda _self: {"model_load_ms": 0.0, "warm_up_ms": 0.0, "dense_index_build_ms": 0.0},
+    )
+
+    runtime = ffc._build_hybrid_runtime(
+        entries=entries,
+        dataset="bus",
+        df=df,
+        cache_path=registry,
+        semantic_cache_path=None,
+        out_of_scope_only=True,
+    )
+
+    assert runtime.matcher.entries
+    assert all(entry["operator_skeleton"] == [] for entry in runtime.matcher.entries)
