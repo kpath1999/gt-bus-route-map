@@ -452,6 +452,35 @@
       "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1d29adee7efb7ed4",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "median",
+        "confidence": 0.85,
+        "fields": [
+          "latitude"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -690,6 +719,35 @@
       "query_text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "z"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -732,7 +790,7 @@
       "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -1203,7 +1261,7 @@
       "query_text": "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -1426,7 +1484,7 @@
       "query_text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -1771,7 +1829,7 @@
       "query_text": "What is the average y-acceleration of user 5 with activity label Sitting?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -2007,7 +2065,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
-      "schema_fingerprint": "1856b7e244a7940d",
+      "schema_fingerprint": "1d29adee7efb7ed4",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2046,7 +2104,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "If we group the data into 1-minute intervals, Tell me which time window has the highest mean instability_score?",
-      "schema_fingerprint": "1856b7e244a7940d",
+      "schema_fingerprint": "1d29adee7efb7ed4",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2084,7 +2142,7 @@
         "SELECT_COLUMN"
       ],
       "query_text": "List all timestamps where accel_stats_z_p99 reaches its highest value across the dataset.",
-      "schema_fingerprint": "1856b7e244a7940d",
+      "schema_fingerprint": "1d29adee7efb7ed4",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2126,7 +2184,7 @@
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "unknown",
         "aggregate": null,
@@ -2161,7 +2219,7 @@
         "PREDICTIVE_PIPELINE"
       ],
       "query_text": "Order all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Estimate the activity label for the first row in the holdout set.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -2209,7 +2267,7 @@
         "RANK_ROWS"
       ],
       "query_text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2244,7 +2302,7 @@
         "PREDICTIVE_PIPELINE"
       ],
       "query_text": "Arrange all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features x, y and z. Forecast the activity label In the first row in the holdout set.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -2292,7 +2350,7 @@
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Contrast the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "unknown",
         "aggregate": null,
@@ -2327,7 +2385,7 @@
         "PREDICTIVE_PIPELINE"
       ],
       "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -2378,7 +2436,7 @@
         "AGGREGATE_GROUPS"
       ],
       "query_text": "For record_id 208, Could you report the average count of rows with a non-empty annotation in each 60-second time_s bin?",
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -2425,7 +2483,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "In record_id 101, Tell me which 10-second interval contains the highest number of annotated beats?",
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2466,7 +2524,7 @@
         "PREDICTIVE_PIPELINE"
       ],
       "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -2517,7 +2575,7 @@
         "AGGREGATE_GROUPS"
       ],
       "query_text": "In record_id 208, Please provide the average count of rows with a non-empty annotation in each 60-second time_s bin?",
-      "schema_fingerprint": "8a468207a2c8d18a",
+      "schema_fingerprint": "3e2dc640c05be9c3",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -2545,6 +2603,240 @@
         "predicate_ops": {
           "record_id": "eq"
         },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "DERIVE_DURATION_SECONDS",
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "FILTER_COMPARE",
+        "RANK_ROWS"
+      ],
+      "query_text": "Determine the user whose total observed duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": true,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "SPLIT_BY_THRESHOLD",
+        "SPLIT_BY_THRESHOLD",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, Using average acceleration variance?",
+      "schema_fingerprint": "1d29adee7efb7ed4",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "median",
+        "confidence": 0.85,
+        "fields": [
+          "latitude"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "query_text": "Compute the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "z"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "query_text": "Which user has the highest total number of observed data samples?",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_NOT_EMPTY",
+        "SPLIT_BY_VALUES",
+        "SPLIT_BY_VALUES",
+        "AGGREGATE_PARTITIONS",
+        "COMPARE_PARTITIONS"
+      ],
+      "query_text": "Work out the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "z"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "GROUP_AGGREGATE",
+        "RANK_GROUPS"
+      ],
+      "query_text": "Tell me which user has the highest total number of recorded data samples?",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
         "predictive": {
           "holdout_row": null,
           "model": null,

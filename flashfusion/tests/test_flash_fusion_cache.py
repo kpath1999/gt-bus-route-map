@@ -215,6 +215,69 @@ def test_code_fenced_light_output_is_accepted(df, registry, no_fallback) -> None
     assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
 
 
+def test_apply_grounding_semantic_guards_fills_missing_derive_bin_result() -> None:
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {"op": "FILTER_COMPARE", "column": "record_id", "comparator": "eq", "value": 208},
+            {"op": "FILTER_NOT_EMPTY", "column": "annotation"},
+            {
+                "op": "DERIVE_BIN",
+                "column": "time_s",
+                "kind": "numeric",
+                "width": 60.0,
+                "freq": None,
+                "epoch_unit": None,
+                "result": None,
+            },
+            {"op": "GROUP_AGGREGATE", "group_by": ["time_s_bin"], "aggregate": "count", "column": None, "freq": None},
+            {"op": "AGGREGATE_GROUPS", "aggregate": "mean"},
+        ],
+    }
+
+    repaired = ffc._apply_grounding_semantic_guards(
+        raw_plan,
+        "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+    )
+
+    step = repaired["steps"][2]
+    assert step["result"] == "time_s_bin"
+    assert step["kind"] == "numeric"
+    assert step["width"] == 60.0
+
+
+def test_apply_grounding_semantic_guards_repairs_derive_bin_width_conflict() -> None:
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {"op": "FILTER_COMPARE", "column": "record_id", "comparator": "eq", "value": 208},
+            {"op": "FILTER_NOT_EMPTY", "column": "annotation"},
+            {
+                "op": "DERIVE_BIN",
+                "column": "time_s",
+                "kind": "temporal",
+                "width": 60,
+                "freq": None,
+                "epoch_unit": None,
+                "result": "time_s_bin",
+            },
+            {"op": "GROUP_AGGREGATE", "group_by": ["time_s_bin"], "aggregate": "count", "column": None, "freq": None},
+            {"op": "AGGREGATE_GROUPS", "aggregate": "mean"},
+        ],
+    }
+
+    repaired = ffc._apply_grounding_semantic_guards(
+        raw_plan,
+        "For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",
+    )
+
+    step = repaired["steps"][2]
+    assert step["kind"] == "numeric"
+    assert step["width"] == 60
+    assert step["freq"] is None
+    assert step["epoch_unit"] is None
+
+
 def test_out_of_scope_cache_hit_rejects_without_full_planner(df, registry, no_fallback) -> None:
     """An empty skeleton means the query is out-of-scope; infer the reason from the light model."""
     oos_query = "Did rainy weather cause the roughest segments in this route?"

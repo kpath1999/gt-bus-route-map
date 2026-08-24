@@ -181,6 +181,19 @@ Semantic grounding rules (must follow):
     with FILTER_COMPARE(comparator="gt", value=0) to enforce the stated
     direction, then RANK_ROWS on that signed column. Use abs_difference only
     when the query says "difference" or "contrast" with no stated direction.
+- DERIVE_BIN modes (mutually exclusive):
+    - For numeric columns (e.g. float/int elapsed seconds like `time_s` or numeric values):
+      use `kind="numeric"`, supply `width` (e.g. 60.0), and set `freq=null`, `epoch_unit=null`.
+    - For datetime / calendar timestamps:
+      use `kind="temporal"`, supply `freq` (e.g. "60s" or "1min"), and set `width=null`.
+    - NEVER mix `kind="temporal"` with `width` or `freq=null`.
+- DERIVE_DURATION_SECONDS fields:
+    - `group_by` must be the entity key column only (e.g. ['subject_id'] or ['record_id']).
+      Never include category/label columns (e.g. 'activity_label') in DERIVE_DURATION_SECONDS.group_by;
+      category filtering is handled in downstream steps (e.g. PARALLEL_AGGREGATE branches).
+    - `fill_first` MUST be a float number (default 0.0), NEVER null or omitted.
+    - `clip_negative` MUST be a boolean (default true).
+    - `result` is the derived column name (e.g. "dt_s" or "duration_seconds").
 - When comparing two or more named groups of a categorical column (e.g.
     "compare X between label A and label B"), emit one SPLIT_BY_VALUES step
     PER GROUP, each with its own distinct label and its own values list.
@@ -1333,7 +1346,78 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
                 step["comparator"] = "eq"
                 step["value"] = mention_value
 
-        elif op == "GROUP_AGGREGATE":
+        elif op == "DERIVE_BIN":
+            kind = step.get("kind")
+            width = step.get("width")
+            freq = step.get("freq")
+
+            col_name = step.get("column")
+            result_name = step.get("result")
+            if isinstance(col_name, str) and col_name.strip() and (
+                result_name is None or (isinstance(result_name, str) and not result_name.strip())
+            ):
+                derived = f"{col_name.strip()}_bin"
+                step["result"] = derived
+
+            if kind == "temporal" and freq is None and width is not None:
+                step["kind"] = "numeric"
+                step["freq"] = None
+                step["epoch_unit"] = None
+            elif kind == "numeric" and width is None and isinstance(freq, str):
+                freq_value = freq.strip()
+                if freq_value:
+                    step["kind"] = "temporal"
+                    step["freq"] = freq_value
+                    step["epoch_unit"] = None
+                    if "width" in step:
+                        step.pop("width", None)
+            elif kind == "temporal" and freq is None and width is None:
+                # A temporal bucketing step without a frequency is not valid. Use
+                # the common numeric bucket width when the query explicitly states a
+                # fixed-size window like "60-second bins".
+                if re.search(r"\b(\d+(?:\.\d+)?)\s*(?:second|seconds|sec|s)\b", query_lc):
+                    match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:second|seconds|sec|s)\b", query_lc)
+                    if match:
+                        step["kind"] = "numeric"
+                        step["width"] = float(match.group(1))
+                        step["freq"] = None
+                        step["epoch_unit"] = None
+                elif re.search(r"\b(\d+(?:\.\d+)?)\s*(?:minute|minutes|min|m)\b", query_lc):
+                    match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:minute|minutes|min|m)\b", query_lc)
+                    if match:
+                        step["kind"] = "numeric"
+                        step["width"] = float(match.group(1)) * 60.0
+                        step["freq"] = None
+                        step["epoch_unit"] = None
+
+            if step.get("result") is None:
+                if isinstance(col_name, str) and col_name.strip():
+                    step["result"] = f"{col_name.strip()}_bin"
+                else:
+                    step["result"] = "binned_value"
+
+        elif op == "DERIVE_DURATION_SECONDS":
+            group_by = step.get("group_by")
+            if isinstance(group_by, list):
+                # Filter out categorical/activity columns that should not segment the continuous timeline
+                entity_keys = [
+                    k for k in group_by
+                    if str(k).lower() not in {"activity", "activity_label", "behavior", "annotation_present"}
+                ]
+                if entity_keys:
+                    step["group_by"] = entity_keys
+
+            fill_first = step.get("fill_first")
+            if fill_first is None or not isinstance(fill_first, (int, float)):
+                step["fill_first"] = 0.0
+            else:
+                step["fill_first"] = float(fill_first)
+
+            if step.get("clip_negative") is None:
+                step["clip_negative"] = True
+
+            if not step.get("result"):
+                step["result"] = "dt_s"
             if isinstance(step.get("aggregate"), dict):
                 agg_dict = step["aggregate"]
                 step["aggregate"] = agg_dict.get("op") or agg_dict.get("aggregate")

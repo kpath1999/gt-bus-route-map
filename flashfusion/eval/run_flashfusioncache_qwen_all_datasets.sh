@@ -6,7 +6,7 @@
 # and MIT ECG for a head-to-head comparison.
 #
 # Output layout:
-#   flashfusion/results/ff_and_react_qwen/
+#   flashfusion/results/ff_hybrid_cache/
 #     REACT_ONLY/
 #       bus/
 #       wisdm/
@@ -52,7 +52,7 @@ if [[ -z "${OPENROUTER_API_KEY:-}" && -z "${GROQ_API_KEY:-}" ]]; then
     exit 1
 fi
 
-OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_and_react_qwen}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache}"
 RUNS="${RUNS:-3}"
 
 ts() {
