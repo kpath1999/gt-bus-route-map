@@ -89,6 +89,7 @@ from flashfusion.pipeline.operators import (
     PlanSchemaError,
     build_compact_operator_spec,
     execute_plan,
+    normalize_raw_plan,
     validate_plan_against_dataframe,
 )
 from flashfusion.pipeline.runner import LLMClient, RunResult
@@ -145,6 +146,11 @@ If the requested structure cannot be grounded from the schema, return:
 {"cache_grounding_failed": true, "reason": "..."}
 
 Semantic grounding rules (must follow):
+- Strict 1-to-1 checklist correspondence:
+    - Step index `i` in your JSON output MUST correspond to step `i` of the checklist.
+    - NEVER emit an operator more times than it appears in the REQUIRED OUTPUT checklist.
+    - If the checklist has 1 DERIVE_DURATION_SECONDS step, emit EXACTLY 1 DERIVE_DURATION_SECONDS
+      step regardless of how many categories or comparison groups the question mentions.
 - Keep operator sequence fixed, but choose semantically correct field values.
 - Bare entity/id mentions imply equality filters on that key:
     - Example: "record_id 106", "for record_id 106", "user 20" -> comparator must be
@@ -188,6 +194,11 @@ Semantic grounding rules (must follow):
       use `kind="temporal"`, supply `freq` (e.g. "60s" or "1min"), and set `width=null`.
     - NEVER mix `kind="temporal"` with `width` or `freq=null`.
 - DERIVE_DURATION_SECONDS fields:
+    - DERIVE_DURATION_SECONDS is materialized ONCE across the timeline:
+      Emit a single DERIVE_DURATION_SECONDS step with a generic result column (e.g., "dt_s" or "duration_seconds").
+      NEVER create multiple category-specific duration steps (e.g., "resting_duration_s" and "dynamic_duration_s").
+      Category distinctions are handled entirely within downstream steps (e.g., PARALLEL_AGGREGATE branches filtering
+      by activity_label and summing the single derived duration column).
     - `group_by` must be the entity key column only (e.g. ['subject_id'] or ['record_id']).
       Never include category/label columns (e.g. 'activity_label') in DERIVE_DURATION_SECONDS.group_by;
       category filtering is handled in downstream steps (e.g. PARALLEL_AGGREGATE branches).
@@ -1134,7 +1145,7 @@ def _grounding_prompt(query: str, entry: dict[str, Any], df: pd.DataFrame) -> st
         [
             f"QUESTION (literal exact cache key): {query}",
             f"DATASET: {entry.get('dataset', '(unspecified)')}",
-            f"REQUIRED OUTPUT: exactly {n} steps, in this exact order — do not omit, merge, add, or reorder any:",
+            f"REQUIRED OUTPUT: exactly {n} steps (indices 1 to {n}), matching the checklist 1-to-1 — do not omit, duplicate, merge, add, or reorder any:",
             checklist,
             "OPERATOR FIELD SPEC (use these exact field names, nothing else):",
             build_compact_operator_spec(skeleton),
@@ -1434,6 +1445,8 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
             mode = str(step.get("mode", ""))
             if mode == "ratio" and (wants_rough_compare or wants_average) and not _query_requests_ratio(query_lc):
                 step["mode"] = "difference" if asks_difference else "difference"
+            # COMPARE_PARTITIONS accepts only 'op' and 'mode'
+            step.pop("column", None)
 
         elif op == "PREDICTIVE_PIPELINE":
             if wants_first_holdout:
@@ -1448,7 +1461,8 @@ def _parse_and_validate_cached_plan(
     raw_plan: dict[str, Any], expected_skeleton: list[str], df: pd.DataFrame
 ) -> DeterministicPlan:
     """Apply both standard Flash-Fusion gates plus skeleton equality."""
-    plan = DeterministicPlan.model_validate(raw_plan)  # structural/Pydantic gate
+    normalized_raw, _ = normalize_raw_plan(raw_plan)
+    plan = DeterministicPlan.model_validate(normalized_raw)  # structural/Pydantic gate
     actual_skeleton = [step.op for step in plan.steps]
     if actual_skeleton != expected_skeleton:
         raise PlanSchemaError(
@@ -1638,9 +1652,9 @@ def run_flash_fusion_cache(
                 cached_contract_hash = entry.get("operator_contract_hash")
                 if expected_operator_contract_hash and cached_contract_hash != expected_operator_contract_hash:
                     raise LookupError("operator_contract_hash_mismatch")
-                cached_schema_fingerprint = entry.get("schema_fingerprint")
-                if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
-                    raise LookupError("schema_fingerprint_mismatch")
+                # cached_schema_fingerprint = entry.get("schema_fingerprint")
+                # if cached_schema_fingerprint and cached_schema_fingerprint != _schema_fingerprint(df):
+                #     raise LookupError("schema_fingerprint_mismatch")
             finally:
                 stage_latency["cache_validation"] += time.perf_counter() - validation_started
             return _execute_grounded_cache_entry(

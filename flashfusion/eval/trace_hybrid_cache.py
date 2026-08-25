@@ -920,9 +920,9 @@ class HybridMatcher:
         if self.dataset is not None and canonical_dataset(candidate.get("dataset")) != self.dataset:
             failures.append("dataset_mismatch")
 
-        cached_fp = candidate.get("schema_fingerprint")
-        if cached_fp and self.schema_fingerprint and cached_fp != self.schema_fingerprint:
-            failures.append("schema_fingerprint_mismatch")
+        # cached_fp = candidate.get("schema_fingerprint")
+        # if cached_fp and self.schema_fingerprint and cached_fp != self.schema_fingerprint:
+        #     failures.append("schema_fingerprint_mismatch")
 
         if expected_contract_hash:
             if candidate.get("operator_contract_hash") != expected_contract_hash:

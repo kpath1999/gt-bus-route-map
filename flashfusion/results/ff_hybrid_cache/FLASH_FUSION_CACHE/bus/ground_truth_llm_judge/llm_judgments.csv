@@ -1,69 +1,69 @@
 run_id,source_file,baseline,query_id,query_id_source,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance.,SOUND,Matches deterministic hint and is consistent with typical interpretation of 'maximum' on a numeric column.,"{
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance.,SOUND,Matches deterministic sanity hint and is consistent with typical interpretation of 'maximum' on a numeric column.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with typical interpretation of 'maximum' on a numeric column.""
+  ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with typical interpretation of 'maximum' on a numeric column.""
 }"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,2,explicit,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The result is 9.283388022969648,False,True,result = df['accel_mean'].mean(),PASS,1.0,The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples.,SOUND,Consistent with deterministic sanity hint and computed via standard mean operation.,"{
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,2,explicit,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The result is 9.283388022969648,False,True,result = df['accel_mean'].mean(),PASS,1.0,The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples.,SOUND,Consistent with deterministic sanity hint and computed via correct code.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic sanity hint and computed via standard mean operation.""
+  ""ground_truth_note"": ""Consistent with deterministic sanity hint and computed via correct code.""
 }"
 1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,3,explicit,List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.,False,"Maximum accel_stats_z_p99 is 16.7020. Timestamps with this value: ['2025-06-06 16:01:13', '2025-06-06 16:01:16', '2025-06-06 16:01:19', '2025-06-06 16:01:22', '2025-06-06 16:01:25', '2025-06-06 16:01:28', '2025-06-06 16:01:31', '2025-06-06 16:01:34', '2025-06-06 16:01:40', '2025-06-06 16:01:43', '2025-06-06 16:01:46', '2025-06-06 16:01:49', '2025-06-06 16:01:52', '2025-06-06 16:01:55', '2025-06-06 16:01:58', '2025-06-06 16:02:01'].","The result is ['2025-06-06T16:01:13', '2025-06-06T16:01:16', '2025-06-06T16:01:19', '2025-06-06T16:01:22', '2025-06-06T16:01:25', '2025-06-06T16:01:28', '2025-06-06T16:01:31', '2025-06-06T16:01:34', '2025-06-06T16:01:40', '2025-06-06T16:01:43', '2025-06-06T16:01:46', '2025-06-06T16:01:49', '2025-06-06T16:01:52', '2025-06-06T16:01:55', '2025-06-06T16:01:58', '2025-06-06T16:02:01']",False,True,"_v = df['accel_stats_z_p99'].max(); df = df[df['accel_stats_z_p99'] == _v]
-result = df['timestamp'].tolist()",PASS,1.0,"Candidate answer lists the same timestamps as ground truth, differing only in ISO 8601 'T' separator formatting, which does not affect factual equivalence.",SOUND,Matches deterministic hint exactly.,"{
+result = df['timestamp'].tolist()",PASS,1.0,"Candidate answer lists the same timestamps as the ground truth, differing only in ISO format (using 'T' separator), which does not change the referent.",SOUND,Matches deterministic hint exactly.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer lists the same timestamps as ground truth, differing only in ISO 8601 'T' separator formatting, which does not affect factual equivalence."",
+  ""reason"": ""Candidate answer lists the same timestamps as the ground truth, differing only in ISO format (using 'T' separator), which does not change the referent."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Matches deterministic hint exactly.""
 }"
 1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,4,explicit,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The result is 352,False,True,"df = df[df['accel_variance'] > 0.2]
-result = len(df)",PASS,1.0,"The candidate answer correctly identifies the count of samples with accel_variance strictly greater than 0.2 as 352, matching the ground truth.",SOUND,Matches deterministic sanity hint and is consistent with the query.,"{
+result = len(df)",PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Consistent with deterministic hint and code logic.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer correctly identifies the count of samples with accel_variance strictly greater than 0.2 as 352, matching the ground truth."",
-  ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with the query.""
-}"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}",False,True,"northern_half = df[df['latitude'] gt df['latitude'].median()]
-southern_half = df[df['latitude'] lte df['latitude'].median()]
-result = {label: agg(partition) for label in partitions}
-result = compare(northern_half, southern_half, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in referent, values, and conclusion.",SOUND,Ground truth is consistent with deterministic hint and correctly interprets the comparison.,"{
-  ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in referent, values, and conclusion."",
-  ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly interprets the comparison.""
-}"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,6,explicit,"Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.","The result is {'latitude': 33.776749, 'longitude': -84.390053, 'diff_p99_p1_z': 11.186000000000002}",False,True,"# PARALLEL_AGGREGATE branches:
-branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].mean()
-branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].mean()
-merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
-df['diff_p99_p1_z'] = df['p99_z'] - df['p1_z']
-idx = df['diff_p99_p1_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",PASS,1.0,Candidate answer matches the ground truth location and difference value.,SOUND,Consistent with deterministic hint and code logic.,"{
-  ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth location and difference value."",
+  ""reason"": ""The candidate answer matches the ground truth in both value and referent."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
 }"
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16309016393442624, 'difference': 0.20724316939890705}",False,True,"north = df[df['latitude'] gt df['latitude'].median()]
+south = df[df['latitude'] lte df['latitude'].median()]
+result = {label: agg(partition) for label in partitions}
+result = compare(north, south, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher.",SOUND,Ground truth is consistent with deterministic hint and correctly interprets the query.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly interprets the query.""
+}"
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,6,explicit,"Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.","The result is {'latitude': 33.776749, 'longitude': -84.390053, 'z_diff': 11.186000000000002}",False,True,"# PARALLEL_AGGREGATE branches:
+branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].median()
+branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].median()
+merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
+df['z_diff'] = df['z_p99_median'] - df['z_p1_median']
+idx = df['z_diff'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",FAIL,0.0,"Candidate code computes median of percentiles per location then subtracts, but ground truth implies direct per-location (z_p99 - z_p1) difference without aggregating percentiles via median.",SOUND,Ground truth matches deterministic hint and specifies a clear referent: max(z_p99 - z_p1) per location.,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate code computes median of percentiles per location then subtracts, but ground truth implies direct per-location (z_p99 - z_p1) difference without aggregating percentiles via median."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Ground truth matches deterministic hint and specifies a clear referent: max(z_p99 - z_p1) per location.""
+}"
 1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The result is 11.458505525284506,False,True,"df['peak_acceleration_magnitude'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
-result = df['peak_acceleration_magnitude'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly computes the average 3D peak acceleration magnitude using the 99th percentiles of each axis.,SOUND,The ground truth is consistent with the deterministic hint and correctly describes the computation.,"{
+result = df['peak_acceleration_magnitude'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly computes the average 3D peak acceleration magnitude using the 99th percentiles of each axis.,SOUND,Matches deterministic hint and is consistent with the described computation.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value and correctly computes the average 3D peak acceleration magnitude using the 99th percentiles of each axis."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""The ground truth is consistent with the deterministic hint and correctly describes the computation.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the described computation.""
 }"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,The time window starting at 2025-06-06T16:01:00 has mean instability score 5.8690.,False,True,"df['time_window'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
-result = df.groupby('time_window')['instability_score'].mean()
-result = result.idxmax()",PASS,1.0,The candidate answer identifies the same time window and mean instability score as the ground truth.,SOUND,Matches deterministic hint and is consistent with query.,"{
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,"The result is {'bin_60s': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}",False,True,"df['bin_60s'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('60s')
+result = df.groupby('bin_60s')['instability_score'].mean()
+result = result.idxmax()",PASS,1.0,"The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent.",SOUND,Matches deterministic hint and is consistent with the query.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer identifies the same time window and mean instability score as the ground truth."",
+  ""reason"": ""The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with query.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the query.""
 }"
 1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,13,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The result is Logistic regression predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='logistic_regression' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""Logistic regression predicts label 'moderate' for the first holdout row.""",PASS,1.0,Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression.,SOUND,Consistent with deterministic hint and code.,"{
+result = ""Logistic regression predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression.,SOUND,Consistent with deterministic hint and code.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression."",
+  ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"
@@ -74,25 +74,25 @@ result = ""Random forest predicts label 'moderate' for the first holdout row."""
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
 }"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The result is 1-nearest-neighbor predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The result is 1-nearest-neighbor predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
 result = ""1-nearest-neighbor predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and generated code.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
 }"
-1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,16,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The result is Hist gradient boosting predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='hist_gradient_boosting' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
+1,[in_memory_benchmark_run],FLASH_FUSION_CACHE,16,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The result is Hist gradient boosting predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='hist_gradient_boosting' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
 result = ""Hist gradient boosting predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using hist gradient boosting.,SOUND,Consistent with deterministic hint and code.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using hist gradient boosting."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"
-2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance.,SOUND,Consistent with deterministic hint and computed result.,"{
+2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance.,SOUND,Matches deterministic hint and is consistent with typical interpretation of 'maximum' on a numeric column.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value of 5.869 for the maximum accel_variance."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic hint and computed result.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with typical interpretation of 'maximum' on a numeric column.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,2,explicit,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The result is 9.283388022969648,False,True,result = df['accel_mean'].mean(),PASS,1.0,The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples.,SOUND,Matches deterministic sanity hint and is consistent with typical computation of mean.,"{
   ""verdict"": ""PASS"",
@@ -101,53 +101,53 @@ result = ""Hist gradient boosting predicts label 'moderate' for the first holdou
   ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with typical computation of mean.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,3,explicit,List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.,False,"Maximum accel_stats_z_p99 is 16.7020. Timestamps with this value: ['2025-06-06 16:01:13', '2025-06-06 16:01:16', '2025-06-06 16:01:19', '2025-06-06 16:01:22', '2025-06-06 16:01:25', '2025-06-06 16:01:28', '2025-06-06 16:01:31', '2025-06-06 16:01:34', '2025-06-06 16:01:40', '2025-06-06 16:01:43', '2025-06-06 16:01:46', '2025-06-06 16:01:49', '2025-06-06 16:01:52', '2025-06-06 16:01:55', '2025-06-06 16:01:58', '2025-06-06 16:02:01'].","The result is ['2025-06-06T16:01:13', '2025-06-06T16:01:16', '2025-06-06T16:01:19', '2025-06-06T16:01:22', '2025-06-06T16:01:25', '2025-06-06T16:01:28', '2025-06-06T16:01:31', '2025-06-06T16:01:34', '2025-06-06T16:01:40', '2025-06-06T16:01:43', '2025-06-06T16:01:46', '2025-06-06T16:01:49', '2025-06-06T16:01:52', '2025-06-06T16:01:55', '2025-06-06T16:01:58', '2025-06-06T16:02:01']",False,True,"_v = df['accel_stats_z_p99'].max(); df = df[df['accel_stats_z_p99'] == _v]
-result = df['timestamp'].tolist()",PASS,1.0,"Candidate answer lists the same timestamps as the ground truth, with only a superficial difference in timestamp formatting (using 'T' separator).",SOUND,Matches deterministic hint exactly.,"{
+result = df['timestamp'].tolist()",PASS,1.0,"Candidate answer lists the same timestamps as the ground truth, differing only in ISO 8601 formatting ('T' separator), which does not affect factual equivalence.",SOUND,Matches deterministic hint exactly.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer lists the same timestamps as the ground truth, with only a superficial difference in timestamp formatting (using 'T' separator)."",
+  ""reason"": ""Candidate answer lists the same timestamps as the ground truth, differing only in ISO 8601 formatting ('T' separator), which does not affect factual equivalence."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Matches deterministic hint exactly.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,4,explicit,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The result is 352,False,True,"df = df[df['accel_variance'] > 0.2]
-result = len(df)",PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Matches deterministic hint and is consistent with query.,"{
+result = len(df)",PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Consistent with deterministic hint and code logic.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth in both value and referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with query.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
 }"
-2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}",False,True,"northern_half = df[df['latitude'] gt df['latitude'].median()]
-southern_half = df[df['latitude'] lte df['latitude'].median()]
+2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16314121510673235, 'difference': 0.20719211822660094}",False,True,"north = df[df['latitude'] gt df['latitude'].median()]
+south = df[df['latitude'] lt df['latitude'].median()]
 result = {label: agg(partition) for label in partitions}
-result = compare(northern_half, southern_half, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in referent, values, and conclusion.",SOUND,Ground truth is consistent with deterministic hint and correctly interprets the comparison.,"{
+result = compare(north, south, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher.",SOUND,Ground truth is consistent with deterministic hint and correctly interprets the query.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in referent, values, and conclusion."",
+  ""reason"": ""Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly interprets the comparison.""
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly interprets the query.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,6,explicit,"Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.","The result is {'latitude': 33.776749, 'longitude': -84.390053, 'z_diff': 11.186000000000002}",False,True,"# PARALLEL_AGGREGATE branches:
 branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].mean()
 branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].mean()
 merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
 df['z_diff'] = df['z_p99_mean'] - df['z_p1_mean']
-idx = df['z_diff'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",FAIL,0.0,The candidate answer omits the timestamp required by the ground truth and misrepresents the aggregation method by using means instead of raw percentiles.,SOUND,"Ground truth specifies a precise event with location, value, and timestamp; the code incorrectly computes mean percentiles rather than per-location percentile differences.","{
+idx = df['z_diff'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",FAIL,0.0,The candidate answer omits the timestamp required by the ground truth and misrepresents the aggregation logic in the code.,SOUND,"Ground truth includes location, z-difference, and specific timestamp; all are relevant to identifying the exact event.","{
   ""verdict"": ""FAIL"",
-  ""reason"": ""The candidate answer omits the timestamp required by the ground truth and misrepresents the aggregation method by using means instead of raw percentiles."",
+  ""reason"": ""The candidate answer omits the timestamp required by the ground truth and misrepresents the aggregation logic in the code."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth specifies a precise event with location, value, and timestamp; the code incorrectly computes mean percentiles rather than per-location percentile differences.""
+  ""ground_truth_note"": ""Ground truth includes location, z-difference, and specific timestamp; all are relevant to identifying the exact event.""
 }"
-2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The result is 11.458505525284506,False,True,"df['peak_acceleration_magnitude'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
-result = df['peak_acceleration_magnitude'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly reflects the computation of the average 3D peak acceleration magnitude using 99th percentiles.,SOUND,Matches deterministic hint and describes a valid calculation.,"{
+2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The result is 11.458505525284506,False,True,"df['peak_acceleration'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
+result = df['peak_acceleration'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly reflects the computation of the average 3D peak acceleration magnitude using 99th percentiles.,SOUND,Matches deterministic hint and describes a valid statistical aggregation.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value and correctly reflects the computation of the average 3D peak acceleration magnitude using 99th percentiles."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and describes a valid calculation.""
+  ""ground_truth_note"": ""Matches deterministic hint and describes a valid statistical aggregation.""
 }"
-2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,"The result is {'bin_timestamp': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}",False,True,"df['bin_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
+2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,"The result is {'bin_timestamp': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}",False,True,"df['bin_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('60s')
 result = df.groupby('bin_timestamp')['instability_score'].mean()
-result = result.idxmax()",PASS,1.0,"The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent.",SOUND,Matches deterministic hint and is factually consistent.,"{
+result = result.idxmax()",PASS,1.0,"The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent.",SOUND,Matches deterministic sanity hint and is factually consistent.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is factually consistent.""
+  ""ground_truth_note"": ""Matches deterministic sanity hint and is factually consistent.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,13,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The result is Logistic regression predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='logistic_regression' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
 result = ""Logistic regression predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression.,SOUND,Consistent with deterministic hint and code.,"{
@@ -157,16 +157,16 @@ result = ""Logistic regression predicts label 'moderate' for the first holdout r
   ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,14,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,The result is Random forest predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='random_forest' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""Random forest predicts label 'moderate' for the first holdout row.""",PASS,1.0,Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model.,SOUND,Consistent with deterministic hint and generated code.,"{
+result = ""Random forest predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model.,SOUND,Consistent with deterministic hint and code.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model."",
+  ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"
 2,[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The result is 1-nearest-neighbor predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""1-nearest-neighbor predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and generated code.,"{
+result = ""1-nearest-neighbor predicts label 'moderate' for the first holdout row.""",PASS,1.0,Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and generated code.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor."",
+  ""reason"": ""Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
 }"
@@ -177,15 +177,15 @@ result = ""Hist gradient boosting predicts label 'moderate' for the first holdou
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and code output.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,"The candidate answer correctly identifies the maximum accel_variance as 5.869, matching the ground truth.",SOUND,Matches deterministic hint and is consistent with typical interpretation of 'maximum' in this context.,"{
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,1,explicit,What is the maximum accel_variance observed in this dataset?,False,Maximum accel_variance is 5.8690.,The result is 5.869,False,True,result = df['accel_variance'].max(),PASS,1.0,"The candidate answer correctly identifies the maximum accel_variance as 5.869, matching the ground truth.",SOUND,Matches deterministic hint and is consistent with typical interpretation of 'maximum' over a numeric column.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer correctly identifies the maximum accel_variance as 5.869, matching the ground truth."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with typical interpretation of 'maximum' in this context.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with typical interpretation of 'maximum' over a numeric column.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,2,explicit,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The result is 9.283388022969648,False,True,result = df['accel_mean'].mean(),PASS,1.0,The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples.,SOUND,Matches deterministic sanity hint and is consistent with typical computation of mean.,"{
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,2,explicit,What is the average accel_mean across all recorded samples?,False,Average accel_mean across all samples is 9.2834.,The result is 9.283388022969648,False,True,result = df['accel_mean'].mean(),PASS,1.0,Candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples.,SOUND,Matches deterministic sanity hint and is consistent with typical computation of mean.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples."",
+  ""reason"": ""Candidate answer matches the ground truth value of 9.283 for the average accel_mean across all samples."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with typical computation of mean.""
 }"
@@ -197,46 +197,46 @@ result = df['timestamp'].tolist()",PASS,1.0,"Candidate answer lists the same tim
   ""ground_truth_note"": ""Matches deterministic hint exactly.""
 }"
 3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,4,explicit,How many data samples show an accel_variance strictly greater than 0.20?,False,Samples with accel_variance > 0.20: 352.,The result is 352,False,True,"df = df[df['accel_variance'] > 0.2]
-result = len(df)",PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Matches deterministic hint and code logic.,"{
+result = len(df)",PASS,1.0,The candidate answer matches the ground truth in both value and referent.,SOUND,Consistent with deterministic hint and code logic.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth in both value and referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and code logic.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}",False,True,"northern_half = df[df['latitude'] gt df['latitude'].median()]
-southern_half = df[df['latitude'] lte df['latitude'].median()]
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",False,"Median latitude split is 33.776676. North-half mean accel_variance is 0.3699, south-half mean is 0.1631; the northern half is rougher by 0.2068.","The result is {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16314121510673235, 'difference': 0.20719211822660094}",False,True,"north = df[df['latitude'] gt df['latitude'].median()]
+south = df[df['latitude'] lt df['latitude'].median()]
 result = {label: agg(partition) for label in partitions}
-result = compare(northern_half, southern_half, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in referent, values, and conclusion.",SOUND,Ground truth is consistent with deterministic hint and code logic.,"{
+result = compare(north, south, mode='difference')",PASS,1.0,"Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher by 0.207.",SOUND,Ground truth is consistent with deterministic hint and correctly interprets the query.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in referent, values, and conclusion."",
+  ""reason"": ""Candidate answer matches the ground truth in all factual aspects: median split, mean accel_variance values, and conclusion that the northern half is rougher by 0.207."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and code logic.""
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly interprets the query.""
 }"
 3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,6,explicit,"Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",False,"Largest vertical shock (z_p99 - z_p1) is 11.1860 at (33.776765, -84.389963), timestamp 2025-06-06 16:01:13.","The result is {'latitude': 33.776749, 'longitude': -84.390053, 'z_diff': 11.186000000000002}",False,True,"# PARALLEL_AGGREGATE branches:
-branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].mean()
-branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].mean()
+branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].median()
+branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].median()
 merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
-df['z_diff'] = df['z_p99_mean'] - df['z_p1_mean']
-idx = df['z_diff'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",FAIL,0.0,The candidate answer omits the timestamp required by the ground truth and uses an incorrect aggregation method (mean of percentiles instead of per-location percentile difference).,SOUND,"Ground truth specifies a precise event with location, value, and timestamp; the canonical referent includes all three.","{
+df['z_diff'] = df['z_p99_median'] - df['z_p1_median']
+idx = df['z_diff'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()",FAIL,0.0,"Candidate code computes median of percentiles per location then subtracts, but ground truth implies direct per-location (z_p99 - z_p1) difference without aggregating percentiles via median.",SOUND,Ground truth is consistent with deterministic hint and specifies a precise location and value.,"{
   ""verdict"": ""FAIL"",
-  ""reason"": ""The candidate answer omits the timestamp required by the ground truth and uses an incorrect aggregation method (mean of percentiles instead of per-location percentile difference)."",
+  ""reason"": ""Candidate code computes median of percentiles per location then subtracts, but ground truth implies direct per-location (z_p99 - z_p1) difference without aggregating percentiles via median."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth specifies a precise event with location, value, and timestamp; the canonical referent includes all three.""
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and specifies a precise location and value.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The result is 11.458505525284506,False,True,"df['peak_acceleration_magnitude'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
-result = df['peak_acceleration_magnitude'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly reflects the computation of the average 3D peak acceleration magnitude using 99th percentiles.,SOUND,Matches deterministic hint and aligns with the described calculation.,"{
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",False,Average 3D peak acceleration magnitude [sqrt(x_p99^2 + y_p99^2 + z_p99^2)] across all samples is 11.4585.,The result is 11.458505525284506,False,True,"df['peak_accel'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
+result = df['peak_accel'].mean()",PASS,1.0,The candidate answer matches the ground truth value and correctly computes the average 3D peak acceleration magnitude using the 99th percentiles of each axis.,SOUND,Matches deterministic hint and is consistent with the described computation.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth value and correctly reflects the computation of the average 3D peak acceleration magnitude using 99th percentiles."",
+  ""reason"": ""The candidate answer matches the ground truth value and correctly computes the average 3D peak acceleration magnitude using the 99th percentiles of each axis."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and aligns with the described calculation.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the described computation.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,The time window starting at 2025-06-06T16:01:00 has mean instability score 5.8690.,False,True,"df['time_window'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
-result = df.groupby('time_window')['instability_score'].mean()
-result = result.idxmax()",PASS,1.0,The candidate answer identifies the same time window and mean instability score as the ground truth.,SOUND,Matches deterministic hint and is consistent with query.,"{
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,"If we group the data into 1-minute intervals, which time window has the highest mean instability score?",False,The 1-minute window starting at 2025-06-06 16:01:00 had the highest mean instability score of 5.8690.,"The result is {'bin_timestamp': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}",False,True,"df['bin_timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
+result = df.groupby('bin_timestamp')['instability_score'].mean()
+result = result.idxmax()",PASS,1.0,"The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent.",SOUND,Matches deterministic sanity hint and is factually consistent.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer identifies the same time window and mean instability score as the ground truth."",
+  ""reason"": ""The candidate answer correctly identifies the 1-minute window starting at 2025-6-6 16:1:0 with a mean instability score of 5.869, matching the ground truth referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with query.""
+  ""ground_truth_note"": ""Matches deterministic sanity hint and is factually consistent.""
 }"
 3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,13,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Logistic regression predicts behavior 'moderate' for the first holdout row.,The result is Logistic regression predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='logistic_regression' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
 result = ""Logistic regression predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using logistic regression.,SOUND,Consistent with deterministic hint and code.,"{
@@ -246,23 +246,23 @@ result = ""Logistic regression predicts label 'moderate' for the first holdout r
   ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"
 3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,14,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Random forest predicts behavior 'moderate' for the first holdout row.,The result is Random forest predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='random_forest' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""Random forest predicts label 'moderate' for the first holdout row.""",PASS,1.0,Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model.,SOUND,Consistent with deterministic hint and generated code.,"{
+result = ""Random forest predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model.,SOUND,Consistent with deterministic hint and generated code.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model."",
+  ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using a random forest model."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
 }"
-3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The result is 1-nearest-neighbor predicts label '1' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""1-nearest-neighbor predicts label '1' for the first holdout row.""",FAIL,0.0,"The candidate predicts label '1', while the ground truth specifies behavior 'moderate'; these are not factually equivalent referents.",SOUND,"Ground truth is consistent with deterministic hint and specifies a categorical behavior label, not a numeric code.","{
-  ""verdict"": ""FAIL"",
-  ""reason"": ""The candidate predicts label '1', while the ground truth specifies behavior 'moderate'; these are not factually equivalent referents."",
+3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.,The result is 1-nearest-neighbor predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
+result = ""1-nearest-neighbor predicts label 'moderate' for the first holdout row.""",PASS,1.0,Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and generated code.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""Candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using 1-nearest-neighbor."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and specifies a categorical behavior label, not a numeric code.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and generated code.""
 }"
 3,[in_memory_benchmark_run],FLASH_FUSION_CACHE,16,explicit,Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the training rows. Predict the label in the behavior column for the first row in the holdout set.,False,Hist gradient boosting predicts behavior 'moderate' for the first holdout row.,The result is Hist gradient boosting predicts label 'moderate' for the first holdout row.,False,True,"# sort_by=['timestamp'] split=975/1219 model='hist_gradient_boosting' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = ""Hist gradient boosting predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using hist gradient boosting.,SOUND,Consistent with deterministic hint and code output.,"{
+result = ""Hist gradient boosting predicts label 'moderate' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using hist gradient boosting.,SOUND,Consistent with deterministic hint and code.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth in predicting 'moderate' for the first holdout row using hist gradient boosting."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic hint and code output.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and code.""
 }"

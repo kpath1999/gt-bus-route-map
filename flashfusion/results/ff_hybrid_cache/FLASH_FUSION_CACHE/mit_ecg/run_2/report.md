@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-24T20:58:45+00:00
+Generated: 2026-08-25T04:12:32+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             0.9375 |            3.0860 |           0.0003 |
+| FLASH_FUSION_CACHE |             0.8125 |            4.7224 |           0.0003 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                    6.35 | -                          |
+| FLASH_FUSION_CACHE |        16 |       1 | 6%         |                0 |                  4 |                   10.92 | -                          |
 
 ## Per-Query Results
 
@@ -20,18 +20,17 @@ Generated: 2026-08-24T20:58:45+00:00
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'bin_time_s': 110.0, 'count_annotation': 15}
+**Answer:** The result is {'interval_start': 110.0, 'count': 15}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
-- Path: typed_operator_cache
+- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Path: typed_operator
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 4.03s | Cost: $0.00022
+- Latency: 10.92s | Cost: $0.00184
 
 **Agent Trace**
 
 ```
-Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 101]
@@ -42,17 +41,17 @@ Action Input: df = df[df['annotation'].notna() & df['annotation'].astype(str).st
 Observation: rows=1874
 Thought: typed operator step 3 (DERIVE_BIN)
 Action: typed_operator_exec
-Action Input: df['bin_time_s'] = (df['time_s'] // 10.0) * 10.0
-Observation: derived 'bin_time_s' (kind=numeric width=10.0)
+Action Input: df['interval_start'] = (df['time_s'] // 10.0) * 10.0
+Observation: derived 'interval_start' (kind=numeric width=10.0)
 Thought: typed operator step 4 (GROUP_AGGREGATE)
 Action: typed_operator_exec
-Action Input: result = df.groupby('bin_time_s')['annotation'].count()
+Action Input: result = df.groupby('interval_start').size()
 Observation: {'0.0': 12, '10.0': 12, '20.0': 11, '30.0': 13, '40.0': 12, '50.0': 12, '60.0': 11, '70.0': 11, '80.0': 12, '90.0': 12, '100.0': 11, '110.0': 15, '120.0': 13, '130.0': 12, '140.0': 13, '150.0': 12, '160.0': 11, '170.0': 13, '180.0': 11, '190.0': 11, '200.0': 12, '210.0': 11, '220.0': 11, '230.0': 11, '240.0': 10, '250.0': 11, '260.0': 10, '270.0': 11, '280.0': 10, '290.0': 11, '300.0': 10, '310.0': 12, '320.0': 10, '330.0': 11, '340.0': 11, '350.0': 10, '360.0': 11, '370.0': 11, '380.0': 9, '390.0': 10, '400.0': 10, '410.0': 10, '420.0': 10, '430.0': 10, '440.0': 9, '450.0': 10, '460.0': 10, '470.0': 10, '480.0': 10, '490.0': 10, '500.0': 10, '510.0': 10, '520.0': 11, '530.0': 11, '540.0': 10, '550.0': 11, '560.0': 10, '570.0': 10, '580.0': 10, '590.0': 10, '600.0': 10, '610.0': 10, '620.0': 10, '630.0': 10, '640.0': 10, '650.0': 9, '660.0': 10, '670.0': 10, '680.0': 10, '690.0': 10, '700.0': 10, '710.0': 9, '720.0': 10, '730.0': 10, '740.0': 10, '750.0': 10, '760.0': 10, '770.0': 10, '780.0': 9, '790.0': 10, '800.0': 10, '810.0': 10, '820.0': 10, '830.0': 11, '840.0': 9, '850.0': 10, '860.0': 10, '870.0': 11, '880.0': 10, '890.0': 10, '900.0': 11, '910.0': 10, '920.0': 10, '930.0': 11, '940.0': 10, '950.0': 10, '960.0': 10, '970.0': 12, '980.0': 10, '990.0': 10, '1000.0': 10, '1010.0': 11, '1020.0': 10, '1030.0': 10, '1040.0': 10, '1050.0': 10, '1060.0': 10, '1070.0': 11, '1080.0': 10, '1090.0': 10, '1100.0': 10, '1110.0': 10, '1120.0': 10, '1130.0': 10, '1140.0': 10, '1150.0': 10, '1160.0': 10, '1170.0': 10, '1180.0': 10, '1190.0': 10, '1200.0': 11, '1210.0': 10, '1220.0': 10, '1230.0': 11, '1240.0': 10, '1250.0': 10, '1260.0': 11, '1270.0': 10, '1280.0': 10, '1290.0': 11, '1300.0': 10, '1310.0': 10, '1320.0': 11, '1330.0': 10, '1340.0': 10, '1350.0': 10, '1360.0': 11, '1370.0': 10, '1380.0': 11, '1390.0': 11, '1400.0': 11, '1410.0': 10, '1420.0': 10, '1430.0': 10, '1440.0': 10, '1450.0': 10, '1460.0': 10, '1470.0': 10, '1480.0': 10, '1490.0': 10, '1500.0': 10, '1510.0': 10, '1520.0': 10, '1530.0': 10, '1540.0': 10, '1550.0': 10, '1560.0': 10, '1570.0': 10, '1580.0': 10, '1590.0': 10, '1600.0': 10, '1610.0': 9, '1620.0': 10, '1630.0': 10, '1640.0': 11, '1650.0': 10, '1660.0': 10, '1670.0': 10, '1680.0': 11, '1690.0': 10, '1700.0': 10, '1710.0': 10, '1720.0': 10, '1730.0': 10, '1740.0': 10, '1750.0': 10, '1760.0': 9, '1770.0': 11, '1780.0': 10, '1790.0': 10, '1800.0': 5}
 Thought: typed operator step 5 (RANK_GROUPS)
 Action: typed_operator_exec
 Action Input: result = result.idxmax()
-Observation: {'bin_time_s': 110.0, 'count_annotation': 15}
-Final Answer: {'bin_time_s': 110.0, 'count_annotation': 15}
+Observation: {'interval_start': 110.0, 'count': 15}
+Final Answer: {'interval_start': 110.0, 'count': 15}
 ```
 
 **Final Code Executed**
@@ -60,8 +59,8 @@ Final Answer: {'bin_time_s': 110.0, 'count_annotation': 15}
 ```python
 df = df[df['record_id'] == 101]
 df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
-df['bin_time_s'] = (df['time_s'] // 10.0) * 10.0
-result = df.groupby('bin_time_s')['annotation'].count()
+df['interval_start'] = (df['time_s'] // 10.0) * 10.0
+result = df.groupby('interval_start').size()
 result = result.idxmax()
 ```
 
@@ -77,7 +76,7 @@ result = result.idxmax()
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.20s | Cost: $0.00020
+- Latency: 7.10s | Cost: $0.00022
 
 **Agent Trace**
 
@@ -110,7 +109,7 @@ result = "Hist gradient boosting predicts label '0' for the first holdout row."
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 3.11s | Cost: $0.00019
+- Latency: 2.83s | Cost: $0.00020
 
 **Agent Trace**
 
@@ -140,17 +139,17 @@ result = df['MLII'].rms()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about fatal cardiac events.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating fatal cardiac events.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.01s | Cost: $0.00003
+- Latency: 2.28s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about fatal cardiac events.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating fatal cardiac events.
 ```
 
 ---
@@ -165,7 +164,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.37s | Cost: $0.00018
+- Latency: 2.76s | Cost: $0.00020
 
 **Agent Trace**
 
@@ -195,13 +194,13 @@ result = df['time_s'].max()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'record_id': 116, 'diff_MLII': 10.235}
+**Answer:** The result is {'record_id': 106, 'diff_MLII': 4.635}
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PARALLEL_AGGREGATE,DERIVE_BINARY,RANK_ROWS
-- Latency: 4.71s | Cost: $0.00022
+- Latency: 5.64s | Cost: $0.00025
 
 **Agent Trace**
 
@@ -210,26 +209,30 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PARALLEL_AGGREGATE)
 Action: typed_operator_exec
 Action Input: # PARALLEL_AGGREGATE branches:
+# Branch 0: filter 'record_id' in [106]
 branch_0 = df.groupby(['record_id'])['MLII'].max()
+# Branch 1: filter 'record_id' in [106]
 branch_1 = df.groupby(['record_id'])['MLII'].min()
 merged = branch_0.merge(branch_1, on=['record_id'], how='outer').fillna(0)
-Observation: {'groups': 40, 'columns': ['record_id', 'max_MLII', 'min_MLII']}
+Observation: {'groups': 1, 'columns': ['record_id', 'max_MLII', 'min_MLII']}
 Thought: typed operator step 2 (DERIVE_BINARY)
 Action: typed_operator_exec
 Action Input: df['diff_MLII'] = df['max_MLII'] - df['min_MLII']
-Observation: derived 'diff_MLII' (rows=40)
+Observation: derived 'diff_MLII' (rows=1)
 Thought: typed operator step 3 (RANK_ROWS)
 Action: typed_operator_exec
 Action Input: idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()
-Observation: {'record_id': 116, 'diff_MLII': 10.235}
-Final Answer: {'record_id': 116, 'diff_MLII': 10.235}
+Observation: {'record_id': 106, 'diff_MLII': 4.635}
+Final Answer: {'record_id': 106, 'diff_MLII': 4.635}
 ```
 
 **Final Code Executed**
 
 ```python
 # PARALLEL_AGGREGATE branches:
+# Branch 0: filter 'record_id' in [106]
 branch_0 = df.groupby(['record_id'])['MLII'].max()
+# Branch 1: filter 'record_id' in [106]
 branch_1 = df.groupby(['record_id'])['MLII'].min()
 merged = branch_0.merge(branch_1, on=['record_id'], how='outer').fillna(0)
 df['diff_MLII'] = df['max_MLII'] - df['min_MLII']
@@ -242,30 +245,31 @@ idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Random forest predicts present '0' for the first holdout row.
+**Answer:** The result is Random forest predicts + '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 7.72s | Cost: $0.00139
+- Latency: 11.42s | Cost: $0.00023
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
-result = "Random forest predicts present '0' for the first holdout row."
-Observation: Random forest predicts present '0' for the first holdout row.
-Final Answer: Random forest predicts present '0' for the first holdout row.
+result = "Random forest predicts + '0' for the first holdout row."
+Observation: Random forest predicts + '0' for the first holdout row.
+Final Answer: Random forest predicts + '0' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
-result = "Random forest predicts present '0' for the first holdout row."
+result = "Random forest predicts + '0' for the first holdout row."
 ```
 
 ---
@@ -277,14 +281,15 @@ result = "Random forest predicts present '0' for the first holdout row."
 **Answer:** The result is 98.06451612903226
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,DERIVE_BIN,GROUP_AGGREGATE,AGGREGATE_GROUPS
-- Latency: 4.98s | Cost: $0.00169
+- Latency: 4.83s | Cost: $0.00025
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
 Action Input: df = df[df['record_id'] == 208]
@@ -295,11 +300,11 @@ Action Input: df = df[df['annotation'].notna() & df['annotation'].astype(str).st
 Observation: rows=3040
 Thought: typed operator step 3 (DERIVE_BIN)
 Action: typed_operator_exec
-Action Input: df['time_bin_60s'] = (df['time_s'] // 60.0) * 60.0
-Observation: derived 'time_bin_60s' (kind=numeric width=60.0)
+Action Input: df['bin_time_s'] = (df['time_s'] // 60.0) * 60.0
+Observation: derived 'bin_time_s' (kind=numeric width=60.0)
 Thought: typed operator step 4 (GROUP_AGGREGATE)
 Action: typed_operator_exec
-Action Input: result = df.groupby('time_bin_60s').size()
+Action Input: result = df.groupby('bin_time_s')['annotation'].count()
 Observation: {'0.0': 111, '60.0': 105, '120.0': 106, '180.0': 109, '240.0': 106, '300.0': 109, '360.0': 108, '420.0': 95, '480.0': 94, '540.0': 97, '600.0': 101, '660.0': 98, '720.0': 95, '780.0': 98, '840.0': 99, '900.0': 103, '960.0': 97, '1020.0': 97, '1080.0': 94, '1140.0': 106, '1200.0': 112, '1260.0': 103, '1320.0': 103, '1380.0': 107, '1440.0': 103, '1500.0': 108, '1560.0': 93, '1620.0': 93, '1680.0': 89, '1740.0': 92, '1800.0': 9}
 Thought: typed operator step 5 (AGGREGATE_GROUPS)
 Action: typed_operator_exec
@@ -313,8 +318,8 @@ Final Answer: 98.06451612903226
 ```python
 df = df[df['record_id'] == 208]
 df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
-df['time_bin_60s'] = (df['time_s'] // 60.0) * 60.0
-result = df.groupby('time_bin_60s').size()
+df['bin_time_s'] = (df['time_s'] // 60.0) * 60.0
+result = df.groupby('bin_time_s')['annotation'].count()
 result = result.mean()
 ```
 
@@ -330,7 +335,7 @@ result = result.mean()
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 3.01s | Cost: $0.00018
+- Latency: 3.22s | Cost: $0.00021
 
 **Agent Trace**
 
@@ -365,7 +370,7 @@ result = df['MLII'].min()
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: semantic_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.54s | Cost: $0.00003
+- Latency: 3.47s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -379,13 +384,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 1-nearest-neighbor predicts label '0' for the first holdout row.
+**Answer:** The result is 1-nearest-neighbor predicts label '' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.99s | Cost: $0.00020
+- Latency: 4.27s | Cost: $0.00023
 
 **Agent Trace**
 
@@ -393,17 +398,17 @@ Rejected by the guardrail because the query cannot be answered from available da
 Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
-result = "1-nearest-neighbor predicts label '0' for the first holdout row."
-Observation: 1-nearest-neighbor predicts label '0' for the first holdout row.
-Final Answer: 1-nearest-neighbor predicts label '0' for the first holdout row.
+Action Input: # sort_by=['time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
+result = "1-nearest-neighbor predicts label '' for the first holdout row."
+Observation: 1-nearest-neighbor predicts label '' for the first holdout row.
+Final Answer: 1-nearest-neighbor predicts label '' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
-# sort_by=['record_id', 'time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
-result = "1-nearest-neighbor predicts label '0' for the first holdout row."
+# sort_by=['time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
+result = "1-nearest-neighbor predicts label '' for the first holdout row."
 ```
 
 ---
@@ -417,7 +422,7 @@ result = "1-nearest-neighbor predicts label '0' for the first holdout row."
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.03s | Cost: $0.00003
+- Latency: 2.30s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -431,13 +436,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Logistic regression predicts label '' for the first holdout row.
+**Answer:** The result is Logistic regression predicts label '0' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.03s | Cost: $0.00019
+- Latency: 3.68s | Cost: $0.00022
 
 **Agent Trace**
 
@@ -445,17 +450,17 @@ Rejected by the guardrail because the query cannot be answered from available da
 Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
-Action Input: # sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts label '' for the first holdout row."
-Observation: Logistic regression predicts label '' for the first holdout row.
-Final Answer: Logistic regression predicts label '' for the first holdout row.
+Action Input: # sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
+result = "Logistic regression predicts label '0' for the first holdout row."
+Observation: Logistic regression predicts label '0' for the first holdout row.
+Final Answer: Logistic regression predicts label '0' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
-# sort_by=['time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = "Logistic regression predicts label '' for the first holdout row."
+# sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
+result = "Logistic regression predicts label '0' for the first holdout row."
 ```
 
 ---
@@ -464,17 +469,17 @@ result = "Logistic regression predicts label '' for the first holdout row."
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating patient BMI.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating BMI.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.01s | Cost: $0.00003
+- Latency: 2.81s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating patient BMI.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating BMI.
 ```
 
 ---
@@ -489,7 +494,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,COUNT_ROWS
-- Latency: 3.54s | Cost: $0.00019
+- Latency: 3.56s | Cost: $0.00021
 
 **Agent Trace**
 
@@ -497,11 +502,11 @@ Rejected by the guardrail because the query cannot be answered from available da
 Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['MLII'] > 0]
-Observation: rows=3705674
+Action Input: df = df[df['record_id'] == 106]
+Observation: rows=650000
 Thought: typed operator step 2 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['record_id'] == 106]
+Action Input: df = df[df['MLII'] > 0]
 Observation: rows=111769
 Thought: typed operator step 3 (COUNT_ROWS)
 Action: typed_operator_exec
@@ -513,8 +518,8 @@ Final Answer: 111769
 **Final Code Executed**
 
 ```python
-df = df[df['MLII'] > 0]
 df = df[df['record_id'] == 106]
+df = df[df['MLII'] > 0]
 result = len(df)
 ```
 
@@ -524,13 +529,13 @@ result = len(df)
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 1805.0277777777776
+**Answer:** The result is 1801.8416666666667
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_NOT_EMPTY,AGGREGATE_COLUMN
-- Latency: 2.10s | Cost: $0.00019
+- Latency: 4.47s | Cost: $0.00022
 
 **Agent Trace**
 
@@ -538,24 +543,24 @@ result = len(df)
 Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['record_id'] == 221]
-Observation: rows=650000
+Action Input: df = df[df['annotation'] == '+']
+Observation: rows=1221
 Thought: typed operator step 2 (FILTER_NOT_EMPTY)
 Action: typed_operator_exec
-Action Input: df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
-Observation: rows=2462
+Action Input: df = df[df['time_s'].notna() & df['time_s'].astype(str).str.strip().ne('')]
+Observation: rows=1221
 Thought: typed operator step 3 (AGGREGATE_COLUMN)
 Action: typed_operator_exec
 Action Input: result = df['time_s'].max()
-Observation: 1805.0277777777776
-Final Answer: 1805.0277777777776
+Observation: 1801.8416666666667
+Final Answer: 1801.8416666666667
 ```
 
 **Final Code Executed**
 
 ```python
-df = df[df['record_id'] == 221]
-df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
+df = df[df['annotation'] == '+']
+df = df[df['time_s'].notna() & df['time_s'].astype(str).str.strip().ne('')]
 result = df['time_s'].max()
 ```
 

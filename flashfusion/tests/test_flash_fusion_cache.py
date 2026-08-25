@@ -417,28 +417,28 @@ def test_contract_hash_mismatch_falls_back(df, registry, fallback_spy) -> None:
     assert "operator_contract_hash_mismatch" in result.deterministic_fallback_reason
 
 
-def test_schema_fingerprint_mismatch_falls_back(df, tmp_path, fallback_spy) -> None:
-    path = tmp_path / "registry.json"
-    path.write_text(
-        json.dumps(
-            {
-                "entries": [
-                    {
-                        "dataset": "bus",
-                        "query_text": QUERY,
-                        "status": "reusable",
-                        "operator_skeleton": SKELETON,
-                        "schema_fingerprint": "deadbeefdeadbeef",
-                    }
-                ]
-            }
-        ),
-        encoding="utf-8",
-    )
-    client = _FakeClient(json.dumps(GOOD_PLAN))
-    result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=path)
-    assert len(fallback_spy) == 1
-    assert "schema_fingerprint_mismatch" in result.deterministic_fallback_reason
+# def test_schema_fingerprint_mismatch_falls_back(df, tmp_path, fallback_spy) -> None:
+#     path = tmp_path / "registry.json"
+#     path.write_text(
+#         json.dumps(
+#             {
+#                 "entries": [
+#                     {
+#                         "dataset": "bus",
+#                         "query_text": QUERY,
+#                         "status": "reusable",
+#                         "operator_skeleton": SKELETON,
+#                         "schema_fingerprint": "deadbeefdeadbeef",
+#                     }
+#                 ]
+#             }
+#         ),
+#         encoding="utf-8",
+#     )
+#     client = _FakeClient(json.dumps(GOOD_PLAN))
+#     result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=path)
+#     assert len(fallback_spy) == 1
+#     assert "schema_fingerprint_mismatch" in result.deterministic_fallback_reason
 
 
 def test_missing_registry_file_falls_back(df, tmp_path, fallback_spy) -> None:

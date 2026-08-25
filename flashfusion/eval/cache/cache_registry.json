@@ -1484,7 +1484,7 @@
       "query_text": "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "3e2dc640c05be9c3",
+      "schema_fingerprint": "8a468207a2c8d18a",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -1829,7 +1829,7 @@
       "query_text": "What is the average y-acceleration of user 5 with activity label Sitting?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -2184,7 +2184,7 @@
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "unknown",
         "aggregate": null,
@@ -2267,7 +2267,7 @@
         "RANK_ROWS"
       ],
       "query_text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2483,7 +2483,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "In record_id 101, Tell me which 10-second interval contains the highest number of annotated beats?",
-      "schema_fingerprint": "3e2dc640c05be9c3",
+      "schema_fingerprint": "8a468207a2c8d18a",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2842,6 +2842,91 @@
           "model": null,
           "target_column": null,
           "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "FILTER_EQ_AGGREGATE",
+        "SELECT_COLUMN"
+      ],
+      "query_text": "List every timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_stats_z_p99"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "list",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "hist_gradient_boosting",
+          "target_column": null,
+          "train_fraction": 0.8
         }
       },
       "status": "reusable"

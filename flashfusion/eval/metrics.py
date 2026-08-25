@@ -245,6 +245,7 @@ def aggregate_metrics(
                         r.execution_path == "typed_operator_cache"
                         or r.plan_source.startswith("exact_query_cache_")
                         or r.plan_source.startswith("semantic_cache_")
+                        or r.plan_source.startswith("semantic_query_cache_")
                     )
                     else "miss"
                     if r.baseline == "FLASH_FUSION_CACHE"

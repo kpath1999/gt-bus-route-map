@@ -13,13 +13,13 @@ result = df['time_s'].max()",PASS,1.0,The candidate answer matches the ground tr
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with the query's intent.""
 }"
-[in_memory_benchmark_run],FLASH_FUSION_CACHE,3,explicit,"For record_id 106, how many samples have MLII > 0?",False,record_id 106 has 111769 samples with MLII > 0.,The result is 111769,False,True,"df = df[df['record_id'] == 106]
-df = df[df['MLII'] > 0]
-result = len(df)",PASS,1.0,Candidate answer matches the ground truth value of 111769 samples for record_id 106 with MLII > 0.,SOUND,Matches deterministic hint and is consistent with the query.,"{
+[in_memory_benchmark_run],FLASH_FUSION_CACHE,3,explicit,"For record_id 106, how many samples have MLII > 0?",False,record_id 106 has 111769 samples with MLII > 0.,The result is 111769,False,True,"df = df[df['MLII'] > 0]
+df = df[df['record_id'] == 106]
+result = len(df)",PASS,1.0,Candidate answer matches the ground truth value of 111769 samples for record_id 106 with MLII > 0.,SOUND,Matches deterministic sanity hint and is consistent with query.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""Candidate answer matches the ground truth value of 111769 samples for record_id 106 with MLII > 0."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the query.""
+  ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with query.""
 }"
 [in_memory_benchmark_run],FLASH_FUSION_CACHE,4,explicit,What is the timestamp (time_s) of the last annotated beat for record_id 221?,False,The last annotated beat in record_id 221 occurs at time_s = 1805.027778.,The result is 1805.0277777777776,False,True,"df = df[df['record_id'] == 221]
 df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
@@ -31,24 +31,24 @@ result = df['time_s'].max()",PASS,1.0,The candidate answer matches the ground tr
 }"
 [in_memory_benchmark_run],FLASH_FUSION_CACHE,5,explicit,"For record_id 208, what is the average count of rows with a non-empty annotation in each 60-second time_s bin?",False,"For record_id 208, the average annotation count per 60-s time_s is 98.064516.",The result is 98.06451612903226,False,True,"df = df[df['record_id'] == 208]
 df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
-df['time_bin_60s'] = (df['time_s'] // 60.0) * 60.0
-result = df.groupby('time_bin_60s').size()
-result = result.mean()",PASS,1.0,"The candidate answer matches the ground truth value of 98.065, and the code correctly computes the average count of non-empty annotation rows per 60-second time bin for record_id 208.",SOUND,Matches deterministic sanity hint and is consistent with the query's intent.,"{
+df['bin_time_s'] = (df['time_s'] // 60.0) * 60.0
+result = df.groupby('bin_time_s')['annotation'].count()
+result = result.mean()",PASS,1.0,"The candidate answer matches the ground truth value of 98.065, and the generated code correctly computes the average count of non-empty annotations per 60-second bin for record_id 208.",SOUND,Consistent with deterministic hint and correctly reflects the described computation.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth value of 98.065, and the code correctly computes the average count of non-empty annotation rows per 60-second time bin for record_id 208."",
+  ""reason"": ""The candidate answer matches the ground truth value of 98.065, and the generated code correctly computes the average count of non-empty annotations per 60-second bin for record_id 208."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic sanity hint and is consistent with the query's intent.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and correctly reflects the described computation.""
 }"
 [in_memory_benchmark_run],FLASH_FUSION_CACHE,6,explicit,Which record_id exhibits the largest difference between maximum and minimum MLII?,False,record_id 116 has the largest peak-to-peak MLII amplitude at 10.2350.,"The result is {'record_id': 116, 'diff_MLII': 10.235}",False,True,"# PARALLEL_AGGREGATE branches:
 branch_0 = df.groupby(['record_id'])['MLII'].max()
 branch_1 = df.groupby(['record_id'])['MLII'].min()
 merged = branch_0.merge(branch_1, on=['record_id'], how='outer').fillna(0)
 df['diff_MLII'] = df['max_MLII'] - df['min_MLII']
-idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()",PASS,1.0,"Candidate answer identifies record_id 116 with a peak-to-peak MLII difference of 10.235, matching the ground truth referent.",SOUND,Ground truth is consistent with deterministic hint and correctly specifies record_id and amplitude.,"{
+idx = df['diff_MLII'].idxmax(); result = df.loc[idx, ['record_id']].to_dict()",PASS,1.0,"Candidate answer correctly identifies record_id 116 with peak-to-peak MLII amplitude 10.235, matching the ground truth referent.",SOUND,Ground truth is consistent with deterministic hint and plausible.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""Candidate answer identifies record_id 116 with a peak-to-peak MLII difference of 10.235, matching the ground truth referent."",
+  ""reason"": ""Candidate answer correctly identifies record_id 116 with peak-to-peak MLII amplitude 10.235, matching the ground truth referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and correctly specifies record_id and amplitude.""
+  ""ground_truth_note"": ""Ground truth is consistent with deterministic hint and plausible.""
 }"
 [in_memory_benchmark_run],FLASH_FUSION_CACHE,7,explicit,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.","The result is {'interval_start': 110.0, 'count': 15}",False,True,"df = df[df['record_id'] == 101]
 df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
@@ -61,37 +61,37 @@ result = result.idxmax()",PASS,1.0,"The candidate answer identifies the same 10-
   ""ground_truth_note"": ""Matches deterministic hint and is factually consistent.""
 }"
 [in_memory_benchmark_run],FLASH_FUSION_CACHE,8,explicit,Calculate the root mean square (RMS) of the MLII signal for record_id 106.,False,The RMS of the MLII signal for record_id 106 is 0.4088.,The result is 0.40876962488762447,False,True,"df = df[df['record_id'] == 106]
-result = df['MLII'].rms()",PASS,1.0,The candidate answer matches the ground truth value of 0.409 for the RMS of the MLII signal for record_id 106.,SOUND,Consistent with deterministic sanity hint and plausible RMS value.,"{
+result = df['MLII'].rms()",PASS,1.0,The candidate answer matches the ground truth value of 0.409 for the RMS of the MLII signal for record_id 106.,SOUND,Consistent with deterministic hint and plausible RMS value.,"{
   ""verdict"": ""PASS"",
   ""reason"": ""The candidate answer matches the ground truth value of 0.409 for the RMS of the MLII signal for record_id 106."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic sanity hint and plausible RMS value.""
+  ""ground_truth_note"": ""Consistent with deterministic hint and plausible RMS value.""
 }"
-[in_memory_benchmark_run],FLASH_FUSION_CACHE,13,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Logistic regression predicts annotation '0' for the first holdout row.,The result is Logistic regression predicts label '' for the first holdout row.,False,True,"# sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
-result = ""Logistic regression predicts label '' for the first holdout row.""",FAIL,0.0,"Candidate answer omits the predicted label ('0'), making it factually incomplete compared to the ground truth.",SOUND,Ground truth is consistent with sanity hint and specifies a clear prediction ('0').,"{
+[in_memory_benchmark_run],FLASH_FUSION_CACHE,13,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Logistic regression predicts annotation '0' for the first holdout row.,The result is Logistic regression predicts + '0' for the first holdout row.,False,True,"# sort_by=['record_id', 'time_s'] split=520000/650000 model='logistic_regression' features=['MLII', 'V1']
+result = ""Logistic regression predicts + '0' for the first holdout row.""",PASS,1.0,The candidate answer conveys the same factual prediction ('0') as the ground truth despite minor phrasing differences.,SOUND,Matches deterministic hint and is consistent with expected output.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer conveys the same factual prediction ('0') as the ground truth despite minor phrasing differences."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with expected output.""
+}"
+[in_memory_benchmark_run],FLASH_FUSION_CACHE,14,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Random forest predicts annotation '0' for the first holdout row.,The result is Random forest predicts label '' for the first holdout row.,False,True,"# sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
+result = ""Random forest predicts label '' for the first holdout row.""",FAIL,0.0,"Candidate answer omits the predicted annotation value ('0'), leaving an empty label, which fails to match the ground truth's specific prediction.",SOUND,Ground truth is consistent with sanity hint and specifies a clear prediction ('0').,"{
   ""verdict"": ""FAIL"",
-  ""reason"": ""Candidate answer omits the predicted label ('0'), making it factually incomplete compared to the ground truth."",
+  ""reason"": ""Candidate answer omits the predicted annotation value ('0'), leaving an empty label, which fails to match the ground truth's specific prediction."",
   ""ground_truth_sanity"": ""SOUND"",
   ""ground_truth_note"": ""Ground truth is consistent with sanity hint and specifies a clear prediction ('0').""
 }"
-[in_memory_benchmark_run],FLASH_FUSION_CACHE,14,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Random forest predicts annotation '0' for the first holdout row.,The result is Random forest predicts present '0' for the first holdout row.,False,True,"# sort_by=['time_s'] split=520000/650000 model='random_forest' features=['MLII', 'V1']
-result = ""Random forest predicts present '0' for the first holdout row.""",PASS,1.0,"The candidate answer conveys the same factual prediction ('0') for the first holdout row as the ground truth, despite minor phrasing differences.",SOUND,Matches deterministic hint and is consistent with the task.,"{
-  ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer conveys the same factual prediction ('0') for the first holdout row as the ground truth, despite minor phrasing differences."",
+[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,1-nearest-neighbor predicts annotation '0' for the first holdout row.,The result is 1-nearest-neighbor predicts label '' for the first holdout row.,False,True,"# sort_by=['time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
+result = ""1-nearest-neighbor predicts label '' for the first holdout row.""",FAIL,0.0,"Candidate answer omits the predicted annotation value ('0'), leaving an empty label, which changes the factual content.",SOUND,Ground truth is consistent with sanity hint and specifies a concrete prediction ('0').,"{
+  ""verdict"": ""FAIL"",
+  ""reason"": ""Candidate answer omits the predicted annotation value ('0'), leaving an empty label, which changes the factual content."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Matches deterministic hint and is consistent with the task.""
+  ""ground_truth_note"": ""Ground truth is consistent with sanity hint and specifies a concrete prediction ('0').""
 }"
-[in_memory_benchmark_run],FLASH_FUSION_CACHE,15,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,1-nearest-neighbor predicts annotation '0' for the first holdout row.,The result is 1-nearest-neighbor predicts label '0' for the first holdout row.,False,True,"# sort_by=['record_id', 'time_s'] split=520000/650000 model='one_nearest_neighbor' features=['MLII', 'V1']
-result = ""1-nearest-neighbor predicts label '0' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting annotation '0' for the first holdout row using 1-nearest-neighbor.,SOUND,Consistent with deterministic hint and code logic.,"{
+[in_memory_benchmark_run],FLASH_FUSION_CACHE,16,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Hist gradient boosting predicts annotation '0' for the first holdout row.,The result is Hist gradient boosting predicts present '0' for the first holdout row.,False,True,"# sort_by=['time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
+result = ""Hist gradient boosting predicts present '0' for the first holdout row.""",PASS,1.0,"The candidate answer conveys the same factual prediction ('0') for the first holdout row using hist gradient boosting, matching the ground truth referent.",SOUND,Matches deterministic hint and is consistent with query specification.,"{
   ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth in predicting annotation '0' for the first holdout row using 1-nearest-neighbor."",
+  ""reason"": ""The candidate answer conveys the same factual prediction ('0') for the first holdout row using hist gradient boosting, matching the ground truth referent."",
   ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
-}"
-[in_memory_benchmark_run],FLASH_FUSION_CACHE,16,explicit,Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.,False,Hist gradient boosting predicts annotation '0' for the first holdout row.,The result is Hist gradient boosting predicts label '0' for the first holdout row.,False,True,"# sort_by=['record_id', 'time_s'] split=520000/650000 model='hist_gradient_boosting' features=['MLII', 'V1']
-result = ""Hist gradient boosting predicts label '0' for the first holdout row.""",PASS,1.0,The candidate answer matches the ground truth in predicting label '0' for the first holdout row using hist gradient boosting.,SOUND,Consistent with deterministic hint and code logic.,"{
-  ""verdict"": ""PASS"",
-  ""reason"": ""The candidate answer matches the ground truth in predicting label '0' for the first holdout row using hist gradient boosting."",
-  ""ground_truth_sanity"": ""SOUND"",
-  ""ground_truth_note"": ""Consistent with deterministic hint and code logic.""
+  ""ground_truth_note"": ""Matches deterministic hint and is consistent with query specification.""
 }"
