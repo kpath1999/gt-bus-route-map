@@ -70,13 +70,12 @@ DEFAULT_BASELINES = ["FLASH_FUSION"]
 # ---------------------------------------------------------------------------
 # Visualization constants
 # ---------------------------------------------------------------------------
-_STAGE_KEYS: tuple[str, ...] = ("s1", "s2", "s3", "guardrail", "agent")
+_STAGE_KEYS: tuple[str, ...] = ("guardrail", "typed_exec", "agent")
 _STAGE_LABELS: dict[str, str] = {
-    "s1": "Stage 1", "s2": "Stage 2", "s3": "Stage 3", "guardrail": "Guardrail", "agent": "Agent",
+    "guardrail": "Guardrail", "typed_exec": "Typed Exec", "agent": "Agent",
 }
 _STAGE_COLORS: dict[str, str] = {
-    "s1": "#2c8c4a", "s2": "#2f6ad9", "s3": "#f28e2b",
-    "guardrail": "#d62728", "agent": "#9467bd",
+    "guardrail": "#d62728", "typed_exec": "#f28e2b", "agent": "#9467bd",
 }
 _DATASET_COLORS: dict[str, str] = {
     "wisdm": "#2f6ad9", "mit_ecg": "#f28e2b", "bus": "#2c8c4a",

@@ -304,16 +304,25 @@ def _record(trace: CacheGroundingTrace | None, **fields: Any) -> None:
 
 
 def _accounted_light_latency(client: LLMClient, started: float) -> float:
-    """Use only the final successful provider-attempt duration when available."""
-    light = getattr(client, "light", None) or client
-    latency = getattr(light, "last_invocation_latency_s", None)
-    if isinstance(latency, (int, float)) and latency >= 0:
-        return float(latency)
+    """Return full wall-clock elapsed latency for the light-model stage."""
     return time.perf_counter() - started
 
 
+def _light_retry_overhead_s(client: LLMClient) -> float:
+    """Return provider retry/backoff overhead for the most recent light call."""
+    light = getattr(client, "light", None) or client
+    overhead = getattr(light, "last_retry_overhead_s", None)
+    if isinstance(overhead, (int, float)) and overhead >= 0:
+        return float(overhead)
+    return 0.0
+
+
 def _accounted_cache_latency(stage_latency: dict[str, float]) -> float:
-    return sum(float(value) for value in stage_latency.values())
+    return sum(
+        float(value)
+        for name, value in stage_latency.items()
+        if name != "cache_retry_overhead"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1088,6 +1097,7 @@ def _execute_grounded_cache_entry(
         raw_plan = _invoke_light_for_plan(client, prompt, trace)
     finally:
         stage_latency["cache_grounding"] += _accounted_light_latency(client, grounding_started)
+        stage_latency["cache_retry_overhead"] += _light_retry_overhead_s(client)
     validation_started = time.perf_counter()
     try:
         raw_plan = _apply_grounding_semantic_guards(raw_plan, query, df=df)
@@ -1625,6 +1635,7 @@ def run_flash_fusion_cache(
     stage_latency.setdefault("cache_validation", 0.0)
     stage_latency.setdefault("typed_exec", 0.0)
     stage_latency.setdefault("cache_rejection", 0.0)
+    stage_latency.setdefault("cache_retry_overhead", 0.0)
     result.stage_latency_s = stage_latency
     started = time.perf_counter()
     _record(
@@ -1702,6 +1713,7 @@ def run_flash_fusion_cache(
                 stage_latency["cache_rejection"] += _accounted_light_latency(
                     client, grounding_started
                 )
+                stage_latency["cache_retry_overhead"] += _light_retry_overhead_s(client)
             _append_stage(result, "cache_rejection_reason_ready")
             _set_if_present(result, "rejected", True)
             _set_if_present(result, "executed", False)

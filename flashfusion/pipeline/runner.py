@@ -445,14 +445,9 @@ class RunResult:
     normalization_version: str = ""
     missing_columns: list = field(default_factory=list)  # schema fields the query needs but the dataset lacks
 
-    # Fast-path versus full-planner telemetry (Flash-Fusion only). These remain
-    # zero/False for all other baselines and for calls that fail before usage is
-    # reported by the provider.
-    ff_fast_path_used: bool = False
-    ff_fast_path_latency_s: float = 0.0
-    ff_fast_path_input_tokens: int = 0
-    ff_fast_path_output_tokens: int = 0
-    ff_fast_path_cost_usd: float = 0.0
+    # Full-planner telemetry (Flash-Fusion only). These remain zero/False for
+    # all other baselines and for calls that fail before usage is reported by
+    # the provider.
     ff_planner_used: bool = False
     ff_planner_latency_s: float = 0.0
     ff_planner_input_tokens: int = 0
@@ -482,7 +477,9 @@ class RunResult:
     s3_synthesis_hint: str = ""                          # Stage 3 synthesis guidance string
 
     # Stage latency telemetry (seconds)
-    stage_latency_s: dict = field(default_factory=dict)   # canonical keys: s1,s2,s3,guardrail+plan,agent
+    stage_latency_s: dict = field(default_factory=dict)   # canonical keys depend on baseline
+                                                           #   FLASH_FUSION*: guardrail+plan, typed_exec, agent, cache_*
+                                                           #   AUTOIOT_PAPER: s1, s2, s3, guardrail, agent
     stage_events: list = field(default_factory=list)       # operation-level stage timing audit trail
 
 

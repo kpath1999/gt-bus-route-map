@@ -463,13 +463,14 @@ def test_cache_grounding_timing_survives_fallback(df, registry, fallback_spy) ->
     assert result.stage_latency_s["cache_grounding"] >= 0.0
 
 
-def test_cache_grounding_uses_final_provider_attempt_latency(df, registry, no_fallback) -> None:
+def test_cache_grounding_uses_wall_clock_latency(df, registry, no_fallback) -> None:
     client = _FakeClient(json.dumps(GOOD_PLAN))
     client.light.last_invocation_latency_s = 0.125
 
     result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
 
-    assert result.stage_latency_s["cache_grounding"] == pytest.approx(0.125)
+    assert result.stage_latency_s["cache_grounding"] >= 0.0
+    assert result.stage_latency_s["cache_retry_overhead"] == 0.0
     assert result.latency_s == pytest.approx(sum(result.stage_latency_s.values()))
 
 

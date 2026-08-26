@@ -372,6 +372,47 @@ class TestAggregateMetrics:
         assert float(q1["gt_score"]) == 1.0
         assert float(q2["gt_score"]) == 0.0
 
+    def test_cache_outcome_labels_true_typed_cache_hits(self):
+        result = make_result(
+            baseline="FLASH_FUSION_CACHE",
+            query="Cache query",
+            query_id=1,
+            execution_path="typed_operator_cache",
+            plan_source="exact_query_cache_light_grounded",
+        )
+
+        row = aggregate_metrics([result]).iloc[0]
+
+        assert row["cache_outcome"] == "hit"
+
+    def test_cache_outcome_labels_out_of_scope_rejection_as_hit_rejected(self):
+        result = make_result(
+            baseline="FLASH_FUSION_CACHE",
+            query="Rejected query",
+            query_id=1,
+            executed=False,
+            rejected=True,
+            execution_path="guardrail_reject",
+            plan_source="semantic_query_cache_out_of_scope",
+        )
+
+        row = aggregate_metrics([result]).iloc[0]
+
+        assert row["cache_outcome"] == "hit_rejected"
+
+    def test_cache_outcome_labels_non_cached_paths_as_miss(self):
+        result = make_result(
+            baseline="FLASH_FUSION_CACHE",
+            query="Miss query",
+            query_id=1,
+            execution_path="typed_operator",
+            plan_source="exact_query_miss",
+        )
+
+        row = aggregate_metrics([result]).iloc[0]
+
+        assert row["cache_outcome"] == "miss"
+
 
 def test_semantic_stage_frame_uses_native_autoiot_telemetry() -> None:
     df = pd.DataFrame(
@@ -400,24 +441,22 @@ def test_semantic_stage_frame_uses_native_autoiot_telemetry() -> None:
     assert bool(out["is_estimated"]) is False
 
 
-def test_aggregate_metrics_includes_flash_fusion_router_telemetry() -> None:
+def test_aggregate_metrics_includes_planner_telemetry() -> None:
     result = make_result(
-        ff_fast_path_used=True,
-        ff_fast_path_latency_s=0.25,
-        ff_fast_path_input_tokens=120,
-        ff_fast_path_output_tokens=18,
-        ff_fast_path_cost_usd=0.000015,
-        ff_planner_used=False,
+        ff_planner_used=True,
+        ff_planner_latency_s=0.25,
+        ff_planner_input_tokens=120,
+        ff_planner_output_tokens=18,
+        ff_planner_cost_usd=0.000015,
     )
 
     row = aggregate_metrics([result]).iloc[0]
 
-    assert bool(row["ff_fast_path_used"]) is True
-    assert float(row["ff_fast_path_latency_s"]) == 0.25
-    assert int(row["ff_fast_path_input_tokens"]) == 120
-    assert int(row["ff_fast_path_output_tokens"]) == 18
-    assert float(row["ff_fast_path_cost_usd"]) == 0.000015
-    assert bool(row["ff_planner_used"]) is False
+    assert bool(row["ff_planner_used"]) is True
+    assert float(row["ff_planner_latency_s"]) == 0.25
+    assert int(row["ff_planner_input_tokens"]) == 120
+    assert int(row["ff_planner_output_tokens"]) == 18
+    assert float(row["ff_planner_cost_usd"]) == 0.000015
 
 
 def test_aggregate_metrics_includes_cache_grounding_latency() -> None:
@@ -427,6 +466,7 @@ def test_aggregate_metrics_includes_cache_grounding_latency() -> None:
             "cache_grounding": 0.25,
             "cache_validation": 0.10,
             "cache_rejection": 0.15,
+            "cache_retry_overhead": 0.20,
         }
     )
 
@@ -440,6 +480,8 @@ def test_aggregate_metrics_includes_cache_grounding_latency() -> None:
     assert float(row["cache_validation_latency_ms"]) == 100.0
     assert float(row["cache_rejection_latency_s"]) == 0.15
     assert float(row["cache_rejection_latency_ms"]) == 150.0
+    assert float(row["cache_retry_overhead_s"]) == 0.20
+    assert float(row["cache_retry_overhead_ms"]) == 200.0
 
 
 def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
@@ -451,9 +493,6 @@ def test_semantic_stage_frame_marks_legacy_autoiot_allocation() -> None:
                 "run_id": 1,
                 "query_type": "Predictive",
                 "latency_s": 12.0,
-                "s1_latency_s": 0.0,
-                "s2_latency_s": 0.0,
-                "s3_latency_s": 0.0,
                 "guardrail_latency_s": 0.0,
                 "agent_latency_s": 0.0,
             }
@@ -478,9 +517,6 @@ def test_semantic_stage_frame_includes_cache_grounding() -> None:
                 "run_id": 1,
                 "query_type": "Direct",
                 "latency_s": 1.0,
-                "s1_latency_s": 0.0,
-                "s2_latency_s": 0.0,
-                "s3_latency_s": 0.0,
                 "guardrail_latency_s": 0.0,
                 "cache_grounding_latency_s": 0.75,
                 "typed_exec_latency_s": 0.25,
@@ -504,9 +540,6 @@ def test_semantic_stage_frame_uniformly_allocates_flash_fusion_residual() -> Non
                 "run_id": 1,
                 "query_type": "Direct",
                 "latency_s": 1.4,
-                "s1_latency_s": 0.0,
-                "s2_latency_s": 0.0,
-                "s3_latency_s": 0.0,
                 "guardrail_latency_s": 0.0,
                 "cache_grounding_latency_s": 0.75,
                 "typed_exec_latency_s": 0.25,
@@ -533,9 +566,6 @@ def test_semantic_stage_frame_excludes_planning_for_cache_hits() -> None:
                 "run_id": 1,
                 "query_type": "Direct",
                 "latency_s": 1.4,
-                "s1_latency_s": 0.0,
-                "s2_latency_s": 0.0,
-                "s3_latency_s": 0.0,
                 "guardrail_latency_s": 0.0,
                 "cache_grounding_latency_s": 0.75,
                 "typed_exec_latency_s": 0.25,

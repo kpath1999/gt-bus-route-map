@@ -91,14 +91,12 @@ def _canonical_stage_latencies_s(result: RunResult) -> dict[str, float]:
         or 0.0
     )
     return {
-        "s1": float(src.get("s1", 0.0) or 0.0),
-        "s2": float(src.get("s2", 0.0) or 0.0),
-        "s3": float(src.get("s3", 0.0) or 0.0),
         "guardrail": guardrail_plan,
         "cache_lookup": float(src.get("cache_lookup", 0.0) or 0.0),
         "cache_grounding": float(src.get("cache_grounding", 0.0) or 0.0),
         "cache_validation": float(src.get("cache_validation", 0.0) or 0.0),
         "cache_rejection": float(src.get("cache_rejection", 0.0) or 0.0),
+        "cache_retry_overhead": float(src.get("cache_retry_overhead", 0.0) or 0.0),
         "typed_exec": float(src.get("typed_exec", 0.0) or 0.0),
         "agent": float(src.get("agent", 0.0) or 0.0),
     }
@@ -122,6 +120,29 @@ def compute_cost(result: RunResult) -> dict:
         "input_tokens": result.input_tokens,
         "output_tokens": result.output_tokens,
     }
+
+
+def _cache_outcome_label(result: RunResult) -> str:
+    """Classify FLASH_FUSION_CACHE rows into branch-accurate outcomes."""
+    if result.baseline != "FLASH_FUSION_CACHE":
+        return "not_applicable"
+
+    execution_path = str(getattr(result, "execution_path", "") or "")
+    plan_source = str(getattr(result, "plan_source", "") or "")
+
+    if execution_path == "typed_operator_cache":
+        return "hit"
+
+    if execution_path == "guardrail_reject" and plan_source.startswith(
+        (
+            "exact_query_cache_out_of_scope",
+            "semantic_query_cache_out_of_scope",
+            "semantic_cache_out_of_scope",
+        )
+    ):
+        return "hit_rejected"
+
+    return "miss"
 
 
 def aggregate_metrics(
@@ -238,19 +259,7 @@ def aggregate_metrics(
         rows.append(
             {
                 "baseline": r.baseline,
-                "cache_outcome": (
-                    "hit"
-                    if r.baseline == "FLASH_FUSION_CACHE"
-                    and (
-                        r.execution_path == "typed_operator_cache"
-                        or r.plan_source.startswith("exact_query_cache_")
-                        or r.plan_source.startswith("semantic_cache_")
-                        or r.plan_source.startswith("semantic_query_cache_")
-                    )
-                    else "miss"
-                    if r.baseline == "FLASH_FUSION_CACHE"
-                    else "not_applicable"
-                ),
+                "cache_outcome": _cache_outcome_label(r),
                 "query_id": query_id,
                 "gt_score": gt_score,
                 "gt_method": gt_method,
@@ -274,34 +283,25 @@ def aggregate_metrics(
                 "plan_validation_stage_failed": r.plan_validation_stage_failed,
                 "plan_source": r.plan_source,
                 "operators_used": ",".join(r.operators_used),
-                "ff_fast_path_used": r.ff_fast_path_used,
-                "ff_fast_path_latency_s": r.ff_fast_path_latency_s,
-                "ff_fast_path_input_tokens": r.ff_fast_path_input_tokens,
-                "ff_fast_path_output_tokens": r.ff_fast_path_output_tokens,
-                "ff_fast_path_cost_usd": r.ff_fast_path_cost_usd,
                 "ff_planner_used": r.ff_planner_used,
                 "ff_planner_latency_s": r.ff_planner_latency_s,
                 "ff_planner_input_tokens": r.ff_planner_input_tokens,
                 "ff_planner_output_tokens": r.ff_planner_output_tokens,
                 "ff_planner_cost_usd": r.ff_planner_cost_usd,
-                "s1_latency_s": stage_s["s1"],
-                "s2_latency_s": stage_s["s2"],
-                "s3_latency_s": stage_s["s3"],
                 "guardrail_latency_s": stage_s["guardrail"],
                 "cache_lookup_latency_s": stage_s["cache_lookup"],
                 "cache_grounding_latency_s": stage_s["cache_grounding"],
                 "cache_validation_latency_s": stage_s["cache_validation"],
                 "cache_rejection_latency_s": stage_s["cache_rejection"],
+                "cache_retry_overhead_s": stage_s["cache_retry_overhead"],
                 "typed_exec_latency_s": stage_s["typed_exec"],
                 "agent_latency_s": stage_s["agent"],
-                "s1_latency_ms": stage_s["s1"] * 1000.0,
-                "s2_latency_ms": stage_s["s2"] * 1000.0,
-                "s3_latency_ms": stage_s["s3"] * 1000.0,
                 "guardrail_latency_ms": stage_s["guardrail"] * 1000.0,
                 "cache_lookup_latency_ms": stage_s["cache_lookup"] * 1000.0,
                 "cache_grounding_latency_ms": stage_s["cache_grounding"] * 1000.0,
                 "cache_validation_latency_ms": stage_s["cache_validation"] * 1000.0,
                 "cache_rejection_latency_ms": stage_s["cache_rejection"] * 1000.0,
+                "cache_retry_overhead_ms": stage_s["cache_retry_overhead"] * 1000.0,
                 "typed_exec_latency_ms": stage_s["typed_exec"] * 1000.0,
                 "agent_latency_ms": stage_s["agent"] * 1000.0,
             }

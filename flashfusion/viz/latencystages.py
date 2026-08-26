@@ -420,9 +420,6 @@ def _load_baseline_root(
                 )
 
         for column in (
-            "s1_latency_s",
-            "s2_latency_s",
-            "s3_latency_s",
             "guardrail_latency_s",
             "cache_grounding_latency_s",
             "agent_latency_s",

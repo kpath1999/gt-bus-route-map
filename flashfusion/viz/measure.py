@@ -159,9 +159,6 @@ def load_metrics_for_baseline_dataset(
         "cost_usd",
         "input_tokens",
         "output_tokens",
-        "s1_latency_s",
-        "s2_latency_s",
-        "s3_latency_s",
         "guardrail_latency_s",
         "agent_latency_s",
     }
@@ -183,9 +180,6 @@ def load_metrics_for_baseline_dataset(
         "cost_usd",
         "input_tokens",
         "output_tokens",
-        "s1_latency_s",
-        "s2_latency_s",
-        "s3_latency_s",
         "guardrail_latency_s",
         "agent_latency_s",
     ]
@@ -253,13 +247,15 @@ def load_metrics_from_dataset_root(
     df["accuracy_percent"] = df["gt_score"] * 100.0
     numeric_cols = [
         "latency_s", "cost_usd", "input_tokens", "output_tokens",
-        "s1_latency_s", "s2_latency_s", "s3_latency_s",
         "guardrail_latency_s", "agent_latency_s",
     ]
     for col in numeric_cols:
         if col not in df.columns:
             df[col] = 0.0
         df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in ["s1_latency_s", "s2_latency_s", "s3_latency_s"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     if df[["run_id", "query_id", "accuracy_percent"] + numeric_cols].isna().any().any():
         raise ValueError(f"{path} contains invalid numeric values")
     df["query_type"] = df["query_id"].map(QUERY_TYPE_BY_ID)
@@ -274,8 +270,9 @@ def load_ffpaper_metrics(
     """Load metrics from performance_ffpaper data layout.
 
     Expects: ffpaper_run_root/<dataset>/benchmark/metrics.csv
-    Fills in missing stage-latency columns (s1/s2/s3/guardrail/agent) with 0.0
-    so the resulting DataFrame is compatible with the july26 schema.
+    Fills in missing stage-latency columns (guardrail/agent) with 0.0
+    so the resulting DataFrame is compatible with the current schema.
+    Legacy s1/s2/s3 columns are kept optional for old metrics.csv files.
     """
     dataset_dir = "mit_ecg" if dataset == "ecg" else dataset
     path = ffpaper_run_root / dataset_dir / "benchmark" / "metrics.csv"
@@ -289,9 +286,13 @@ def load_ffpaper_metrics(
     if df.empty:
         return None
 
-    # Ensure required columns exist; fill missing stage-latency columns with 0
-    stage_cols = ["s1_latency_s", "s2_latency_s", "s3_latency_s", "guardrail_latency_s", "agent_latency_s"]
+    # Ensure required columns exist; fill missing stage-latency columns with 0.
+    # s1/s2/s3 are legacy AutoIOT stage keys kept optional for old metrics.csv files.
+    stage_cols = ["guardrail_latency_s", "agent_latency_s"]
     for col in stage_cols:
+        if col not in df.columns:
+            df[col] = 0.0
+    for col in ["s1_latency_s", "s2_latency_s", "s3_latency_s"]:
         if col not in df.columns:
             df[col] = 0.0
 
@@ -340,8 +341,11 @@ def load_ffpaper_per_baseline_metrics(
     if df.empty:
         return None
 
-    stage_cols = ["s1_latency_s", "s2_latency_s", "s3_latency_s", "guardrail_latency_s", "agent_latency_s"]
+    stage_cols = ["guardrail_latency_s", "agent_latency_s"]
     for col in stage_cols:
+        if col not in df.columns:
+            df[col] = 0.0
+    for col in ["s1_latency_s", "s2_latency_s", "s3_latency_s"]:
         if col not in df.columns:
             df[col] = 0.0
 
@@ -400,8 +404,11 @@ def load_ffpaper_flash_fusion(
             tmp["baseline"] = tmp["baseline"].map(normalize_baseline)
             tmp = tmp[tmp["baseline"] == "FLASH_FUSION"].copy()
             if not tmp.empty:
-                stage_cols = ["s1_latency_s", "s2_latency_s", "s3_latency_s", "guardrail_latency_s", "agent_latency_s"]
+                stage_cols = ["guardrail_latency_s", "agent_latency_s"]
                 for col in stage_cols:
+                    if col not in tmp.columns:
+                        tmp[col] = 0.0
+                for col in ["s1_latency_s", "s2_latency_s", "s3_latency_s"]:
                     if col not in tmp.columns:
                         tmp[col] = 0.0
                 tmp["dataset"] = "ecg"
@@ -519,12 +526,14 @@ def load_metrics_from_dir(
         df["query_id"] = pd.to_numeric(df["query_id"], errors="coerce").astype("Int64")
         df["gt_score"] = pd.to_numeric(df["gt_score"], errors="coerce")
         df["accuracy_percent"] = df["gt_score"] * 100.0
-        for col in ["latency_s", "cost_usd", "s1_latency_s", "s2_latency_s",
-                    "s3_latency_s", "guardrail_latency_s", "agent_latency_s",
+        for col in ["latency_s", "cost_usd", "guardrail_latency_s", "agent_latency_s",
                     "input_tokens", "output_tokens"]:
             if col not in df.columns:
                 df[col] = 0.0
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+        for col in ["s1_latency_s", "s2_latency_s", "s3_latency_s"]:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
         unknown = sorted(
             [int(v) for v in df.loc[~df["query_id"].isin(QUERY_TYPE_BY_ID), "query_id"].unique().tolist()]
         )
@@ -858,14 +867,14 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
         "run_id",
         "query_type",
         "latency_s",
-        "s1_latency_s",
-        "s2_latency_s",
         "guardrail_latency_s",
-        "s3_latency_s",
         "agent_latency_s",
     ]
     sem = df[base_cols].copy()
     for col in (
+        "s1_latency_s",
+        "s2_latency_s",
+        "s3_latency_s",
         "cache_grounding_latency_s",
         "typed_exec_latency_s",
         "agent_latency_ms",
@@ -935,7 +944,11 @@ def _semantic_stage_frame(df: pd.DataFrame) -> pd.DataFrame:
         "guardrail_latency_s",
         "agent_latency_s",
     ]
-    auto_has_native_timing = auto_mask & sem[auto_stage_cols].sum(axis=1).gt(0.0)
+    auto_has_native_timing = (
+        auto_mask
+        & sem[auto_stage_cols].sum(axis=1).gt(0.0)
+        & sem[auto_stage_cols].notna().all(axis=1)
+    )
     sem.loc[auto_has_native_timing, "grounding_s"] = sem.loc[auto_has_native_timing, "s1_latency_s"]
     sem.loc[auto_has_native_timing, "validation_s"] = sem.loc[auto_has_native_timing, "guardrail_latency_s"]
     sem.loc[auto_has_native_timing, "planning_s"] = sem.loc[auto_has_native_timing, "s2_latency_s"]
