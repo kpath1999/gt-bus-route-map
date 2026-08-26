@@ -9,6 +9,8 @@ description = "Flash-Fusion: Expressive, low-latency natural language queries ov
 requires-python = ">=3.11"
 dependencies = [
     "langchain-openrouter>=0.2.0",
+    "langchain-groq>=0.2.0",
+    "langchain-ollama>=0.2.0",
     "langchain-core>=0.3.0",
     "langchain-classic>=1.0.0",
     "langchain-experimental>=0.3.0",

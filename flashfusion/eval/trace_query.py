@@ -38,7 +38,10 @@ Usage:
         --query-version v2 --semantic-cache-path flashfusion/eval/cache/semantic_registry_bus_v1.json
 
 Environment:
-    OPENROUTER_API_KEY — preferred; GROQ_API_KEY accepted during transition.
+    OPENROUTER_API_KEY — for OpenRouter primary/light models.
+    GROQ_API_KEY       — for Groq primary/light models (e.g. allam-2-7b).
+    Ollama light models (default: ollama/qwen2.5:3b-instruct) need no API key, just a
+    running local server (see OLLAMA_BASE_URL, default http://localhost:11434).
 """
 
 from __future__ import annotations
@@ -59,20 +62,34 @@ from flashfusion.eval.semantic_scorer import SemanticScorer
 from flashfusion.pipeline.loader import load_dataset_by_name
 from flashfusion.pipeline.operator_router import ALL_OPERATOR_NAMES
 from flashfusion.pipeline.operators import OPERATOR_VOCABULARY_SPEC, build_vocabulary_spec
-from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
+from flashfusion.pipeline.runner import (
+    BaselineRunner,
+    LLMClient,
+    RunResult,
+    _is_groq_model,
+)
 
 
 def _hr(title: str) -> None:
     print(f"\n{'=' * 78}\n{title}\n{'=' * 78}")
 
 
-def _resolve_api_key() -> str:
-    key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
-    if not key:
+def _resolve_api_keys(model: str, stage12_model: str | None) -> tuple[str, str | None]:
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    groq_key = os.environ.get("GROQ_API_KEY")
+    primary_is_groq = _is_groq_model(model)
+    light_is_groq = bool(stage12_model) and _is_groq_model(stage12_model)
+    primary_key = groq_key if primary_is_groq else openrouter_key
+    light_key = groq_key if light_is_groq else openrouter_key
+    if not primary_key:
         raise SystemExit(
-            "Set OPENROUTER_API_KEY (or GROQ_API_KEY) in the environment before running."
+            "Set GROQ_API_KEY for the primary Groq model."
+            if primary_is_groq
+            else "Set OPENROUTER_API_KEY for the primary OpenRouter model."
         )
-    return key
+    if light_is_groq and not light_key:
+        raise SystemExit("Set GROQ_API_KEY for --stage12-model.")
+    return primary_key, light_key
 
 
 def _find_query(dataset: str, query_id: int) -> dict:
@@ -251,10 +268,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model", default=DEFAULT_MODEL, help="Primary model for guardrail+plan and typed execution")
     p.add_argument(
         "--stage12-model",
-        default="qwen/qwen-2.5-7b-instruct",
+        default="ollama/qwen2.5:3b-instruct",
         help=(
-            "Lighter model used for S1 (concept extraction) and S2 (schema grounding) "
-            "in ReAct fallback only, via client.light. Pass the same value as --model "
+            "Lighter model used for S1/S2 grounding and FLASH_FUSION_CACHE light-model "
+            "grounding via client.light (default: local Ollama qwen2.5:3b-instruct, no API key "
+            "needed; requires `ollama serve` running). Pass the same value as --model "
             "(or an empty string) to disable and run S1/S2 on the primary model instead."
         ),
     )
@@ -576,8 +594,13 @@ def main() -> None:
     df = load_dataset_by_name(data_path, args.dataset, max_rows=args.max_rows)
     print(f"Loaded {len(df)} rows, columns={list(df.columns)}", file=sys.stderr)
 
-    api_key = _resolve_api_key()
-    client = LLMClient(model_name=args.model, api_key=api_key, light_model_name=args.stage12_model)
+    api_key, light_api_key = _resolve_api_keys(args.model, args.stage12_model)
+    client = LLMClient(
+        model_name=args.model,
+        api_key=api_key,
+        light_model_name=args.stage12_model,
+        light_api_key=light_api_key,
+    )
     if args.react and args.cache:
         raise SystemExit("--react and --cache are mutually exclusive")
     if args.react:

@@ -32,6 +32,17 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.05,
         "output": 0.08,
     },
+    # Groq native model ID used for the Flash-Fusion cache/S1/S2 light model.
+    # llama-3.1-8b-instant was retired by Groq; replaced with allam-2-7b.
+    "allam-2-7b": {
+        "input": 0.00,
+        "output": 0.00,
+    },
+    # Local Ollama-served light model; no per-token API cost.
+    "ollama/qwen2.5:3b-instruct": {
+        "input": 0.00,
+        "output": 0.00,
+    },
     "google/gemma-4-31b-it": {
         "input": 0.12,
         "output": 0.35,

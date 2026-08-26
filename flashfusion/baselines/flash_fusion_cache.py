@@ -71,6 +71,7 @@ import json
 import re
 import time
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -118,7 +119,7 @@ class _HybridMatcherRuntime:
 
 _HYBRID_RUNTIME: dict[str, _HybridMatcherRuntime] = {}
 
-GROUNDING_SYSTEM_PROMPT = """You ground values into a fixed Flash-Fusion typed
+_GROUNDING_PREAMBLE = """You ground values into a fixed Flash-Fusion typed
 operator skeleton. Return exactly one JSON object and no markdown, prose, or
 code fences.
 
@@ -145,14 +146,28 @@ checked against the live DataFrame schema, and executed deterministically.
 If the requested structure cannot be grounded from the schema, return:
 {"cache_grounding_failed": true, "reason": "..."}
 
-Semantic grounding rules (must follow):
-- Strict 1-to-1 checklist correspondence:
+"""
+
+# Applies regardless of which operators are present -- always included.
+_UNIVERSAL_SEMANTIC_RULE = """- Strict 1-to-1 checklist correspondence:
     - Step index `i` in your JSON output MUST correspond to step `i` of the checklist.
     - NEVER emit an operator more times than it appears in the REQUIRED OUTPUT checklist.
     - If the checklist has 1 DERIVE_DURATION_SECONDS step, emit EXACTLY 1 DERIVE_DURATION_SECONDS
       step regardless of how many categories or comparison groups the question mentions.
-- Keep operator sequence fixed, but choose semantically correct field values.
-- Bare entity/id mentions imply equality filters on that key:
+- Field-completeness check before emitting JSON:
+        - Copy EVERY field shown in the OPERATOR FIELD SPEC for each checklist step, including fields
+            whose value is `null`. Do not rely on defaults and do not omit `result`, `freq`, or
+            `epoch_unit` from DERIVE_BIN, or `column` / `freq` from GROUP_AGGREGATE.
+        - A DERIVE_* `result` is a newly created column name. A later step that consumes it MUST use
+            that exact result string, never the DERIVE_* source column.
+- Keep operator sequence fixed, but choose semantically correct field values."""
+
+# Each entry: (frozenset of operators that trigger this block, rule text).
+# A block is included if ANY of its trigger operators appear in the skeleton.
+_OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
+    (
+        frozenset({"FILTER_COMPARE"}),
+        """- Bare entity/id mentions imply equality filters on that key:
     - Example: "record_id 106", "for record_id 106", "user 20" -> comparator must be
         "eq" with that value for the corresponding key column.
     - Do NOT weaken bare key mentions to ranges like gt/ge/lt/le.
@@ -162,39 +177,72 @@ Semantic grounding rules (must follow):
     - "<", "strictly less", "below" -> "lt"
     - "<=", "at most", "no more than" -> "lte"
 - FILTER_COMPARE.comparator accepts ONLY "eq","ne","gt","gte","lt","lte".
-    Never emit "max", "min", "top", or a null value for comparator or value.
-- To select the row(s) with the largest/smallest value of a derived column
+    Never emit "max", "min", "top", or a null value for comparator or value.""",
+    ),
+    (
+        frozenset({"RANK_ROWS"}),
+        """- To select the row(s) with the largest/smallest value of a derived column
     (e.g. "by the largest margin", "highest", "greatest"), use RANK_ROWS alone.
     Do NOT precede RANK_ROWS with a FILTER_COMPARE step whose purpose is
-    extremum selection - that logic belongs to RANK_ROWS's direction field only.
-- Any step or branch object that sets non-empty filter_values MUST also set
+    extremum selection - that logic belongs to RANK_ROWS's direction field only.""",
+    ),
+    (
+        frozenset({"SPLIT_BY_VALUES", "PARALLEL_AGGREGATE"}),
+        """- Any step or branch object that sets non-empty filter_values MUST also set
     filter_column to the categorical column those values belong to (grounded
     from the LIVE DATASET SCHEMA, e.g. "activity_label"). Never leave
-    filter_column null when filter_values is non-empty.
-- "how many", "number of samples/rows" means row counting semantics:
+    filter_column null when filter_values is non-empty.""",
+    ),
+    (
+        frozenset({"COUNT_ROWS"}),
+        """- "how many", "number of samples/rows" means row counting semantics:
     - Use COUNT_ROWS / COUNT / group size when asking for sample counts.
     - Use nunique only when the question asks for unique entities.
 - "highest/lowest total number of ... samples" means per-entity sample COUNT then rank.
-    - Do NOT substitute sum of a sensor channel for sample counts.
-- For a `DERIVE_BIN`, `GROUP_AGGREGATE`, `RANK_GROUPS` sequence answering
+    - Do NOT substitute sum of a sensor channel for sample counts.""",
+    ),
+    (
+        frozenset({"DERIVE_BIN", "GROUP_AGGREGATE", "RANK_GROUPS"}),
+        """- For a `DERIVE_BIN`, `GROUP_AGGREGATE`, `RANK_GROUPS` sequence answering
     "which N-second interval has the highest number/count of ...":
         - `GROUP_AGGREGATE.group_by` MUST be exactly the `DERIVE_BIN.result` column.
             Do not group by an entity key (such as `record_id`) already narrowed by a
-            preceding filter; that produces one entity group, not interval groups.
+            preceding filter, or by the DERIVE_BIN source (such as `time_s`); either
+            produces the wrong groups instead of interval groups.
         - Use `aggregate="count"` with `column=null` to count rows in each interval,
-            then use `RANK_GROUPS.direction="max"`.
-- "average X" / "mean X" means mean aggregation of X.
-    - Do NOT use variance unless the question explicitly asks for variance.
-- Comparative roughness phrased on average variance must preserve average semantics.
+            set `freq=null`, then use `RANK_GROUPS.direction="max"`.
+        - Complete this data flow before emitting: `DERIVE_BIN.result` ->
+            `GROUP_AGGREGATE.group_by=[that exact result]` -> `RANK_GROUPS`.
+            For example, a 10-second temporal bin of numeric `time_s` is
+            `{"op":"DERIVE_BIN","column":"time_s","kind":"temporal","width":null,
+            "freq":"10s","epoch_unit":"s","result":"bin"}` followed by
+            `{"op":"GROUP_AGGREGATE","group_by":["bin"],"aggregate":"count",
+            "column":null,"freq":null}`. Numeric temporal sources require their explicit
+            epoch unit; a `time_s` source uses `"s"`.""",
+    ),
+    (
+        frozenset({"GROUP_AGGREGATE", "AGGREGATE_PARTITIONS"}),
+        """- "average X" / "mean X" means mean aggregation of X.
+    - Do NOT use variance unless the question explicitly asks for variance.""",
+    ),
+    (
+        frozenset({"AGGREGATE_PARTITIONS", "COMPARE_PARTITIONS"}),
+        """- Comparative roughness phrased on average variance must preserve average semantics.
     - If asked "rougher" with average/mean variance, compare mean variance values and use
-        a comparison mode aligned to the question (difference/which higher), not ratio by default.
-- "A exceeds/is greater than B by the largest margin" implies a SIGNED
+        a comparison mode aligned to the question (difference/which higher), not ratio by default.""",
+    ),
+    (
+        frozenset({"DERIVE_BINARY", "RANK_ROWS"}),
+        """- "A exceeds/is greater than B by the largest margin" implies a SIGNED
     difference in the stated order (A - B), not abs_difference. Compute
     DERIVE_BINARY with operation="subtract" in that order, optionally gate
     with FILTER_COMPARE(comparator="gt", value=0) to enforce the stated
     direction, then RANK_ROWS on that signed column. Use abs_difference only
-    when the query says "difference" or "contrast" with no stated direction.
-- DERIVE_BIN modes (mutually exclusive):
+    when the query says "difference" or "contrast" with no stated direction.""",
+    ),
+    (
+        frozenset({"DERIVE_BIN"}),
+        """- DERIVE_BIN modes (mutually exclusive):
     - For numeric columns (e.g. float/int elapsed seconds like `time_s` or numeric values):
       use `kind="numeric"`, supply `width` (e.g. 60.0), and set `freq=null`, `epoch_unit=null`.
     - For datetime / calendar timestamps:
@@ -205,8 +253,11 @@ Semantic grounding rules (must follow):
             name: `time_s` means `epoch_unit="s"`; suffixes `_ms`, `_us`, and `_ns`
             mean `"ms"`, `"us"`, and `"ns"` respectively. Never leave
             `epoch_unit` null for temporal binning of a numeric source.
-    - NEVER mix `kind="temporal"` with `width` or `freq=null`.
-- DERIVE_DURATION_SECONDS fields:
+    - NEVER mix `kind="temporal"` with `width` or `freq=null`.""",
+    ),
+    (
+        frozenset({"DERIVE_DURATION_SECONDS"}),
+        """- DERIVE_DURATION_SECONDS fields:
     - DERIVE_DURATION_SECONDS is materialized ONCE across the timeline:
       Emit a single DERIVE_DURATION_SECONDS step with a generic result column (e.g., "dt_s" or "duration_seconds").
       NEVER create multiple category-specific duration steps (e.g., "resting_duration_s" and "dynamic_duration_s").
@@ -217,15 +268,21 @@ Semantic grounding rules (must follow):
       category filtering is handled in downstream steps (e.g. PARALLEL_AGGREGATE branches).
     - `fill_first` MUST be a float number (default 0.0), NEVER null or omitted.
     - `clip_negative` MUST be a boolean (default true).
-    - `result` is the derived column name (e.g. "dt_s" or "duration_seconds").
-- When comparing two or more named groups of a categorical column (e.g.
+    - `result` is the derived column name (e.g. "dt_s" or "duration_seconds").""",
+    ),
+    (
+        frozenset({"SPLIT_BY_VALUES", "AGGREGATE_PARTITIONS"}),
+        """- When comparing two or more named groups of a categorical column (e.g.
     "compare X between label A and label B"), emit one SPLIT_BY_VALUES step
     PER GROUP, each with its own distinct label and its own values list.
     Never reuse the same label across steps and never merge multiple
     comparison groups' values into a single SPLIT_BY_VALUES call.
     AGGREGATE_PARTITIONS.partitions must then list every distinct label
-    produced this way (minimum two), never a single repeated label.
-- Train split and holdout row are independent fields in predictive plans:
+    produced this way (minimum two), never a single repeated label.""",
+    ),
+    (
+        frozenset({"PREDICTIVE_PIPELINE"}),
+        """- Train split and holdout row are independent fields in predictive plans:
     - The query may mention both a training split (e.g., 'first 80%') and a holdout row
         position (e.g., 'first row in the holdout set'). These are independent.
         `train_fraction` controls the split; `holdout_row` must reflect only the phrase
@@ -243,8 +300,27 @@ Semantic grounding rules (must follow):
         - For "whether an annotation is present" / "whether <column> is non-empty", emit
             `target_column="annotation"` (or the real named schema column),
             `target_from_non_empty=true`, and `target_label="present"`. Do not emit
-            `target_from_non_empty=false`, which trains on raw annotation strings.
-"""
+            `target_from_non_empty=false`, which trains on raw annotation strings.""",
+    ),
+]
+
+
+@lru_cache(maxsize=256)
+def _build_grounding_system_prompt(skeleton: tuple[str, ...]) -> str:
+    """Assemble the grounding system prompt for exactly this skeleton.
+
+    Cached by skeleton so (a) repeated calls with the same skeleton are
+    free after the first, and (b) the output is guaranteed byte-identical
+    across every query that shares this skeleton -- a precondition for
+    KV-cache prefix reuse on the serving side (e.g. Ollama prefix caching).
+    Must be called with a tuple (hashable) rather than a list.
+    """
+    skeleton_set = set(skeleton)
+    blocks = [_GROUNDING_PREAMBLE, _UNIVERSAL_SEMANTIC_RULE]
+    for trigger_ops, text in _OPERATOR_SEMANTIC_RULES:
+        if trigger_ops & skeleton_set:
+            blocks.append(text)
+    return "\n".join(blocks)
 
 OUT_OF_SCOPE_SYSTEM_PROMPT = """You are a dataset guardrail. The user's query
 has already been classified as out-of-scope for the available dataset. Given
@@ -1094,7 +1170,7 @@ def _execute_grounded_cache_entry(
     try:
         prompt = _grounding_prompt(query, entry, df)
         _record(trace, prompt=prompt)
-        raw_plan = _invoke_light_for_plan(client, prompt, trace)
+        raw_plan = _invoke_light_for_plan(client, prompt, entry["operator_skeleton"], trace)
     finally:
         stage_latency["cache_grounding"] += _accounted_light_latency(client, grounding_started)
         stage_latency["cache_retry_overhead"] += _light_retry_overhead_s(client)
@@ -1248,7 +1324,10 @@ def _repair_light_json(raw: str) -> str:
 
 
 def _invoke_light_for_plan(
-    client: LLMClient, prompt: str, trace: CacheGroundingTrace | None = None
+    client: LLMClient,
+    prompt: str,
+    skeleton: list[str],
+    trace: CacheGroundingTrace | None = None,
 ) -> dict[str, Any]:
     """Call only the configured light model and parse a single JSON object.
 
@@ -1261,8 +1340,9 @@ def _invoke_light_for_plan(
     light = getattr(client, "light", None) or client
     if getattr(light, "llm", None) is None or not hasattr(light, "invoke_messages"):
         raise RuntimeError("cache grounding requires client.light.llm")
+    system_prompt = _build_grounding_system_prompt(tuple(skeleton))
     messages = [
-        SystemMessage(content=GROUNDING_SYSTEM_PROMPT),
+        SystemMessage(content=system_prompt),
         HumanMessage(content=prompt),
     ]
     started = time.perf_counter()

@@ -23,6 +23,20 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openrouter import ChatOpenRouter
 
+try:
+    from langchain_groq import ChatGroq
+
+    _ChatGroq = ChatGroq
+except ImportError:
+    _ChatGroq = None  # type: ignore[assignment,misc]
+
+try:
+    from langchain_ollama import ChatOllama
+
+    _ChatOllama = ChatOllama
+except ImportError:
+    _ChatOllama = None  # type: ignore[assignment,misc]
+
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
@@ -189,6 +203,66 @@ def _build_chat_model(model_name: str, api_key: str, session_key: str):
         return ChatOpenRouter(**base)
 
 
+def _is_groq_model(model_name: str) -> bool:
+    """Return True if *model_name* should be routed through Groq.
+
+    Supports bare Groq IDs such as ``allam-2-7b`` and the explicit
+    ``groq/...`` prefix. OpenRouter-style IDs always contain a slash.
+    """
+    if not model_name:
+        return False
+    return model_name.startswith("groq/") or "/" not in model_name
+
+
+def _canonical_groq_model_name(model_name: str) -> str:
+    return model_name.removeprefix("groq/")
+
+
+def _build_groq_chat_model(model_name: str, api_key: str):
+    """Construct a ChatGroq instance for Groq-hosted light models."""
+    if _ChatGroq is None:
+        raise ImportError(
+            "Groq models require langchain-groq. "
+            "Install it with: pip install langchain-groq"
+        )
+    return _ChatGroq(
+        model_name=_canonical_groq_model_name(model_name),
+        groq_api_key=api_key,
+        temperature=0,
+        max_retries=2,
+        timeout=120,
+    )
+
+
+def _is_ollama_model(model_name: str) -> bool:
+    """Return True if *model_name* should be routed to a local Ollama server.
+
+    Requires the explicit ``ollama/`` prefix (e.g. ``ollama/qwen2.5:3b-instruct``); bare
+    Ollama tags contain no ``/`` and would otherwise be mistaken for Groq IDs
+    by ``_is_groq_model``.
+    """
+    return model_name.startswith("ollama/")
+
+
+def _canonical_ollama_model_name(model_name: str) -> str:
+    return model_name.removeprefix("ollama/")
+
+
+def _build_ollama_chat_model(model_name: str):
+    """Construct a ChatOllama instance for a local Ollama-hosted light model."""
+    if _ChatOllama is None:
+        raise ImportError(
+            "Ollama models require langchain-ollama. "
+            "Install it with: pip install langchain-ollama"
+        )
+    base_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+    return _ChatOllama(
+        model=_canonical_ollama_model_name(model_name),
+        base_url=base_url,
+        temperature=0,
+    )
+
+
 class LLMClient:
     """
     Wraps a chat model with call logging and cost estimation.
@@ -207,26 +281,38 @@ class LLMClient:
         model_name: str,
         api_key: str,
         light_model_name: str | None = None,
+        light_api_key: str | None = None,
         _shared_call_log: list["LLMCallLog"] | None = None,
     ) -> None:
         """
         Args:
             model_name:       Primary model identifier (must be a key in
                               config.MODEL_RATE_PER_1M_TOKENS).
-            api_key:          Provider API key (OPENROUTER_API_KEY preferred,
-                              GROQ_API_KEY fallback).
+            api_key:          Provider API key for the primary model
+                              (OPENROUTER_API_KEY for OpenRouter, GROQ_API_KEY
+                              for Groq).
             light_model_name: Optional lighter model used for cheap early stages
-                              (e.g. Flash-Fusion S1/S2). When set and different
-                              from model_name, ``self.light`` is a sibling
-                              LLMClient bound to that model whose calls are logged
-                              into this client's call_log, so cost/latency/token
-                              totals remain aggregated on the primary client.
+                              (e.g. Flash-Fusion S1/S2 and cache grounding). When
+                              set and different from model_name, ``self.light`` is
+                              a sibling LLMClient bound to that model whose calls
+                              are logged into this client's call_log, so
+                              cost/latency/token totals remain aggregated on the
+                              primary client.
+            light_api_key:    Optional separate API key for the light model. Use
+                              this when the light model is hosted on a different
+                              provider than the primary model (e.g. Groq light
+                              with an OpenRouter primary).
             _shared_call_log: Internal — when provided, this instance is a light
                               sibling that shares the primary client's call_log.
         """
         self.model_name = model_name
         self.session_key = planner_cache_key(model_name, os.getenv("FF_ENV", "dev"))
-        self.llm = _build_chat_model(model_name, api_key, self.session_key)
+        if _is_ollama_model(model_name):
+            self.llm = _build_ollama_chat_model(model_name)
+        elif _is_groq_model(model_name):
+            self.llm = _build_groq_chat_model(model_name, api_key)
+        else:
+            self.llm = _build_chat_model(model_name, api_key, self.session_key)
         # A light sibling shares the primary's call_log so totals aggregate once.
         self.call_log: list[LLMCallLog] = (
             _shared_call_log if _shared_call_log is not None else []
@@ -239,9 +325,19 @@ class LLMClient:
             # This instance IS the light sibling; route .light to itself.
             self.light: "LLMClient" = self
         elif light_model_name and light_model_name != model_name:
+            if _is_ollama_model(light_model_name):
+                light_key = ""  # ChatOllama needs no API key
+            elif _is_groq_model(light_model_name):
+                light_key = (
+                    light_api_key
+                    or os.environ.get("GROQ_API_KEY")
+                    or api_key
+                )
+            else:
+                light_key = light_api_key or api_key
             self.light = LLMClient(
                 model_name=light_model_name,
-                api_key=api_key,
+                api_key=light_key,
                 _shared_call_log=self.call_log,
             )
         else:

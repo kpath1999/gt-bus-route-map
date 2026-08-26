@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# run_react_flashfusion_qwen_all_datasets.sh
+# run_flashfusioncache_all_datasets.sh
 #
 # Run FLASH_FUSION_CACHE benchmarks sequentially across bus, WISDM,
 # and MIT ECG for a head-to-head comparison.
+#
+# Default light model for cache grounding is local Ollama qwen2.5:3b-instruct (no API
+# key needed; requires `ollama serve` running). Set OPENROUTER_API_KEY or
+# GROQ_API_KEY for the primary model.
 #
 # Output layout:
 #   flashfusion/results/ff_hybrid_cache/
@@ -80,6 +84,7 @@ run_one() {
       --queries all \
       --runs "${RUNS}" \
       --ground-truth "${gt_path}" \
+      --stage12-model "${STAGE12_MODEL:-ollama/qwen2.5:3b-instruct}" \
       --output "${output_dir}"
     log "[Done] baseline=${baseline} dataset=${dataset}"
 }

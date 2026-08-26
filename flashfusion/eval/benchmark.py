@@ -124,7 +124,12 @@ from flashfusion.eval.queries import (
 from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval.reporter import print_table, save_csv, save_markdown
 from flashfusion.pipeline.loader import load_dataset_by_name
-from flashfusion.pipeline.runner import BaselineRunner, LLMClient, RunResult
+from flashfusion.pipeline.runner import (
+    BaselineRunner,
+    LLMClient,
+    RunResult,
+    _is_groq_model,
+)
 from flashfusion.config import DEFAULT_MODEL
 
 ALL_BASELINES = [
@@ -328,6 +333,7 @@ def _run_single_benchmark_iteration(
     query_ids_by_baseline: dict[str, list[int]] | None = None,
     query_defs_by_baseline: dict[str, list[dict]] | None = None,
     stage12_model: str | None = None,
+    light_api_key: str | None = None,
     cache_path: str | None = None,
     semantic_cache_path: str | None = None,
     prewarm_cache_runtime: bool = True,
@@ -397,6 +403,7 @@ def _run_single_benchmark_iteration(
                         model_name=model_name,
                         api_key=api_key,
                         light_model_name=stage12_model,
+                        light_api_key=light_api_key,
                     )
                     runner = BaselineRunner(
                         mode=baseline,
@@ -595,9 +602,20 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         13. print(f"\nResults written to {args.output}")
         14. return results
     """
-    api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    groq_key = os.environ.get("GROQ_API_KEY")
+    primary_is_groq = _is_groq_model(args.model)
+    light_is_groq = bool(args.stage12_model) and _is_groq_model(args.stage12_model)
+    api_key = groq_key if primary_is_groq else openrouter_key
+    light_api_key = groq_key if light_is_groq else openrouter_key
     if not api_key:
-        sys.exit("Error: set OPENROUTER_API_KEY (or GROQ_API_KEY for transition compatibility)")
+        sys.exit(
+            "Error: set GROQ_API_KEY for the primary Groq model."
+            if primary_is_groq
+            else "Error: set OPENROUTER_API_KEY for the primary OpenRouter model."
+        )
+    if light_is_groq and not light_api_key:
+        sys.exit("Error: set GROQ_API_KEY for --stage12-model.")
 
     # Infer data path from dataset if not provided
     if args.data is None:
@@ -705,6 +723,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
+            light_api_key=light_api_key,
             cache_path=getattr(args, "cache_path", None),
             semantic_cache_path=getattr(args, "semantic_cache_path", None),
             prewarm_cache_runtime=bool(args.cache_prewarm_hybrid),
@@ -767,6 +786,7 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             llm_judge_max_answer_chars=args.llm_judge_max_answer_chars,
             llm_judge_max_code_chars=args.llm_judge_max_code_chars,
             stage12_model=args.stage12_model,
+            light_api_key=light_api_key,
             cache_path=getattr(args, "cache_path", None),
             semantic_cache_path=getattr(args, "semantic_cache_path", None),
             prewarm_cache_runtime=bool(args.cache_prewarm_hybrid),
@@ -917,10 +937,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--stage12-model",
-        default="qwen/qwen-2.5-7b-instruct",
+        default="ollama/qwen2.5:3b-instruct",
         help=(
-            "Optional lighter model for Flash-Fusion Stages 1 and 2 only "
-            "(e.g. qwen/qwen-2.5-7b-instruct). All other stages use --model. "
+            "Optional lighter model for Flash-Fusion Stages 1 and 2 and for "
+            "FLASH_FUSION_CACHE light-model grounding (default: local Ollama "
+            "qwen2.5:3b-instruct, no API key needed; requires `ollama serve` running). "
+            "All other stages use --model. "
             "When omitted, every stage uses --model."
         ),
     )

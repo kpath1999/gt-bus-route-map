@@ -242,8 +242,7 @@ def init_llm_components(df):
         raise ValueError("Missing GROQ_API_KEY. Set it before running eval.py")
 
     llm = ChatGroq(
-        groq_api_key=GROQ_API_KEY,
-        model_name="meta-llama/llama-4-scout-17b-16e-instruct",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",
         temperature=0.0,
     )
 

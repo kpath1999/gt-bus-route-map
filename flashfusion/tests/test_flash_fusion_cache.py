@@ -222,7 +222,7 @@ def test_grounding_prompt_requires_epoch_unit_for_numeric_temporal_bins(df, regi
         "operator_skeleton": ["DERIVE_BIN"],
     }
 
-    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+    prompt = ffc._build_grounding_system_prompt(tuple(entry["operator_skeleton"])) + "\n" + ffc._grounding_prompt(
         "Which 10-second interval has the most annotated beats?", entry, df
     )
 
@@ -243,7 +243,7 @@ def test_grounding_prompt_requires_derived_bin_grouping_for_interval_counts(df) 
         ],
     }
 
-    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+    prompt = ffc._build_grounding_system_prompt(tuple(entry["operator_skeleton"])) + "\n" + ffc._grounding_prompt(
         "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
         entry,
         df,
@@ -252,6 +252,11 @@ def test_grounding_prompt_requires_derived_bin_grouping_for_interval_counts(df) 
     assert "`GROUP_AGGREGATE.group_by` MUST be exactly the `DERIVE_BIN.result` column." in prompt
     assert "Do not group by an entity key (such as `record_id`)" in prompt
     assert "Use `aggregate=\"count\"` with `column=null` to count rows in each interval" in prompt
+    assert "or by the DERIVE_BIN source (such as `time_s`)" in prompt
+    assert '"freq":"10s","epoch_unit":"s"' in prompt
+    assert '"result":"bin"' in prompt
+    assert '"group_by":["bin"],"aggregate":"count"' in prompt
+    assert "Copy EVERY field shown in the OPERATOR FIELD SPEC" in prompt
 
 
 def test_grounding_prompt_distinguishes_predictive_target_column_and_label(df) -> None:
@@ -260,7 +265,7 @@ def test_grounding_prompt_distinguishes_predictive_target_column_and_label(df) -
         "operator_skeleton": ["PREDICTIVE_PIPELINE"],
     }
 
-    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+    prompt = ffc._build_grounding_system_prompt(tuple(entry["operator_skeleton"])) + "\n" + ffc._grounding_prompt(
         "Predict whether annotation is present for the first row in the holdout set.",
         entry,
         df,

@@ -59,11 +59,12 @@ run_eval() {
 
 log "Repo root: ${REPO_ROOT}"
 log "Python: ${PYTHON}"
+log "Default light model is local Ollama qwen2.5:3b-instruct (no API key needed; requires 'ollama serve' running)."
 log "WISDM-only rerun. FF=${FF_OUT} CACHE=${CACHE_OUT}"
 
 run_eval "FLASH_FUSION" "${FF_OUT}"
 
-cache_args=(--cache-path "${CACHE_PATH}")
+cache_args=(--cache-path "${CACHE_PATH}" --stage12-model "${STAGE12_MODEL:-ollama/qwen2.5:3b-instruct}")
 if [[ -n "${SEMANTIC_CACHE_PATH}" ]]; then
     cache_args+=(--semantic-cache-path "${SEMANTIC_CACHE_PATH}")
 fi
