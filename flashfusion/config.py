@@ -32,6 +32,10 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.05,
         "output": 0.08,
     },
+    "qwen/qwen3-30b-a3b-instruct-2507": {
+        "input": 0.05,
+        "output": 0.19,
+    },
     # Groq native model ID used for the Flash-Fusion cache/S1/S2 light model.
     # llama-3.1-8b-instant was retired by Groq; replaced with allam-2-7b.
     "allam-2-7b": {

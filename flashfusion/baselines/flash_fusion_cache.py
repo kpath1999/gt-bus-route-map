@@ -253,7 +253,10 @@ _OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
             name: `time_s` means `epoch_unit="s"`; suffixes `_ms`, `_us`, and `_ns`
             mean `"ms"`, `"us"`, and `"ns"` respectively. Never leave
             `epoch_unit` null for temporal binning of a numeric source.
-    - NEVER mix `kind="temporal"` with `width` or `freq=null`.""",
+    - NEVER mix `kind="temporal"` with `width` or `freq=null`.
+    - NEVER mix `kind="numeric"` with `freq` or `epoch_unit` set to anything but null.
+        REJECTED: {"kind":"numeric","width":10,"freq":null,"epoch_unit":"s"} — epoch_unit
+        must be null whenever kind="numeric", with no exception.""",
     ),
     (
         frozenset({"DERIVE_DURATION_SECONDS"}),
@@ -301,6 +304,71 @@ _OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
             `target_column="annotation"` (or the real named schema column),
             `target_from_non_empty=true`, and `target_label="present"`. Do not emit
             `target_from_non_empty=false`, which trains on raw annotation strings.""",
+    ),
+    (
+        frozenset({"AGGREGATE_COLUMN", "AGGREGATE_GROUPS", "GROUP_AGGREGATE", "AGGREGATE_PARTITIONS", "PARALLEL_AGGREGATE", "FILTER_EQ_AGGREGATE"}),
+        """- `aggregate` accepts ONLY the closed enum: "min","max","mean","median","sum","count",
+    "std","var","nunique","rms". Never emit a percentile/quantile value such as "p99",
+    "percentile_95", or "quantile".""",
+    ),
+    (
+        frozenset({"GROUP_AGGREGATE"}),
+        """- GROUP_AGGREGATE has NO `result`/`result_column` field — never add one.
+    - `column` MUST be null ONLY when `aggregate=="count"`. For every other aggregate value,
+        `column` is REQUIRED and must be a real schema column name, never left null "by default".
+    - Its output is consumed ONLY by RANK_GROUPS or AGGREGATE_GROUPS; never invent a column
+        name (e.g. "max_val") to reference its result from another step.""",
+    ),
+    (
+        frozenset({"PARALLEL_AGGREGATE"}),
+        """- Each branch's `column` MUST be null ONLY when `aggregate=="count"`. For every other
+    aggregate (mean, sum, median, std, var, rms, min, max, nunique), `column` is REQUIRED
+    and must be a real schema column name, never left null "by default".
+    - `group_by` must never be an empty list.""",
+    ),
+    (
+        frozenset({"COMPARE_VALUES"}),
+        """- COMPARE_VALUES fields are ONLY `mode`, `label_a`, `label_b` — it takes NO column
+    references at all. Never emit `column`, `column1`, `column2`, `left`, or `right` on this
+    operator; any such field fails structural validation because every operator forbids
+    unknown fields.
+    - `mode` is one of "difference","abs_difference","ratio". `label_a`/`label_b` are display
+        strings describing the first/second scalar already computed earlier in the plan, in
+        that order — they are never column names.""",
+    ),
+    (
+        frozenset({"CORRELATE_COLUMNS"}),
+        """- `left` and `right` must both be real numeric schema columns, or the `result` of an
+    earlier DERIVE_* step in this plan. `method` is one of "pearson","spearman","kendall"
+    (default "pearson"). Never substitute a difference, ratio, or ranking for a correlation.""",
+    ),
+    (
+        frozenset({"SPLIT_BY_THRESHOLD"}),
+        """- `threshold` accepts ONLY "median","mean","min","max". `comparator` accepts ONLY
+    "gt","gte","lt","lte". `label` names the partition for a later AGGREGATE_PARTITIONS step —
+    reuse the exact same label string in both places.""",
+    ),
+    (
+        frozenset({"FILTER_IN"}),
+        """- FILTER_IN keeps rows where `column` is one of `values` (a non-empty list). Use it for
+    membership in an explicit set of categories from the schema's sample values; do not
+    substitute repeated FILTER_COMPARE(comparator="eq") steps for a single membership check.""",
+    ),
+    (
+        frozenset({"FILTER_EQ_AGGREGATE"}),
+        """- FILTER_EQ_AGGREGATE keeps rows where `column` equals `aggregate(column)` (e.g. every row
+    tied for the column's maximum). Use it only for "row(s) where X reaches its max/min",
+    which preserves ties; it never accepts a literal `value` field.""",
+    ),
+    (
+        frozenset({"DERIVE_VECTOR_MAGNITUDE"}),
+        """- `columns` MUST be exactly three real numeric schema column names (no more, no fewer).
+    `result` names the new derived magnitude column for downstream steps to reference.""",
+    ),
+    (
+        frozenset({"SELECT_COLUMN", "COUNT_DISTINCT"}),
+        """- `column` must be a real schema column name. SELECT_COLUMN's `distinct` field is a
+    boolean; set it true only when the question asks for unique values.""",
     ),
 ]
 
@@ -1182,6 +1250,7 @@ def _execute_grounded_cache_entry(
         stage_latency["cache_validation"] += time.perf_counter() - validation_started
     _append_stage(result, "cache_plan_validated")
     _record(trace, validated_plan=plan.model_dump(mode="json"))
+    _print_grounding_confirmation(entry["operator_skeleton"], plan)
 
     execution_started = time.perf_counter()
     execution = execute_plan(df, plan)
@@ -1565,6 +1634,17 @@ def _apply_grounding_semantic_guards(
                         step["freq"] = None
                         step["epoch_unit"] = None
 
+            # Pydantic's DeriveBin._validate_mode_fields requires freq/epoch_unit
+            # to be null for kind="numeric", and width to be null for
+            # kind="temporal" — enforce that regardless of which branch above
+            # ran (or none did), since the light model may set kind="numeric"
+            # while leaving a stray epoch_unit/freq from an earlier draft.
+            if step.get("kind") == "numeric":
+                step["freq"] = None
+                step["epoch_unit"] = None
+            elif step.get("kind") == "temporal":
+                step["width"] = None
+
             if step.get("result") is None:
                 if isinstance(col_name, str) and col_name.strip():
                     step["result"] = f"{col_name.strip()}_bin"
@@ -1621,6 +1701,30 @@ def _apply_grounding_semantic_guards(
                 step["target_from_non_empty"] = True
                 step["target_label"] = "present"
 
+        elif op == "COMPARE_VALUES":
+            # COMPARE_VALUES takes no column references — strip any stray
+            # column/left/right/column1/column2 fields a light model copies
+            # over from a preceding step; extra="forbid" rejects them outright.
+            for stray in ("column", "column1", "column2", "left", "right"):
+                step.pop(stray, None)
+
+        elif op == "GROUP_AGGREGATE":
+            # GROUP_AGGREGATE has no result/result_column field of its own.
+            step.pop("result", None)
+            step.pop("result_column", None)
+
+        elif op == "FILTER_EQ_AGGREGATE":
+            # FILTER_EQ_AGGREGATE has no literal "value" field — only column+aggregate.
+            step.pop("value", None)
+            step.pop("comparator", None)
+
+        elif op == "PARALLEL_AGGREGATE":
+            branches = step.get("branches")
+            if isinstance(branches, list):
+                for branch in branches:
+                    if isinstance(branch, dict) and "result" in branch and "result_column" not in branch:
+                        branch["result_column"] = branch.pop("result")
+
     return raw_plan
 
 
@@ -1638,6 +1742,19 @@ def _parse_and_validate_cached_plan(
         )
     validate_plan_against_dataframe(plan, df)  # live schema/semantic gate
     return plan
+
+
+def _print_grounding_confirmation(skeleton: list[str], plan: DeterministicPlan) -> None:
+    """Print the cached operators and the field values grounded for each."""
+    op_list = ", ".join(skeleton)
+    grounded_steps = "\n".join(
+        f"  {i + 1}. {json.dumps(step.model_dump(mode='json'), sort_keys=True)}"
+        for i, step in enumerate(plan.steps)
+    )
+    print(
+        f"[flash_fusion_cache] {op_list} operators that were extracted from the "
+        f"cache and were grounded as follows:\n{grounded_steps}"
+    )
 
 
 # ---------------------------------------------------------------------------
