@@ -26,6 +26,13 @@ from langchain_openrouter import ChatOpenRouter
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
+try:
+    from openrouter.errors.responsevalidationerror import (
+        ResponseValidationError as _OpenRouterResponseValidationError,
+    )
+except ImportError:
+    _OpenRouterResponseValidationError = None  # type: ignore[assignment,misc]
+
 from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S, MODEL_RATE_PER_1M_TOKENS
 from flashfusion.pipeline.operators import planner_cache_key
 
@@ -125,6 +132,30 @@ LLM_SEED = 42
 #: Models we have already warned about having no configured price, so a long run
 #: does not emit one warning per LLM call.
 _UNPRICED_MODELS_WARNED: set[str] = set()
+_INVOKE_MAX_ATTEMPTS = 3
+_INVOKE_BACKOFF_BASE_S = 0.5
+
+
+def _retry_after_seconds(exc: Exception, attempt: int) -> float:
+    """Return a bounded retry delay for retryable provider failures."""
+    headers = getattr(exc, "headers", None)
+    retry_after = headers.get("retry-after") if headers is not None else None
+    try:
+        if retry_after is not None:
+            return min(max(float(retry_after), 0.0), 8.0)
+    except (TypeError, ValueError):
+        pass
+    return min(_INVOKE_BACKOFF_BASE_S * (2**attempt), 4.0)
+
+
+def _is_retryable_invocation_error(exc: Exception, httpx_module: object) -> bool:
+    if isinstance(exc, getattr(httpx_module, "ReadTimeout")):
+        return True
+    return bool(
+        _OpenRouterResponseValidationError is not None
+        and isinstance(exc, _OpenRouterResponseValidationError)
+        and getattr(exc, "status_code", None) == 429
+    )
 
 
 def _build_chat_model(model_name: str, api_key: str, session_key: str):
@@ -200,6 +231,10 @@ class LLMClient:
         self.call_log: list[LLMCallLog] = (
             _shared_call_log if _shared_call_log is not None else []
         )
+        # Retry overhead is deliberately excluded from benchmark metrics. Only
+        # the completed provider attempt is comparable across queries.
+        self.last_invocation_latency_s = 0.0
+        self.last_retry_overhead_s = 0.0
         if _shared_call_log is not None:
             # This instance IS the light sibling; route .light to itself.
             self.light: "LLMClient" = self
@@ -239,24 +274,35 @@ class LLMClient:
     def _invoke(self, runnable, payload, stage: str) -> str:
         import sys as _sys
         import httpx as _httpx
-        _max_attempts = 3
-        _last_exc: Exception | None = None
+
+        self.last_invocation_latency_s = 0.0
+        self.last_retry_overhead_s = 0.0
         capture = _UsageCapture()
-        for _attempt in range(_max_attempts):
+        for attempt in range(_INVOKE_MAX_ATTEMPTS):
+            attempt_started = time.perf_counter()
             try:
-                t0 = time.time()
                 result = runnable.invoke(payload, config={"callbacks": [capture]})
-                latency = time.time() - t0
+                latency = time.perf_counter() - attempt_started
+                self.last_invocation_latency_s = latency
                 break
-            except _httpx.ReadTimeout as _exc:
-                _last_exc = _exc
+            except Exception as exc:
+                self.last_retry_overhead_s += time.perf_counter() - attempt_started
+                if not _is_retryable_invocation_error(exc, _httpx):
+                    raise
+                if attempt + 1 == _INVOKE_MAX_ATTEMPTS:
+                    raise RuntimeError(
+                        f"LLM invocation failed after {_INVOKE_MAX_ATTEMPTS} retryable attempts "
+                        f"(stage={stage!r})"
+                    ) from exc
+                retry_delay = _retry_after_seconds(exc, attempt)
                 _sys.stdout.write(
-                    f"  [WARN invoke_chain] ReadTimeout on attempt {_attempt + 1}/{_max_attempts}"
-                    f" (stage={stage!r}); retrying…\n"
+                    f"  [WARN invoke_chain] {type(exc).__name__} on attempt "
+                    f"{attempt + 1}/{_INVOKE_MAX_ATTEMPTS} (stage={stage!r}); "
+                    f"retrying in {retry_delay:.1f}s…\n"
                 )
                 _sys.stdout.flush()
-        else:
-            raise _last_exc  # type: ignore[misc]
+                time.sleep(retry_delay)
+                self.last_retry_overhead_s += retry_delay
         if isinstance(result, str):
             output_text = result
         else:

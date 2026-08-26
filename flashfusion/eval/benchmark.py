@@ -157,6 +157,8 @@ SEMANTIC_CACHE_REGISTRY_PATHS = {
 }
 
 _CACHE_QUERY_VERSIONS = {1: "v1", 2: "v2", 3: "v3"}
+_QUERY_MAX_ATTEMPTS = 3
+_QUERY_RETRY_BACKOFF_BASE_S = 2.0
 
 
 def _cache_queries_for_run(dataset: str, run_id: int) -> tuple[str, list[dict]]:
@@ -197,6 +199,26 @@ def _query_defs_for_reporting(
 
 class QueryTimeoutError(TimeoutError):
     """Raised when a single query run exceeds the configured latency budget."""
+
+
+def _is_retryable_query_error(exc: Exception) -> bool:
+    """Return whether a failed benchmark query may safely be retried."""
+    status_code = getattr(exc, "status_code", None)
+    if status_code == 429:
+        return True
+    return type(exc).__name__ == "TooManyRequestsResponseError"
+
+
+def _query_retry_delay_seconds(exc: Exception, attempt: int) -> float:
+    """Return a bounded provider-requested or exponential retry delay."""
+    headers = getattr(exc, "headers", None)
+    retry_after = headers.get("retry-after") if headers is not None else None
+    try:
+        if retry_after is not None:
+            return min(max(float(retry_after), 0.0), 30.0)
+    except (TypeError, ValueError):
+        pass
+    return min(_QUERY_RETRY_BACKOFF_BASE_S * (2**attempt), 30.0)
 
 
 def _is_forbidden_chat_data_path(path: str) -> bool:
@@ -364,20 +386,8 @@ def _run_single_benchmark_iteration(
             # if len(df_base) > 0:
             #     print(f"[BENCHMARK DEBUG] df_base.head(3):\n{df_base.head(3)}", file=sys.stderr, flush=True)
 
-            client = LLMClient(
-                model_name=model_name,
-                api_key=api_key,
-                light_model_name=stage12_model,
-            )
-            runner = BaselineRunner(
-                mode=baseline,
-                df=df_base.copy(),
-                client=client,
-                dataset=dataset,
-                cache_path=cache_path,
-                semantic_cache_path=semantic_cache_path if baseline == "FLASH_FUSION_CACHE" else None,
-            )
             t0 = time.time()
+            client: LLMClient | None = None
 
             def _timeout_handler(signum, frame):
                 raise QueryTimeoutError()
@@ -386,7 +396,36 @@ def _run_single_benchmark_iteration(
             signal.signal(signal.SIGALRM, _timeout_handler)
             signal.setitimer(signal.ITIMER_REAL, max_query_latency)
             try:
-                result = runner.run(query_text)
+                for attempt in range(_QUERY_MAX_ATTEMPTS):
+                    client = LLMClient(
+                        model_name=model_name,
+                        api_key=api_key,
+                        light_model_name=stage12_model,
+                    )
+                    runner = BaselineRunner(
+                        mode=baseline,
+                        df=df_base.copy(),
+                        client=client,
+                        dataset=dataset,
+                        cache_path=cache_path,
+                        semantic_cache_path=(
+                            semantic_cache_path if baseline == "FLASH_FUSION_CACHE" else None
+                        ),
+                    )
+                    try:
+                        result = runner.run(query_text)
+                        break
+                    except Exception as exc:
+                        if not _is_retryable_query_error(exc) or attempt + 1 == _QUERY_MAX_ATTEMPTS:
+                            raise
+                        retry_delay = _query_retry_delay_seconds(exc, attempt)
+                        print(
+                            f"  [WARN] {type(exc).__name__} on query attempt "
+                            f"{attempt + 1}/{_QUERY_MAX_ATTEMPTS}; retrying in "
+                            f"{retry_delay:.1f}s...",
+                            flush=True,
+                        )
+                        time.sleep(retry_delay)
             except QueryTimeoutError:
                 elapsed = time.time() - t0
                 result = RunResult(
@@ -405,9 +444,10 @@ def _run_single_benchmark_iteration(
                     f"Timed out after {elapsed:.2f}s (budget {max_query_latency:.2f}s)"
                 )
                 result.stages_run = ["timeout"]
-                result.input_tokens = client.total_input_tokens()
-                result.output_tokens = client.total_output_tokens()
-                result.cost_usd = client.total_cost_usd()
+                if client is not None:
+                    result.input_tokens = client.total_input_tokens()
+                    result.output_tokens = client.total_output_tokens()
+                    result.cost_usd = client.total_cost_usd()
             except Exception as e:
                 import traceback
                 tb_lines = traceback.format_exc().splitlines()
@@ -422,9 +462,10 @@ def _run_single_benchmark_iteration(
                     executed=False,
                 )
                 result.alignment_explanation = f"Exception during {baseline} execution:\n{traceback_tail}"
-                result.input_tokens = client.total_input_tokens()
-                result.output_tokens = client.total_output_tokens()
-                result.cost_usd = client.total_cost_usd()
+                if client is not None:
+                    result.input_tokens = client.total_input_tokens()
+                    result.output_tokens = client.total_output_tokens()
+                    result.cost_usd = client.total_cost_usd()
                 print(f"  [ERROR] {baseline} failed: {e}", file=sys.stderr, flush=True)
                 print(f"  Traceback (last 10 lines):\n{traceback_tail}", file=sys.stderr, flush=True)
             finally:

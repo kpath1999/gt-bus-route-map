@@ -557,6 +557,36 @@
       "query_text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "min",
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "record_id"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -2890,6 +2920,53 @@
         "PREDICTIVE_PIPELINE"
       ],
       "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "hist_gradient_boosting",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
       "schema_fingerprint": "8a468207a2c8d18a",
       "semantic_signature": {
         "admissibility": "in_scope",

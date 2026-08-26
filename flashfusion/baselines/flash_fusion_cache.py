@@ -176,6 +176,13 @@ Semantic grounding rules (must follow):
     - Use nunique only when the question asks for unique entities.
 - "highest/lowest total number of ... samples" means per-entity sample COUNT then rank.
     - Do NOT substitute sum of a sensor channel for sample counts.
+- For a `DERIVE_BIN`, `GROUP_AGGREGATE`, `RANK_GROUPS` sequence answering
+    "which N-second interval has the highest number/count of ...":
+        - `GROUP_AGGREGATE.group_by` MUST be exactly the `DERIVE_BIN.result` column.
+            Do not group by an entity key (such as `record_id`) already narrowed by a
+            preceding filter; that produces one entity group, not interval groups.
+        - Use `aggregate="count"` with `column=null` to count rows in each interval,
+            then use `RANK_GROUPS.direction="max"`.
 - "average X" / "mean X" means mean aggregation of X.
     - Do NOT use variance unless the question explicitly asks for variance.
 - Comparative roughness phrased on average variance must preserve average semantics.
@@ -192,6 +199,12 @@ Semantic grounding rules (must follow):
       use `kind="numeric"`, supply `width` (e.g. 60.0), and set `freq=null`, `epoch_unit=null`.
     - For datetime / calendar timestamps:
       use `kind="temporal"`, supply `freq` (e.g. "60s" or "1min"), and set `width=null`.
+        - For a numeric epoch timestamp used with `kind="temporal"`, supply both
+            `freq` and its explicit `epoch_unit` (one of `"s"`, `"ms"`, `"us"`, or
+            `"ns"`), and set `width=null`. Infer the unit from the schema column
+            name: `time_s` means `epoch_unit="s"`; suffixes `_ms`, `_us`, and `_ns`
+            mean `"ms"`, `"us"`, and `"ns"` respectively. Never leave
+            `epoch_unit` null for temporal binning of a numeric source.
     - NEVER mix `kind="temporal"` with `width` or `freq=null`.
 - DERIVE_DURATION_SECONDS fields:
     - DERIVE_DURATION_SECONDS is materialized ONCE across the timeline:
@@ -218,6 +231,19 @@ Semantic grounding rules (must follow):
         `train_fraction` controls the split; `holdout_row` must reflect only the phrase
         that describes which holdout row to predict. If the query says 'first row in the
         holdout set', `holdout_row` must be 'first'.
+- PREDICTIVE_PIPELINE target semantics:
+        - `target_column` MUST be the real DataFrame schema column being predicted (e.g.,
+            "annotation"). It is a column reference, not a class label or a check name.
+        - `target_from_non_empty` controls target construction. Set it to true when the
+            question asks whether `target_column` is present, non-empty, or annotated; this
+            converts the target into the binary classes 0/1 before training.
+        - `target_label` is display text for the prediction sentence only. It is NOT a
+            DataFrame column, is NOT used to construct `y`, and must never replace
+            `target_column`. For a presence question, use `target_label="present"`.
+        - For "whether an annotation is present" / "whether <column> is non-empty", emit
+            `target_column="annotation"` (or the real named schema column),
+            `target_from_non_empty=true`, and `target_label="present"`. Do not emit
+            `target_from_non_empty=false`, which trains on raw annotation strings.
 """
 
 OUT_OF_SCOPE_SYSTEM_PROMPT = """You are a dataset guardrail. The user's query
@@ -275,6 +301,19 @@ def _record(trace: CacheGroundingTrace | None, **fields: Any) -> None:
         return
     for name, value in fields.items():
         setattr(trace, name, value)
+
+
+def _accounted_light_latency(client: LLMClient, started: float) -> float:
+    """Use only the final successful provider-attempt duration when available."""
+    light = getattr(client, "light", None) or client
+    latency = getattr(light, "last_invocation_latency_s", None)
+    if isinstance(latency, (int, float)) and latency >= 0:
+        return float(latency)
+    return time.perf_counter() - started
+
+
+def _accounted_cache_latency(stage_latency: dict[str, float]) -> float:
+    return sum(float(value) for value in stage_latency.values())
 
 
 # ---------------------------------------------------------------------------
@@ -852,6 +891,7 @@ def _extract_semantic_signature(query: str, df: pd.DataFrame) -> dict[str, Any]:
         "geographic location",
         "location where",
         "family history",
+        "patient's weight",
         "who recommended",
         "weekly moderate-to-vigorous",
         "weather",
@@ -1047,10 +1087,10 @@ def _execute_grounded_cache_entry(
         _record(trace, prompt=prompt)
         raw_plan = _invoke_light_for_plan(client, prompt, trace)
     finally:
-        stage_latency["cache_grounding"] += time.perf_counter() - grounding_started
+        stage_latency["cache_grounding"] += _accounted_light_latency(client, grounding_started)
     validation_started = time.perf_counter()
     try:
-        raw_plan = _apply_grounding_semantic_guards(raw_plan, query)
+        raw_plan = _apply_grounding_semantic_guards(raw_plan, query, df=df)
         plan = _parse_and_validate_cached_plan(raw_plan, entry["operator_skeleton"], df)
     finally:
         stage_latency["cache_validation"] += time.perf_counter() - validation_started
@@ -1102,7 +1142,7 @@ def _execute_grounded_cache_entry(
         + (execution.trace or ""),
     )
     _set_if_present(result, "final_code", execution.code)
-    _set_if_present(result, "latency_s", time.perf_counter() - started)
+    _set_if_present(result, "latency_s", _accounted_cache_latency(stage_latency))
     return result
 
 
@@ -1320,7 +1360,9 @@ def _query_requests_ratio(query_lc: str) -> bool:
     )
 
 
-def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> dict[str, Any]:
+def _apply_grounding_semantic_guards(
+    raw_plan: dict[str, Any], query: str, df: pd.DataFrame | None = None
+) -> dict[str, Any]:
     """Apply conservative post-grounding fixes for high-confidence intent cues.
 
     These guards do not add/remove/reorder operators. They only patch field values
@@ -1344,6 +1386,9 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
     wants_first_holdout = "first row in the holdout" in query_lc
     wants_last_holdout = "last row in the holdout" in query_lc
     asks_difference = bool(re.search(r"\b(difference|gap)\b", query_lc))
+    wants_target_presence = bool(
+        re.search(r"\b(?:whether|if)\b[^.?!]*\b(?:present|non[- ]empty|annotated)\b", query_lc)
+    )
 
     for step in steps:
         if not isinstance(step, dict):
@@ -1382,6 +1427,35 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
                     step["epoch_unit"] = None
                     if "width" in step:
                         step.pop("width", None)
+            elif kind == "temporal" and freq is not None and width is None:
+                # If the query specifies fixed-size window intervals like "10-second interval" or "60-second bins"
+                # without an explicit epoch_unit, and the column is numeric (e.g. time_s), convert to kind="numeric"
+                # so it bins via floor(col / width) * width.
+                col_name_str = str(col_name or "")
+                is_numeric_col = False
+                if df is not None and col_name_str in df.columns:
+                    is_numeric_col = pd.api.types.is_numeric_dtype(df[col_name_str])
+                elif col_name_str.endswith("_s") or col_name_str in {"time_s", "timestamp_ms", "sample_idx"}:
+                    is_numeric_col = True
+
+                if (df is None or is_numeric_col) and step.get("epoch_unit") is None:
+                    sec_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:second|seconds|sec|s)\b", str(freq))
+                    if not sec_match:
+                        sec_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:second|seconds|sec|s)\b", query_lc)
+                    min_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:minute|minutes|min|m)\b", str(freq))
+                    if not min_match:
+                        min_match = re.search(r"\b(\d+(?:\.\d+)?)\s*(?:minute|minutes|min|m)\b", query_lc)
+
+                    if sec_match:
+                        step["kind"] = "numeric"
+                        step["width"] = float(sec_match.group(1))
+                        step["freq"] = None
+                        step["epoch_unit"] = None
+                    elif min_match:
+                        step["kind"] = "numeric"
+                        step["width"] = float(min_match.group(1)) * 60.0
+                        step["freq"] = None
+                        step["epoch_unit"] = None
             elif kind == "temporal" and freq is None and width is None:
                 # A temporal bucketing step without a frequency is not valid. Use
                 # the common numeric bucket width when the query explicitly states a
@@ -1453,6 +1527,9 @@ def _apply_grounding_semantic_guards(raw_plan: dict[str, Any], query: str) -> di
                 step["holdout_row"] = "first"
             elif wants_last_holdout:
                 step["holdout_row"] = "last"
+            if wants_target_presence:
+                step["target_from_non_empty"] = True
+                step["target_label"] = "present"
 
     return raw_plan
 
@@ -1622,8 +1699,8 @@ def run_flash_fusion_cache(
             try:
                 reason = _invoke_light_for_rejection_reason(client, query, df, trace)
             finally:
-                stage_latency["cache_rejection"] += (
-                    time.perf_counter() - grounding_started
+                stage_latency["cache_rejection"] += _accounted_light_latency(
+                    client, grounding_started
                 )
             _append_stage(result, "cache_rejection_reason_ready")
             _set_if_present(result, "rejected", True)
@@ -1643,7 +1720,7 @@ def run_flash_fusion_cache(
                 "Rejected by the guardrail because the query cannot be answered "
                 f"from available dataset fields. Reason: {reason}",
             )
-            _set_if_present(result, "latency_s", time.perf_counter() - started)
+            _set_if_present(result, "latency_s", _accounted_cache_latency(stage_latency))
             return result
 
         if lookup_status == "exact_cache_hit":

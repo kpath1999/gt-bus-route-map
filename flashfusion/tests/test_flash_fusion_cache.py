@@ -87,6 +87,7 @@ class _FakeLight:
         self.llm = object()
         self.response = response
         self.prompts: list[str] = []
+        self.last_invocation_latency_s: float | None = None
 
     def invoke_messages(self, messages: list, stage: str) -> str:
         self.prompts.append(messages[-1].content)
@@ -215,6 +216,86 @@ def test_code_fenced_light_output_is_accepted(df, registry, no_fallback) -> None
     assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
 
 
+def test_grounding_prompt_requires_epoch_unit_for_numeric_temporal_bins(df, registry) -> None:
+    entry = {
+        "dataset": "ecg",
+        "operator_skeleton": ["DERIVE_BIN"],
+    }
+
+    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+        "Which 10-second interval has the most annotated beats?", entry, df
+    )
+
+    assert "Never leave" in prompt
+    assert "`epoch_unit` null for temporal binning of a numeric source." in prompt
+    assert "`time_s` means `epoch_unit=\"s\"`" in prompt
+
+
+def test_grounding_prompt_requires_derived_bin_grouping_for_interval_counts(df) -> None:
+    entry = {
+        "dataset": "ecg",
+        "operator_skeleton": [
+            "FILTER_COMPARE",
+            "FILTER_NOT_EMPTY",
+            "DERIVE_BIN",
+            "GROUP_AGGREGATE",
+            "RANK_GROUPS",
+        ],
+    }
+
+    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+        "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+        entry,
+        df,
+    )
+
+    assert "`GROUP_AGGREGATE.group_by` MUST be exactly the `DERIVE_BIN.result` column." in prompt
+    assert "Do not group by an entity key (such as `record_id`)" in prompt
+    assert "Use `aggregate=\"count\"` with `column=null` to count rows in each interval" in prompt
+
+
+def test_grounding_prompt_distinguishes_predictive_target_column_and_label(df) -> None:
+    entry = {
+        "dataset": "ecg",
+        "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+    }
+
+    prompt = ffc.GROUNDING_SYSTEM_PROMPT + "\n" + ffc._grounding_prompt(
+        "Predict whether annotation is present for the first row in the holdout set.",
+        entry,
+        df,
+    )
+
+    assert "`target_column` MUST be the real DataFrame schema column" in prompt
+    assert "`target_label` is display text for the prediction sentence only" in prompt
+    assert "`target_from_non_empty` controls target construction" in prompt
+    assert "`target_from_non_empty=true`" in prompt
+
+
+def test_presence_prediction_guard_uses_binary_non_empty_target() -> None:
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {
+                "op": "PREDICTIVE_PIPELINE",
+                "target_column": "annotation",
+                "target_from_non_empty": False,
+                "target_label": "label",
+            }
+        ],
+    }
+
+    guarded = ffc._apply_grounding_semantic_guards(
+        raw_plan,
+        "Predict whether annotation is present for the first row in the holdout set.",
+    )
+
+    step = guarded["steps"][0]
+    assert step["target_column"] == "annotation"
+    assert step["target_from_non_empty"] is True
+    assert step["target_label"] == "present"
+
+
 def test_apply_grounding_semantic_guards_fills_missing_derive_bin_result() -> None:
     raw_plan = {
         "version": "1",
@@ -274,6 +355,38 @@ def test_apply_grounding_semantic_guards_repairs_derive_bin_width_conflict() -> 
     step = repaired["steps"][2]
     assert step["kind"] == "numeric"
     assert step["width"] == 60
+    assert step["freq"] is None
+    assert step["epoch_unit"] is None
+
+
+def test_apply_grounding_semantic_guards_repairs_derive_bin_temporal_numeric_column() -> None:
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {"op": "FILTER_COMPARE", "column": "record_id", "comparator": "eq", "value": 101},
+            {"op": "FILTER_NOT_EMPTY", "column": "annotation"},
+            {
+                "op": "DERIVE_BIN",
+                "column": "time_s",
+                "kind": "temporal",
+                "width": None,
+                "freq": "10s",
+                "epoch_unit": None,
+                "result": "bin_time_s",
+            },
+            {"op": "GROUP_AGGREGATE", "group_by": ["bin_time_s"], "aggregate": "count", "column": "annotation"},
+            {"op": "RANK_GROUPS", "direction": "max"},
+        ],
+    }
+
+    repaired = ffc._apply_grounding_semantic_guards(
+        raw_plan,
+        "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+    )
+
+    step = repaired["steps"][2]
+    assert step["kind"] == "numeric"
+    assert step["width"] == 10.0
     assert step["freq"] is None
     assert step["epoch_unit"] is None
 
@@ -348,6 +461,16 @@ def test_cache_grounding_timing_survives_fallback(df, registry, fallback_spy) ->
 
     assert len(fallback_spy) == 1
     assert result.stage_latency_s["cache_grounding"] >= 0.0
+
+
+def test_cache_grounding_uses_final_provider_attempt_latency(df, registry, no_fallback) -> None:
+    client = _FakeClient(json.dumps(GOOD_PLAN))
+    client.light.last_invocation_latency_s = 0.125
+
+    result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
+
+    assert result.stage_latency_s["cache_grounding"] == pytest.approx(0.125)
+    assert result.latency_s == pytest.approx(sum(result.stage_latency_s.values()))
 
 
 def test_skeleton_mutation_is_rejected(df, registry, fallback_spy) -> None:
@@ -857,6 +980,16 @@ def test_semantic_out_of_scope_is_recognized_as_safe_abstention(df) -> None:
 def test_forecast_next_week_is_high_confidence_out_of_scope(df) -> None:
     signature = ffc.extract_semantic_signature(
         "Forecast next week's pothole repairs in the road segments in this dataset.",
+        df,
+    )
+
+    assert signature["admissibility"] == "out_of_scope"
+    assert signature["confidence"] == 0.95
+
+
+def test_patient_weight_with_record_id_is_high_confidence_out_of_scope(df) -> None:
+    signature = ffc.extract_semantic_signature(
+        "Estimate the patient's weight during the time of the recording In record_id 105.",
         df,
     )
 

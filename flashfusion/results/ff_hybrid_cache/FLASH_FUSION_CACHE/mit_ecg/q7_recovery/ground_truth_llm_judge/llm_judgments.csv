@@ -1,0 +1,11 @@
+source_file,baseline,query_id,query_id_source,query_text,expected_rejection,gt_reference_answer,candidate_answer,candidate_rejected,candidate_executed,candidate_code,llm_verdict,llm_score,llm_reason,gt_sanity,gt_sanity_note,llm_raw
+flashfusion/results/ff_hybrid_cache/FLASH_FUSION_CACHE/mit_ecg/q7_recovery/raw_results.jsonl,FLASH_FUSION_CACHE,7,explicit,"For record_id 101, which 10-second interval contains the highest number of annotated beats?",False,"The 10-second interval [110s, 120s) contains the highest number of annotated beats for record_id 101 with 15 beats.","The result is {'bin_10s': 110.0, 'count': 15}",False,True,"df = df[df['record_id'] == 101]
+df = df[df['annotation'].notna() & df['annotation'].astype(str).str.strip().ne('')]
+df['bin_10s'] = (df['time_s'] // 10.0) * 10.0
+result = df.groupby('bin_10s').size()
+result = result.idxmax()",PASS,1.0,"The candidate answer identifies the same 10-second interval [110s, 120s) with 15 beats as the ground truth, using equivalent representation (bin_10s=110 implies [110,120)).",SOUND,Matches deterministic hint and is factually consistent.,"{
+  ""verdict"": ""PASS"",
+  ""reason"": ""The candidate answer identifies the same 10-second interval [110s, 120s) with 15 beats as the ground truth, using equivalent representation (bin_10s=110 implies [110,120))."",
+  ""ground_truth_sanity"": ""SOUND"",
+  ""ground_truth_note"": ""Matches deterministic hint and is factually consistent.""
+}"
