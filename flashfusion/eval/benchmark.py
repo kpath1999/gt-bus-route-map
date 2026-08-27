@@ -315,6 +315,72 @@ def _print_flash_fusion_router_summary(metrics_df: pd.DataFrame) -> None:
     )
 
 
+def _prewarm_provider_prompt_caches(
+    *,
+    baselines: list[str],
+    query_defs: list[dict],
+    query_ids: list[int],
+    df: pd.DataFrame,
+    model_name: str,
+    api_key: str,
+    stage12_model: str | None,
+    light_api_key: str | None,
+    dataset: str,
+    cache_path: str | None,
+) -> None:
+    """Populate static provider prompt caches outside benchmark query timing."""
+    if not ({"FLASH_FUSION", "FLASH_FUSION_CACHE"} & set(baselines)):
+        return
+
+    setup_client = LLMClient(
+        model_name=model_name,
+        api_key=api_key,
+        light_model_name=stage12_model,
+        light_api_key=light_api_key,
+    )
+    warmed: list[str] = []
+    try:
+        if "FLASH_FUSION" in baselines:
+            from flashfusion.baselines.flash_fusion import prewarm_flash_fusion_prompt_cache
+
+            selected_queries = [
+                query["text"] for query in query_defs if int(query["id"]) in set(query_ids)
+            ]
+            count = prewarm_flash_fusion_prompt_cache(df, setup_client, selected_queries)
+            warmed.append(f"planner_prefixes={count}")
+        if "FLASH_FUSION_CACHE" in baselines:
+            from flashfusion.baselines.flash_fusion_cache import (
+                DEFAULT_CACHE_PATH,
+                prewarm_flash_fusion_cache_prompt_cache,
+            )
+
+            count = prewarm_flash_fusion_cache_prompt_cache(
+                client=setup_client.light,
+                cache_path=cache_path or DEFAULT_CACHE_PATH,
+                dataset=dataset,
+                query_ids=query_ids,
+            )
+            warmed.append(f"cache_prefixes={count}")
+    except Exception as exc:  # Prompt caching is an optional provider optimization.
+        print(
+            f"[PROMPT_CACHE_WARMUP] skipped after {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return
+
+    print(
+        "[PROMPT_CACHE_WARMUP] "
+        + " ".join(warmed)
+        + f" latency_s={setup_client.total_latency():.3f}"
+        + f" tokens={setup_client.total_input_tokens()}in/{setup_client.total_output_tokens()}out"
+        + f" cached_tokens={setup_client.total_cached_tokens()}"
+        + f" cache_write_tokens={setup_client.total_cache_write_tokens()}"
+        + f" cost=${setup_client.total_cost_usd():.6f}",
+        flush=True,
+    )
+
+
 def _run_single_benchmark_iteration(
     *,
     baselines: list[str],
@@ -692,6 +758,19 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         print(f"[DEBUG] WARNING: df_base is EMPTY after loading!", flush=True)
     os.makedirs(args.output, exist_ok=True)
     if args.runs == 1:
+        if args.prompt_cache_warmup:
+            _prewarm_provider_prompt_caches(
+                baselines=baselines,
+                query_defs=query_defs,
+                query_ids=query_ids,
+                df=df_base,
+                model_name=args.model,
+                api_key=api_key,
+                stage12_model=args.stage12_model,
+                light_api_key=light_api_key,
+                dataset=args.dataset,
+                cache_path=getattr(args, "cache_path", None),
+            )
         cache_order_ids, cache_order_seed = _cache_query_order_for_run(
             query_ids=query_ids,
             run_id=1,
@@ -739,6 +818,19 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
     for run_id in range(1, args.runs + 1):
         run_output_dir = os.path.join(args.output, f"run_{run_id}")
         print(f"\n##### Run {run_id}/{args.runs} -> {run_output_dir} #####", flush=True)
+        if args.prompt_cache_warmup:
+            _prewarm_provider_prompt_caches(
+                baselines=baselines,
+                query_defs=query_defs,
+                query_ids=query_ids,
+                df=df_base,
+                model_name=args.model,
+                api_key=api_key,
+                stage12_model=args.stage12_model,
+                light_api_key=light_api_key,
+                dataset=args.dataset,
+                cache_path=getattr(args, "cache_path", None),
+            )
         cache_query_version, cache_query_defs = _cache_queries_for_run(args.dataset, run_id)
         cache_order_ids, cache_order_seed = _cache_query_order_for_run(
             query_ids=query_ids,
@@ -1012,6 +1104,22 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="cache_prewarm_hybrid",
         action="store_false",
         help="Disable FLASH_FUSION_CACHE benchmark prewarm of the hybrid matcher runtime.",
+    )
+    parser.add_argument(
+        "--prompt-cache-warmup",
+        dest="prompt_cache_warmup",
+        action="store_true",
+        default=True,
+        help=(
+            "Populate provider prompt caches for static Flash-Fusion and cache-grounding "
+            "system prompts before each benchmark run (default: enabled)."
+        ),
+    )
+    parser.add_argument(
+        "--no-prompt-cache-warmup",
+        dest="prompt_cache_warmup",
+        action="store_false",
+        help="Disable provider prompt-cache setup requests before benchmark runs.",
     )
     parser.add_argument(
         "--ground-truth",

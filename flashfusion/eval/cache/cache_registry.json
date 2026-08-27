@@ -2214,7 +2214,7 @@
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Compare the overall acceleration magnitude between dynamic (walking,jogging,upstairs,downstairs) and resting (sitting,standing) states.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "unknown",
         "aggregate": null,
@@ -2297,7 +2297,7 @@
         "RANK_ROWS"
       ],
       "query_text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
-      "schema_fingerprint": "b927f02262d7702e",
+      "schema_fingerprint": "7ad69ccf7f729a4d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",

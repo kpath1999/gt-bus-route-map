@@ -50,6 +50,7 @@ except ImportError:
 from flashfusion.config import (
     DEFAULT_LIGHT_MODEL,
     FLASH_FUSION_PREDICTIVE_TIMEOUT_S,
+    MODEL_INVOCATION_CONFIG,
     MODEL_RATE_PER_1M_TOKENS,
 )
 from flashfusion.pipeline.operators import planner_cache_key
@@ -74,6 +75,7 @@ class _UsageCapture(BaseCallbackHandler):
         super().__init__()
         self.input_tokens: int = 0
         self.output_tokens: int = 0
+        self.reasoning_tokens: int = 0
         self.cached_tokens: int = 0
         self.cache_write_tokens: int = 0
         self.cache_discount_usd: float = 0.0
@@ -94,6 +96,12 @@ class _UsageCapture(BaseCallbackHandler):
                     details = um.get("input_token_details") or {}
                     self.cached_tokens += int(details.get("cache_read", 0) or 0)
                     self.cache_write_tokens += int(details.get("cache_creation", 0) or 0)
+                    output_details = um.get("output_token_details") or {}
+                    self.reasoning_tokens += int(
+                        output_details.get("reasoning", 0)
+                        or output_details.get("reasoning_tokens", 0)
+                        or 0
+                    )
                 meta = getattr(msg, "response_metadata", None) if msg is not None else None
                 if isinstance(meta, dict) and "cost" in meta:
                     self.real_cost_usd += float(meta["cost"])
@@ -112,6 +120,11 @@ class _UsageCapture(BaseCallbackHandler):
                 self.cached_tokens += int(prompt_details.get("cached_tokens", 0) or 0)
                 self.cache_write_tokens += int(
                     prompt_details.get("cache_write_tokens", 0) or 0
+                )
+            completion_details = usage.get("completion_tokens_details") or {}
+            if isinstance(completion_details, dict) and not self.reasoning_tokens:
+                self.reasoning_tokens += int(
+                    completion_details.get("reasoning_tokens", 0) or 0
                 )
             if "cost" in usage and not self.has_real_cost:
                 self.real_cost_usd += float(usage["cost"])
@@ -134,6 +147,7 @@ class LLMCallLog:
     output_tokens: int
     latency_s: float
     cost_usd: float
+    reasoning_tokens: int = 0
     cached_tokens: int = 0
     cache_write_tokens: int = 0
     cache_discount_usd: float = 0.0
@@ -195,11 +209,21 @@ def _build_chat_model(model_name: str, api_key: str, session_key: str):
         "seed": LLM_SEED,
         "session_id": session_key[:128],
     }
+    model_overrides = MODEL_INVOCATION_CONFIG.get(model_name, {})
+    # Per-model overrides (provider pinning, reasoning, response_format, ...)
+    # take precedence over the generic determinism settings.
     try:
-        return ChatOpenRouter(**base, **extras)
+        return ChatOpenRouter(**base, **extras, **model_overrides)
     except (TypeError, ValueError) as exc:
+        if model_overrides:
+            # The model-specific options may be newer than the installed wrapper;
+            # retry without them so session pinning and seed are preserved.
+            try:
+                return ChatOpenRouter(**base, **extras)
+            except (TypeError, ValueError):
+                pass
         warnings.warn(
-            f"ChatOpenRouter rejected determinism/cache options ({exc}); "
+            f"ChatOpenRouter rejected determinism/cache/provider options ({exc}); "
             "falling back to temperature-only determinism.",
             RuntimeWarning,
             stacklevel=2,
@@ -374,6 +398,15 @@ class LLMClient:
         """
         return self._invoke(self.llm, messages, stage)
 
+    def warm_prompt_cache(self, messages: list, stage: str = "prompt_cache_warmup") -> str:
+        """Send a disposable one-token request to populate a provider prompt cache.
+
+        Callers must use a separate client from timed benchmark queries. This
+        preserves the provider session and exact static prefix while ensuring
+        warmup usage cannot leak into benchmark token or cost totals.
+        """
+        return self._invoke(self.llm.bind(max_tokens=1), messages, stage)
+
     def _invoke(self, runnable, payload, stage: str) -> str:
         import sys as _sys
         import httpx as _httpx
@@ -428,6 +461,7 @@ class LLMClient:
                 output_tokens=out_tok,
                 latency_s=latency,
                 cost_usd=cost,
+                reasoning_tokens=capture.reasoning_tokens,
                 cached_tokens=capture.cached_tokens,
                 cache_write_tokens=capture.cache_write_tokens,
                 cache_discount_usd=capture.cache_discount_usd,

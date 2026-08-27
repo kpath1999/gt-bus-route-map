@@ -56,7 +56,7 @@ if [[ -z "${OPENROUTER_API_KEY:-}" && -z "${GROQ_API_KEY:-}" ]]; then
     exit 1
 fi
 
-OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache/FLASH_FUSION_CACHE}"
 RUNS="${RUNS:-3}"
 
 ts() {
@@ -84,7 +84,6 @@ run_one() {
       --queries all \
       --runs "${RUNS}" \
       --ground-truth "${gt_path}" \
-      --stage12-model "${STAGE12_MODEL:-ollama/qwen2.5:3b-instruct}" \
       --output "${output_dir}"
     log "[Done] baseline=${baseline} dataset=${dataset}"
 }

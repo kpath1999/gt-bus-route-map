@@ -379,6 +379,12 @@ def _print_cache_trace(t) -> None:
     if t.raw_light_output:
         _hr(f"LIGHT MODEL RAW OUTPUT  ({t.grounding_latency_s:.3f}s)")
         print(t.raw_light_output)
+        print(f"Prompt construction: {t.prompt_build_latency_s:.3f}s")
+        print(
+            "Provider usage: "
+            f"{t.light_input_tokens} input / {t.light_output_tokens} output "
+            f"(reasoning={t.light_reasoning_tokens}; 0 means not reported)"
+        )
 
     if t.validated_plan:
         _hr("REGROUNDED TYPED PLAN (skeleton preserved, values refilled)")

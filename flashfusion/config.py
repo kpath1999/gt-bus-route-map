@@ -6,6 +6,8 @@ Import this module everywhere instead of hard-coding values.
 
 from __future__ import annotations
 
+from typing import Any
+
 # ---------------------------------------------------------------------------
 # LLM model pricing (USD per 1M tokens, as of 2026-05)
 # Override individual rates with environment variables:
@@ -35,6 +37,10 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
     "qwen/qwen3-30b-a3b": {
         "input": 0.12,
         "output": 0.50,
+    },
+    "qwen/qwen3-30b-a3b-instruct-2507": {
+        "input": 0.05,
+        "output": 0.19,
     },
     "meta-llama/llama-3.2-1b-instruct": {
         "input": 0.027,
@@ -73,8 +79,36 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
 
 # Default model used when --model is not supplied to the CLI
 DEFAULT_MODEL = "qwen/qwen3-max"
-# DEFAULT_LIGHT_MODEL = "meta-llama/llama-3.2-1b-instruct"
-DEFAULT_LIGHT_MODEL = "qwen/qwen3-30b-a3b"
+# DEFAULT_LIGHT_MODEL = "meta-llama/llama-3.2-1b-instruct"  # really bad, made mistakes; with prompt adjustments made recently, it may do better 
+DEFAULT_LIGHT_MODEL = "qwen/qwen3-30b-a3b-instruct-2507"
+
+# ---------------------------------------------------------------------------
+# Per-model invocation overrides passed to the chat-model constructor.
+# Use this to pin providers, disable reasoning, set response_format, etc.
+# Keys are model identifiers that match MODEL_RATE_PER_1M_TOKENS keys.
+# ---------------------------------------------------------------------------
+MODEL_INVOCATION_CONFIG: dict[str, dict[str, Any]] = {
+    "qwen/qwen3-30b-a3b": {
+        # Qwen3 supports a thinking/non-thinking dual mode. For the Flash-Fusion
+        # light model we want fast, deterministic, non-thinking output.
+        "reasoning": {"enabled": False},
+        "max_tokens": 128,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+        # Pin to DeepInfra's fp8 endpoint for this model.
+        "provider": {
+            "order": ["DeepInfra"],
+            "allow_fallbacks": False,
+        },
+    },
+    "qwen/qwen3-30b-a3b-instruct-2507": {
+        # only has a non-thinking mode - this variant specifically
+        "reasoning": {"enabled": False},
+        "max_tokens": 128,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    }
+}
 
 # ---------------------------------------------------------------------------
 # Agent execution limits

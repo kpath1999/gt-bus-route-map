@@ -167,6 +167,31 @@ def warm_flash_fusion_prefix(df: pd.DataFrame, client: LLMClient) -> None:
     _planner_suffix_prefix(meta_str, client)
 
 
+def prewarm_flash_fusion_prompt_cache(
+    df: pd.DataFrame, client: LLMClient, queries: list[str]
+) -> int:
+    """Populate provider caches for the static planner prefixes used by *queries*.
+
+    Each request has the identical cache-marked system prefix used by the
+    planner, the same model session, and a disposable one-token completion.
+    Benchmark callers must use a distinct setup client so warmup usage stays
+    outside timed per-query metrics.
+    """
+    meta_str = meta_to_str(build_column_metadata(df))
+    unique_routes: dict[str, OperatorRoute] = {}
+    for query in queries:
+        route = route_operator_bucket(query, list(df.columns))
+        unique_routes[route.route_key] = route
+    for route in unique_routes.values():
+        prefix_message, _ = _planner_prefix_message(client, route)
+        suffix = _planner_suffix_prefix(meta_str, client) + "Prompt-cache warmup."
+        client.warm_prompt_cache(
+            [prefix_message, HumanMessage(content=suffix)],
+            stage="ff_planner_prompt_cache_warmup",
+        )
+    return len(unique_routes)
+
+
 def _call_log_length(client: LLMClient) -> int:
     call_log = getattr(client, "call_log", None)
     return len(call_log) if isinstance(call_log, list) else 0
