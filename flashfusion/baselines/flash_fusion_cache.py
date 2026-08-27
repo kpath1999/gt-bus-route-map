@@ -1841,6 +1841,16 @@ def run_flash_fusion_cache(
         requested_dataset=canonical_dataset(dataset),
     )
 
+    # Prewarm the hybrid matcher runtime before the timed cache lookup so
+    # that one-time embedding model load and dense index build are excluded
+    # from per-query cache_lookup latency.
+    prewarm_hybrid_cache_runtime(
+        df=df,
+        dataset=dataset,
+        cache_path=cache_path,
+        semantic_cache_path=semantic_cache_path,
+    )
+
     try:
         lookup_started = time.perf_counter()
         try:

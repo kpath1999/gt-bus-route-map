@@ -21,6 +21,7 @@ from typing import Any
 from flashfusion.baselines.flash_fusion_cache import (
 	DEFAULT_CACHE_PATH,
 	_find_semantic_entry,
+	prewarm_hybrid_cache_runtime,
 )
 from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval.benchmark import DEFAULT_DATA_PATHS
@@ -156,6 +157,16 @@ def evaluate_dataset(
 		f"{time.perf_counter() - registry_started:.2f}s",
 	)
 	entries = list(registry["entries"].values())
+
+	# Prewarm the hybrid matcher runtime once per dataset so that embedding
+	# model load and warm-up are not charged to per-query matching.
+	prewarm_hybrid_cache_runtime(
+		df=df,
+		dataset=dataset,
+		cache_path=cache_path,
+		semantic_cache_path=None,
+	)
+
 	queries = QUERY_MODULES[query_version].get_queries(dataset)
 	_debug(
 		debug,

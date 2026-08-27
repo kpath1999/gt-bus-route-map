@@ -130,7 +130,7 @@ from flashfusion.pipeline.runner import (
     RunResult,
     _is_groq_model,
 )
-from flashfusion.config import DEFAULT_MODEL
+from flashfusion.config import DEFAULT_LIGHT_MODEL, DEFAULT_MODEL
 
 ALL_BASELINES = [
     "LLM_ONLY",
@@ -937,12 +937,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--stage12-model",
-        default="ollama/qwen2.5:3b-instruct",
+        default=DEFAULT_LIGHT_MODEL,
         help=(
             "Optional lighter model for Flash-Fusion Stages 1 and 2 and for "
-            "FLASH_FUSION_CACHE light-model grounding (default: local Ollama "
-            "qwen2.5:3b-instruct, no API key needed; requires `ollama serve` running). "
-            "All other stages use --model. "
+            "FLASH_FUSION_CACHE light-model grounding (default: OpenRouter "
+            f"{DEFAULT_LIGHT_MODEL}). All other stages use --model. "
             "When omitted, every stage uses --model."
         ),
     )

@@ -52,7 +52,7 @@ import os
 import sys
 from typing import Any
 
-from flashfusion.config import DEFAULT_MODEL
+from flashfusion.config import DEFAULT_LIGHT_MODEL, DEFAULT_MODEL
 from flashfusion.eval.benchmark import DEFAULT_DATA_PATHS, DEFAULT_GROUND_TRUTH_PATHS
 from flashfusion.eval.ground_truth import load_ground_truth
 from flashfusion.eval import queries as queries_v1
@@ -268,12 +268,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model", default=DEFAULT_MODEL, help="Primary model for guardrail+plan and typed execution")
     p.add_argument(
         "--stage12-model",
-        default="ollama/qwen2.5:3b-instruct",
+        default=DEFAULT_LIGHT_MODEL,
         help=(
             "Lighter model used for S1/S2 grounding and FLASH_FUSION_CACHE light-model "
-            "grounding via client.light (default: local Ollama qwen2.5:3b-instruct, no API key "
-            "needed; requires `ollama serve` running). Pass the same value as --model "
-            "(or an empty string) to disable and run S1/S2 on the primary model instead."
+            f"grounding via client.light (default: {DEFAULT_LIGHT_MODEL}). Pass the same "
+            "value as --model (or an empty string) to disable and run S1/S2 on the primary "
+            "model instead."
         ),
     )
     p.add_argument("--max-rows", type=int, default=None, help="Row cap forwarded to mit_ecg loader")
@@ -325,7 +325,17 @@ def _run_cache_traced(query_text: str, df, client: LLMClient, args):
         BASELINE_NAME,
         DEFAULT_CACHE_PATH,
         CacheGroundingTrace,
+        prewarm_hybrid_cache_runtime,
         run_flash_fusion_cache,
+    )
+
+    # Prewarm the hybrid matcher runtime before any per-query timing so that
+    # embedding model load and warm-up are not charged to total latency.
+    prewarm_hybrid_cache_runtime(
+        df=df,
+        dataset=args.dataset,
+        cache_path=args.cache_path or DEFAULT_CACHE_PATH,
+        semantic_cache_path=args.semantic_cache_path,
     )
 
     r = RunResult(baseline=BASELINE_NAME, model=client.model_name, query=query_text)

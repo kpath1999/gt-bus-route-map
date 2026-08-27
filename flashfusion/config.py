@@ -32,9 +32,13 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.05,
         "output": 0.08,
     },
-    "qwen/qwen3-30b-a3b-instruct-2507": {
-        "input": 0.05,
-        "output": 0.19,
+    "qwen/qwen3-30b-a3b": {
+        "input": 0.12,
+        "output": 0.50,
+    },
+    "meta-llama/llama-3.2-1b-instruct": {
+        "input": 0.027,
+        "output": 0.201,
     },
     # Groq native model ID used for the Flash-Fusion cache/S1/S2 light model.
     # llama-3.1-8b-instant was retired by Groq; replaced with allam-2-7b.
@@ -69,6 +73,8 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
 
 # Default model used when --model is not supplied to the CLI
 DEFAULT_MODEL = "qwen/qwen3-max"
+# DEFAULT_LIGHT_MODEL = "meta-llama/llama-3.2-1b-instruct"
+DEFAULT_LIGHT_MODEL = "qwen/qwen3-30b-a3b"
 
 # ---------------------------------------------------------------------------
 # Agent execution limits

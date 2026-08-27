@@ -47,7 +47,11 @@ try:
 except ImportError:
     _OpenRouterResponseValidationError = None  # type: ignore[assignment,misc]
 
-from flashfusion.config import FLASH_FUSION_PREDICTIVE_TIMEOUT_S, MODEL_RATE_PER_1M_TOKENS
+from flashfusion.config import (
+    DEFAULT_LIGHT_MODEL,
+    FLASH_FUSION_PREDICTIVE_TIMEOUT_S,
+    MODEL_RATE_PER_1M_TOKENS,
+)
 from flashfusion.pipeline.operators import planner_cache_key
 
 
@@ -226,8 +230,8 @@ def _build_groq_chat_model(model_name: str, api_key: str):
             "Install it with: pip install langchain-groq"
         )
     return _ChatGroq(
-        model_name=_canonical_groq_model_name(model_name),
-        groq_api_key=api_key,
+        model=_canonical_groq_model_name(model_name),
+        # groq_api_key=api_key,
         temperature=0,
         max_retries=2,
         timeout=120,
@@ -305,6 +309,9 @@ class LLMClient:
             _shared_call_log: Internal — when provided, this instance is a light
                               sibling that shares the primary client's call_log.
         """
+        if light_model_name is None and model_name != DEFAULT_LIGHT_MODEL:
+            light_model_name = DEFAULT_LIGHT_MODEL
+
         self.model_name = model_name
         self.session_key = planner_cache_key(model_name, os.getenv("FF_ENV", "dev"))
         if _is_ollama_model(model_name):

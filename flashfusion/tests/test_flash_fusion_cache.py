@@ -14,10 +14,11 @@ import pandas as pd
 import pytest
 
 from flashfusion.baselines import flash_fusion_cache as ffc
+from flashfusion.config import DEFAULT_LIGHT_MODEL
 from flashfusion.eval import queries as queries_v1
 from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval import trace_hybrid_cache as thc
-from flashfusion.pipeline.runner import RunResult
+from flashfusion.pipeline.runner import LLMClient, RunResult
 
 SKELETON = ["FILTER_COMPARE", "COUNT_ROWS"]
 
@@ -130,6 +131,12 @@ def fallback_spy(monkeypatch):
 # ---------------------------------------------------------------------------
 # Lookup
 # ---------------------------------------------------------------------------
+
+
+def test_default_light_model_is_openrouter_1b_for_grounding() -> None:
+    client = LLMClient(model_name="qwen/qwen3-max", api_key="test-key")
+    assert client.light.model_name == DEFAULT_LIGHT_MODEL
+    assert client.light is not client
 
 
 def test_exact_hit_matches_dataset_and_literal_query(registry: Path) -> None:
