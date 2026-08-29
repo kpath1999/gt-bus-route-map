@@ -56,8 +56,8 @@ if [[ -z "${OPENROUTER_API_KEY:-}" && -z "${GROQ_API_KEY:-}" ]]; then
     exit 1
 fi
 
-OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache}"
-RUNS="${RUNS:-3}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache/smoke}"
+RUNS="${RUNS:-1}"
 
 ts() {
     date "+%Y-%m-%d %H:%M:%S"
@@ -105,11 +105,11 @@ for baseline in FLASH_FUSION_CACHE; do
       data/AutoIOT_dataset/IMU/WISDM_ar_v1.1_raw.txt \
       flashfusion/eval/ground_truth/ground_truth_wisdm.json
 
-    # run_one \
-    #   "${baseline}" \
-    #   mit_ecg \
-    #   data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt \
-    #   flashfusion/eval/ground_truth/ground_truth_mit_ecg.json
+    run_one \
+      "${baseline}" \
+      mit_ecg \
+      data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt \
+      flashfusion/eval/ground_truth/ground_truth_mit_ecg.json
 done
 
 log "All runs complete. Results under ${OUTPUT_ROOT}/"

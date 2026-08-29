@@ -11,8 +11,7 @@
     "ambiguity_margin": 0.08,
     "oos_retrieval_floor": 0.35,
     "oos_ambiguity_margin": 0.08,
-    "fuzzy_threshold": 0.72,
-    "fuzzy_margin": 0.05
+    "fuzzy_threshold": 0.72
   },
   "weights": {
     "retrieval": 0.5,

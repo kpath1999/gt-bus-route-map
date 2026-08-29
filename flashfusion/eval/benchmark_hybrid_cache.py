@@ -4,8 +4,7 @@ from __future__ import annotations
 
 """
 python -m flashfusion.eval.benchmark_hybrid_cache \
-  --dataset bus \
-  --output /tmp/hybrid_bus_benchmark.json \
+    --output results/hybridcachevsfuzzy/hybrid_vs_fuzzy.json \
   --report-k 1 3 5 \
   --verbose
 """
@@ -43,12 +42,12 @@ DEFAULT_DATA_PATHS = {
     "mit_ecg": "data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt",
 }
 AUTHORIZED_DECISIONS = {"exact_hit", "hybrid_hit"}
-FUZZY_AUTHORIZED_DECISIONS = {"exact_hit", "unsafe_ablation_hit"}
 ABSTENTION_DECISIONS = {
     "low_confidence_candidate",
     "complete_miss",
     "incompatible_candidate",
     "out_of_scope_hit",
+    "lexical_no_match",
 }
 
 
@@ -96,7 +95,7 @@ def _candidate_ids(candidates: list[dict[str, Any]], limit: int) -> list[str]:
     return [str(item["query_id"] or item["candidate_id"]) for item in candidates[:limit]]
 
 
-def _top_candidate(candidates: list[dict[str, Any]], expected_id: str) -> dict[str, Any] | None:
+def _top_candidate(candidates: list[dict[str, Any]], expected_id: str | None) -> dict[str, Any] | None:
     if not candidates:
         return None
     candidate = dict(candidates[0])
@@ -107,39 +106,45 @@ def _top_candidate(candidates: list[dict[str, Any]], expected_id: str) -> dict[s
 def _metric_summary(rows: list[dict[str, Any]], report_k: list[int]) -> dict[str, Any]:
     valid_rows = [row for row in rows if "error" not in row]
     total = len(valid_rows)
-    tp = sum(bool(row["correct_authorized_hit"]) for row in valid_rows)
-    fp = sum(bool(row["false_positive_reuse"]) for row in valid_rows)
-    fn = total - tp
+    positive_rows = [row for row in valid_rows if row["expected_match_id"] is not None]
+    negative_rows = [row for row in valid_rows if row["expected_match_id"] is None]
+    true_matches = sum(bool(row["correct_match"]) for row in positive_rows)
+    false_matches = sum(row["predicted_match_id"] is not None for row in negative_rows)
+    misses = sum(row["predicted_match_id"] is None for row in positive_rows)
     timings = [float(row["elapsed_ms"].get("total_match_ms", 0.0)) for row in valid_rows]
     return {
         "total_live_queries": total,
         "error_count": len(rows) - total,
         "match_accuracy": _rate(sum(bool(row["correct_match"]) for row in valid_rows), total),
-        "dense_top_1_accuracy": _rate(sum(bool(row["expected_in_dense_top_1"]) for row in valid_rows), total),
-        "lexical_top_1_accuracy": _rate(sum(bool(row["expected_in_lexical_top_1"]) for row in valid_rows), total),
+        "false_match_rate": _rate(false_matches, len(negative_rows)),
+        "miss_rate": _rate(misses, len(positive_rows)),
+        "positive_count": len(positive_rows),
+        "negative_count": len(negative_rows),
+        "dense_top_1_accuracy": _rate(sum(bool(row["expected_in_dense_top_1"]) for row in positive_rows), len(positive_rows)),
+        "lexical_top_1_accuracy": _rate(sum(bool(row["expected_in_lexical_top_1"]) for row in positive_rows), len(positive_rows)),
         "dense_recall_at_k": {
-            str(k): _rate(sum(str(row["expected_query_id"]) in row["dense_top_k_ids_by_report_k"][str(k)] for row in valid_rows), total)
+            str(k): _rate(sum(str(row["expected_match_id"]) in row["dense_top_k_ids_by_report_k"][str(k)] for row in positive_rows), len(positive_rows))
             for k in report_k
         },
         "lexical_recall_at_k": {
-            str(k): _rate(sum(str(row["expected_query_id"]) in row["lexical_top_k_ids_by_report_k"][str(k)] for row in valid_rows), total)
+            str(k): _rate(sum(str(row["expected_match_id"]) in row["lexical_top_k_ids_by_report_k"][str(k)] for row in positive_rows), len(positive_rows))
             for k in report_k
         },
         "union_recall_at_k": {
-            str(k): _rate(sum(str(row["expected_query_id"]) in row["union_ids_by_report_k"][str(k)] for row in valid_rows), total)
+            str(k): _rate(sum(str(row["expected_match_id"]) in row["union_ids_by_report_k"][str(k)] for row in positive_rows), len(positive_rows))
             for k in report_k
         },
-        "authorized_hit_precision": _rate(tp, tp + fp),
-        "authorized_hit_recall": _rate(tp, total),
-        "authorization_rate": _rate(tp + fp, total),
-        "false_positive_reuse_rate": _rate(fp, total),
+        "authorized_hit_precision": _rate(true_matches, true_matches + false_matches),
+        "authorized_hit_recall": _rate(true_matches, len(positive_rows)),
+        "authorization_rate": _rate(sum(row["predicted_match_id"] is not None for row in valid_rows), total),
+        "false_positive_reuse_rate": _rate(false_matches, total),
         "abstention_rate": _rate(sum(bool(row["abstained"]) for row in valid_rows), total),
         "ambiguity_rate": _rate(sum(bool(row["ambiguous"]) for row in valid_rows), total),
         "potential_ambiguity_rate": _rate(sum(bool(row["potential_ambiguity"]) for row in valid_rows), total),
         "correct_but_abstained_rate": _rate(sum(bool(row["correct_but_abstained"]) for row in valid_rows), total),
-        "true_positives": tp,
-        "false_positives": fp,
-        "false_negatives": fn,
+        "true_positives": true_matches,
+        "false_positives": false_matches,
+        "false_negatives": misses,
         "average_match_ms": round(sum(timings) / total, 6) if total else None,
         "p95_match_ms": _percentile(timings, 0.95),
     }
@@ -166,8 +171,12 @@ def _benchmark_row(
     version: str,
     report_k: list[int],
     algorithm: str,
+    query_text: str | None = None,
+    expected_match_id: str | None = None,
+    case_id: str | None = None,
+    tier: str = "legacy_positive",
 ) -> dict[str, Any]:
-    query = resolve_query(query_id=query_id, version=version, dataset=dataset, override=None)
+    query = resolve_query(query_id=query_id, version=version, dataset=dataset, override=query_text)
     diagnostics = (
         matcher.retrieve_diagnostics(
             query,
@@ -178,12 +187,16 @@ def _benchmark_row(
     )
     dense, lexical = diagnostics["dense"], diagnostics["lexical"]
     result = matcher.match(query)
-    predicted = None if result.winner is None else (result.winner.query_id or result.winner.candidate_id)
-    authorized_decisions = AUTHORIZED_DECISIONS if algorithm == "hybrid" else FUZZY_AUTHORIZED_DECISIONS
-    authorized_hit = result.decision in authorized_decisions
-    correct_authorized_hit = authorized_hit and predicted == query_id
+    top_candidate_id = None if result.winner is None else (result.winner.query_id or result.winner.candidate_id)
+    authorized_hit = (
+        result.decision in AUTHORIZED_DECISIONS
+        if algorithm == "hybrid"
+        else top_candidate_id is not None
+    )
+    predicted = top_candidate_id if authorized_hit else None
+    correct_authorized_hit = authorized_hit and predicted == expected_match_id
     compatibility_candidates = [candidate for candidate in result.candidates if candidate.compatibility]
-    expected_candidates = [candidate for candidate in result.candidates if candidate.query_id == query_id]
+    expected_candidates = [candidate for candidate in result.candidates if candidate.query_id == expected_match_id]
     expected_compatible = any(candidate.compatibility for candidate in expected_candidates)
     matching_union_ids = diagnostics["matching_union_ids"] if algorithm == "hybrid" else [
         candidate.query_id or candidate.candidate_id for candidate in result.candidates
@@ -196,35 +209,39 @@ def _benchmark_row(
     if result.winner is not None and result.runner_up is not None:
         winner_margin = round(result.winner.final_score - result.runner_up.final_score, 6)
     acceptance_floor = float(matcher.thresholds.get("acceptance_floor", 0.75))
-    is_winner_expected = predicted == query_id
+    is_winner_expected = top_candidate_id == expected_match_id
     return {
         "algorithm": algorithm,
         "dataset": dataset,
         "query_id": query_id,
+        "case_id": case_id or f"{dataset}-{query_id}-{version}",
+        "tier": tier,
         "version": version,
         "query": query,
-        "expected_query_id": query_id,
-        "dense_top_1": _top_candidate(dense, query_id),
-        "lexical_top_1": _top_candidate(lexical, query_id),
+        "expected_query_id": expected_match_id,
+        "expected_match_id": expected_match_id,
+        "dense_top_1": _top_candidate(dense, expected_match_id),
+        "lexical_top_1": _top_candidate(lexical, expected_match_id),
         "dense_top_k_ids": _candidate_ids(dense, matcher.dense_top_k),
         "lexical_top_k_ids": _candidate_ids(lexical, matcher.lexical_top_k),
         "retrieval_union_ids": matching_union_ids,
         "dense_top_k_ids_by_report_k": {str(k): _candidate_ids(dense, k) for k in report_k},
         "lexical_top_k_ids_by_report_k": {str(k): _candidate_ids(lexical, k) for k in report_k},
         "union_ids_by_report_k": union_by_k,
-        "expected_in_dense_top_1": query_id in _candidate_ids(dense, 1),
-        "expected_in_dense_top_k": query_id in _candidate_ids(dense, matcher.dense_top_k),
-        "expected_in_lexical_top_1": query_id in _candidate_ids(lexical, 1),
-        "expected_in_lexical_top_k": query_id in _candidate_ids(lexical, matcher.lexical_top_k),
-        "expected_in_retrieval_union": query_id in matching_union_ids,
+        "expected_in_dense_top_1": expected_match_id is not None and expected_match_id in _candidate_ids(dense, 1),
+        "expected_in_dense_top_k": expected_match_id is not None and expected_match_id in _candidate_ids(dense, matcher.dense_top_k),
+        "expected_in_lexical_top_1": expected_match_id is not None and expected_match_id in _candidate_ids(lexical, 1),
+        "expected_in_lexical_top_k": expected_match_id is not None and expected_match_id in _candidate_ids(lexical, matcher.lexical_top_k),
+        "expected_in_retrieval_union": expected_match_id is not None and expected_match_id in matching_union_ids,
         "decision": result.decision,
         "predicted_query_id": predicted,
+        "predicted_match_id": predicted,
         "final_winner_is_expected": is_winner_expected,
         "authorized_hit": authorized_hit,
-        "correct_match": predicted == query_id,
+        "correct_match": predicted == expected_match_id,
         "correct_authorized_hit": correct_authorized_hit,
-        "false_positive_reuse": authorized_hit and predicted != query_id,
-        "abstained": result.decision in ABSTENTION_DECISIONS,
+        "false_positive_reuse": expected_match_id is None and predicted is not None,
+        "abstained": result.decision in ABSTENTION_DECISIONS if algorithm == "hybrid" else predicted is None,
         "ambiguous": result.decision == "ambiguous_multi_candidate",
         "winner": asdict(result.winner) if result.winner else None,
         "runner_up": asdict(result.runner_up) if result.runner_up else None,
@@ -235,11 +252,11 @@ def _benchmark_row(
         "potential_ambiguity": len(compatibility_candidates) > 1,
         "acceptance_floor": acceptance_floor,
         "ambiguity_margin": float(matcher.thresholds.get("ambiguity_margin", 0.08)),
-        "expected_retrieved_but_rejected_incompatible": query_id in matching_union_ids and bool(expected_candidates) and not expected_compatible,
+        "expected_retrieved_but_rejected_incompatible": expected_match_id is not None and expected_match_id in matching_union_ids and bool(expected_candidates) and not expected_compatible,
         "expected_compatible_but_not_final_winner": expected_compatible and not is_winner_expected,
         "expected_winner_below_acceptance_floor": is_winner_expected and result.winner is not None and result.winner.final_score < acceptance_floor,
         "correct_but_abstained": (
-            query_id in matching_union_ids and expected_compatible and not correct_authorized_hit
+            expected_match_id is not None and expected_match_id in matching_union_ids and expected_compatible and not correct_authorized_hit
         ),
         "elapsed_ms": {**diagnostics["elapsed_ms"], **result.elapsed_ms},
     }
@@ -247,17 +264,26 @@ def _benchmark_row(
 
 def _print_summary(summary: dict[str, Any], failures: dict[str, Any]) -> None:
     overall = summary["overall"]
-    print("Hybrid cache benchmark")
+    print("Hybrid vs lexical-fuzzy cache identity benchmark")
     print(
         "overall: "
-        f"n={overall['total_live_queries']} precision={overall['authorized_hit_precision']} "
-        f"recall={overall['authorized_hit_recall']} fpr={overall['false_positive_reuse_rate']} "
-        f"abstention={overall['abstention_rate']} ambiguity={overall['ambiguity_rate']}"
+        f"n={overall['total_live_queries']} accuracy={overall['match_accuracy']} "
+        f"false_match_rate={overall['false_match_rate']} miss_rate={overall['miss_rate']}"
     )
-    for label, metrics in (("dataset", summary["by_dataset"]), ("version", summary["by_version"])):
+    for label, metrics in (("dataset", summary["by_dataset"]), ("tier", summary["by_tier"])):
         print(f"by {label}:")
         for key, values in metrics.items():
-            print(f"  {key}: n={values['total_live_queries']} precision={values['authorized_hit_precision']} recall={values['authorized_hit_recall']}")
+            print(
+                f"  {key}: n={values['total_live_queries']} accuracy={values['match_accuracy']} "
+                f"false_match_rate={values['false_match_rate']} miss_rate={values['miss_rate']}"
+            )
+    if len(summary["by_algorithm"]) > 1:
+        print("by algorithm and tier:")
+        for key, values in summary["by_algorithm_and_tier"].items():
+            print(
+                f"  {key}: n={values['total_live_queries']} accuracy={values['match_accuracy']} "
+                f"false_match_rate={values['false_match_rate']} miss_rate={values['miss_rate']}"
+            )
     print("failures:")
     for key, value in failures.items():
         print(f"  {key}: {value}")
@@ -334,20 +360,40 @@ def main() -> None:
             all_rows.append({"dataset": dataset, "error": {"stage": "initialization", "message": str(exc)}})
             continue
 
-        for query_id in query_ids:
-            for version in versions:
-                for algorithm, matcher in matchers.items():
-                    try:
-                        all_rows.append(_benchmark_row(matcher, dataset, query_id, version, report_k, algorithm))
-                    except Exception as exc:
-                        all_rows.append({
-                            "algorithm": algorithm,
-                            "dataset": dataset,
-                            "query_id": query_id,
-                            "version": version,
-                            "expected_query_id": query_id,
-                            "error": {"stage": "query", "message": str(exc)},
-                        })
+        dataset_cases = [
+            {"query_id": query_id, "version": version, "expected_match_id": query_id}
+            for query_id in query_ids
+            for version in versions
+        ]
+        for case in dataset_cases:
+            query_id = str(case.get("query_id") or case.get("expected_match_id") or case.get("case_id"))
+            version = str(case.get("version", "v1"))
+            expected_match_id = case.get("expected_match_id")
+            expected_match_id = str(expected_match_id) if expected_match_id is not None else None
+            for algorithm, matcher in matchers.items():
+                try:
+                    all_rows.append(_benchmark_row(
+                        matcher,
+                        dataset,
+                        query_id,
+                        version,
+                        report_k,
+                        algorithm,
+                        query_text=case.get("query"),
+                        expected_match_id=expected_match_id,
+                        case_id=case.get("case_id"),
+                        tier=str(case.get("tier", "unspecified")),
+                    ))
+                except Exception as exc:
+                    all_rows.append({
+                        "algorithm": algorithm,
+                        "dataset": dataset,
+                        "query_id": query_id,
+                        "version": version,
+                        "expected_match_id": expected_match_id,
+                        "tier": case.get("tier", "unspecified"),
+                        "error": {"stage": "query", "message": str(exc)},
+                    })
 
     all_effective_k = sorted({k for values in effective_report_k.values() for k in values})
     by_dataset = {dataset: _metric_summary([row for row in all_rows if row["dataset"] == dataset], all_effective_k) for dataset in datasets}
@@ -369,6 +415,22 @@ def main() -> None:
             )
             for algorithm in algorithms
         },
+        "by_tier": {
+            tier: _metric_summary([row for row in all_rows if row.get("tier") == tier], all_effective_k)
+            for tier in sorted({str(row.get("tier")) for row in all_rows if "error" not in row})
+        },
+        "by_algorithm_and_tier": {
+            f"{algorithm}/{tier}": _metric_summary(
+                [
+                    row
+                    for row in all_rows
+                    if row.get("algorithm") == algorithm and row.get("tier") == tier
+                ],
+                all_effective_k,
+            )
+            for algorithm in algorithms
+            for tier in sorted({str(row.get("tier")) for row in all_rows if "error" not in row})
+        },
         "by_dataset": by_dataset,
         "by_version": by_version,
         "by_dataset_and_version": by_dataset_and_version,
@@ -386,6 +448,11 @@ def main() -> None:
             "dense_top_k": args.dense_top_k or config.get("retrieval", {}).get("dense_top_k", 20),
             "lexical_top_k": args.lexical_top_k or config.get("retrieval", {}).get("lexical_top_k", 20),
             "report_k": all_effective_k,
+            "query_sources": [
+                "flashfusion.eval.queries",
+                "flashfusion.eval.queries_v2",
+                "flashfusion.eval.queries_v3",
+            ],
         },
         "summary": summary,
         "failure_breakdown": failures,
@@ -404,6 +471,10 @@ def main() -> None:
                 "dataset": row.get("dataset"),
                 "query_id": row.get("query_id"),
                 "version": row.get("version"),
+                "case_id": row.get("case_id"),
+                "tier": row.get("tier"),
+                "expected_match_id": row.get("expected_match_id"),
+                "predicted_match_id": row.get("predicted_match_id"),
                 "decision": row.get("decision"),
                 "predicted_query_id": row.get("predicted_query_id"),
                 "correct_match": row.get("correct_match"),

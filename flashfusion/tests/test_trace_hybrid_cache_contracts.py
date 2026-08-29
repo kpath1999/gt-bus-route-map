@@ -65,6 +65,17 @@ def test_contract_extractor_normalizes_confidence_for_complete_sparse_evidence()
     assert contract.confidence == 1.0
 
 
+def test_contract_extractor_normalizes_analytic_synonyms() -> None:
+    extractor = ContractExtractor(schema_columns=["x", "y", "z"])
+
+    compare = extractor.extract("Compare the overall acceleration magnitude between two states.")
+    contrast = extractor.extract("Contrast the overall acceleration magnitude between two states.")
+
+    assert compare.analytic_intents == frozenset({"comparison", "magnitude"})
+    assert contrast.analytic_intents == compare.analytic_intents
+    assert contrast.confidence == 1.0
+
+
 def test_contract_extractor_does_not_treat_ordinal_statistics_as_filter_literals() -> None:
     extractor = ContractExtractor(schema_columns=["accel_variance"])
 
@@ -111,6 +122,18 @@ def test_component_scores_exclude_unknown_dimensions() -> None:
     scores, contract_score = matcher._component_scores(live, cand)
 
     assert set(scores) == {"aggregate", "fields", "predicate_ops", "filter_values", "output_shape"}
+    assert contract_score == 1.0
+
+
+def test_component_scores_include_analytic_intents() -> None:
+    matcher = _make_matcher()
+
+    scores, contract_score = matcher._component_scores(
+        {"analytic_intents": ["comparison", "magnitude"]},
+        {"analytic_intents": ["comparison", "magnitude"]},
+    )
+
+    assert scores == {"analytic_intents": 1.0}
     assert contract_score == 1.0
 
 
@@ -174,3 +197,30 @@ def test_hit_rejected_is_classified_as_cache_hit() -> None:
     split = split_cache_baseline_rows(rows)
 
     assert CACHE_HIT_BASELINE in split["baseline"].tolist()
+
+
+def test_fuzzy_matcher_uses_token_order_independent_similarity() -> None:
+    matcher = _make_matcher()
+
+    result = matcher.match("Accel variance above 0.20: how many data samples show it?")
+
+    assert result.decision == "lexical_fuzzy_hit"
+    assert result.winner is not None
+    assert result.winner.query_id == "4"
+
+
+def test_fuzzy_exact_query_uses_lexical_decision_label() -> None:
+    matcher = _make_matcher()
+
+    result = matcher.match("How many data samples show an accel_variance strictly greater than 0.20?")
+
+    assert result.decision == "lexical_fuzzy_hit"
+
+
+def test_fuzzy_matcher_rejects_below_similarity_floor() -> None:
+    matcher = _make_matcher()
+
+    result = matcher.match("Please book a train ticket for tomorrow morning")
+
+    assert result.decision == "lexical_no_match"
+    assert result.entry is None

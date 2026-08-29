@@ -16,6 +16,7 @@ import importlib
 import json
 import math
 import re
+import sqlite3
 import time
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, replace
@@ -34,6 +35,22 @@ DEFAULT_CONFIG_PATH = Path("flashfusion/eval/cache/hybrid_match_config.json")
 DATASET_ALIASES = {"mit_ecg": "ecg", "ecg": "ecg", "bus": "bus", "wisdm": "wisdm"}
 
 
+def _extract_analytic_intents(query: str) -> frozenset[str]:
+    query_lc = query.lower()
+    intents: set[str] = set()
+    if re.search(r"\b(compare|contrast|between)\b", query_lc):
+        intents.add("comparison")
+    for intent, pattern in {
+        "difference": r"\b(difference|gap|margin)\b",
+        "magnitude": r"\bmagnitude\b",
+        "correlation": r"\b(correlat(?:e|es|ed|ing|ion))\b",
+        "ratio": r"\bratio\b",
+    }.items():
+        if re.search(pattern, query_lc):
+            intents.add(intent)
+    return frozenset(intents)
+
+
 @dataclass(frozen=True)
 class QueryContract:
     admissibility: Literal["in_scope", "out_of_scope", "unknown", "ambiguous"]
@@ -43,6 +60,7 @@ class QueryContract:
     predicate_ops: tuple[tuple[str, str], ...]
     filter_values: tuple[tuple[str, str], ...]
     output_shape: str | None
+    analytic_intents: frozenset[str]
     predictive: tuple[tuple[str, str], ...]
     confidence: float
     applicable_evidence_count: int
@@ -69,8 +87,9 @@ class CacheMatchResult:
     decision: Literal[
         "exact_hit",
         "hybrid_hit",
-        "unsafe_ablation_hit",
         "out_of_scope_hit",
+        "lexical_fuzzy_hit",
+        "lexical_no_match",
         "ambiguous_multi_candidate",
         "low_confidence_candidate",
         "complete_miss",
@@ -336,7 +355,7 @@ class ContractExtractor:
                 fields.add(field)
 
         predictive = self._extract_predictive(query_lc)
-        analytic_intent = bool(re.search(r"\b(compare|contrast|difference|between|magnitude|correlat|ratio)\b", query_lc))
+        analytic_intents = _extract_analytic_intents(query_lc)
 
         output_shape: str | None = None
         if any(key == "model" for key, _value in predictive):
@@ -367,13 +386,16 @@ class ContractExtractor:
         if self._has_model_name_cue(query_lc):
             applicable_evidence_count += 1
             matched_evidence_count += int(bool(predictive))
+        if analytic_intents:
+            applicable_evidence_count += 1
+            matched_evidence_count += 1
         confidence = matched_evidence_count / applicable_evidence_count if applicable_evidence_count else 0.0
 
         if not query.strip():
             admissibility = "out_of_scope"
         elif not self._schema_columns:
             admissibility = "unknown"
-        elif fields or aggregate is not None or predicate_ops or filter_values or predictive or analytic_intent:
+        elif fields or aggregate is not None or predicate_ops or filter_values or predictive or analytic_intents:
             admissibility = "in_scope"
         else:
             admissibility = "unknown"
@@ -386,6 +408,7 @@ class ContractExtractor:
             predicate_ops=tuple(sorted(predicate_ops)),
             filter_values=tuple(sorted(filter_values)),
             output_shape=output_shape,
+            analytic_intents=frozenset(analytic_intents),
             predictive=predictive,
             confidence=confidence,
             applicable_evidence_count=applicable_evidence_count,
@@ -491,6 +514,62 @@ class LexicalIndex:
         return [(i, s) for i, s in ranked[:top_k] if s > 0.0]
 
 
+class LexicalFuzzyIndex:
+    """Stemmed trigram retrieval followed by character/token similarity ranking."""
+
+    def __init__(self, documents: list[str]) -> None:
+        try:
+            snowballstemmer = importlib.import_module("snowballstemmer")
+        except ImportError as exc:
+            raise ImportError(
+                "Fuzzy mode requires snowballstemmer. Install project dependencies first."
+            ) from exc
+        self._stemmer = snowballstemmer.stemmer("english")
+        self._processed = [self._preprocess(document) for document in documents]
+        self._connection = sqlite3.connect(":memory:")
+        try:
+            self._connection.execute(
+                "CREATE VIRTUAL TABLE fuzzy_queries USING fts5(text, tokenize='trigram')"
+            )
+        except sqlite3.OperationalError as exc:
+            raise RuntimeError("Fuzzy mode requires SQLite FTS5 with trigram support.") from exc
+        self._connection.executemany(
+            "INSERT INTO fuzzy_queries(rowid, text) VALUES (?, ?)",
+            ((index + 1, text) for index, text in enumerate(self._processed)),
+        )
+
+    def _preprocess(self, text: str) -> str:
+        tokens = re.findall(r"[a-z0-9]+", text.lower())
+        return " ".join(self._stemmer.stemWords(tokens))
+
+    @staticmethod
+    def _token_sort_score(left: str, right: str) -> float:
+        try:
+            rapidfuzz = importlib.import_module("rapidfuzz.fuzz")
+            return float(rapidfuzz.token_sort_ratio(left, right)) / 100.0
+        except ImportError:
+            left_sorted = " ".join(sorted(left.split()))
+            right_sorted = " ".join(sorted(right.split()))
+            return SequenceMatcher(None, left_sorted, right_sorted).ratio()
+
+    def search(self, query: str, candidate_limit: int) -> list[tuple[int, float]]:
+        processed_query = self._preprocess(query)
+        candidate_indices: list[int] = []
+        if len(processed_query) >= 3:
+            rows = self._connection.execute(
+                "SELECT rowid FROM fuzzy_queries WHERE text MATCH ? ORDER BY rank LIMIT ?",
+                (processed_query, max(1, candidate_limit)),
+            ).fetchall()
+            candidate_indices = [int(row[0]) - 1 for row in rows]
+        if not candidate_indices:
+            candidate_indices = list(range(len(self._processed)))
+        scored = [
+            (index, self._token_sort_score(processed_query, self._processed[index]))
+            for index in candidate_indices
+        ]
+        return sorted(scored, key=lambda item: (-item[1], item[0]))
+
+
 class DenseIndex:
     def __init__(self, model_name: str, device: str, documents: list[str], no_warmup: bool) -> None:
         sentence_transformers = importlib.import_module("sentence_transformers")
@@ -583,11 +662,16 @@ class HybridMatcher:
         if not self.entries:
             raise ValueError("No reusable registry entries remain after dataset filtering.")
 
+        self.extractor = ContractExtractor(schema_columns=self.schema_columns)
         self.documents = [self._retrieval_document(e) for e in self.entries]
         self.lexical_index = LexicalIndex(self.documents)
+        self.fuzzy_index = (
+            LexicalFuzzyIndex([self._entry_text(entry) for entry in self.entries])
+            if self.mode == "fuzzy"
+            else None
+        )
         self.dense_index: DenseIndex | None = None
 
-        self.extractor = ContractExtractor(schema_columns=self.schema_columns)
         weights = config.get("weights", {})
         self.weight_retrieval = float(weights.get("retrieval", 0.5))
         self.weight_contract = float(weights.get("contract", 0.5))
@@ -671,14 +755,6 @@ class HybridMatcher:
             return 0.0
         return len(left & right) / len(left | right)
 
-    @staticmethod
-    def _fuzzy_score(left: str, right: str) -> float:
-        try:
-            from rapidfuzz.fuzz import ratio  # type: ignore
-            return ratio(left, right) / 100.0
-        except ImportError:
-            return SequenceMatcher(None, left.lower(), right.lower()).ratio()
-
     def _retrieval_document(self, entry: dict[str, Any]) -> str:
         explicit = entry.get("retrieval_document")
         if isinstance(explicit, str) and explicit.strip():
@@ -700,7 +776,12 @@ class HybridMatcher:
     def _contract_from_entry(self, entry: dict[str, Any]) -> dict[str, Any]:
         retrieval_contract = entry.get("retrieval_contract")
         if isinstance(retrieval_contract, dict):
-            return retrieval_contract
+            contract = dict(retrieval_contract)
+            contract.setdefault(
+                "analytic_intents",
+                sorted(_extract_analytic_intents(self._entry_text(entry))),
+            )
+            return contract
 
         raw_sig = entry.get("semantic_signature")
         sig: dict[str, Any] = raw_sig if isinstance(raw_sig, dict) else {}
@@ -713,6 +794,7 @@ class HybridMatcher:
             "predicate_ops": sig.get("predicate_ops") if isinstance(sig.get("predicate_ops"), dict) else {},
             "filter_values": sig.get("filter_values") if isinstance(sig.get("filter_values"), dict) else {},
             "output_shape": sig.get("output_shape"),
+            "analytic_intents": sorted(_extract_analytic_intents(self._entry_text(entry))),
             "predictive": {
                 "model": predictive.get("model"),
                 "target_column": predictive.get("target_column"),
@@ -730,6 +812,7 @@ class HybridMatcher:
             "predicate_ops": {k: v for k, v in contract.predicate_ops},
             "filter_values": {k: v for k, v in contract.filter_values},
             "output_shape": contract.output_shape,
+            "analytic_intents": sorted(contract.analytic_intents),
             "predictive": {k: v for k, v in contract.predictive},
             "operator_skeleton": list(contract.operator_skeleton_hint) if contract.operator_skeleton_hint else None,
             "operator_contract_hash": None,
@@ -832,6 +915,12 @@ class HybridMatcher:
             applicable += 1
             cand_output = cand.get("output_shape")
             scores["output_shape"] = 1.0 if live_output == cand_output else 0.0
+
+        live_intents = self._field_set(live.get("analytic_intents"))
+        if live_intents:
+            applicable += 1
+            cand_intents = self._field_set(cand.get("analytic_intents"))
+            scores["analytic_intents"] = self._jaccard(live_intents, cand_intents)
 
         live_pred = self._kv_set(live.get("predictive"))
         if live_pred:
@@ -1020,6 +1109,11 @@ class HybridMatcher:
 
         t_total = time.perf_counter()
 
+        if self.mode == "fuzzy":
+            result = self._match_fuzzy(query, timings)
+            timings["total_match_ms"] = (time.perf_counter() - t_total) * 1000.0
+            return result
+
         # Exact path: deterministic and fastest.
         exact = [
             (idx, entry)
@@ -1064,11 +1158,6 @@ class HybridMatcher:
                 )
             timings["total_match_ms"] = (time.perf_counter() - t_total) * 1000.0
             return CacheMatchResult("ambiguous_multi_candidate", None, None, None, timings, candidates)
-
-        if self.mode == "fuzzy":
-            result = self._match_fuzzy_only(query, timings)
-            timings["total_match_ms"] = (time.perf_counter() - t_total) * 1000.0
-            return result
 
         t_contract = time.perf_counter()
         live_contract = self.extractor.extract(query)
@@ -1200,10 +1289,12 @@ class HybridMatcher:
         timings["total_match_ms"] = (time.perf_counter() - t_total) * 1000.0
         return CacheMatchResult("hybrid_hit", self.entries[winner_idx], winner, runner_up, timings, results)
 
-    def _match_fuzzy_only(self, query: str, timings: dict[str, float]) -> CacheMatchResult:
+    def _match_fuzzy(self, query: str, timings: dict[str, float]) -> CacheMatchResult:
+        assert self.fuzzy_index is not None
         scored: list[CandidateEvidence] = []
-        for idx, entry in enumerate(self.entries):
-            value = self._fuzzy_score(query, self._entry_text(entry))
+        candidate_limit = int(self.retrieval_cfg.get("fuzzy_candidate_limit", 50))
+        for idx, value in self.fuzzy_index.search(query, candidate_limit=candidate_limit):
+            entry = self.entries[idx]
             scored.append(
                 CandidateEvidence(
                     candidate_id=self._candidate_id(entry, idx + 1),
@@ -1214,7 +1305,7 @@ class HybridMatcher:
                     retrieval_score=round(value, 6),
                     contract_score=0.0,
                     compatibility=True,
-                    compatibility_failures=["UNSAFE_ABLATION"],
+                    compatibility_failures=[],
                     component_scores={},
                     final_score=round(value, 6),
                 )
@@ -1222,24 +1313,20 @@ class HybridMatcher:
         scored.sort(key=lambda x: x.final_score, reverse=True)
 
         threshold = float(self.thresholds.get("fuzzy_threshold", 0.72))
-        margin = float(self.thresholds.get("fuzzy_margin", 0.05))
-
         if not scored:
-            return CacheMatchResult("complete_miss", None, None, None, timings, [])
+            return CacheMatchResult("lexical_no_match", None, None, None, timings, [])
 
         winner = scored[0]
         runner_up = scored[1] if len(scored) > 1 else None
         if winner.final_score < threshold:
-            return CacheMatchResult("complete_miss", None, winner, runner_up, timings, scored)
-        if runner_up is not None and (winner.final_score - runner_up.final_score) < margin:
-            return CacheMatchResult("ambiguous_multi_candidate", None, winner, runner_up, timings, scored)
+            return CacheMatchResult("lexical_no_match", None, winner, runner_up, timings, scored)
 
         winner_idx = next(
             i
             for i, item in enumerate(self.entries)
             if self._candidate_id(item, i + 1) == winner.candidate_id
         )
-        return CacheMatchResult("unsafe_ablation_hit", self.entries[winner_idx], winner, runner_up, timings, scored)
+        return CacheMatchResult("lexical_fuzzy_hit", self.entries[winner_idx], winner, runner_up, timings, scored)
 
 
 def canonical_dataset(name: str | None) -> str | None:
@@ -1315,7 +1402,6 @@ def load_config(path: Path) -> dict[str, Any]:
                 "oos_retrieval_floor": 0.35,
                 "oos_ambiguity_margin": 0.08,
                 "fuzzy_threshold": 0.72,
-                "fuzzy_margin": 0.05,
             },
             "weights": {
                 "retrieval": 0.5,
@@ -1346,7 +1432,7 @@ def emit_result(
     if result.winner is not None:
         predicted = result.winner.query_id or result.winner.candidate_id
 
-    hit_like = result.decision in {"exact_hit", "hybrid_hit", "out_of_scope_hit", "unsafe_ablation_hit"}
+    hit_like = result.decision in {"exact_hit", "hybrid_hit", "out_of_scope_hit", "lexical_fuzzy_hit"}
     false_positive = bool(hit_like and predicted is not None and predicted != expected_query_id)
 
     payload: dict[str, Any] = {
@@ -1376,10 +1462,6 @@ def emit_result(
             "dataset": result.entry.get("dataset"),
             "operator_contract_hash": result.entry.get("operator_contract_hash"),
         }
-
-    if args.mode == "fuzzy":
-        payload["unsafe_ablation"] = True
-        payload["warning"] = "UNSAFE_ABLATION: fuzzy-only mode bypasses dense retrieval and contract verification."
 
     return payload
 

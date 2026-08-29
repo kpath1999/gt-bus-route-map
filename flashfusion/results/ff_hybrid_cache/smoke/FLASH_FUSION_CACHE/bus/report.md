@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-27T19:21:58+00:00
+Generated: 2026-08-29T19:36:17+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             1.0000 |            3.8577 |           0.0005 |
+| FLASH_FUSION_CACHE |             1.0000 |            1.4957 |           0.0005 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       1 | 6%         |                0 |                  4 |                     6.5 | -                          |
+| FLASH_FUSION_CACHE |        16 |       1 | 6%         |                0 |                  4 |                     5.3 | -                          |
 
 ## Per-Query Results
 
@@ -26,7 +26,7 @@ Generated: 2026-08-27T19:21:58+00:00
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: AGGREGATE_COLUMN
-- Latency: 2.45s | Cost: $0.00004
+- Latency: 0.35s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -51,17 +51,17 @@ result = df['accel_mean'].mean()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating the bus driver's operating schedule or schedule compliance.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating the bus driver's operating schedule.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.63s | Cost: $0.00003
+- Latency: 0.41s | Cost: $0.00003
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating the bus driver's operating schedule or schedule compliance.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating the bus driver's operating schedule.
 ```
 
 ---
@@ -76,7 +76,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: AGGREGATE_COLUMN
-- Latency: 2.04s | Cost: $0.00008
+- Latency: 0.56s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -104,22 +104,21 @@ result = df['accel_variance'].max()
 **Answer:** The result is 11.458505525284506
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
-- Path: typed_operator_cache
+- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Path: typed_operator
 - Operators: DERIVE_VECTOR_MAGNITUDE,AGGREGATE_COLUMN
-- Latency: 3.42s | Cost: $0.00006
+- Latency: 5.30s | Cost: $0.00721
 
 **Agent Trace**
 
 ```
-Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (DERIVE_VECTOR_MAGNITUDE)
 Action: typed_operator_exec
-Action Input: df['vector_magnitude_p99'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
-Observation: derived 'vector_magnitude_p99' (rows=1219)
+Action Input: df['peak_accel_magnitude'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
+Observation: derived 'peak_accel_magnitude' (rows=1219)
 Thought: typed operator step 2 (AGGREGATE_COLUMN)
 Action: typed_operator_exec
-Action Input: result = df['vector_magnitude_p99'].mean()
+Action Input: result = df['peak_accel_magnitude'].mean()
 Observation: 11.458505525284506
 Final Answer: 11.458505525284506
 ```
@@ -127,8 +126,8 @@ Final Answer: 11.458505525284506
 **Final Code Executed**
 
 ```python
-df['vector_magnitude_p99'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
-result = df['vector_magnitude_p99'].mean()
+df['peak_accel_magnitude'] = (df['accel_stats_x_p99']**2 + df['accel_stats_y_p99']**2 + df['accel_stats_z_p99']**2)**0.5
+result = df['peak_accel_magnitude'].mean()
 ```
 
 ---
@@ -143,7 +142,7 @@ result = df['vector_magnitude_p99'].mean()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,COUNT_ROWS
-- Latency: 1.81s | Cost: $0.00006
+- Latency: 1.76s | Cost: $0.00005
 
 **Agent Trace**
 
@@ -173,17 +172,17 @@ result = len(df)
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about pothole repairs or future maintenance activities.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating pothole repairs or a target variable for predicting future repairs.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.38s | Cost: $0.00006
+- Latency: 0.48s | Cost: $0.00003
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about pothole repairs or future maintenance activities.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating pothole repairs or a target variable for predicting future repairs.
 ```
 
 ---
@@ -192,13 +191,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'latitude': 33.776749, 'longitude': -84.390053, 'diff_p99_p1_z': 11.186000000000002}
+**Answer:** The result is {'latitude': 33.776749, 'longitude': -84.390053, 'diff_z': 11.186000000000002}
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PARALLEL_AGGREGATE,DERIVE_BINARY,RANK_ROWS
-- Latency: 1.81s | Cost: $0.00011
+- Latency: 3.69s | Cost: $0.00011
 
 **Agent Trace**
 
@@ -207,30 +206,30 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PARALLEL_AGGREGATE)
 Action: typed_operator_exec
 Action Input: # PARALLEL_AGGREGATE branches:
-branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].mean()
-branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].mean()
+branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].max()
+branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].min()
 merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
 Observation: {'groups': 1218, 'columns': ['latitude', 'longitude', 'p99_z', 'p1_z']}
 Thought: typed operator step 2 (DERIVE_BINARY)
 Action: typed_operator_exec
-Action Input: df['diff_p99_p1_z'] = df['p99_z'] - df['p1_z']
-Observation: derived 'diff_p99_p1_z' (rows=1218)
+Action Input: df['diff_z'] = df['p99_z'] - df['p1_z']
+Observation: derived 'diff_z' (rows=1218)
 Thought: typed operator step 3 (RANK_ROWS)
 Action: typed_operator_exec
-Action Input: idx = df['diff_p99_p1_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()
-Observation: {'latitude': 33.776749, 'longitude': -84.390053, 'diff_p99_p1_z': 11.186000000000002}
-Final Answer: {'latitude': 33.776749, 'longitude': -84.390053, 'diff_p99_p1_z': 11.186000000000002}
+Action Input: idx = df['diff_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()
+Observation: {'latitude': 33.776749, 'longitude': -84.390053, 'diff_z': 11.186000000000002}
+Final Answer: {'latitude': 33.776749, 'longitude': -84.390053, 'diff_z': 11.186000000000002}
 ```
 
 **Final Code Executed**
 
 ```python
 # PARALLEL_AGGREGATE branches:
-branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].mean()
-branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].mean()
+branch_0 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p99'].max()
+branch_1 = df.groupby(['latitude', 'longitude'])['accel_stats_z_p1'].min()
 merged = branch_0.merge(branch_1, on=['latitude', 'longitude'], how='outer').fillna(0)
-df['diff_p99_p1_z'] = df['p99_z'] - df['p1_z']
-idx = df['diff_p99_p1_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()
+df['diff_z'] = df['p99_z'] - df['p1_z']
+idx = df['diff_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude']].to_dict()
 ```
 
 ---
@@ -239,13 +238,13 @@ idx = df['diff_p99_p1_z'].idxmax(); result = df.loc[idx, ['latitude', 'longitude
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Hist gradient boosting predicts label 'moderate' for the first holdout row.
+**Answer:** The result is Hist gradient boosting predicts behavior 'moderate' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 2.11s | Cost: $0.00017
+- Latency: 2.11s | Cost: $0.00007
 
 **Agent Trace**
 
@@ -254,16 +253,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp'] split=975/1219 model='hist_gradient_boosting' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Hist gradient boosting predicts label 'moderate' for the first holdout row."
-Observation: Hist gradient boosting predicts label 'moderate' for the first holdout row.
-Final Answer: Hist gradient boosting predicts label 'moderate' for the first holdout row.
+result = "Hist gradient boosting predicts behavior 'moderate' for the first holdout row."
+Observation: Hist gradient boosting predicts behavior 'moderate' for the first holdout row.
+Final Answer: Hist gradient boosting predicts behavior 'moderate' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp'] split=975/1219 model='hist_gradient_boosting' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Hist gradient boosting predicts label 'moderate' for the first holdout row."
+result = "Hist gradient boosting predicts behavior 'moderate' for the first holdout row."
 ```
 
 ---
@@ -272,17 +271,17 @@ result = "Hist gradient boosting predicts label 'moderate' for the first holdout
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about weather conditions or rainfall.
+**Answer:** Query rejected. Reason: The dataset does not contain any information about weather conditions, such as rain, which is necessary to determine if rainy weather caused the roughest segments in the route.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.78s | Cost: $0.00006
+- Latency: 0.61s | Cost: $0.00003
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about weather conditions or rainfall.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about weather conditions, such as rain, which is necessary to determine if rainy weather caused the roughest segments in the route.
 ```
 
 ---
@@ -291,13 +290,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Logistic regression predicts present 'moderate' for the first holdout row.
+**Answer:** The result is Logistic regression predicts behavior 'moderate' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 8.70s | Cost: $0.00016
+- Latency: 2.17s | Cost: $0.00007
 
 **Agent Trace**
 
@@ -306,16 +305,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp'] split=975/1219 model='logistic_regression' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Logistic regression predicts present 'moderate' for the first holdout row."
-Observation: Logistic regression predicts present 'moderate' for the first holdout row.
-Final Answer: Logistic regression predicts present 'moderate' for the first holdout row.
+result = "Logistic regression predicts behavior 'moderate' for the first holdout row."
+Observation: Logistic regression predicts behavior 'moderate' for the first holdout row.
+Final Answer: Logistic regression predicts behavior 'moderate' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp'] split=975/1219 model='logistic_regression' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Logistic regression predicts present 'moderate' for the first holdout row."
+result = "Logistic regression predicts behavior 'moderate' for the first holdout row."
 ```
 
 ---
@@ -324,17 +323,17 @@ result = "Logistic regression predicts present 'moderate' for the first holdout 
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating passenger occupancy or road roughness.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating passenger occupancy.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.76s | Cost: $0.00003
+- Latency: 0.67s | Cost: $0.00003
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating passenger occupancy or road roughness.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating passenger occupancy.
 ```
 
 ---
@@ -343,13 +342,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Random forest predicts label 'moderate' for the first holdout row.
+**Answer:** The result is Random forest predicts behavior 'moderate' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 5.97s | Cost: $0.00016
+- Latency: 1.49s | Cost: $0.00007
 
 **Agent Trace**
 
@@ -358,16 +357,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp'] split=975/1219 model='random_forest' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Random forest predicts label 'moderate' for the first holdout row."
-Observation: Random forest predicts label 'moderate' for the first holdout row.
-Final Answer: Random forest predicts label 'moderate' for the first holdout row.
+result = "Random forest predicts behavior 'moderate' for the first holdout row."
+Observation: Random forest predicts behavior 'moderate' for the first holdout row.
+Final Answer: Random forest predicts behavior 'moderate' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp'] split=975/1219 model='random_forest' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "Random forest predicts label 'moderate' for the first holdout row."
+result = "Random forest predicts behavior 'moderate' for the first holdout row."
 ```
 
 ---
@@ -376,13 +375,13 @@ result = "Random forest predicts label 'moderate' for the first holdout row."
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}
+**Answer:** The result is {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16314121510673235, 'difference': 0.20719211822660094}
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: SPLIT_BY_THRESHOLD,SPLIT_BY_THRESHOLD,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 1.48s | Cost: $0.00008
+- Latency: 1.10s | Cost: $0.00007
 
 **Agent Trace**
 
@@ -390,30 +389,30 @@ result = "Random forest predicts label 'moderate' for the first holdout row."
 Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (SPLIT_BY_THRESHOLD)
 Action: typed_operator_exec
-Action Input: northern_half = df[df['latitude'] gt df['latitude'].median()]
-Observation: northern_half: rows=609 (latitude gt median=33.776676)
+Action Input: north = df[df['latitude'] gt df['latitude'].median()]
+Observation: north: rows=609 (latitude gt median=33.776676)
 Thought: typed operator step 2 (SPLIT_BY_THRESHOLD)
 Action: typed_operator_exec
-Action Input: southern_half = df[df['latitude'] lte df['latitude'].median()]
-Observation: southern_half: rows=610 (latitude lte median=33.776676)
+Action Input: south = df[df['latitude'] lt df['latitude'].median()]
+Observation: south: rows=609 (latitude lt median=33.776676)
 Thought: typed operator step 3 (AGGREGATE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = {label: agg(partition) for label in partitions}
-Observation: {'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624}
+Observation: {'north': 0.3703333333333333, 'south': 0.16314121510673235}
 Thought: typed operator step 4 (COMPARE_PARTITIONS)
 Action: typed_operator_exec
-Action Input: result = compare(northern_half, southern_half, mode='difference')
-Observation: {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}
-Final Answer: {'higher': 'northern_half', 'lower': 'southern_half', 'metric': 'mean accel_variance', 'northern_half': 0.3703333333333333, 'southern_half': 0.16309016393442624, 'difference': 0.20724316939890705}
+Action Input: result = compare(north, south, mode='difference')
+Observation: {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16314121510673235, 'difference': 0.20719211822660094}
+Final Answer: {'higher': 'north', 'lower': 'south', 'metric': 'mean accel_variance', 'north': 0.3703333333333333, 'south': 0.16314121510673235, 'difference': 0.20719211822660094}
 ```
 
 **Final Code Executed**
 
 ```python
-northern_half = df[df['latitude'] gt df['latitude'].median()]
-southern_half = df[df['latitude'] lte df['latitude'].median()]
+north = df[df['latitude'] gt df['latitude'].median()]
+south = df[df['latitude'] lt df['latitude'].median()]
 result = {label: agg(partition) for label in partitions}
-result = compare(northern_half, southern_half, mode='difference')
+result = compare(north, south, mode='difference')
 ```
 
 ---
@@ -422,37 +421,38 @@ result = compare(northern_half, southern_half, mode='difference')
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The time window starting at 2025-06-06T16:01:00 has mean instability score 5.8690.
+**Answer:** The result is {'time_bin': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: DERIVE_BIN,GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 6.50s | Cost: $0.00742
+- Latency: 1.00s | Cost: $0.00010
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (DERIVE_BIN)
 Action: typed_operator_exec
-Action Input: df['time_window'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
-Observation: derived 'time_window' (kind=temporal freq='1min' source=datetime)
+Action Input: df['time_bin'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
+Observation: derived 'time_bin' (kind=temporal freq='1min' source=datetime)
 Thought: typed operator step 2 (GROUP_AGGREGATE)
 Action: typed_operator_exec
-Action Input: result = df.groupby('time_window')['instability_score'].mean()
+Action Input: result = df.groupby('time_bin')['instability_score'].mean()
 Observation: {'2025-06-06T11:08:00': 0.21, '2025-06-06T11:09:00': 0.19395, '2025-06-06T11:10:00': 0.10300000000000001, '2025-06-06T11:11:00': 0.10300000000000001, '2025-06-06T11:12:00': 0.17365, '2025-06-06T11:13:00': 0.574, '2025-06-06T11:14:00': 0.574, '2025-06-06T11:15:00': 0.5186499999999999, '2025-06-06T11:16:00': 0.205, '2025-06-06T11:20:00': 0.208, '2025-06-06T11:21:00': 0.208, '2025-06-06T11:24:00': 0.209, '2025-06-06T11:33:00': 0.05566666666666667, '2025-06-06T11:34:00': 0.179, '2025-06-06T11:35:00': 0.179, '2025-06-06T11:36:00': 0.17195, '2025-06-06T11:37:00': 0.132, '2025-06-06T11:38:00': 0.132, '2025-06-06T11:39:00': 0.1233, '2025-06-06T11:40:00': 0.074, '2025-06-06T11:41:00': 0.074, '2025-06-06T11:42:00': 0.08614999999999999, '2025-06-06T11:43:00': 0.155, '2025-06-06T11:44:00': 0.155, '2025-06-06T11:45:00': 0.18214999999999998, '2025-06-06T11:46:00': 0.336, '2025-06-06T11:47:00': 0.336, '2025-06-06T11:48:00': 0.08900000000000001, '2025-06-06T11:49:00': 0.089, '2025-06-06T11:50:00': 0.089, '2025-06-06T11:51:00': 0.089, '2025-06-06T11:53:00': 0.085, '2025-06-06T11:54:00': 0.08530000000000001, '2025-06-06T11:55:00': 0.087, '2025-06-06T11:56:00': 0.08700000000000001, '2025-06-06T11:57:00': 0.099, '2025-06-06T11:58:00': 0.167, '2025-06-06T11:59:00': 0.167, '2025-06-06T12:00:00': 0.167, '2025-06-06T14:50:00': 0.151, '2025-06-06T14:51:00': 0.151, '2025-06-06T15:04:00': 0.07583333333333334, '2025-06-06T15:05:00': 0.082, '2025-06-06T15:06:00': 0.082, '2025-06-06T15:07:00': 0.047636363636363636, '2025-06-06T15:14:00': 0.09400000000000001, '2025-06-06T15:15:00': 0.094, '2025-06-06T16:01:00': 5.869, '2025-06-06T16:02:00': 5.869, '2025-06-06T16:04:00': 0.594, '2025-06-06T16:05:00': 0.594, '2025-06-06T16:06:00': 0.4225, '2025-06-06T16:07:00': 0.104, '2025-06-06T16:08:00': 0.104, '2025-06-06T16:09:00': 0.19675, '2025-06-06T16:10:00': 0.369, '2025-06-06T16:11:00': 0.369, '2025-06-06T16:12:00': 0.29969999999999997, '2025-06-06T16:13:00': 0.171, '2025-06-06T16:14:00': 0.171, '2025-06-06T16:15:00': 0.1575, '2025-06-06T16:16:00': 0.144, '2025-06-06T16:17:00': 0.144, '2025-06-06T16:18:00': 0.1517, '2025-06-06T16:19:00': 0.166, '2025-06-06T16:20:00': 0.166, '2025-06-06T16:21:00': 0.255, '2025-06-06T16:22:00': 0.255, '2025-06-06T16:23:00': 0.255, '2025-06-06T16:24:00': 0.22247368421052632, '2025-06-06T16:28:00': 0.253, '2025-06-06T16:29:00': 0.253, '2025-06-06T16:30:00': 0.1740909090909091, '2025-06-06T16:31:00': 0.129, '2025-06-06T16:32:00': 0.129, '2025-06-06T16:33:00': 0.1283, '2025-06-06T16:34:00': 0.127, '2025-06-06T16:35:00': 0.127, '2025-06-06T16:36:00': 0.127}
 Thought: typed operator step 3 (RANK_GROUPS)
 Action: typed_operator_exec
 Action Input: result = result.idxmax()
-Observation: {'time_window': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}
-Final Answer: {'time_window': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}
+Observation: {'time_bin': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}
+Final Answer: {'time_bin': '2025-06-06T16:01:00', 'mean_instability_score': 5.869}
 ```
 
 **Final Code Executed**
 
 ```python
-df['time_window'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
-result = df.groupby('time_window')['instability_score'].mean()
+df['time_bin'] = pd.to_datetime(df['timestamp'], errors='coerce').dt.floor('1min')
+result = df.groupby('time_bin')['instability_score'].mean()
 result = result.idxmax()
 ```
 
@@ -462,13 +462,13 @@ result = result.idxmax()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 1-nearest-neighbor predicts label 'moderate' for the first holdout row.
+**Answer:** The result is 1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 16.78s | Cost: $0.00009
+- Latency: 1.76s | Cost: $0.00007
 
 **Agent Trace**
 
@@ -477,16 +477,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "1-nearest-neighbor predicts label 'moderate' for the first holdout row."
-Observation: 1-nearest-neighbor predicts label 'moderate' for the first holdout row.
-Final Answer: 1-nearest-neighbor predicts label 'moderate' for the first holdout row.
+result = "1-nearest-neighbor predicts behavior 'moderate' for the first holdout row."
+Observation: 1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.
+Final Answer: 1-nearest-neighbor predicts behavior 'moderate' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp'] split=975/1219 model='one_nearest_neighbor' features=['accel_mean', 'accel_variance', 'accel_stats_x_p1', 'accel_stats_x_p10', 'accel_stats_x_p90', 'accel_stats_x_p99', 'accel_stats_y_p1', 'accel_stats_y_p10', 'accel_stats_y_p90', 'accel_stats_y_p99', 'accel_stats_z_p1', 'accel_stats_z_p10', 'accel_stats_z_p90', 'accel_stats_z_p99', 'extreme_event_magnitude', 'instability_score']
-result = "1-nearest-neighbor predicts label 'moderate' for the first holdout row."
+result = "1-nearest-neighbor predicts behavior 'moderate' for the first holdout row."
 ```
 
 ---
@@ -501,7 +501,7 @@ result = "1-nearest-neighbor predicts label 'moderate' for the first holdout row
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_EQ_AGGREGATE,SELECT_COLUMN
-- Latency: 1.09s | Cost: $0.00011
+- Latency: 0.46s | Cost: $0.00005
 
 **Agent Trace**
 

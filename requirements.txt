@@ -33,6 +33,8 @@ chromadb>=0.4.22
 
 # Embeddings (local)
 sentence-transformers>=3.0.0
+rapidfuzz>=3.9.0
+snowballstemmer>=2.2.0
 
 # Google Gemini SDK
 google-genai>=0.3.0

@@ -22,6 +22,8 @@ dependencies = [
     "scikit-learn>=1.4.0",
     "torch>=2.2.0",
     "python-dotenv>=1.0.1",
+    "rapidfuzz>=3.9.0",
+    "snowballstemmer>=2.2.0",
 ]
 
 [project.optional-dependencies]

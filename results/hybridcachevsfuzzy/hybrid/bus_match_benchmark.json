@@ -1,0 +1,8318 @@
+{
+  "benchmark": {
+    "algorithms": [
+      "hybrid"
+    ],
+    "config_path": "flashfusion/eval/cache/hybrid_match_config.json",
+    "config_version": 1,
+    "datasets": [
+      "bus"
+    ],
+    "dense_top_k": 20,
+    "lexical_top_k": 20,
+    "mode": "hybrid",
+    "name": "hybrid_cache_end_to_end",
+    "query_sources": [
+      "flashfusion.eval.queries",
+      "flashfusion.eval.queries_v2",
+      "flashfusion.eval.queries_v3"
+    ],
+    "report_k": [
+      1,
+      3,
+      5,
+      10
+    ],
+    "timestamp_utc": "2026-08-29T19:19:54.636908+00:00",
+    "uses_language_model": false,
+    "versions": [
+      "v1",
+      "v2",
+      "v3"
+    ]
+  },
+  "failure_breakdown": {
+    "abstention_decisions": {},
+    "ambiguous_decisions": 0,
+    "errors": 0,
+    "expected_absent_from_retrieval_union": 0,
+    "expected_compatible_but_not_final_winner": 0,
+    "expected_retrieved_but_rejected_incompatible": 0,
+    "expected_winner_below_acceptance_floor": 0,
+    "wrong_authorized_reuse": 0
+  },
+  "rows": [
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-1-v1",
+      "compatibility_candidate_ids": [
+        "1"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.560434
+      },
+      "dense_top_k_ids": [
+        "1",
+        "2",
+        "4",
+        "7",
+        "6",
+        "8",
+        "3",
+        "5",
+        "16",
+        "13",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "2",
+          "4",
+          "7",
+          "6",
+          "8",
+          "3",
+          "5",
+          "16",
+          "13"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4"
+        ],
+        "5": [
+          "1",
+          "2",
+          "4",
+          "7",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.656083,
+        "lexical_retrieve_ms": 0.160042,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.026749999960884452,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "1",
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 14.768163
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "2",
+        "4",
+        "3",
+        "14",
+        "13",
+        "5",
+        "16",
+        "15",
+        "7",
+        "6",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "2",
+          "4",
+          "3",
+          "14",
+          "13",
+          "5",
+          "16",
+          "15",
+          "7"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4"
+        ],
+        "5": [
+          "1",
+          "2",
+          "4",
+          "3",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "1",
+      "predicted_query_id": "1",
+      "query": "What is the maximum accel_variance observed in this dataset?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4"
+        ],
+        "5": [
+          "1",
+          "14",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum accel_variance observed in this dataset?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-1-v2",
+      "compatibility_candidate_ids": [
+        "1",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.538313
+      },
+      "dense_top_k_ids": [
+        "1",
+        "4",
+        "2",
+        "7",
+        "6",
+        "8",
+        "3",
+        "5",
+        "16",
+        "13",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "6",
+          "8",
+          "3",
+          "5",
+          "16",
+          "13"
+        ],
+        "3": [
+          "1",
+          "4",
+          "2"
+        ],
+        "5": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 4.259374999492138,
+        "dense_retrieve_ms": 5.058375,
+        "lexical_retrieve_ms": 0.226625,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.806332999782171,
+        "total_match_ms": 10.383916999671783,
+        "verify_ms": 0.3075419999731821,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "1",
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 11.272317
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "4",
+        "3",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "8",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "3",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5"
+        ],
+        "3": [
+          "1",
+          "4",
+          "3"
+        ],
+        "5": [
+          "1",
+          "4",
+          "3",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "1",
+      "predicted_query_id": "1",
+      "query": "Could you report the maximum accel_variance observed in this dataset?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.666667,
+        "dense_score": 0.322617,
+        "final_score": 0.494642,
+        "lexical_score": 0.005824,
+        "query_id": "7",
+        "retrieval_score": 0.322617,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.538313,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum accel_variance observed in this dataset?"
+      },
+      "winner_runner_up_margin": 0.505358
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-1-v3",
+      "compatibility_candidate_ids": [
+        "1",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 0.51839
+      },
+      "dense_top_k_ids": [
+        "1",
+        "4",
+        "2",
+        "7",
+        "6",
+        "8",
+        "5",
+        "3",
+        "16",
+        "14",
+        "13",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "6",
+          "8",
+          "5",
+          "3",
+          "16",
+          "14"
+        ],
+        "3": [
+          "1",
+          "4",
+          "2"
+        ],
+        "5": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.4690409996328526,
+        "dense_retrieve_ms": 6.009083,
+        "lexical_retrieve_ms": 0.10075,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.572459000177332,
+        "total_match_ms": 6.254542000533547,
+        "verify_ms": 0.1990410000871634,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "1",
+      "expected_query_id": "1",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "1",
+        "is_expected": true,
+        "query_id": "1",
+        "score": 9.325758
+      },
+      "lexical_top_k_ids": [
+        "1",
+        "4",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "3",
+        "2"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5"
+        ],
+        "3": [
+          "1",
+          "4",
+          "8"
+        ],
+        "5": [
+          "1",
+          "4",
+          "8",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "1",
+      "predicted_query_id": "1",
+      "query": "Please provide the highest accel_variance observed in this dataset?",
+      "query_id": "1",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.666667,
+        "dense_score": 0.301401,
+        "final_score": 0.484034,
+        "lexical_score": 0.007065,
+        "query_id": "7",
+        "retrieval_score": 0.301401,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "4",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "1",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.51839,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "1",
+        "retrieval_score": 1.0,
+        "text": "What is the maximum accel_variance observed in this dataset?"
+      },
+      "winner_runner_up_margin": 0.515966
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-2-v1",
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.620214
+      },
+      "dense_top_k_ids": [
+        "2",
+        "1",
+        "7",
+        "4",
+        "8",
+        "3",
+        "6",
+        "16",
+        "13",
+        "14",
+        "5",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "7",
+          "4",
+          "8",
+          "3",
+          "6",
+          "16",
+          "13",
+          "14"
+        ],
+        "3": [
+          "2",
+          "1",
+          "7"
+        ],
+        "5": [
+          "2",
+          "1",
+          "7",
+          "4",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.450375,
+        "lexical_retrieve_ms": 0.116208,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011125000128231477,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "2",
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 15.781537
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "1",
+        "5",
+        "3",
+        "6",
+        "4",
+        "7",
+        "14",
+        "13",
+        "16",
+        "15",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "1",
+          "5",
+          "3",
+          "6",
+          "4",
+          "7",
+          "14",
+          "13",
+          "16"
+        ],
+        "3": [
+          "2",
+          "1",
+          "5"
+        ],
+        "5": [
+          "2",
+          "1",
+          "5",
+          "3",
+          "6"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "2",
+      "predicted_query_id": "2",
+      "query": "What is the average accel_mean across all recorded samples?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "5",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the average accel_mean across all recorded samples?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-2-v2",
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.548178
+      },
+      "dense_top_k_ids": [
+        "2",
+        "7",
+        "1",
+        "4",
+        "3",
+        "8",
+        "6",
+        "14",
+        "13",
+        "16",
+        "5",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "3",
+          "8",
+          "6",
+          "14",
+          "13",
+          "16"
+        ],
+        "3": [
+          "2",
+          "7",
+          "1"
+        ],
+        "5": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.4615419993569958,
+        "dense_retrieve_ms": 5.181417,
+        "lexical_retrieve_ms": 0.091292,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.646958000397717,
+        "total_match_ms": 6.311083000582585,
+        "verify_ms": 0.19387500015000114,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "2",
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 10.339133
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "3",
+        "1",
+        "4",
+        "7",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "6",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "7",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15"
+        ],
+        "3": [
+          "2",
+          "3",
+          "1"
+        ],
+        "5": [
+          "2",
+          "3",
+          "1",
+          "4",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "2",
+      "predicted_query_id": "2",
+      "query": "Could you report the average accel_mean across all observed samples?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.548178,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the average accel_mean across all recorded samples?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-2-v3",
+      "compatibility_candidate_ids": [
+        "2"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 0.609693
+      },
+      "dense_top_k_ids": [
+        "2",
+        "7",
+        "1",
+        "4",
+        "8",
+        "3",
+        "6",
+        "16",
+        "13",
+        "5",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "8",
+          "3",
+          "6",
+          "16",
+          "13",
+          "5"
+        ],
+        "3": [
+          "2",
+          "7",
+          "1"
+        ],
+        "5": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.4445829999895068,
+        "dense_retrieve_ms": 5.236,
+        "lexical_retrieve_ms": 0.089458,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.220334000114235,
+        "total_match_ms": 5.842874999871128,
+        "verify_ms": 0.1703750003798632,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "2",
+      "expected_query_id": "2",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "2",
+        "is_expected": true,
+        "query_id": "2",
+        "score": 12.285691
+      },
+      "lexical_top_k_ids": [
+        "2",
+        "3",
+        "6",
+        "4",
+        "7",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "8",
+        "1"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "3",
+          "6",
+          "4",
+          "7",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15"
+        ],
+        "3": [
+          "2",
+          "3",
+          "6"
+        ],
+        "5": [
+          "2",
+          "3",
+          "6",
+          "4",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "2",
+      "predicted_query_id": "2",
+      "query": "Please provide the average accel_mean across all recorded samples?",
+      "query_id": "2",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "2",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.609693,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "2",
+        "retrieval_score": 1.0,
+        "text": "What is the average accel_mean across all recorded samples?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-3-v1",
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.397234
+      },
+      "dense_top_k_ids": [
+        "1",
+        "8",
+        "2",
+        "3",
+        "7",
+        "6",
+        "13",
+        "16",
+        "15",
+        "14",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "8",
+          "2",
+          "3",
+          "7",
+          "6",
+          "13",
+          "16",
+          "15",
+          "14"
+        ],
+        "3": [
+          "1",
+          "8",
+          "2"
+        ],
+        "5": [
+          "1",
+          "8",
+          "2",
+          "3",
+          "7"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.926542,
+        "lexical_retrieve_ms": 0.132833,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011750000339816324,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "3",
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 24.090109
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "2",
+        "1",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "8",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "2",
+          "1",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5"
+        ],
+        "3": [
+          "3",
+          "2",
+          "1"
+        ],
+        "5": [
+          "3",
+          "2",
+          "1",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "3",
+      "predicted_query_id": "3",
+      "query": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-3-v2",
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.409758
+      },
+      "dense_top_k_ids": [
+        "1",
+        "8",
+        "2",
+        "3",
+        "7",
+        "6",
+        "13",
+        "16",
+        "15",
+        "14",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "8",
+          "2",
+          "3",
+          "7",
+          "6",
+          "13",
+          "16",
+          "15",
+          "14"
+        ],
+        "3": [
+          "1",
+          "8",
+          "2"
+        ],
+        "5": [
+          "1",
+          "8",
+          "2",
+          "3",
+          "7"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.5197079999561538,
+        "dense_retrieve_ms": 5.341042,
+        "lexical_retrieve_ms": 0.138,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.347416999939014,
+        "total_match_ms": 6.083624999519088,
+        "verify_ms": 0.2089159997922252,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "3",
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 23.307806
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "1",
+        "2",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "8",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "1",
+          "2",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5"
+        ],
+        "3": [
+          "3",
+          "1",
+          "2"
+        ],
+        "5": [
+          "3",
+          "1",
+          "2",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "3",
+      "predicted_query_id": "3",
+      "query": "List every timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "3"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.833333,
+        "dense_score": 0.371411,
+        "final_score": 0.916667,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-3-v3",
+      "compatibility_candidate_ids": [
+        "3"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": false,
+        "query_id": "8",
+        "score": 0.385475
+      },
+      "dense_top_k_ids": [
+        "8",
+        "2",
+        "1",
+        "6",
+        "3",
+        "7",
+        "13",
+        "15",
+        "14",
+        "16",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "1",
+          "6",
+          "3",
+          "7",
+          "13",
+          "15",
+          "14",
+          "16"
+        ],
+        "3": [
+          "8",
+          "2",
+          "1"
+        ],
+        "5": [
+          "8",
+          "2",
+          "1",
+          "6",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.5528330002562143,
+        "dense_retrieve_ms": 5.703,
+        "lexical_retrieve_ms": 0.131958,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.7070839993684785,
+        "total_match_ms": 6.480250000095111,
+        "verify_ms": 0.21133399968675803,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "3",
+      "expected_query_id": "3",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "3",
+        "is_expected": true,
+        "query_id": "3",
+        "score": 22.229393
+      },
+      "lexical_top_k_ids": [
+        "3",
+        "2",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "3"
+        ],
+        "10": [
+          "3",
+          "2",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5"
+        ],
+        "3": [
+          "3",
+          "2",
+          "8"
+        ],
+        "5": [
+          "3",
+          "2",
+          "8",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "3",
+      "predicted_query_id": "3",
+      "query": "List all timestamps where accel_stats_z_p99 reaches its highest value across the dataset.",
+      "query_id": "3",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "3",
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "3",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "3",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.5,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.833333,
+        "dense_score": 0.334037,
+        "final_score": 0.916667,
+        "lexical_score": 1.0,
+        "query_id": "3",
+        "retrieval_score": 1.0,
+        "text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-4-v1",
+      "compatibility_candidate_ids": [
+        "4"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.3935
+      },
+      "dense_top_k_ids": [
+        "1",
+        "4",
+        "2",
+        "7",
+        "3",
+        "6",
+        "8",
+        "5",
+        "16",
+        "13",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "3",
+          "6",
+          "8",
+          "5",
+          "16",
+          "13"
+        ],
+        "3": [
+          "1",
+          "4",
+          "2"
+        ],
+        "5": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.288125,
+        "lexical_retrieve_ms": 0.147834,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009917000170389656,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "4",
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 26.547205
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "8",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "8",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "8",
+          "5"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "4",
+      "predicted_query_id": "4",
+      "query": "How many data samples show an accel_variance strictly greater than 0.20?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "How many data samples show an accel_variance strictly greater than 0.20?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-4-v2",
+      "compatibility_candidate_ids": [
+        "4"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "1",
+        "is_expected": false,
+        "query_id": "1",
+        "score": 0.407688
+      },
+      "dense_top_k_ids": [
+        "1",
+        "4",
+        "2",
+        "7",
+        "3",
+        "8",
+        "6",
+        "5",
+        "16",
+        "13",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "1"
+        ],
+        "10": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "3",
+          "8",
+          "6",
+          "5",
+          "16",
+          "13"
+        ],
+        "3": [
+          "1",
+          "4",
+          "2"
+        ],
+        "5": [
+          "1",
+          "4",
+          "2",
+          "7",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.547790999917197,
+        "dense_retrieve_ms": 5.841708,
+        "lexical_retrieve_ms": 0.129208,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.526542000552581,
+        "total_match_ms": 6.339667000247573,
+        "verify_ms": 0.2567910005382146,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "4",
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 21.672714
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "5",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "5",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "7"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "5",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "4",
+      "predicted_query_id": "4",
+      "query": "What number of data samples show an accel_variance strictly greater than 0.20?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "1",
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4"
+        ],
+        "5": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predicate_ops": 0.0
+        },
+        "contract_score": 0.6,
+        "dense_score": 0.388109,
+        "final_score": 0.8,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "How many data samples show an accel_variance strictly greater than 0.20?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-4-v3",
+      "compatibility_candidate_ids": [
+        "4"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 0.377921
+      },
+      "dense_top_k_ids": [
+        "4",
+        "1",
+        "2",
+        "7",
+        "3",
+        "6",
+        "8",
+        "5",
+        "13",
+        "16",
+        "14",
+        "15"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "2",
+          "7",
+          "3",
+          "6",
+          "8",
+          "5",
+          "13",
+          "16"
+        ],
+        "3": [
+          "4",
+          "1",
+          "2"
+        ],
+        "5": [
+          "4",
+          "1",
+          "2",
+          "7",
+          "3"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.5053750001025037,
+        "dense_retrieve_ms": 5.821959,
+        "lexical_retrieve_ms": 0.158709,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.4588329994658125,
+        "total_match_ms": 6.184290999954101,
+        "verify_ms": 0.21158300023671472,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "4",
+      "expected_query_id": "4",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "4",
+        "is_expected": true,
+        "query_id": "4",
+        "score": 26.547205
+      },
+      "lexical_top_k_ids": [
+        "4",
+        "1",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "2",
+        "8",
+        "7",
+        "6"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "4",
+          "1",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15",
+          "2",
+          "8",
+          "7"
+        ],
+        "3": [
+          "4",
+          "1",
+          "5"
+        ],
+        "5": [
+          "4",
+          "1",
+          "5",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "4",
+      "predicted_query_id": "4",
+      "query": "How much of a count of data samples show an accel_variance strictly greater than 0.20?",
+      "query_id": "4",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "4"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "4",
+          "5"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "4",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0,
+          "predicate_ops": 0.0
+        },
+        "contract_score": 0.6,
+        "dense_score": 0.377921,
+        "final_score": 0.8,
+        "lexical_score": 1.0,
+        "query_id": "4",
+        "retrieval_score": 1.0,
+        "text": "How many data samples show an accel_variance strictly greater than 0.20?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-5-v1",
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.121932
+      },
+      "dense_top_k_ids": [
+        "2",
+        "7",
+        "1",
+        "6",
+        "5",
+        "4",
+        "14",
+        "16",
+        "8",
+        "13",
+        "15",
+        "3"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "1",
+          "6",
+          "5",
+          "4",
+          "14",
+          "16",
+          "8",
+          "13"
+        ],
+        "3": [
+          "2",
+          "7",
+          "1"
+        ],
+        "5": [
+          "2",
+          "7",
+          "1",
+          "6",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.285958,
+        "lexical_retrieve_ms": 0.178084,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.012040999536111485,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "5",
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 32.361475
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "2",
+        "7",
+        "4",
+        "1",
+        "14",
+        "13",
+        "16",
+        "15",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "2",
+          "7",
+          "4",
+          "1",
+          "14",
+          "13",
+          "16",
+          "15"
+        ],
+        "3": [
+          "5",
+          "6",
+          "2"
+        ],
+        "5": [
+          "5",
+          "6",
+          "2",
+          "7",
+          "4"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "5",
+      "predicted_query_id": "5",
+      "query": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-5-v2",
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.132829
+      },
+      "dense_top_k_ids": [
+        "2",
+        "7",
+        "1",
+        "4",
+        "6",
+        "5",
+        "14",
+        "16",
+        "8",
+        "13",
+        "15",
+        "3"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "6",
+          "5",
+          "14",
+          "16",
+          "8",
+          "13"
+        ],
+        "3": [
+          "2",
+          "7",
+          "1"
+        ],
+        "5": [
+          "2",
+          "7",
+          "1",
+          "4",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6591660003323341,
+        "dense_retrieve_ms": 5.926042,
+        "lexical_retrieve_ms": 0.176708,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.456834000142408,
+        "total_match_ms": 6.3505420002911706,
+        "verify_ms": 0.22620799973083194,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "5",
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 27.953518
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "7",
+        "2",
+        "14",
+        "13",
+        "16",
+        "15",
+        "4",
+        "1",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "7",
+          "2",
+          "14",
+          "13",
+          "16",
+          "15",
+          "4",
+          "1"
+        ],
+        "3": [
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "5",
+          "6",
+          "7",
+          "2",
+          "14"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "5",
+      "predicted_query_id": "5",
+      "query": "Is the northern half of the route (latitude above median) rougher than the southern half, Using average acceleration variance?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "14",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0,
+          "predicate_ops": 0.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.076212,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-5-v3",
+      "compatibility_candidate_ids": [
+        "5"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "2",
+        "is_expected": false,
+        "query_id": "2",
+        "score": 0.121932
+      },
+      "dense_top_k_ids": [
+        "2",
+        "7",
+        "1",
+        "6",
+        "5",
+        "4",
+        "14",
+        "16",
+        "8",
+        "13",
+        "15",
+        "3"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "2"
+        ],
+        "10": [
+          "2",
+          "7",
+          "1",
+          "6",
+          "5",
+          "4",
+          "14",
+          "16",
+          "8",
+          "13"
+        ],
+        "3": [
+          "2",
+          "7",
+          "1"
+        ],
+        "5": [
+          "2",
+          "7",
+          "1",
+          "6",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.240042,
+        "lexical_retrieve_ms": 0.180208,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009207999937643763,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": false,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "5",
+      "expected_query_id": "5",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "5",
+        "is_expected": true,
+        "query_id": "5",
+        "score": 32.361475
+      },
+      "lexical_top_k_ids": [
+        "5",
+        "6",
+        "2",
+        "7",
+        "4",
+        "1",
+        "14",
+        "13",
+        "16",
+        "15",
+        "8",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "5"
+        ],
+        "10": [
+          "5",
+          "6",
+          "2",
+          "7",
+          "4",
+          "1",
+          "14",
+          "13",
+          "16",
+          "15"
+        ],
+        "3": [
+          "5",
+          "6",
+          "2"
+        ],
+        "5": [
+          "5",
+          "6",
+          "2",
+          "7",
+          "4"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "5",
+      "predicted_query_id": "5",
+      "query": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+      "query_id": "5",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "2",
+          "5"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "1",
+          "2",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "1",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "5",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "5",
+        "retrieval_score": 1.0,
+        "text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-6-v1",
+      "compatibility_candidate_ids": [
+        "6"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.286377
+      },
+      "dense_top_k_ids": [
+        "6",
+        "7",
+        "2",
+        "8",
+        "5",
+        "1",
+        "13",
+        "16",
+        "15",
+        "14",
+        "4",
+        "3"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "2",
+          "8",
+          "5",
+          "1",
+          "13",
+          "16",
+          "15",
+          "14"
+        ],
+        "3": [
+          "6",
+          "7",
+          "2"
+        ],
+        "5": [
+          "6",
+          "7",
+          "2",
+          "8",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.548542,
+        "lexical_retrieve_ms": 0.179417,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.009499999578110874,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "6",
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 30.836185
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "7",
+        "5",
+        "2",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "5",
+          "2",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "1"
+        ],
+        "3": [
+          "6",
+          "7",
+          "5"
+        ],
+        "5": [
+          "6",
+          "7",
+          "5",
+          "2",
+          "8"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "6",
+      "predicted_query_id": "6",
+      "query": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-6-v2",
+      "compatibility_candidate_ids": [
+        "6",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.278686
+      },
+      "dense_top_k_ids": [
+        "6",
+        "7",
+        "8",
+        "2",
+        "5",
+        "1",
+        "13",
+        "16",
+        "15",
+        "4",
+        "14",
+        "3"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "8",
+          "2",
+          "5",
+          "1",
+          "13",
+          "16",
+          "15",
+          "4"
+        ],
+        "3": [
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "6",
+          "7",
+          "8",
+          "2",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.7066250000207219,
+        "dense_retrieve_ms": 5.330792,
+        "lexical_retrieve_ms": 0.176292,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.966624999928172,
+        "total_match_ms": 6.880791999719804,
+        "verify_ms": 0.1994580006794422,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "6",
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 29.140029
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "7",
+        "5",
+        "1",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "5",
+          "1",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "2"
+        ],
+        "3": [
+          "6",
+          "7",
+          "5"
+        ],
+        "5": [
+          "6",
+          "7",
+          "5",
+          "1",
+          "8"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "6",
+      "predicted_query_id": "6",
+      "query": "Which location (latitude, longitude) observed the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.666667,
+        "dense_score": 0.235714,
+        "final_score": 0.451191,
+        "lexical_score": 0.200441,
+        "query_id": "7",
+        "retrieval_score": 0.235714,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.278686,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?"
+      },
+      "winner_runner_up_margin": 0.548809
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-6-v3",
+      "compatibility_candidate_ids": [
+        "6",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 0.299925
+      },
+      "dense_top_k_ids": [
+        "6",
+        "7",
+        "2",
+        "8",
+        "5",
+        "1",
+        "13",
+        "16",
+        "15",
+        "14",
+        "3",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "2",
+          "8",
+          "5",
+          "1",
+          "13",
+          "16",
+          "15",
+          "14"
+        ],
+        "3": [
+          "6",
+          "7",
+          "2"
+        ],
+        "5": [
+          "6",
+          "7",
+          "2",
+          "8",
+          "5"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6937500002095476,
+        "dense_retrieve_ms": 5.306375,
+        "lexical_retrieve_ms": 0.185458,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.423290999715391,
+        "total_match_ms": 6.307416000709054,
+        "verify_ms": 0.18379100038146134,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "6",
+      "expected_query_id": "6",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "6",
+        "is_expected": true,
+        "query_id": "6",
+        "score": 30.836185
+      },
+      "lexical_top_k_ids": [
+        "6",
+        "7",
+        "5",
+        "2",
+        "8",
+        "14",
+        "13",
+        "16",
+        "15",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "6",
+          "7",
+          "5",
+          "2",
+          "8",
+          "14",
+          "13",
+          "16",
+          "15",
+          "1"
+        ],
+        "3": [
+          "6",
+          "7",
+          "5"
+        ],
+        "5": [
+          "6",
+          "7",
+          "5",
+          "2",
+          "8"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "6",
+      "predicted_query_id": "6",
+      "query": "Tell me which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "query_id": "6",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.666667,
+        "dense_score": 0.254809,
+        "final_score": 0.460738,
+        "lexical_score": 0.189366,
+        "query_id": "7",
+        "retrieval_score": 0.254809,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "6"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6",
+          "7"
+        ],
+        "5": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "6",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.299925,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "6",
+        "retrieval_score": 1.0,
+        "text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?"
+      },
+      "winner_runner_up_margin": 0.539262
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-7-v1",
+      "compatibility_candidate_ids": [
+        "7"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 0.501078
+      },
+      "dense_top_k_ids": [
+        "7",
+        "2",
+        "8",
+        "6",
+        "1",
+        "13",
+        "16",
+        "3",
+        "14",
+        "15",
+        "5",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "2",
+          "8",
+          "6",
+          "1",
+          "13",
+          "16",
+          "3",
+          "14",
+          "15"
+        ],
+        "3": [
+          "7",
+          "2",
+          "8"
+        ],
+        "5": [
+          "7",
+          "2",
+          "8",
+          "6",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.715875,
+        "lexical_retrieve_ms": 0.162417,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.011082999662903603,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "7",
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 26.974164
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "6",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "2",
+        "8",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15",
+          "2",
+          "8",
+          "1"
+        ],
+        "3": [
+          "7",
+          "6",
+          "5"
+        ],
+        "5": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "7",
+      "predicted_query_id": "7",
+      "query": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-7-v2",
+      "compatibility_candidate_ids": [
+        "7",
+        "8",
+        "6",
+        "1"
+      ],
+      "compatible_candidate_count": 4,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 0.511977
+      },
+      "dense_top_k_ids": [
+        "7",
+        "2",
+        "8",
+        "6",
+        "1",
+        "13",
+        "16",
+        "3",
+        "14",
+        "5",
+        "15",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "2",
+          "8",
+          "6",
+          "1",
+          "13",
+          "16",
+          "3",
+          "14",
+          "5"
+        ],
+        "3": [
+          "7",
+          "2",
+          "8"
+        ],
+        "5": [
+          "7",
+          "2",
+          "8",
+          "6",
+          "1"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.5950409995421069,
+        "dense_retrieve_ms": 5.448959,
+        "lexical_retrieve_ms": 0.166583,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.416666999735753,
+        "total_match_ms": 6.199417000061658,
+        "verify_ms": 0.17983400084631285,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "7",
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 24.63986
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "6",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "2",
+        "8",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15",
+          "2",
+          "8",
+          "1"
+        ],
+        "3": [
+          "7",
+          "6",
+          "5"
+        ],
+        "5": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "7",
+      "predicted_query_id": "7",
+      "query": "Compute the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.227611,
+        "final_score": 0.613806,
+        "lexical_score": 0.001817,
+        "query_id": "8",
+        "retrieval_score": 0.227611,
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?"
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.511977,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "winner_runner_up_margin": 0.386194
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-7-v3",
+      "compatibility_candidate_ids": [
+        "7",
+        "8",
+        "6",
+        "1"
+      ],
+      "compatible_candidate_count": 4,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 0.496726
+      },
+      "dense_top_k_ids": [
+        "7",
+        "2",
+        "8",
+        "1",
+        "6",
+        "13",
+        "16",
+        "4",
+        "3",
+        "15",
+        "14",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "2",
+          "8",
+          "1",
+          "6",
+          "13",
+          "16",
+          "4",
+          "3",
+          "15"
+        ],
+        "3": [
+          "7",
+          "2",
+          "8"
+        ],
+        "5": [
+          "7",
+          "2",
+          "8",
+          "1",
+          "6"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6097920004322077,
+        "dense_retrieve_ms": 5.860833,
+        "lexical_retrieve_ms": 0.156875,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 5.544167000152811,
+        "total_match_ms": 6.325125000330445,
+        "verify_ms": 0.16304200016747927,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "7",
+      "expected_query_id": "7",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "7",
+        "is_expected": true,
+        "query_id": "7",
+        "score": 24.63986
+      },
+      "lexical_top_k_ids": [
+        "7",
+        "6",
+        "5",
+        "14",
+        "13",
+        "16",
+        "15",
+        "2",
+        "8",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13",
+          "16",
+          "15",
+          "2",
+          "8",
+          "1"
+        ],
+        "3": [
+          "7",
+          "6",
+          "5"
+        ],
+        "5": [
+          "7",
+          "6",
+          "5",
+          "14",
+          "13"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "7",
+      "predicted_query_id": "7",
+      "query": "Work out the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
+      "query_id": "7",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.221885,
+        "final_score": 0.610942,
+        "lexical_score": 0.001817,
+        "query_id": "8",
+        "retrieval_score": 0.221885,
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?"
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "7"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "1",
+          "13",
+          "14",
+          "2",
+          "5",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 0.496726,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "7",
+        "retrieval_score": 1.0,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "winner_runner_up_margin": 0.389058
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-8-v1",
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.482282
+      },
+      "dense_top_k_ids": [
+        "8",
+        "2",
+        "14",
+        "13",
+        "16",
+        "7",
+        "15",
+        "1",
+        "6",
+        "3",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "14",
+          "13",
+          "16",
+          "7",
+          "15",
+          "1",
+          "6",
+          "3"
+        ],
+        "3": [
+          "8",
+          "2",
+          "14"
+        ],
+        "5": [
+          "8",
+          "2",
+          "14",
+          "13",
+          "16"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.240166,
+        "lexical_retrieve_ms": 0.172625,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.012749999768857379,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "8",
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 33.869835
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "2",
+        "6",
+        "4",
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "5",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "5"
+        ],
+        "3": [
+          "8",
+          "2",
+          "6"
+        ],
+        "5": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "8",
+      "predicted_query_id": "8",
+      "query": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "14",
+          "2",
+          "6",
+          "8"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-8-v2",
+      "compatibility_candidate_ids": [
+        "8"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.482282
+      },
+      "dense_top_k_ids": [
+        "8",
+        "2",
+        "14",
+        "13",
+        "16",
+        "7",
+        "15",
+        "1",
+        "6",
+        "3",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "14",
+          "13",
+          "16",
+          "7",
+          "15",
+          "1",
+          "6",
+          "3"
+        ],
+        "3": [
+          "8",
+          "2",
+          "14"
+        ],
+        "5": [
+          "8",
+          "2",
+          "14",
+          "13",
+          "16"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 5.3485,
+        "lexical_retrieve_ms": 0.219125,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.0111660001493874,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "8",
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 33.869835
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "2",
+        "6",
+        "4",
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "5",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "5"
+        ],
+        "3": [
+          "8",
+          "2",
+          "6"
+        ],
+        "5": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "8",
+      "predicted_query_id": "8",
+      "query": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "14",
+          "2",
+          "6",
+          "8"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "6",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?"
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-8-v3",
+      "compatibility_candidate_ids": [
+        "8",
+        "7"
+      ],
+      "compatible_candidate_count": 2,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 0.493823
+      },
+      "dense_top_k_ids": [
+        "8",
+        "2",
+        "7",
+        "13",
+        "14",
+        "16",
+        "15",
+        "1",
+        "6",
+        "3",
+        "4",
+        "5"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "7",
+          "13",
+          "14",
+          "16",
+          "15",
+          "1",
+          "6",
+          "3"
+        ],
+        "3": [
+          "8",
+          "2",
+          "7"
+        ],
+        "5": [
+          "8",
+          "2",
+          "7",
+          "13",
+          "14"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.6557500000781147,
+        "dense_retrieve_ms": 5.27075,
+        "lexical_retrieve_ms": 0.167291,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 6.096958000853192,
+        "total_match_ms": 6.97962499998539,
+        "verify_ms": 0.21870799992029788,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "8",
+      "expected_query_id": "8",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "8",
+        "is_expected": true,
+        "query_id": "8",
+        "score": 33.869835
+      },
+      "lexical_top_k_ids": [
+        "8",
+        "2",
+        "6",
+        "4",
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "5",
+        "1",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "5"
+        ],
+        "3": [
+          "8",
+          "2",
+          "6"
+        ],
+        "5": [
+          "8",
+          "2",
+          "6",
+          "4",
+          "15"
+        ]
+      },
+      "potential_ambiguity": true,
+      "predicted_match_id": "8",
+      "predicted_query_id": "8",
+      "query": "If we group the data into 1-minute intervals, Tell me which time window has the highest mean instability_score?",
+      "query_id": "8",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": {
+        "candidate_id": "7",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 0.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.5,
+        "dense_score": 0.20811,
+        "final_score": 0.354055,
+        "lexical_score": 0.002219,
+        "query_id": "7",
+        "retrieval_score": 0.20811,
+        "text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes."
+      },
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "8"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "2",
+          "6",
+          "7",
+          "8"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "2",
+          "4",
+          "6",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "8",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "aggregate": 1.0,
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "output_shape": 1.0
+        },
+        "contract_score": 0.75,
+        "dense_score": 0.493823,
+        "final_score": 0.875,
+        "lexical_score": 1.0,
+        "query_id": "8",
+        "retrieval_score": 1.0,
+        "text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?"
+      },
+      "winner_runner_up_margin": 0.520945
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-13-v1",
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.449604
+      },
+      "dense_top_k_ids": [
+        "13",
+        "16",
+        "15",
+        "14",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "4",
+        "1"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "13",
+          "16",
+          "15"
+        ],
+        "5": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 8.433958,
+        "lexical_retrieve_ms": 0.381209,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.013208000382292084,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "13",
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 33.942685
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "13",
+      "predicted_query_id": "13",
+      "query": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-13-v2",
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.433671
+      },
+      "dense_top_k_ids": [
+        "13",
+        "16",
+        "15",
+        "14",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "13",
+          "16",
+          "15"
+        ],
+        "5": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2965000005351612,
+        "dense_retrieve_ms": 8.075,
+        "lexical_retrieve_ms": 0.36475,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.2905409997474635,
+        "total_match_ms": 8.865624999998545,
+        "verify_ms": 0.270417000137968,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "13",
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 32.137224
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "13",
+      "predicted_query_id": "13",
+      "query": "Order all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Estimate the label in the behavior column for the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.433671,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-13-v3",
+      "compatibility_candidate_ids": [
+        "13"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 0.454557
+      },
+      "dense_top_k_ids": [
+        "13",
+        "16",
+        "15",
+        "14",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "13",
+          "16",
+          "15"
+        ],
+        "5": [
+          "13",
+          "16",
+          "15",
+          "14",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2542079994091182,
+        "dense_retrieve_ms": 7.966166,
+        "lexical_retrieve_ms": 0.344,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.104207999873324,
+        "total_match_ms": 8.61387500026467,
+        "verify_ms": 0.24787500024103792,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "13",
+      "expected_query_id": "13",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "13",
+        "is_expected": true,
+        "query_id": "13",
+        "score": 29.887508
+      },
+      "lexical_top_k_ids": [
+        "13",
+        "14",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "13",
+          "14",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "13",
+      "predicted_query_id": "13",
+      "query": "Arrange all bus rows by timestamp in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a logistic regression model using the acceleration features. Forecast the label in the behavior column In the first row in the holdout set.",
+      "query_id": "13",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "13"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "13",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.454557,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "13",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-14-v1",
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.485999
+      },
+      "dense_top_k_ids": [
+        "14",
+        "16",
+        "15",
+        "13",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "14",
+          "16",
+          "15"
+        ],
+        "5": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 7.068167,
+        "lexical_retrieve_ms": 0.376417,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.010707999535952695,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "14",
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 33.942685
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "16"
+        ],
+        "5": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "14",
+      "predicted_query_id": "14",
+      "query": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-14-v2",
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.467912
+      },
+      "dense_top_k_ids": [
+        "14",
+        "16",
+        "15",
+        "13",
+        "8",
+        "6",
+        "2",
+        "7",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8",
+          "6",
+          "2",
+          "7",
+          "5",
+          "3"
+        ],
+        "3": [
+          "14",
+          "16",
+          "15"
+        ],
+        "5": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2043340002492187,
+        "dense_retrieve_ms": 6.518375,
+        "lexical_retrieve_ms": 0.356292,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.133791999876848,
+        "total_match_ms": 8.580917000472255,
+        "verify_ms": 0.23520799913967494,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "14",
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 32.137224
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "16"
+        ],
+        "5": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "14",
+      "predicted_query_id": "14",
+      "query": "Order all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Estimate the label in the behavior column for the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.467912,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-14-v3",
+      "compatibility_candidate_ids": [
+        "14"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 0.488331
+      },
+      "dense_top_k_ids": [
+        "14",
+        "16",
+        "15",
+        "13",
+        "8",
+        "7",
+        "2",
+        "5",
+        "6",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8",
+          "7",
+          "2",
+          "5",
+          "6",
+          "3"
+        ],
+        "3": [
+          "14",
+          "16",
+          "15"
+        ],
+        "5": [
+          "14",
+          "16",
+          "15",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.147208000475075,
+        "dense_retrieve_ms": 6.610292,
+        "lexical_retrieve_ms": 0.337292,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.178625000051397,
+        "total_match_ms": 8.569458000238228,
+        "verify_ms": 0.23654100004932843,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "14",
+      "expected_query_id": "14",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "14",
+        "is_expected": true,
+        "query_id": "14",
+        "score": 29.887508
+      },
+      "lexical_top_k_ids": [
+        "14",
+        "13",
+        "16",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "14",
+          "13",
+          "16"
+        ],
+        "5": [
+          "14",
+          "13",
+          "16",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "14",
+      "predicted_query_id": "14",
+      "query": "Arrange all bus rows by timestamp in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a random forest model using the acceleration features. Forecast the label in the behavior column In the first row in the holdout set.",
+      "query_id": "14",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "14"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "14",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.488331,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "14",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-15-v1",
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.437925
+      },
+      "dense_top_k_ids": [
+        "15",
+        "16",
+        "14",
+        "13",
+        "8",
+        "7",
+        "6",
+        "5",
+        "2",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8",
+          "7",
+          "6",
+          "5",
+          "2",
+          "3"
+        ],
+        "3": [
+          "15",
+          "16",
+          "14"
+        ],
+        "5": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 6.9855,
+        "lexical_retrieve_ms": 0.400166,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.010208999810856767,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "15",
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 35.136118
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "6",
+        "8",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "6",
+          "8",
+          "5",
+          "1",
+          "4"
+        ],
+        "3": [
+          "15",
+          "14",
+          "13"
+        ],
+        "5": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "15",
+      "predicted_query_id": "15",
+      "query": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-15-v2",
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.420799
+      },
+      "dense_top_k_ids": [
+        "15",
+        "16",
+        "14",
+        "13",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "15",
+          "16",
+          "14"
+        ],
+        "5": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2248750008438947,
+        "dense_retrieve_ms": 6.637792,
+        "lexical_retrieve_ms": 0.371542,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.384708000245155,
+        "total_match_ms": 8.85408300018753,
+        "verify_ms": 0.23716600026091328,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "15",
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 33.342583
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "6",
+        "8",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "6",
+          "8",
+          "5",
+          "1",
+          "4"
+        ],
+        "3": [
+          "15",
+          "14",
+          "13"
+        ],
+        "5": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "15",
+      "predicted_query_id": "15",
+      "query": "Order all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Estimate the label in the behavior column for the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.420799,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-15-v3",
+      "compatibility_candidate_ids": [
+        "15"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 0.451436
+      },
+      "dense_top_k_ids": [
+        "15",
+        "16",
+        "14",
+        "13",
+        "8",
+        "7",
+        "6",
+        "5",
+        "2",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8",
+          "7",
+          "6",
+          "5",
+          "2",
+          "3"
+        ],
+        "3": [
+          "15",
+          "16",
+          "14"
+        ],
+        "5": [
+          "15",
+          "16",
+          "14",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.217375000123866,
+        "dense_retrieve_ms": 6.56625,
+        "lexical_retrieve_ms": 0.34025,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 8.169958000507904,
+        "total_match_ms": 9.62974999947619,
+        "verify_ms": 0.23358300040854374,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "15",
+      "expected_query_id": "15",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "15",
+        "is_expected": true,
+        "query_id": "15",
+        "score": 31.105481
+      },
+      "lexical_top_k_ids": [
+        "15",
+        "14",
+        "13",
+        "16",
+        "7",
+        "6",
+        "8",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7",
+          "6",
+          "8",
+          "5",
+          "1",
+          "4"
+        ],
+        "3": [
+          "15",
+          "14",
+          "13"
+        ],
+        "5": [
+          "15",
+          "14",
+          "13",
+          "16",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "15",
+      "predicted_query_id": "15",
+      "query": "Arrange all bus rows by timestamp in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a 1-nearest-neighbor model using the acceleration features. Forecast the label in the behavior column In the first row in the holdout set.",
+      "query_id": "15",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "15"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "15",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.451436,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "15",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a 1-nearest-neighbor model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-16-v1",
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "exact_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.464613
+      },
+      "dense_top_k_ids": [
+        "16",
+        "14",
+        "15",
+        "13",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "16",
+          "14",
+          "15"
+        ],
+        "5": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 0.0,
+        "dense_retrieve_ms": 7.414292,
+        "lexical_retrieve_ms": 0.387,
+        "model_load_ms": 0.0,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 0.0,
+        "total_match_ms": 0.012208000043756329,
+        "verify_ms": 0.0,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "16",
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 35.567925
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "14",
+        "13",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "16",
+          "14",
+          "13"
+        ],
+        "5": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "16",
+      "predicted_query_id": "16",
+      "query": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v1",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "exact": 1.0
+        },
+        "contract_score": 1.0,
+        "dense_score": 1.0,
+        "final_score": 1.0,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-16-v2",
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.451558
+      },
+      "dense_top_k_ids": [
+        "16",
+        "14",
+        "15",
+        "13",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "1",
+        "3",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "1"
+        ],
+        "3": [
+          "16",
+          "14",
+          "15"
+        ],
+        "5": [
+          "16",
+          "14",
+          "15",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2150000002293382,
+        "dense_retrieve_ms": 7.924667,
+        "lexical_retrieve_ms": 0.367583,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.800749999660184,
+        "total_match_ms": 9.27608300025895,
+        "verify_ms": 0.25183300022035837,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "16",
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 33.77439
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "14",
+        "13",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "16",
+          "14",
+          "13"
+        ],
+        "5": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "16",
+      "predicted_query_id": "16",
+      "query": "Order all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Estimate the label in the behavior column for the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v2",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.451558,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    },
+    {
+      "abstained": false,
+      "acceptance_floor": 0.75,
+      "algorithm": "hybrid",
+      "ambiguity_margin": 0.08,
+      "ambiguous": false,
+      "authorized_hit": true,
+      "case_id": "bus-16-v3",
+      "compatibility_candidate_ids": [
+        "16"
+      ],
+      "compatible_candidate_count": 1,
+      "correct_authorized_hit": true,
+      "correct_but_abstained": false,
+      "correct_match": true,
+      "dataset": "bus",
+      "decision": "hybrid_hit",
+      "dense_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 0.471995
+      },
+      "dense_top_k_ids": [
+        "16",
+        "15",
+        "14",
+        "13",
+        "8",
+        "7",
+        "6",
+        "2",
+        "5",
+        "3",
+        "1",
+        "4"
+      ],
+      "dense_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "15",
+          "14",
+          "13",
+          "8",
+          "7",
+          "6",
+          "2",
+          "5",
+          "3"
+        ],
+        "3": [
+          "16",
+          "15",
+          "14"
+        ],
+        "5": [
+          "16",
+          "15",
+          "14",
+          "13",
+          "8"
+        ]
+      },
+      "elapsed_ms": {
+        "contract_extract_ms": 1.2310409993006033,
+        "dense_retrieve_ms": 7.971916,
+        "lexical_retrieve_ms": 0.354541,
+        "model_load_ms": 1111.2337080003272,
+        "registry_load_ms": 0.021167000340938102,
+        "retrieve_ms": 7.407750000311353,
+        "total_match_ms": 8.887207999578095,
+        "verify_ms": 0.23933300053613493,
+        "warm_up_ms": 0.0
+      },
+      "expected_compatible_but_not_final_winner": false,
+      "expected_in_dense_top_1": true,
+      "expected_in_dense_top_k": true,
+      "expected_in_lexical_top_1": true,
+      "expected_in_lexical_top_k": true,
+      "expected_in_retrieval_union": true,
+      "expected_is_compatible": true,
+      "expected_match_id": "16",
+      "expected_query_id": "16",
+      "expected_retrieved_but_rejected_incompatible": false,
+      "expected_winner_below_acceptance_floor": false,
+      "false_positive_reuse": false,
+      "final_winner_is_expected": true,
+      "lexical_top_1": {
+        "candidate_id": "16",
+        "is_expected": true,
+        "query_id": "16",
+        "score": 31.537288
+      },
+      "lexical_top_k_ids": [
+        "16",
+        "14",
+        "13",
+        "15",
+        "7",
+        "6",
+        "5",
+        "1",
+        "4",
+        "2",
+        "3",
+        "8"
+      ],
+      "lexical_top_k_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7",
+          "6",
+          "5",
+          "1",
+          "4",
+          "2"
+        ],
+        "3": [
+          "16",
+          "14",
+          "13"
+        ],
+        "5": [
+          "16",
+          "14",
+          "13",
+          "15",
+          "7"
+        ]
+      },
+      "potential_ambiguity": false,
+      "predicted_match_id": "16",
+      "predicted_query_id": "16",
+      "query": "Arrange all bus rows by timestamp in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a hist gradient boosting model using the acceleration features. Forecast the label in the behavior column In the first row in the holdout set.",
+      "query_id": "16",
+      "retrieval_union_ids": [
+        "14",
+        "2",
+        "13",
+        "5",
+        "8",
+        "1",
+        "4",
+        "16",
+        "7",
+        "3",
+        "15",
+        "6"
+      ],
+      "runner_up": null,
+      "tier": "unspecified",
+      "union_ids_by_report_k": {
+        "1": [
+          "16"
+        ],
+        "10": [
+          "1",
+          "13",
+          "14",
+          "15",
+          "16",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "3": [
+          "13",
+          "14",
+          "15",
+          "16"
+        ],
+        "5": [
+          "13",
+          "14",
+          "15",
+          "16",
+          "7",
+          "8"
+        ]
+      },
+      "version": "v3",
+      "winner": {
+        "candidate_id": "16",
+        "compatibility": true,
+        "compatibility_failures": [],
+        "component_scores": {
+          "fields": 1.0,
+          "filter_values": 0.0,
+          "operator_skeleton": 1.0,
+          "output_shape": 1.0,
+          "predictive": 1.0
+        },
+        "contract_score": 0.8,
+        "dense_score": 0.471995,
+        "final_score": 0.9,
+        "lexical_score": 1.0,
+        "query_id": "16",
+        "retrieval_score": 1.0,
+        "text": "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a hist gradient boosting model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set."
+      },
+      "winner_runner_up_margin": null
+    }
+  ],
+  "summary": {
+    "by_algorithm": {
+      "hybrid": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.565883,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.777778,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.972222
+        },
+        "dense_top_1_accuracy": 0.777778,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.3645,
+        "positive_count": 36,
+        "potential_ambiguity_rate": 0.194444,
+        "total_live_queries": 36,
+        "true_positives": 36,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_algorithm_and_tier": {
+      "hybrid/unspecified": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.565883,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.777778,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.972222
+        },
+        "dense_top_1_accuracy": 0.777778,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.3645,
+        "positive_count": 36,
+        "potential_ambiguity_rate": 0.194444,
+        "total_live_queries": 36,
+        "true_positives": 36,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_dataset": {
+      "bus": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.565883,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.777778,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.972222
+        },
+        "dense_top_1_accuracy": 0.777778,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.3645,
+        "positive_count": 36,
+        "potential_ambiguity_rate": 0.194444,
+        "total_live_queries": 36,
+        "true_positives": 36,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_dataset_and_version": {
+      "bus/v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.012604,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.75,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 1.0
+        },
+        "dense_top_1_accuracy": 0.75,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 0.019302,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "bus/v2": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 7.01141,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.75,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.75,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.774608,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "bus/v3": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 6.673635,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.833333,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 1.0
+        },
+        "dense_top_1_accuracy": 0.833333,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.221352,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.333333,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_tier": {
+      "unspecified": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 4.565883,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.777778,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.972222
+        },
+        "dense_top_1_accuracy": 0.777778,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.3645,
+        "positive_count": 36,
+        "potential_ambiguity_rate": 0.194444,
+        "total_live_queries": 36,
+        "true_positives": 36,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "by_version": {
+      "v1": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 0.012604,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.75,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 1.0
+        },
+        "dense_top_1_accuracy": 0.75,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 0.019302,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.0,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v2": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 7.01141,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.75,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 0.916667
+        },
+        "dense_top_1_accuracy": 0.75,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.774608,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.25,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      },
+      "v3": {
+        "abstention_rate": 0.0,
+        "ambiguity_rate": 0.0,
+        "authorization_rate": 1.0,
+        "authorized_hit_precision": 1.0,
+        "authorized_hit_recall": 1.0,
+        "average_match_ms": 6.673635,
+        "correct_but_abstained_rate": 0.0,
+        "dense_recall_at_k": {
+          "1": 0.833333,
+          "10": 1.0,
+          "3": 0.833333,
+          "5": 1.0
+        },
+        "dense_top_1_accuracy": 0.833333,
+        "error_count": 0,
+        "false_match_rate": null,
+        "false_negatives": 0,
+        "false_positive_reuse_rate": 0.0,
+        "false_positives": 0,
+        "lexical_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "lexical_top_1_accuracy": 1.0,
+        "match_accuracy": 1.0,
+        "miss_rate": 0.0,
+        "negative_count": 0,
+        "p95_match_ms": 9.221352,
+        "positive_count": 12,
+        "potential_ambiguity_rate": 0.333333,
+        "total_live_queries": 12,
+        "true_positives": 12,
+        "union_recall_at_k": {
+          "1": 1.0,
+          "10": 1.0,
+          "3": 1.0,
+          "5": 1.0
+        }
+      }
+    },
+    "initialization_ms_by_dataset": {
+      "bus": 19.341083
+    },
+    "overall": {
+      "abstention_rate": 0.0,
+      "ambiguity_rate": 0.0,
+      "authorization_rate": 1.0,
+      "authorized_hit_precision": 1.0,
+      "authorized_hit_recall": 1.0,
+      "average_match_ms": 4.565883,
+      "correct_but_abstained_rate": 0.0,
+      "dense_recall_at_k": {
+        "1": 0.777778,
+        "10": 1.0,
+        "3": 0.833333,
+        "5": 0.972222
+      },
+      "dense_top_1_accuracy": 0.777778,
+      "error_count": 0,
+      "false_match_rate": null,
+      "false_negatives": 0,
+      "false_positive_reuse_rate": 0.0,
+      "false_positives": 0,
+      "lexical_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      },
+      "lexical_top_1_accuracy": 1.0,
+      "match_accuracy": 1.0,
+      "miss_rate": 0.0,
+      "negative_count": 0,
+      "p95_match_ms": 9.3645,
+      "positive_count": 36,
+      "potential_ambiguity_rate": 0.194444,
+      "total_live_queries": 36,
+      "true_positives": 36,
+      "union_recall_at_k": {
+        "1": 1.0,
+        "10": 1.0,
+        "3": 1.0,
+        "5": 1.0
+      }
+    },
+    "total_live_queries": 36
+  }
+}

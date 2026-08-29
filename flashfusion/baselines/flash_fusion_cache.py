@@ -529,6 +529,7 @@ def _query_contract_to_signature(contract: Any) -> dict[str, Any]:
         "predicate_ops": {k: v for k, v in getattr(contract, "predicate_ops", ())},
         "filter_values": {k: v for k, v in getattr(contract, "filter_values", ())},
         "output_shape": getattr(contract, "output_shape", None),
+        "analytic_intents": sorted(list(getattr(contract, "analytic_intents", ()) or ())),
         "predictive": {
             "model": predictive.get("model"),
             "target_column": predictive.get("target_column"),
