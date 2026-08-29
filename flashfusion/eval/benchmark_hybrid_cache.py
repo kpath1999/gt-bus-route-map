@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import torch
+import pandas as pd
 
 from flashfusion.eval.trace_hybrid_cache import (
     HybridMatcher,
@@ -42,6 +43,7 @@ DEFAULT_DATA_PATHS = {
     "mit_ecg": "data/AutoIOT_dataset/ECG.0/MIT_arrythmia_v1.txt",
 }
 AUTHORIZED_DECISIONS = {"exact_hit", "hybrid_hit"}
+FUZZY_AUTHORIZED_DECISIONS = {"exact_hit", "unsafe_ablation_hit"}
 ABSTENTION_DECISIONS = {
     "low_confidence_candidate",
     "complete_miss",
@@ -112,6 +114,7 @@ def _metric_summary(rows: list[dict[str, Any]], report_k: list[int]) -> dict[str
     return {
         "total_live_queries": total,
         "error_count": len(rows) - total,
+        "match_accuracy": _rate(sum(bool(row["correct_match"]) for row in valid_rows), total),
         "dense_top_1_accuracy": _rate(sum(bool(row["expected_in_dense_top_1"]) for row in valid_rows), total),
         "lexical_top_1_accuracy": _rate(sum(bool(row["expected_in_lexical_top_1"]) for row in valid_rows), total),
         "dense_recall_at_k": {
@@ -162,21 +165,29 @@ def _benchmark_row(
     query_id: str,
     version: str,
     report_k: list[int],
+    algorithm: str,
 ) -> dict[str, Any]:
     query = resolve_query(query_id=query_id, version=version, dataset=dataset, override=None)
-    diagnostics = matcher.retrieve_diagnostics(
-        query,
-        top_k=max(*report_k, matcher.dense_top_k, matcher.lexical_top_k),
+    diagnostics = (
+        matcher.retrieve_diagnostics(
+            query,
+            top_k=max(*report_k, matcher.dense_top_k, matcher.lexical_top_k),
+        )
+        if algorithm == "hybrid"
+        else {"dense": [], "lexical": [], "matching_union_ids": [], "elapsed_ms": {}}
     )
     dense, lexical = diagnostics["dense"], diagnostics["lexical"]
     result = matcher.match(query)
     predicted = None if result.winner is None else (result.winner.query_id or result.winner.candidate_id)
-    authorized_hit = result.decision in AUTHORIZED_DECISIONS
+    authorized_decisions = AUTHORIZED_DECISIONS if algorithm == "hybrid" else FUZZY_AUTHORIZED_DECISIONS
+    authorized_hit = result.decision in authorized_decisions
     correct_authorized_hit = authorized_hit and predicted == query_id
     compatibility_candidates = [candidate for candidate in result.candidates if candidate.compatibility]
     expected_candidates = [candidate for candidate in result.candidates if candidate.query_id == query_id]
     expected_compatible = any(candidate.compatibility for candidate in expected_candidates)
-    matching_union_ids = diagnostics["matching_union_ids"]
+    matching_union_ids = diagnostics["matching_union_ids"] if algorithm == "hybrid" else [
+        candidate.query_id or candidate.candidate_id for candidate in result.candidates
+    ]
     union_by_k = {
         str(k): sorted(set(_candidate_ids(dense, k)) | set(_candidate_ids(lexical, k)))
         for k in report_k
@@ -187,6 +198,7 @@ def _benchmark_row(
     acceptance_floor = float(matcher.thresholds.get("acceptance_floor", 0.75))
     is_winner_expected = predicted == query_id
     return {
+        "algorithm": algorithm,
         "dataset": dataset,
         "query_id": query_id,
         "version": version,
@@ -209,6 +221,7 @@ def _benchmark_row(
         "predicted_query_id": predicted,
         "final_winner_is_expected": is_winner_expected,
         "authorized_hit": authorized_hit,
+        "correct_match": predicted == query_id,
         "correct_authorized_hit": correct_authorized_hit,
         "false_positive_reuse": authorized_hit and predicted != query_id,
         "abstained": result.decision in ABSTENTION_DECISIONS,
@@ -251,11 +264,21 @@ def _print_summary(summary: dict[str, Any], failures: dict[str, Any]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Benchmark end-to-end verified hybrid cache matching.")
+    parser = argparse.ArgumentParser(description="Compare verified hybrid cache matching with fuzzy matching.")
     parser.add_argument("--dataset", choices=("all", *REGISTRY_BY_DATASET), default="all")
     parser.add_argument("--version", choices=("all", *VERSIONS), default="all")
+    parser.add_argument("--mode", choices=("hybrid", "fuzzy", "both"), default="both")
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
-    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results/hybridcachevsfuzzy/hybrid_vs_fuzzy.json"),
+    )
+    parser.add_argument(
+        "--output-csv",
+        type=Path,
+        default=Path("results/hybridcachevsfuzzy/hybrid_vs_fuzzy_rows.csv"),
+    )
     parser.add_argument("--dense-top-k", type=int, default=None)
     parser.add_argument("--lexical-top-k", type=int, default=None)
     parser.add_argument("--report-k", type=int, nargs="+", default=[1, 3, 5, 10, 20])
@@ -276,28 +299,32 @@ def main() -> None:
     all_rows: list[dict[str, Any]] = []
     initialization_ms: dict[str, float] = {}
     effective_report_k: dict[str, list[int]] = {}
+    algorithms = ("hybrid", "fuzzy") if args.mode == "both" else (args.mode,)
 
     for dataset in datasets:
         setup_started = time.perf_counter()
         try:
             entries = HybridMatcher.load_registry(REGISTRY_BY_DATASET[dataset])
             df = _load_schema_frame(overrides.get(dataset, DEFAULT_DATA_PATHS[dataset]), dataset)
-            matcher = HybridMatcher(
-                entries=entries,
-                config=config,
-                dataset=dataset,
-                schema_columns=[str(column) for column in df.columns],
-                schema_fingerprint=schema_fingerprint(df),
-                device=args.device,
-                no_warmup=args.no_warmup,
-                mode="hybrid",
-                dense_top_k_override=args.dense_top_k,
-                lexical_top_k_override=args.lexical_top_k,
-            )
-            if not args.no_warmup:
-                matcher.warm_up()
-            query_ids = _reusable_query_ids(matcher.entries)
-            report_k = sorted({k for k in args.report_k if 0 < k <= len(matcher.entries)})
+            matchers = {
+                algorithm: HybridMatcher(
+                    entries=entries,
+                    config=config,
+                    dataset=dataset,
+                    schema_columns=[str(column) for column in df.columns],
+                    schema_fingerprint=schema_fingerprint(df),
+                    device=args.device,
+                    no_warmup=args.no_warmup,
+                    mode=algorithm,
+                    dense_top_k_override=args.dense_top_k,
+                    lexical_top_k_override=args.lexical_top_k,
+                )
+                for algorithm in algorithms
+            }
+            if "hybrid" in matchers and not args.no_warmup:
+                matchers["hybrid"].warm_up()
+            query_ids = _reusable_query_ids(next(iter(matchers.values())).entries)
+            report_k = sorted({k for k in args.report_k if 0 < k <= len(entries)})
             if not report_k:
                 raise ValueError("No --report-k value is valid for this registry's reusable candidate count.")
             effective_report_k[dataset] = report_k
@@ -309,16 +336,18 @@ def main() -> None:
 
         for query_id in query_ids:
             for version in versions:
-                try:
-                    all_rows.append(_benchmark_row(matcher, dataset, query_id, version, report_k))
-                except Exception as exc:
-                    all_rows.append({
-                        "dataset": dataset,
-                        "query_id": query_id,
-                        "version": version,
-                        "expected_query_id": query_id,
-                        "error": {"stage": "query", "message": str(exc)},
-                    })
+                for algorithm, matcher in matchers.items():
+                    try:
+                        all_rows.append(_benchmark_row(matcher, dataset, query_id, version, report_k, algorithm))
+                    except Exception as exc:
+                        all_rows.append({
+                            "algorithm": algorithm,
+                            "dataset": dataset,
+                            "query_id": query_id,
+                            "version": version,
+                            "expected_query_id": query_id,
+                            "error": {"stage": "query", "message": str(exc)},
+                        })
 
     all_effective_k = sorted({k for values in effective_report_k.values() for k in values})
     by_dataset = {dataset: _metric_summary([row for row in all_rows if row["dataset"] == dataset], all_effective_k) for dataset in datasets}
@@ -333,6 +362,13 @@ def main() -> None:
         "total_live_queries": sum(1 for row in all_rows if "error" not in row),
         "initialization_ms_by_dataset": initialization_ms,
         "overall": _metric_summary(all_rows, all_effective_k),
+        "by_algorithm": {
+            algorithm: _metric_summary(
+                [row for row in all_rows if row.get("algorithm") == algorithm],
+                all_effective_k,
+            )
+            for algorithm in algorithms
+        },
         "by_dataset": by_dataset,
         "by_version": by_version,
         "by_dataset_and_version": by_dataset_and_version,
@@ -344,7 +380,9 @@ def main() -> None:
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
             "config_path": str(args.config),
             "config_version": config.get("version"),
-            "datasets": list(datasets), "versions": list(versions), "mode": "hybrid",
+            "datasets": list(datasets), "versions": list(versions), "mode": args.mode,
+            "algorithms": list(algorithms),
+            "uses_language_model": False,
             "dense_top_k": args.dense_top_k or config.get("retrieval", {}).get("dense_top_k", 20),
             "lexical_top_k": args.lexical_top_k or config.get("retrieval", {}).get("lexical_top_k", 20),
             "report_k": all_effective_k,
@@ -357,6 +395,25 @@ def main() -> None:
     if args.output is not None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(encoded + "\n", encoding="utf-8")
+    if args.output_csv is not None:
+        args.output_csv.parent.mkdir(parents=True, exist_ok=True)
+        flat_rows = []
+        for row in all_rows:
+            flat_rows.append({
+                "algorithm": row.get("algorithm"),
+                "dataset": row.get("dataset"),
+                "query_id": row.get("query_id"),
+                "version": row.get("version"),
+                "decision": row.get("decision"),
+                "predicted_query_id": row.get("predicted_query_id"),
+                "correct_match": row.get("correct_match"),
+                "authorized_hit": row.get("authorized_hit"),
+                "false_positive_reuse": row.get("false_positive_reuse"),
+                "abstained": row.get("abstained"),
+                "total_match_ms": row.get("elapsed_ms", {}).get("total_match_ms"),
+                "error": row.get("error", {}).get("message"),
+            })
+        pd.DataFrame(flat_rows).to_csv(args.output_csv, index=False)
     _print_summary(summary, failures)
     if args.verbose or args.failures_only:
         for row in all_rows:

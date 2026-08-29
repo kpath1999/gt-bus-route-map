@@ -2085,6 +2085,36 @@
       "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1d29adee7efb7ed4",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "latitude",
+          "longitude"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -2134,7 +2164,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "If we group the data into 1-minute intervals, Tell me which time window has the highest mean instability_score?",
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",

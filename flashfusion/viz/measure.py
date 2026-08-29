@@ -7,6 +7,7 @@ scripts do not duplicate path handling or grouping logic.
 
 from __future__ import annotations
 
+import argparse
 import warnings
 from pathlib import Path
 from typing import Iterable
@@ -113,7 +114,7 @@ def split_cache_baseline_rows(df: pd.DataFrame) -> pd.DataFrame:
 
     variants = out.loc[cache_rows].copy()
     if "cache_outcome" in variants.columns:
-        hits = variants["cache_outcome"].astype(str).str.lower().eq("hit")
+        hits = variants["cache_outcome"].astype(str).str.strip().str.lower().isin({"hit", "hit_rejected"})
     else:
         plan_source = variants.get("plan_source", pd.Series("", index=variants.index)).fillna("").astype(str)
         execution_path = variants.get("execution_path", pd.Series("", index=variants.index)).fillna("").astype(str)

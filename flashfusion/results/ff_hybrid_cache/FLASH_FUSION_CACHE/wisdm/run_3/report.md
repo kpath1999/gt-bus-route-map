@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-27T19:46:15+00:00
+Generated: 2026-08-28T01:05:40+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             0.9375 |            4.8806 |           0.0003 |
+| FLASH_FUSION_CACHE |             0.9375 |            7.5051 |           0.0004 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                     9.3 | -                          |
+| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                   13.07 | -                          |
 
 ## Per-Query Results
 
@@ -26,7 +26,7 @@ Generated: 2026-08-27T19:46:15+00:00
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 2.08s | Cost: $0.00006
+- Latency: 2.12s | Cost: $0.00017
 
 **Agent Trace**
 
@@ -77,7 +77,7 @@ result = compare(Upstairs, Downstairs, mode='abs_difference')
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_NOT_EMPTY,DERIVE_DURATION_SECONDS,PARALLEL_AGGREGATE,DERIVE_BINARY,FILTER_COMPARE,RANK_ROWS
-- Latency: 11.31s | Cost: $0.00264
+- Latency: 15.70s | Cost: $0.00274
 
 **Agent Trace**
 
@@ -142,7 +142,7 @@ idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resti
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,DERIVE_VECTOR_MAGNITUDE,AGGREGATE_COLUMN
-- Latency: 5.59s | Cost: $0.00011
+- Latency: 2.53s | Cost: $0.00012
 
 **Agent Trace**
 
@@ -182,17 +182,17 @@ result = df['acceleration_magnitude'].median()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating gender or sex of the subjects.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating gender or subject sex.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.55s | Cost: $0.00004
+- Latency: 0.78s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating gender or sex of the subjects.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating gender or subject sex.
 ```
 
 ---
@@ -207,7 +207,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 1.46s | Cost: $0.00006
+- Latency: 1.00s | Cost: $0.00012
 
 **Agent Trace**
 
@@ -243,7 +243,7 @@ result = result.idxmax()
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,FILTER_COMPARE,COUNT_DISTINCT
-- Latency: 2.63s | Cost: $0.00008
+- Latency: 1.58s | Cost: $0.00012
 
 **Agent Trace**
 
@@ -284,7 +284,7 @@ result = df['subject_id'].nunique()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 16.84s | Cost: $0.00006
+- Latency: 35.75s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -311,17 +311,17 @@ result = "Random forest predicts label 'Sitting' for the first holdout row."
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating geographic location or spatial coordinates beyond the accelerometer readings (x, y, z).
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating geographic location or spatial coordinates beyond the accelerometer data (x, y, z).
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: semantic_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.69s | Cost: $0.00004
+- Latency: 2.37s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating geographic location or spatial coordinates beyond the accelerometer readings (x, y, z).
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating geographic location or spatial coordinates beyond the accelerometer data (x, y, z).
 ```
 
 ---
@@ -335,7 +335,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 3.21s | Cost: $0.00004
+- Latency: 4.37s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -349,17 +349,17 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about user 3's physical activity levels or WHO guideline compliance.
+**Answer:** Query rejected. Reason: The dataset does not contain any information about user activity levels, weekly guidelines, or future predictions.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: semantic_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.89s | Cost: $0.00002
+- Latency: 1.61s | Cost: $0.00004
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about user 3's physical activity levels or WHO guideline compliance.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about user activity levels, weekly guidelines, or future predictions.
 ```
 
 ---
@@ -374,7 +374,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 2.75s | Cost: $0.00008
+- Latency: 2.05s | Cost: $0.00009
 
 **Agent Trace**
 
@@ -410,7 +410,7 @@ result = df['x'].max()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_NOT_EMPTY,DERIVE_VECTOR_MAGNITUDE,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 7.30s | Cost: $0.00168
+- Latency: 10.45s | Cost: $0.00174
 
 **Agent Trace**
 
@@ -465,7 +465,7 @@ result = compare(dynamic, resting, mode='difference')
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 5.94s | Cost: $0.00012
+- Latency: 7.44s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -498,7 +498,7 @@ result = "1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 1.93s | Cost: $0.00013
+- Latency: 4.57s | Cost: $0.00005
 
 **Agent Trace**
 
@@ -539,7 +539,7 @@ result = df['y'].mean()
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.24s | Cost: $0.00006
+- Latency: 5.16s | Cost: $0.00012
 
 **Agent Trace**
 
@@ -572,7 +572,7 @@ result = "Logistic regression predicts label 'Jogging' for the first holdout row
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 9.68s | Cost: $0.00006
+- Latency: 22.61s | Cost: $0.00012
 
 **Agent Trace**
 

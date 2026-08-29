@@ -50,12 +50,14 @@ from measure import (
     DATASET_LABELS,
     DATASET_ORDER,
     QUERY_TYPE_ORDER,
+    SEMANTIC_STAGE_ORDER,
     aggregate_accuracy_by_dataset,
     aggregate_accuracy_by_query_type,
     aggregate_cache_hit_rate_by_dataset,
     aggregate_cache_hit_rate_by_query_type,
     aggregate_cost_by_dataset,
     aggregate_cost_by_query_type,
+    aggregate_semantic_stage_latency_overall,
     display_baseline,
     expand_baselines,
     split_cache_baseline_rows,
@@ -91,6 +93,13 @@ RC = {
     "legend.title_fontsize": 12.5,
     "axes.facecolor": "#ffffff",
     "figure.facecolor": "#ffffff",
+}
+
+SEMANTIC_STAGE_COLORS = {
+    "Grounding": "#2f8f57",
+    "Validation": "#df2127",
+    "Planning": "#ef8b2c",
+    "Execution": "#8d67b8",
 }
 
 
@@ -351,6 +360,118 @@ def plot_cost_across_query_types(
     ax.set_facecolor("white")
     fig.subplots_adjust(bottom=0.30)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+def plot_latency_and_cost_horizontal(df: pd.DataFrame, out_path: Path) -> None:
+    """Compare the three primary systems using stage-visible latency and cost."""
+    plt.rcParams.update(RC)
+    present = set(df["baseline"].astype(str).unique())
+    baselines = [baseline for baseline in TOP3_BASELINES if baseline in present]
+    semantic = aggregate_semantic_stage_latency_overall(df, baselines=baselines)
+
+    per_run = (
+        df[df["baseline"].isin(baselines)]
+        .groupby(["baseline", "dataset", "run_id"], as_index=False, observed=True)
+        .agg(cost_usd=("cost_usd", "mean"))
+    )
+    cost = per_run.groupby("baseline", as_index=False, observed=True).agg(mean=("cost_usd", "mean"))
+    cost["mean"] = cost["mean"] * 1e5
+
+    fig, (latency_ax, cost_ax) = plt.subplots(
+        1,
+        2,
+        figsize=(11.2, 4.2),
+        gridspec_kw={"width_ratios": [1.65, 1.0]},
+    )
+    positions = np.arange(len(baselines))
+    left = np.zeros(len(baselines), dtype=float)
+    for stage in SEMANTIC_STAGE_ORDER:
+        values = []
+        for baseline in baselines:
+            row = semantic[(semantic["baseline"] == baseline) & (semantic["stage"] == stage)]
+            values.append(0.0 if row.empty else float(row["mean"].iloc[0]))
+        latency_ax.barh(
+            positions,
+            values,
+            left=left,
+            height=0.58,
+            label=stage,
+            color=SEMANTIC_STAGE_COLORS[stage],
+            edgecolor="white",
+            linewidth=0.8,
+        )
+        left += np.asarray(values)
+
+    cost_values = []
+    for baseline in baselines:
+        row = cost[cost["baseline"] == baseline]
+        cost_values.append(0.0 if row.empty else float(row["mean"].iloc[0]))
+    cost_bars = cost_ax.barh(
+        positions,
+        cost_values,
+        height=0.58,
+        color=[BASELINE_COLORS.get(baseline, "#64748b") for baseline in baselines],
+        edgecolor="#333333",
+        linewidth=0.8,
+    )
+    for bar, value in zip(cost_bars, cost_values):
+        cost_ax.text(value, bar.get_y() + bar.get_height() / 2, f"  {value:.1f}", va="center", fontsize=10)
+
+    labels = [display_baseline(baseline) for baseline in baselines]
+    latency_ax.set_yticks(positions, labels)
+    cost_ax.set_yticks(positions, labels)
+    latency_ax.invert_yaxis()
+    cost_ax.invert_yaxis()
+    latency_ax.set_xlabel("Mean latency (s)")
+    cost_ax.set_xlabel(r"Mean cost ($\times 10^{-5}$ USD)")
+    latency_ax.set_title("Latency by semantic stage", fontweight="bold")
+    cost_ax.set_title("Cost per query", fontweight="bold")
+    for axis in (latency_ax, cost_ax):
+        axis.xaxis.grid(linestyle="--", alpha=0.3)
+        axis.set_axisbelow(True)
+        _clean_axes(axis)
+    latency_ax.legend(ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.22), frameon=False)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+def plot_cache_match_comparison(rows_path: Path, out_path: Path) -> None:
+    """Plot matching accuracy, false positives, and abstentions by algorithm."""
+    rows = pd.read_csv(rows_path)
+    required = {"algorithm", "correct_match", "false_positive_reuse", "abstained"}
+    missing = required - set(rows.columns)
+    if missing:
+        raise ValueError(f"Cache comparison CSV is missing columns: {sorted(missing)}")
+    rows = rows[rows["error"].isna()].copy() if "error" in rows.columns else rows.copy()
+    for column in ("correct_match", "false_positive_reuse", "abstained"):
+        rows[column] = _normalize_bool(rows[column])
+
+    algorithms = [algorithm for algorithm in ("hybrid", "fuzzy") if algorithm in rows["algorithm"].unique()]
+    metrics = [
+        ("correct_match", "Match accuracy", "#1b9e77"),
+        ("false_positive_reuse", "False-positive reuse", "#df2127"),
+        ("abstained", "Abstention", "#64748b"),
+    ]
+    fig, ax = plt.subplots(figsize=(7.6, 3.8))
+    positions = np.arange(len(algorithms))
+    height = 0.22
+    for index, (column, label, color) in enumerate(metrics):
+        values = [100.0 * rows.loc[rows["algorithm"] == algorithm, column].mean() for algorithm in algorithms]
+        bars = ax.barh(positions + (index - 1) * height, values, height, label=label, color=color)
+        for bar, value in zip(bars, values):
+            ax.text(value + 1.0, bar.get_y() + bar.get_height() / 2, f"{value:.1f}%", va="center", fontsize=9)
+    ax.set_yticks(positions, ["Verified hybrid" if value == "hybrid" else "Fuzzy only" for value in algorithms])
+    ax.invert_yaxis()
+    ax.set_xlim(0, 108)
+    ax.set_xlabel("Queries (%)")
+    ax.xaxis.grid(linestyle="--", alpha=0.3)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+    ax.legend(ncol=3, loc="upper center", bbox_to_anchor=(0.5, -0.22), frameon=False)
+    fig.tight_layout()
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
 
@@ -890,6 +1011,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Output folder for primary figures.",
     )
     parser.add_argument(
+        "--cache-comparison-csv",
+        default=str(script_dir.parent.parent / "results" / "hybridcachevsfuzzy" / "hybrid_vs_fuzzy_rows.csv"),
+        help="Optional hybrid-vs-fuzzy benchmark rows generated by benchmark_hybrid_cache.py.",
+    )
+    parser.add_argument(
         "--llmsense-root",
         default=str(script_dir.parent / "results" / "july26"),
         help="Alternate root directory for LLMSense results if missing from primary root.",
@@ -1103,6 +1229,8 @@ def main() -> None:
     fig5 = output_dir / "cost_vs_baselines_across_query_types_no_cache_variants.png"
     fig6 = output_dir / "cache_hit_miss_percent_across_datasets.png"
     fig7 = output_dir / "cache_hit_miss_percent_across_query_types.png"
+    fig8 = output_dir / "latency_cost_horizontal_three.png"
+    fig9 = output_dir / "hybrid_cache_vs_fuzzy_match_quality.png"
 
     plot_accuracy_across_datasets(
         by_dataset,
@@ -1126,6 +1254,13 @@ def main() -> None:
         baselines=cost_query_type_baselines,
         query_types=selected_query_types,
     )
+    plot_latency_and_cost_horizontal(df, fig8)
+
+    comparison_csv = _resolve_user_path(args.cache_comparison_csv, repo_root)
+    if comparison_csv is not None and comparison_csv.exists():
+        plot_cache_match_comparison(comparison_csv, fig9)
+    else:
+        print(f"[INFO] Skipping hybrid-vs-fuzzy figure; CSV not found: {comparison_csv}")
 
     cost_query_type_no_cache_variants = [
         baseline
@@ -1176,6 +1311,9 @@ def main() -> None:
     print(f"Wrote {fig3}")
     print(f"Wrote {fig4}")
     print(f"Wrote {fig5}")
+    print(f"Wrote {fig8}")
+    if comparison_csv is not None and comparison_csv.exists():
+        print(f"Wrote {fig9}")
     if cache_rate_by_dataset.empty or cache_rate_by_query_type.empty:
         print("Skipped cache hit/miss percent figures due to missing cache variant rows.")
     else:

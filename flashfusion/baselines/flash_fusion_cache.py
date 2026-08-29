@@ -119,27 +119,31 @@ class _HybridMatcherRuntime:
 
 _HYBRID_RUNTIME: dict[str, _HybridMatcherRuntime] = {}
 
-_GROUNDING_PREAMBLE = """You ground values into a fixed Flash-Fusion typed operator skeleton.
+_GROUNDING_PREAMBLE = """You ground parameters into a fixed Flash-Fusion typed operator skeleton.
 
-Preserve the REQUIRED OUTPUT sequence exactly: same steps, same operator names, same
-order — never add, remove, reorder, or rename. Each step MUST use ONLY the exact field
-names given for its operator in OPERATOR FIELD SPEC (e.g. never "filter_column"/
+Preserve the REQUIRED OUTPUT sequence exactly: same number of parameter objects and same
+order — never add, remove, or reorder entries. Each params entry MUST use ONLY the exact
+field names given for its operator in OPERATOR FIELD SPEC (e.g. never "filter_column"/
 "filter_op"/"filter_value"/"input" — those are not real fields). Fill fields from the
 QUESTION and the LIVE DATASET SCHEMA only; never invent columns. Do not return an
 answer and do not write Python.
 
 Output contract: respond with exactly one JSON object — no markdown, prose, or code
-fences before/after it, no trailing commas, top-level keys exactly
-{"version":"1","steps":[...]}, every step an object with an `op` field. If a step
-cannot be grounded, emit exactly {"cache_grounding_failed": true, "reason": "..."}.
+fences before/after it, no trailing commas, top-level key exactly `params`. `params`
+must be an array with one object per REQUIRED OUTPUT step, in that exact order. Return
+only operator parameters: omit `version`, `steps`, and every `op` field because Python
+reconstructs those fixed fields from the cached skeleton. Example for FILTER_NOT_EMPTY,
+COUNT_ROWS: {"params":[{"column":"x"},{}]}. If a step cannot be grounded, emit exactly
+{"cache_grounding_failed": true, "reason": "..."}.
 
 """
 
 # Applies regardless of which operators are present -- always included.
-_UNIVERSAL_SEMANTIC_RULE = """- Emit exactly the checklist operators: same count, same
-    order, same names — never merge, split, add, omit, or reorder steps.
-- Every field in OPERATOR FIELD SPEC must be present for each step, including null
-    values; never omit a field or rely on a default."""
+_UNIVERSAL_SEMANTIC_RULE = """- Emit exactly one params object per checklist operator:
+    same count and same order — never merge, split, add, omit, or reorder entries.
+- Omit the `op` field shown in OPERATOR FIELD SPEC; the cached checklist supplies it.
+- Copy EVERY field shown in the OPERATOR FIELD SPEC except `op` into each params
+    object, including null values; never omit a field or rely on a default."""
 
 # Each entry: (frozenset of operators that trigger this block, rule text).
 # A block is included if ANY of its trigger operators appear in the skeleton.
@@ -229,8 +233,9 @@ _OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
         """- DERIVE_BIN modes (mutually exclusive):
     - For numeric columns (e.g. float/int elapsed seconds like `time_s` or numeric values):
       use `kind="numeric"`, supply `width` (e.g. 60.0), and set `freq=null`, `epoch_unit=null`.
-    - For datetime / calendar timestamps:
-      use `kind="temporal"`, supply `freq` (e.g. "60s" or "1min"), and set `width=null`.
+        - For datetime / calendar timestamps:
+            use `kind="temporal"`, supply `freq` (e.g. "60s" or "1min"), set `width=null`,
+            and set `epoch_unit=null`. Datetime sources MUST NOT set an epoch unit.
         - For a numeric epoch timestamp used with `kind="temporal"`, supply both
             `freq` and its explicit `epoch_unit` (one of `"s"`, `"ms"`, `"us"`, or
             `"ns"`), and set `width=null`. Infer the unit from the schema column
@@ -1463,6 +1468,36 @@ def _repair_light_json(raw: str) -> str:
     raise ValueError("light model output was not valid JSON")
 
 
+def _reconstruct_plan_from_compact_params(
+    raw_response: dict[str, Any],
+    skeleton: list[str],
+) -> dict[str, Any]:
+    """Reconstruct a full DeterministicPlan payload from compact params or full steps."""
+    if "steps" in raw_response and isinstance(raw_response["steps"], list):
+        return raw_response
+
+    params_list = raw_response.get("params")
+    if not isinstance(params_list, list):
+        raise ValueError("Model response missing 'params' list.")
+
+    if len(params_list) != len(skeleton):
+        raise ValueError(
+            f"Grounding step count mismatch: expected {len(skeleton)} for skeleton "
+            f"{skeleton}, got {len(params_list)}"
+        )
+
+    reconstructed_steps = []
+    for op_name, param_obj in zip(skeleton, params_list):
+        step_dict = dict(param_obj) if isinstance(param_obj, dict) else {}
+        step_dict["op"] = op_name
+        reconstructed_steps.append(step_dict)
+
+    return {
+        "version": "1",
+        "steps": reconstructed_steps,
+    }
+
+
 def _invoke_light_for_plan(
     client: LLMClient,
     prompt: str,
@@ -1506,8 +1541,9 @@ def _invoke_light_for_plan(
         raise ValueError("light model output must be a JSON object")
     if parsed.get("cache_grounding_failed") is True:
         raise ValueError(f"light model declined grounding: {parsed.get('reason', '')}")
-    _record(trace, parsed_plan=parsed)
-    return parsed
+    reconstructed = _reconstruct_plan_from_compact_params(parsed, skeleton)
+    _record(trace, parsed_plan=reconstructed)
+    return reconstructed
 
 
 def _rejection_reason_prompt(query: str, df: pd.DataFrame) -> str:

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import pandas as pd
+
 from flashfusion.eval.trace_hybrid_cache import (
     DEFAULT_CONFIG_PATH,
     ContractExtractor,
     HybridMatcher,
     load_config,
 )
+from flashfusion.viz.measure import CACHE_HIT_BASELINE, split_cache_baseline_rows
 
 
 def _make_matcher() -> HybridMatcher:
@@ -161,3 +164,13 @@ def test_unkeyed_live_filter_values_do_not_hard_fail() -> None:
 
     assert ok
     assert "filter_value_mismatch" not in failures
+
+
+def test_hit_rejected_is_classified_as_cache_hit() -> None:
+    rows = pd.DataFrame(
+        [{"baseline": "FLASH_FUSION_CACHE", "cache_outcome": "hit_rejected"}]
+    )
+
+    split = split_cache_baseline_rows(rows)
+
+    assert CACHE_HIT_BASELINE in split["baseline"].tolist()

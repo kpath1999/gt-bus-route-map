@@ -69,6 +69,10 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.12,
         "output": 0.39,
     },
+    "ibm-granite/granite-4.1-8b": {
+        "input": 0.05,
+        "output": 0.10,
+    },
     # Explicit `cache_control` prompt caching is documented for qwen3-max, not
     # for the 2.5 line. Use this model when measuring prefix-cache hit rates.
     "qwen/qwen3-max": {
@@ -79,8 +83,7 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
 
 # Default model used when --model is not supplied to the CLI
 DEFAULT_MODEL = "qwen/qwen3-max"
-# DEFAULT_LIGHT_MODEL = "meta-llama/llama-3.2-1b-instruct"  # really bad, made mistakes; with prompt adjustments made recently, it may do better 
-DEFAULT_LIGHT_MODEL = "qwen/qwen3-30b-a3b-instruct-2507"
+DEFAULT_LIGHT_MODEL = "ibm-granite/granite-4.1-8b"
 
 # ---------------------------------------------------------------------------
 # Per-model invocation overrides passed to the chat-model constructor.
@@ -107,7 +110,12 @@ MODEL_INVOCATION_CONFIG: dict[str, dict[str, Any]] = {
         "max_tokens": 128,
         "temperature": 0,
         "response_format": {"type": "json_object"},
-    }
+    },
+    "ibm-granite/granite-4.1-8b": {
+        "max_tokens": 100,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    },
 }
 
 # ---------------------------------------------------------------------------

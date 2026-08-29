@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from flashfusion.baselines import flash_fusion_cache as ffc
-from flashfusion.config import DEFAULT_LIGHT_MODEL
+from flashfusion.config import DEFAULT_LIGHT_MODEL, MODEL_INVOCATION_CONFIG
 from flashfusion.eval import queries as queries_v1
 from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval import trace_hybrid_cache as thc
@@ -27,6 +27,13 @@ GOOD_PLAN = {
     "steps": [
         {"op": "FILTER_COMPARE", "column": "accel_variance", "comparator": "gt", "value": 0.20},
         {"op": "COUNT_ROWS"},
+    ],
+}
+
+COMPACT_PARAMS = {
+    "params": [
+        {"column": "accel_variance", "comparator": "gt", "value": 0.20},
+        {},
     ],
 }
 
@@ -139,6 +146,10 @@ def test_default_light_model_is_openrouter_1b_for_grounding() -> None:
     assert client.light is not client
 
 
+def test_default_light_model_has_100_token_output_ceiling() -> None:
+    assert MODEL_INVOCATION_CONFIG[DEFAULT_LIGHT_MODEL]["max_tokens"] == 100
+
+
 def test_exact_hit_matches_dataset_and_literal_query(registry: Path) -> None:
     entries = ffc._load_entries(registry)
     entry, status = ffc._find_exact_entry(entries, QUERY, "bus")
@@ -215,6 +226,36 @@ def test_successful_typed_execution_on_cache_hit(df, registry, no_fallback) -> N
     # The light model sees the live schema, never stored values or an answer.
     assert "accel_variance" in trace.prompt
     assert "LIVE DATASET SCHEMA" in trace.prompt
+
+
+def test_successful_typed_execution_from_compact_params(df, registry, no_fallback) -> None:
+    client = _FakeClient(json.dumps(COMPACT_PARAMS))
+    trace = ffc.CacheGroundingTrace()
+
+    result = ffc.run_flash_fusion_cache(
+        QUERY, df, client, dataset="bus", cache_path=registry, trace=trace
+    )
+
+    assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+    assert result.raw_answer == "3"
+    assert result.typed_plan == GOOD_PLAN
+    assert trace.parsed_plan == GOOD_PLAN
+
+
+def test_reconstruct_plan_preserves_legacy_full_plan() -> None:
+    assert ffc._reconstruct_plan_from_compact_params(GOOD_PLAN, SKELETON) is GOOD_PLAN
+
+
+def test_reconstruct_plan_rejects_wrong_param_count() -> None:
+    with pytest.raises(ValueError, match="Grounding step count mismatch: expected 2"):
+        ffc._reconstruct_plan_from_compact_params({"params": [{}]}, SKELETON)
+
+
+def test_grounding_prompt_requests_compact_params_only() -> None:
+    prompt = ffc._build_grounding_system_prompt(tuple(SKELETON))
+
+    assert 'top-level key exactly `params`' in prompt
+    assert "omit `version`, `steps`, and every `op` field" in prompt
 
 
 def test_code_fenced_light_output_is_accepted(df, registry, no_fallback) -> None:
