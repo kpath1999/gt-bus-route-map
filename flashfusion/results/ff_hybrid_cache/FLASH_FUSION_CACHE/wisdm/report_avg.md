@@ -1,11 +1,11 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-28T01:05:40+00:00
+Generated: 2026-08-31T16:33:23+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             0.9375 |            7.8563 |           0.0006 |
+| FLASH_FUSION_CACHE |             1.0000 |            6.1847 |           0.0005 |
 
 ## Per-Query Results

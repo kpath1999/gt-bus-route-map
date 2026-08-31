@@ -197,10 +197,14 @@ def _build_chat_model(model_name: str, api_key: str, session_key: str):
     planner's static prefix stays warm; without it the routing key is derived
     from the (query-dependent) opening messages and every request lands cold.
     """
+    model_overrides = dict(MODEL_INVOCATION_CONFIG.get(model_name, {}))
+    # A model-specific temperature intentionally replaces the generic default;
+    # passing both as explicit keywords raises TypeError in Python.
+    temperature = model_overrides.pop("temperature", 0)
     base = {
         "model": model_name,
         "api_key": api_key,
-        "temperature": 0,
+        "temperature": temperature,
         "max_retries": 2,
         "timeout": 480_000,  # 480 s in ms; ChatOpenRouter native param (not request_timeout)
     }
@@ -209,7 +213,18 @@ def _build_chat_model(model_name: str, api_key: str, session_key: str):
         "seed": LLM_SEED,
         "session_id": session_key[:128],
     }
-    model_overrides = MODEL_INVOCATION_CONFIG.get(model_name, {})
+    # The project configuration uses OpenRouter API names. ChatOpenRouter
+    # exposes the provider choice and arbitrary request fields differently.
+    # Normalize them before construction so an unsupported keyword never
+    # triggers the compatibility fallback that would also discard max_tokens.
+    provider = model_overrides.pop("provider", None)
+    if provider is not None:
+        model_overrides["openrouter_provider"] = provider
+    response_format = model_overrides.pop("response_format", None)
+    if response_format is not None:
+        model_kwargs = dict(model_overrides.get("model_kwargs", {}))
+        model_kwargs["response_format"] = response_format
+        model_overrides["model_kwargs"] = model_kwargs
     # Per-model overrides (provider pinning, reasoning, response_format, ...)
     # take precedence over the generic determinism settings.
     try:
@@ -581,6 +596,7 @@ class RunResult:
     normalization_actions: list = field(default_factory=list)  # named deterministic rewrites applied
     normalization_version: str = ""
     missing_columns: list = field(default_factory=list)  # schema fields the query needs but the dataset lacks
+    cache_grounding_failure: dict = field(default_factory=dict)  # failed cache attempt captured before planner fallback
 
     # Full-planner telemetry (Flash-Fusion only). These remain zero/False for
     # all other baselines and for calls that fail before usage is reported by

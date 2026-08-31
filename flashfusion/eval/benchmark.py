@@ -315,6 +315,101 @@ def _print_flash_fusion_router_summary(metrics_df: pd.DataFrame) -> None:
     )
 
 
+def _write_cache_grounding_issues(output_dir: str, raw_results_path: str) -> None:
+    """Write a human-readable report of FLASH_FUSION_CACHE grounding failures.
+
+    A record is emitted whenever a FLASH_FUSION_CACHE run includes the
+    ``cache_miss_or_validation_failure`` stage.  The report is saved as
+    ``cache_grounding_issues.md`` in the parent dataset result directory so
+    the exact cache-grounding failure is preserved alongside the benchmark
+    artifacts.
+    """
+    if not os.path.exists(raw_results_path):
+        return
+
+    issues: list[dict] = []
+    with open(raw_results_path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if rec.get("baseline") != "FLASH_FUSION_CACHE":
+                continue
+            if "cache_miss_or_validation_failure" not in rec.get("stages_run", []):
+                continue
+            issues.append(rec)
+
+    if not issues:
+        return
+
+    issues.sort(key=lambda r: (r.get("run_id", 1), r.get("query_id", 0)))
+
+    lines: list[str] = ["# Cache Grounding Issues\n\n"]
+    lines.append(
+        f"Reported {len(issues)} FLASH_FUSION_CACHE grounding failure(s) where the "
+        "cached skeleton could not be reused directly.\n\n"
+    )
+
+    for rec in issues:
+        qid = rec.get("query_id", "?")
+        run_id = rec.get("run_id")
+        header = f"## Query {qid}"
+        if run_id is not None:
+            header += f" (run {run_id})"
+        lines.append(header + "\n\n")
+        lines.append(f"**Query text:** {rec.get('query', '')}\n\n")
+        lines.append(
+            f"**Failure reason:** `{rec.get('deterministic_fallback_reason', '(none)')}`\n\n"
+        )
+        lines.append(
+            f"**Execution path after fallback:** `{rec.get('execution_path', '')}`\n\n"
+        )
+        lines.append(
+            f"**Plan source after fallback:** `{rec.get('plan_source', '')}`\n\n"
+        )
+        if rec.get("plan_validation_stage_failed"):
+            lines.append(
+                f"**Plan validation stage failed:** "
+                f"`{rec['plan_validation_stage_failed']}`\n\n"
+            )
+
+        typed_plan = rec.get("typed_plan") or {}
+        if typed_plan:
+            lines.append("**Typed plan executed after fallback:**\n")
+            lines.append("```json\n")
+            lines.append(json.dumps(typed_plan, indent=2, ensure_ascii=False))
+            lines.append("\n```\n\n")
+
+        raw_plan = rec.get("raw_plan") or {}
+        if raw_plan:
+            lines.append("**Raw planner output (before normalization):**\n")
+            lines.append("```json\n")
+            lines.append(json.dumps(raw_plan, indent=2, ensure_ascii=False))
+            lines.append("\n```\n\n")
+
+        final_code = rec.get("final_code", "")
+        if final_code:
+            lines.append("**Final executed code:**\n")
+            lines.append("```python\n")
+            lines.append(final_code)
+            lines.append("\n```\n\n")
+
+        stages_run = rec.get("stages_run", [])
+        if stages_run:
+            lines.append("**Stages run:** " + " → ".join(stages_run) + "\n\n")
+
+        lines.append("---\n\n")
+
+    out_path = os.path.join(output_dir, "cache_grounding_issues.md")
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.writelines(lines)
+    print(f"\nCache grounding issues written to {out_path}", flush=True)
+
+
 def _prewarm_provider_prompt_caches(
     *,
     baselines: list[str],
@@ -807,6 +902,9 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
             semantic_cache_path=getattr(args, "semantic_cache_path", None),
             prewarm_cache_runtime=bool(args.cache_prewarm_hybrid),
         )
+        _write_cache_grounding_issues(
+            args.output, os.path.join(args.output, "raw_results.jsonl")
+        )
         return results
 
     all_results: list[RunResult] = []
@@ -960,6 +1058,8 @@ def run_benchmark(args: argparse.Namespace) -> list[RunResult]:
         query_defs=query_defs,
     )
     save_markdown([], os.path.join(args.output, "report_avg.md"), metrics_df=baseline_avg_df)
+
+    _write_cache_grounding_issues(args.output, top_raw_results_path)
 
     print("\n=== Combined Summary (all per-query rows across runs) ===")
     print_table(combined_metrics_df)

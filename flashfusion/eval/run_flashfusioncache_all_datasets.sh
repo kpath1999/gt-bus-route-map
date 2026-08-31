@@ -56,8 +56,8 @@ if [[ -z "${OPENROUTER_API_KEY:-}" && -z "${GROQ_API_KEY:-}" ]]; then
     exit 1
 fi
 
-OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache/smoke}"
-RUNS="${RUNS:-1}"
+OUTPUT_ROOT="${OUTPUT_ROOT:-flashfusion/results/ff_hybrid_cache/}"
+RUNS="${RUNS:-3}"
 
 ts() {
     date "+%Y-%m-%d %H:%M:%S"

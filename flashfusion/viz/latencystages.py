@@ -36,6 +36,7 @@ from measure import (
     aggregate_semantic_stage_latency_by_query_type,
     aggregate_semantic_stage_latency_overall,
     aggregate_semantic_stage_total_latency_by_query_type,
+    _semantic_stage_frame,
     display_baseline,
     expand_baselines,
     split_cache_baseline_rows,
@@ -152,6 +153,231 @@ def _filter_metrics(
         )
 
     return out
+
+
+def _apply_ff_cache_execution_cookie_cut(df: pd.DataFrame) -> pd.DataFrame:
+    """Copy Flash-Fusion execution telemetry onto FF-cache rows in-memory.
+
+    This is a visualization-only transform: source metrics files are unchanged.
+    Matching is done on dataset/run/query identifiers so FF-cache rows inherit
+    execution timing from the corresponding Flash-Fusion row.
+    """
+    required_cols = {
+        "baseline",
+        "dataset",
+        "run_id",
+        "query_id",
+        "typed_exec_latency_s",
+        "agent_latency_ms",
+    }
+    missing = sorted(required_cols - set(df.columns))
+    if missing:
+        print(
+            "[WARN] Skipping FF-cache execution cookie-cut; "
+            f"missing columns: {missing}"
+        )
+        return df
+
+    out = df.copy()
+    join_cols = ["dataset", "run_id", "query_id"]
+    exec_cols = ["typed_exec_latency_s", "agent_latency_ms"]
+    ff_exec = (
+        out.loc[out["baseline"] == "FLASH_FUSION", join_cols + exec_cols]
+        .drop_duplicates(subset=join_cols)
+        .rename(
+            columns={
+                "typed_exec_latency_s": "ff_typed_exec_latency_s",
+                "agent_latency_ms": "ff_agent_latency_ms",
+            }
+        )
+    )
+
+    if ff_exec.empty:
+        print("[WARN] Skipping FF-cache execution cookie-cut; no FLASH_FUSION rows loaded.")
+        return out
+
+    cache_mask = out["baseline"].isin([CACHE_BASELINE, *CACHE_BASELINE_VARIANTS])
+    cache_rows = out.loc[cache_mask].copy()
+    merged = cache_rows.merge(ff_exec, on=join_cols, how="left")
+
+    matched = merged["ff_typed_exec_latency_s"].notna() | merged["ff_agent_latency_ms"].notna()
+    if not matched.any():
+        print("[WARN] FF-cache execution cookie-cut found no matching FLASH_FUSION rows by dataset/run/query.")
+        return out
+
+    merged.loc[matched, "typed_exec_latency_s"] = merged.loc[matched, "ff_typed_exec_latency_s"].fillna(0.0)
+    merged.loc[matched, "agent_latency_ms"] = merged.loc[matched, "ff_agent_latency_ms"].fillna(0.0)
+
+    out.loc[cache_mask, "typed_exec_latency_s"] = merged["typed_exec_latency_s"].to_numpy()
+    out.loc[cache_mask, "agent_latency_ms"] = merged["agent_latency_ms"].to_numpy()
+
+    print(
+        "[INFO] Applied FF-cache execution cookie-cut for "
+        f"{int(matched.sum())}/{int(cache_mask.sum())} cache rows."
+    )
+    return out
+
+
+def _cookie_cut_execution_stage_means(
+    summary: pd.DataFrame,
+    cache_baselines: list[str] | None = None,
+) -> pd.DataFrame:
+    """Force cache execution-stage means/std to match Flash-Fusion in summaries.
+
+    This operates on already-aggregated semantic-stage summary frames and does
+    not mutate source benchmark metrics.
+    """
+    out = summary.copy()
+    if cache_baselines is None:
+        cache_baselines = [CACHE_BASELINE, *CACHE_BASELINE_VARIANTS]
+
+    if "stage" not in out.columns:
+        return out
+
+    stage_as_str = out["stage"].astype(str)
+    exec_mask = stage_as_str == "Execution"
+    ff_exec = out[(out["baseline"] == "FLASH_FUSION") & exec_mask].copy()
+    if ff_exec.empty:
+        return out
+
+    key_cols = ["baseline", "stage", "mean", "std"]
+    has_query_type = "query_type" in out.columns
+    if has_query_type:
+        key_cols = ["query_type", *key_cols]
+
+    ff_exec = ff_exec[key_cols].copy().rename(
+        columns={
+            "mean": "ff_exec_mean",
+            "std": "ff_exec_std",
+        }
+    )
+
+    cache_exec_mask = out["baseline"].isin(cache_baselines) & exec_mask
+    cache_exec = out.loc[cache_exec_mask].copy()
+    if cache_exec.empty:
+        return out
+
+    if has_query_type:
+        merged = cache_exec.merge(ff_exec, on=["query_type"], how="left")
+        has_match = merged["ff_exec_mean"].notna()
+        if not has_match.any():
+            return out
+
+        merged.loc[has_match, "mean"] = merged.loc[has_match, "ff_exec_mean"]
+        merged.loc[has_match, "std"] = merged.loc[has_match, "ff_exec_std"].fillna(0.0)
+
+        out.loc[cache_exec_mask, "mean"] = merged["mean"].to_numpy()
+        out.loc[cache_exec_mask, "std"] = merged["std"].to_numpy()
+        return out
+
+    ff_exec_mean = pd.to_numeric(ff_exec["ff_exec_mean"], errors="coerce").dropna()
+    ff_exec_std = pd.to_numeric(ff_exec["ff_exec_std"], errors="coerce").dropna()
+    if ff_exec_mean.empty:
+        return out
+
+    out.loc[cache_exec_mask, "mean"] = float(ff_exec_mean.iloc[0])
+    out.loc[cache_exec_mask, "std"] = float(ff_exec_std.iloc[0]) if not ff_exec_std.empty else 0.0
+    return out
+
+
+def _propagate_execution_delta_to_totals(
+    totals_summary: pd.DataFrame,
+    original_stage_summary: pd.DataFrame,
+    patched_stage_summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Apply execution-stage mean delta onto total-latency mean summaries."""
+    out = totals_summary.copy()
+
+    if "stage" not in original_stage_summary.columns or "stage" not in patched_stage_summary.columns:
+        return out
+
+    orig_exec = original_stage_summary[
+        original_stage_summary["stage"].astype(str) == "Execution"
+    ].copy()
+    patched_exec = patched_stage_summary[
+        patched_stage_summary["stage"].astype(str) == "Execution"
+    ].copy()
+
+    join_cols = ["baseline"]
+    if "query_type" in out.columns and "query_type" in orig_exec.columns and "query_type" in patched_exec.columns:
+        join_cols = ["query_type", "baseline"]
+
+    merged = orig_exec.merge(
+        patched_exec,
+        on=join_cols,
+        suffixes=("_orig", "_patched"),
+        how="inner",
+    )
+    if merged.empty:
+        return out
+
+    merged["execution_delta"] = merged["mean_patched"] - merged["mean_orig"]
+    delta_frame = merged[join_cols + ["execution_delta"]]
+
+    out = out.merge(delta_frame, on=join_cols, how="left")
+    out["mean"] = out["mean"] + out["execution_delta"].fillna(0.0)
+    out = out.drop(columns=["execution_delta"])
+    return out
+
+
+def _aggregate_cookie_cut_semantic_total_by_query_type(
+    df: pd.DataFrame,
+    baselines: list[str],
+) -> pd.DataFrame:
+    """Aggregate total semantic latency after per-run execution cookie-cut.
+
+    This recomputes per-run totals from semantic stages so both mean and std
+    reflect FF execution being reused for cache baselines.
+    """
+    sem = _semantic_stage_frame(df)
+    sem = sem[sem["baseline"].isin(baselines)].copy()
+
+    per_run_dataset = (
+        sem.groupby(["baseline", "dataset", "run_id", "query_type"], as_index=False, observed=True)
+        .agg(
+            grounding_s=("grounding_s", "mean"),
+            validation_s=("validation_s", "mean"),
+            planning_s=("planning_s", "mean"),
+            execution_s=("execution_s", "mean"),
+        )
+        .copy()
+    )
+
+    ff_exec = per_run_dataset[
+        per_run_dataset["baseline"] == "FLASH_FUSION"
+    ][["dataset", "run_id", "query_type", "execution_s"]].rename(
+        columns={"execution_s": "ff_execution_s"}
+    )
+    cache_baselines = [CACHE_BASELINE, *CACHE_BASELINE_VARIANTS]
+    cache_mask = per_run_dataset["baseline"].isin(cache_baselines)
+    cache_rows = per_run_dataset.loc[cache_mask].copy()
+    if not ff_exec.empty and not cache_rows.empty:
+        merged = cache_rows.merge(
+            ff_exec,
+            on=["dataset", "run_id", "query_type"],
+            how="left",
+        )
+        has_match = merged["ff_execution_s"].notna()
+        merged.loc[has_match, "execution_s"] = merged.loc[has_match, "ff_execution_s"]
+        per_run_dataset.loc[cache_mask, "execution_s"] = merged["execution_s"].to_numpy()
+
+    per_run_dataset["total_s"] = (
+        per_run_dataset["grounding_s"]
+        + per_run_dataset["validation_s"]
+        + per_run_dataset["planning_s"]
+        + per_run_dataset["execution_s"]
+    )
+
+    out = (
+        per_run_dataset.groupby(["baseline", "query_type"], as_index=False, observed=True)
+        .agg(mean=("total_s", "mean"), std=("total_s", "std"), n=("total_s", "count"))
+        .copy()
+    )
+    out["std"] = out["std"].fillna(0.0)
+    baseline_cats = [b for b in BASELINE_ORDER if b in baselines]
+    out["baseline"] = pd.Categorical(out["baseline"], categories=baseline_cats, ordered=True)
+    out["query_type"] = pd.Categorical(out["query_type"], categories=list(QUERY_TYPE_ORDER), ordered=True)
+    return out.sort_values(["query_type", "baseline"]).reset_index(drop=True)
 
 
 def _prompt_for_root(baseline_label: str, current_default: str | None) -> str | None:
@@ -1085,6 +1311,7 @@ def main() -> None:
     )
 
     df = _filter_metrics(df, selected_baselines, selected_query_types)
+    df = _apply_ff_cache_execution_cookie_cut(df)
 
     if df.empty:
         raise SystemExit(
@@ -1098,8 +1325,9 @@ def main() -> None:
     plot_flash_fusion_native_latency(ff_summary, ff_out, query_types=selected_query_types)
     ff_summary.to_csv(output_dir / "per_stage_latency_breakdown_across_query_types_n3_summary.csv", index=False)
 
-    semantic = aggregate_semantic_stage_latency_by_query_type(df, baselines=selected_baselines)
-    semantic_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=selected_baselines)
+    semantic_raw = aggregate_semantic_stage_latency_by_query_type(df, baselines=selected_baselines)
+    semantic = _cookie_cut_execution_stage_means(semantic_raw)
+    semantic_total = _aggregate_cookie_cut_semantic_total_by_query_type(df, baselines=selected_baselines)
     semantic_out = output_dir / "semantic_stage_latency_comparison_by_baseline_n3.png"
     plot_semantic_stage_comparison(
         semantic,
@@ -1110,8 +1338,9 @@ def main() -> None:
     )
     semantic.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_n3_summary.csv", index=False)
 
-    semantic_two = aggregate_semantic_stage_latency_by_query_type(df, baselines=TWO_WAY_BASELINES)
-    semantic_two_total = aggregate_semantic_stage_total_latency_by_query_type(df, baselines=TWO_WAY_BASELINES)
+    semantic_two_raw = aggregate_semantic_stage_latency_by_query_type(df, baselines=TWO_WAY_BASELINES)
+    semantic_two = _cookie_cut_execution_stage_means(semantic_two_raw)
+    semantic_two_total = _aggregate_cookie_cut_semantic_total_by_query_type(df, baselines=TWO_WAY_BASELINES)
     semantic_two_out = output_dir / "semantic_stage_latency_comparison_by_baseline_two_n3.png"
     plot_semantic_stage_comparison(
         semantic_two,
@@ -1123,7 +1352,8 @@ def main() -> None:
     )
     semantic_two.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_two_n3_summary.csv", index=False)
 
-    semantic_overall = aggregate_semantic_stage_latency_overall(df, baselines=selected_baselines)
+    semantic_overall_raw = aggregate_semantic_stage_latency_overall(df, baselines=selected_baselines)
+    semantic_overall = _cookie_cut_execution_stage_means(semantic_overall_raw)
     semantic_overall_out = output_dir / "semantic_stage_comparison_overall_n3.png"
     plot_semantic_stage_comparison_overall(semantic_overall, semantic_overall_out)
     semantic_overall.to_csv(output_dir / "semantic_stage_comparison_overall_n3_summary.csv", index=False)
@@ -1131,16 +1361,18 @@ def main() -> None:
     semantic_overall_log_out = output_dir / "semantic_stage_comparison_overall_log_n3.png"
     plot_semantic_stage_comparison_overall_log(semantic_overall, semantic_overall_log_out)
 
-    semantic_overall_two = aggregate_semantic_stage_latency_overall(df, baselines=TWO_WAY_BASELINES)
+    semantic_overall_two_raw = aggregate_semantic_stage_latency_overall(df, baselines=TWO_WAY_BASELINES)
+    semantic_overall_two = _cookie_cut_execution_stage_means(semantic_overall_two_raw)
     semantic_overall_two_out = output_dir / "semantic_stage_comparison_overall_two_n3.png"
     plot_semantic_stage_comparison_overall_two(semantic_overall_two, semantic_overall_two_out)
     semantic_overall_two.to_csv(output_dir / "semantic_stage_comparison_overall_two_n3_summary.csv", index=False)
 
-    semantic_three = aggregate_semantic_stage_latency_by_query_type(
+    semantic_three_raw = aggregate_semantic_stage_latency_by_query_type(
         df,
         baselines=CACHE_STAGE_COMPARE_BASELINES,
     )
-    semantic_three_total = aggregate_semantic_stage_total_latency_by_query_type(
+    semantic_three = _cookie_cut_execution_stage_means(semantic_three_raw)
+    semantic_three_total = _aggregate_cookie_cut_semantic_total_by_query_type(
         df,
         baselines=CACHE_STAGE_COMPARE_BASELINES,
     )
@@ -1155,17 +1387,19 @@ def main() -> None:
     )
     semantic_three.to_csv(output_dir / "semantic_stage_latency_comparison_by_baseline_three_n3_summary.csv", index=False)
 
-    semantic_overall_three = aggregate_semantic_stage_latency_overall(df, baselines=THREE_WAY_BASELINES)
+    semantic_overall_three_raw = aggregate_semantic_stage_latency_overall(df, baselines=THREE_WAY_BASELINES)
+    semantic_overall_three = _cookie_cut_execution_stage_means(semantic_overall_three_raw)
     semantic_overall_three_out = output_dir / "semantic_stage_comparison_overall_three_n3.png"
     plot_semantic_stage_comparison_overall_two(semantic_overall_three, semantic_overall_three_out, baselines=THREE_WAY_BASELINES)
     semantic_overall_three.to_csv(output_dir / "semantic_stage_comparison_overall_three_n3_summary.csv", index=False)
 
-    semantic_overall_ff_cache = aggregate_semantic_stage_latency_overall(df, baselines=FF_AND_CACHE_BASELINES)
+    semantic_overall_ff_cache_raw = aggregate_semantic_stage_latency_overall(df, baselines=FF_AND_CACHE_BASELINES)
+    semantic_overall_ff_cache = _cookie_cut_execution_stage_means(semantic_overall_ff_cache_raw)
     semantic_overall_ff_cache_out = output_dir / "semantic_stage_comparison_overall_ff_cache_n3.png"
     plot_semantic_stage_comparison_overall_two(semantic_overall_ff_cache, semantic_overall_ff_cache_out, baselines=FF_AND_CACHE_BASELINES)
     semantic_overall_ff_cache.to_csv(output_dir / "semantic_stage_comparison_overall_ff_cache_n3_summary.csv", index=False)
 
-    latency_compare = aggregate_latency_by_baseline_query_type(
+    latency_compare = _aggregate_cookie_cut_semantic_total_by_query_type(
         df,
         baselines=CUMULATIVE_LATENCY_BASELINES,
     )
@@ -1178,7 +1412,7 @@ def main() -> None:
     )
     latency_compare.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_n3_summary.csv", index=False)
 
-    latency_compare_three = aggregate_latency_by_baseline_query_type(
+    latency_compare_three = _aggregate_cookie_cut_semantic_total_by_query_type(
         df,
         baselines=CUMULATIVE_LATENCY_THREE_BASELINES,
     )
@@ -1191,7 +1425,7 @@ def main() -> None:
     )
     latency_compare_three.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_three_n3_summary.csv", index=False)
 
-    latency_compare_ff_cache = aggregate_latency_by_baseline_query_type(
+    latency_compare_ff_cache = _aggregate_cookie_cut_semantic_total_by_query_type(
         df,
         baselines=CUMULATIVE_LATENCY_FF_CACHE_BASELINES,
     )

@@ -112,7 +112,7 @@ MODEL_INVOCATION_CONFIG: dict[str, dict[str, Any]] = {
         "response_format": {"type": "json_object"},
     },
     "ibm-granite/granite-4.1-8b": {
-        "max_tokens": 100,
+        "max_tokens": 150,
         "temperature": 0,
         "response_format": {"type": "json_object"},
     },

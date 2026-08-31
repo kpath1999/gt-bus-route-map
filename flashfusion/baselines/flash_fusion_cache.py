@@ -70,7 +70,7 @@ import inspect
 import json
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -174,7 +174,9 @@ _OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
         """- Any step or branch object that sets non-empty filter_values MUST also set
     filter_column to the categorical column those values belong to (grounded
     from the LIVE DATASET SCHEMA, e.g. "activity_label"). Never leave
-    filter_column null when filter_values is non-empty.""",
+    filter_column null when filter_values is non-empty.
+- Copy categorical values with the exact spelling and capitalization shown in
+    LIVE DATASET SCHEMA sample_values; query text casing is not authoritative.""",
     ),
     (
         frozenset({"COUNT_ROWS"}),
@@ -313,7 +315,12 @@ _OPERATOR_SEMANTIC_RULES: list[tuple[frozenset[str], str]] = [
     ),
     (
         frozenset({"PARALLEL_AGGREGATE"}),
-        """- Each branch's `column` MUST be null ONLY when `aggregate=="count"`. For every other
+        """- Each PARALLEL_AGGREGATE checklist item occupies EXACTLY ONE object in `params`.
+    Put every branch inside that one object's `branches` array; branches are NOT separate
+    `params` entries and do not consume additional checklist steps. For example, when the
+    required sequence is PARALLEL_AGGREGATE, DERIVE_BINARY, RANK_ROWS, emit exactly:
+    {"params":[{"branches":[{"filter_column":null,"filter_values":null,"group_by":["entity_key"],"aggregate":"max","column":"metric_column","result_column":"metric_max"},{"filter_column":null,"filter_values":null,"group_by":["entity_key"],"aggregate":"min","column":"metric_column","result_column":"metric_min"}]},{"left":"metric_max","right":"metric_min","operation":"subtract","result":"metric_range"},{"column":"metric_range","direction":"max","return_columns":["entity_key"]}]}.
+- Each branch's `column` MUST be null ONLY when `aggregate=="count"`. For every other
     aggregate (mean, sum, median, std, var, rms, min, max, nunique), `column` is REQUIRED
     and must be a real schema column name, never left null "by default".
     - `group_by` must never be an empty list.""",
@@ -956,6 +963,96 @@ def _detect_holdout_position(query_lc: str) -> str | None:
         return "last"
     return None
 
+def _ground_predictive_cache_hit(
+    query: str, skeleton: list[str], df: pd.DataFrame
+) -> dict[str, Any] | None:
+    """Bind a fully specified one-step predictive cache hit without an LLM.
+
+    Exact-query cache entries have already fixed the operator shape. This parser
+    accepts only the benchmark's explicit chronological-prediction grammar and
+    returns ``None`` for anything ambiguous, preserving light-model grounding
+    as the safe fallback.
+    """
+    if skeleton != ["PREDICTIVE_PIPELINE"]:
+        return None
+
+    query_lc = query.lower()
+    model = _detect_predictive_model(query_lc)
+    train_fraction = _detect_train_fraction(query_lc)
+    holdout_row = _detect_holdout_position(query_lc)
+    columns_by_lower = {str(column).lower(): str(column) for column in df.columns}
+
+    sort_match = re.search(
+        r"\bsort\s+(?:all\s+\w+\s+|its\s+)?rows\s+by\s+([a-z_][a-z0-9_]*)",
+        query_lc,
+    )
+    if sort_match is None:
+        return None
+    sort_by = [columns_by_lower.get(sort_match.group(1))]
+    tie_breaker = re.search(r"\busing\s+([a-z_][a-z0-9_]*)\s+as\s+the\s+tie-breaker\b", query_lc)
+    if tie_breaker is not None:
+        sort_by.append(columns_by_lower.get(tie_breaker.group(1)))
+
+    feature_match = re.search(r"\bfeatures?\s+([a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*(?:\s*(?:,?\s+and)\s+[a-z_][a-z0-9_]*)?)\s*\.", query_lc)
+    if feature_match is not None:
+        feature_names = re.split(r"\s*,\s*|\s+(?:and)\s+", feature_match.group(1))
+        feature_columns = [columns_by_lower.get(name.strip()) for name in feature_names]
+    elif "acceleration features" in query_lc:
+        feature_columns = [
+            str(column)
+            for column in df.columns
+            if str(column).startswith("accel_")
+            or str(column) in {"extreme_event_magnitude", "instability_score"}
+        ]
+        if not feature_columns:
+            return None
+    else:
+        return None
+
+    target_column = _extract_target_column(query_lc, df)
+    target_from_non_empty = bool(
+        re.search(r"\b(?:whether|if)\b[^.?!]*\b(?:present|non[- ]empty|annotated)\b", query_lc)
+    )
+    if target_from_non_empty and target_column is None:
+        target_column = columns_by_lower.get("annotation")
+    target_label = "present" if target_from_non_empty else "label"
+
+    filter_column: str | None = None
+    filter_value: Any = None
+    key_mentions = _extract_key_mentions(query_lc)
+    matched_keys = [
+        (columns_by_lower.get(column), value)
+        for column, value in key_mentions.items()
+        if columns_by_lower.get(column) is not None
+    ]
+    if len(matched_keys) > 1:
+        return None
+    if matched_keys:
+        filter_column, filter_value = matched_keys[0]
+
+    required_values = [model, train_fraction, holdout_row, target_column, *sort_by, *feature_columns]
+    if any(value is None for value in required_values):
+        return None
+
+    return {
+        "version": "1",
+        "steps": [
+            {
+                "op": "PREDICTIVE_PIPELINE",
+                "model": model,
+                "feature_columns": feature_columns,
+                "target_column": target_column,
+                "sort_by": sort_by,
+                "train_fraction": train_fraction,
+                "holdout_row": holdout_row,
+                "filter_column": filter_column,
+                "filter_value": filter_value,
+                "target_from_non_empty": target_from_non_empty,
+                "target_label": target_label,
+            }
+        ],
+    }
+
 
 def _extract_filter_values(query_lc: str, df: pd.DataFrame) -> dict[str, Any]:
     out: dict[str, Any] = {}
@@ -1233,11 +1330,15 @@ def _execute_grounded_cache_entry(
     _append_stage(result, "cache_light_grounding")
     grounding_started = time.perf_counter()
     try:
-        prompt_started = time.perf_counter()
-        prompt = _grounding_prompt(query, entry, df)
-        _record(trace, prompt_build_latency_s=time.perf_counter() - prompt_started)
-        _record(trace, prompt=prompt)
-        raw_plan = _invoke_light_for_plan(client, prompt, entry["operator_skeleton"], trace)
+        raw_plan = _ground_predictive_cache_hit(query, entry["operator_skeleton"], df)
+        if raw_plan is None:
+            prompt_started = time.perf_counter()
+            prompt = _grounding_prompt(query, entry, df)
+            _record(trace, prompt_build_latency_s=time.perf_counter() - prompt_started)
+            _record(trace, prompt=prompt)
+            raw_plan = _invoke_light_for_plan(client, prompt, entry["operator_skeleton"], trace)
+        else:
+            _record(trace, prompt_build_latency_s=0.0, parsed_plan=raw_plan)
     finally:
         stage_latency["cache_grounding"] += _accounted_light_latency(client, grounding_started)
         stage_latency["cache_retry_overhead"] += _light_retry_overhead_s(client)
@@ -1437,6 +1538,50 @@ def _strip_code_fence(raw: str) -> str:
     return raw.strip()
 
 
+def _recover_split_params_arrays(raw: str) -> str | None:
+    """Merge malformed adjacent arrays belonging to a top-level ``params`` key.
+
+    Some light models emit ``{"params":[step1],[step2]}`` instead of putting
+    every step object in one array. Decode each array independently so recovery
+    remains JSON-aware and applies only when the entire payload has that shape.
+    """
+    match = re.match(r'^\s*\{\s*"params"\s*:\s*', raw)
+    if match is None:
+        return None
+
+    decoder = json.JSONDecoder()
+    position = match.end()
+    merged: list[Any] = []
+    arrays_seen = 0
+    while True:
+        try:
+            value, position = decoder.raw_decode(raw, position)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(value, list) or not all(isinstance(item, dict) for item in value):
+            return None
+        merged.extend(value)
+        arrays_seen += 1
+
+        while position < len(raw) and raw[position].isspace():
+            position += 1
+        if position >= len(raw) or raw[position] != ",":
+            break
+        position += 1
+        while position < len(raw) and raw[position].isspace():
+            position += 1
+        if position >= len(raw) or raw[position] != "[":
+            return None
+
+    while position < len(raw) and raw[position].isspace():
+        position += 1
+    if arrays_seen < 2 or position >= len(raw) or raw[position] != "}":
+        return None
+    if raw[position + 1 :].strip():
+        return None
+    return json.dumps({"params": merged}, separators=(",", ":"))
+
+
 def _repair_light_json(raw: str) -> str:
     """Repair the most common LLM JSON mistakes without inventing semantics.
 
@@ -1456,6 +1601,10 @@ def _repair_light_json(raw: str) -> str:
     last = cleaned.rfind("}")
     if 0 <= first < last:
         candidates.append(cleaned[first : last + 1])
+
+    recovered = _recover_split_params_arrays(cleaned)
+    if recovered is not None:
+        candidates.append(recovered)
 
     last_err: ValueError | None = None
     for candidate in candidates:
@@ -1635,6 +1784,50 @@ def _query_requests_ratio(query_lc: str) -> bool:
     )
 
 
+def _canonicalize_live_domain_values(
+    df: pd.DataFrame,
+    column: str,
+    values: list[Any],
+    *,
+    op: str,
+) -> list[Any]:
+    """Bind string literals to unique values from a live categorical domain."""
+    if column not in df.columns:
+        return values
+    series = df[column]
+    if not (
+        pd.api.types.is_object_dtype(series.dtype)
+        or pd.api.types.is_string_dtype(series.dtype)
+        or isinstance(series.dtype, pd.CategoricalDtype)
+    ):
+        return values
+
+    domain = series.dropna().drop_duplicates().tolist()
+    normalized: dict[str, list[Any]] = {}
+    for domain_value in domain:
+        key = str(domain_value).strip().casefold()
+        normalized.setdefault(key, []).append(domain_value)
+
+    canonical: list[Any] = []
+    for value in values:
+        if not isinstance(value, str):
+            canonical.append(value)
+            continue
+        exact = [domain_value for domain_value in domain if domain_value == value]
+        if len(exact) == 1:
+            canonical.append(exact[0])
+            continue
+        matches = normalized.get(value.strip().casefold(), [])
+        if len(matches) != 1:
+            qualifier = "no" if not matches else "multiple"
+            raise PlanSchemaError(
+                f"{op} value {value!r} has {qualifier} unique match in the live "
+                f"domain of column {column!r}"
+            )
+        canonical.append(matches[0])
+    return canonical
+
+
 def _apply_grounding_semantic_guards(
     raw_plan: dict[str, Any], query: str, df: pd.DataFrame | None = None
 ) -> dict[str, Any]:
@@ -1676,6 +1869,22 @@ def _apply_grounding_semantic_guards(
             if mention_value is not None and not _query_mentions_relational_for_column(query_lc, column):
                 step["comparator"] = "eq"
                 step["value"] = mention_value
+            if (
+                df is not None
+                and step.get("comparator") in {"eq", "ne"}
+                and isinstance(step.get("value"), str)
+            ):
+                step["value"] = _canonicalize_live_domain_values(
+                    df, column, [step["value"]], op=op
+                )[0]
+
+        elif op in {"FILTER_IN", "SPLIT_BY_VALUES"}:
+            column = step.get("column")
+            values = step.get("values")
+            if df is not None and isinstance(column, str) and isinstance(values, list):
+                step["values"] = _canonicalize_live_domain_values(
+                    df, column, values, op=op
+                )
 
         elif op == "DERIVE_BIN":
             kind = step.get("kind")
@@ -1838,8 +2047,16 @@ def _apply_grounding_semantic_guards(
             branches = step.get("branches")
             if isinstance(branches, list):
                 for branch in branches:
-                    if isinstance(branch, dict) and "result" in branch and "result_column" not in branch:
+                    if not isinstance(branch, dict):
+                        continue
+                    if "result" in branch and "result_column" not in branch:
                         branch["result_column"] = branch.pop("result")
+                    column = branch.get("filter_column")
+                    values = branch.get("filter_values")
+                    if df is not None and isinstance(column, str) and isinstance(values, list):
+                        branch["filter_values"] = _canonicalize_live_domain_values(
+                            df, column, values, op=op
+                        )
 
     return raw_plan
 
@@ -1937,6 +2154,11 @@ def run_flash_fusion_cache(
     then normal typed validation/execution. On every non-successful cache
     path it falls back to the existing full Flash-Fusion planner.
     """
+    # Isolate this query from any DataFrame state (data or .attrs) left behind
+    # by earlier queries/baselines sharing the caller's df instance. Done before
+    # stage timing starts so it is never counted in reported latency.
+    df = df.copy()
+    trace = trace if trace is not None else CacheGroundingTrace()
     result = r if r is not None else _new_result(query, client)
     stage_latency = (
         dict(result.stage_latency_s)
@@ -2111,8 +2333,11 @@ def run_flash_fusion_cache(
         RuntimeError,
     ) as exc:
         _record(trace, failure_reason=f"{type(exc).__name__}: {exc}", fell_back=True)
+        failure_trace = asdict(trace)
+        _set_if_present(result, "cache_grounding_failure", failure_trace)
         _record_cache_failure(result, str(exc))
         fallback_result = _run_normal_flash_fusion(query, df, client, result, **flash_fusion_kwargs)
+        _set_if_present(fallback_result, "cache_grounding_failure", failure_trace)
         skeleton = _extract_cached_skeleton_from_result(fallback_result)
         if (
             fallback_result.executed

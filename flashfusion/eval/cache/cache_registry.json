@@ -90,7 +90,7 @@
       "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "3e2dc640c05be9c3",
+      "schema_fingerprint": "8a468207a2c8d18a",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": null,
@@ -596,7 +596,7 @@
       "query_text": "Which record_id exhibits the largest difference between maximum and minimum MLII?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "3e2dc640c05be9c3",
+      "schema_fingerprint": "8a468207a2c8d18a",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "min",
@@ -1719,7 +1719,7 @@
       "query_text": "Which user has the highest total number of recorded data samples?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -1788,7 +1788,7 @@
       "query_text": "Calculate the average overall magnitude of peak acceleration using the 99th percentiles of the X, Y, and Z axes.",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2420,7 +2420,7 @@
         "RANK_ROWS"
       ],
       "query_text": "Identify the user whose total recorded duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2776,7 +2776,7 @@
         "RANK_ROWS"
       ],
       "query_text": "Determine the user whose total observed duration of resting states (sitting,standing) exceeds their duration of dynamic movements (walking,jogging,upstairs,downstairs) by the largest margin.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2893,7 +2893,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "Which user has the highest total number of observed data samples?",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -3125,6 +3125,140 @@
         "predictive": {
           "holdout_row": "first",
           "model": "hist_gradient_boosting",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Estimate whether an annotation is present for the first row in the holdout set.",
+      "schema_fingerprint": "3e2dc640c05be9c3",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "logistic_regression",
+          "target_column": null,
+          "train_fraction": 0.8
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PARALLEL_AGGREGATE",
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "query_text": "Tell me which record_id exhibits the largest difference between highest and lowest MLII?",
+      "schema_fingerprint": "3e2dc640c05be9c3",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "min",
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "record_id"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "PREDICTIVE_PIPELINE"
+      ],
+      "query_text": "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows In training and the final 20% as the chronological holdout. Fit a logistic regression model using the features MLII and V1. Forecast whether an annotation is present In the first row in the holdout set.",
+      "schema_fingerprint": "3e2dc640c05be9c3",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": null,
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "V1",
+          "annotation",
+          "record_id",
+          "time_s"
+        ],
+        "filter_values": {
+          "record_id": 101
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": true,
+          "last_event": false,
+          "predictive": true,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "PREDICTIVE_PIPELINE"
+        ],
+        "output_shape": "predictive",
+        "predicate_ops": {
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": "first",
+          "model": "logistic_regression",
           "target_column": null,
           "train_fraction": 0.8
         }

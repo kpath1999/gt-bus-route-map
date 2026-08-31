@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-29T19:38:51+00:00
+Generated: 2026-08-30T00:45:31+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             0.9375 |            6.2107 |           0.0012 |
+| FLASH_FUSION_CACHE |             1.0000 |            6.1732 |           0.0000 |
 
 ## Typed-Operator Coverage
 
-| Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
-|:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       3 | 19%        |                0 |                  4 |                    7.89 | -                          |
+| Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject | Typed avg latency (s)   | Fallback avg latency (s)   |
+|:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|:------------------------|:---------------------------|
+| FLASH_FUSION_CACHE |        16 |       0 | 0%         |                0 |                  4 | -                       | -                          |
 
 ## Per-Query Results
 
@@ -20,13 +20,13 @@ Generated: 2026-08-29T19:38:51+00:00
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 0
+**Answer:** The result is 36
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,FILTER_COMPARE,COUNT_DISTINCT
-- Latency: 0.85s | Cost: $0.00004
+- Latency: 1.02s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -38,20 +38,20 @@ Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype
 Observation: rows=1098198
 Thought: typed operator step 2 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['activity_label'] == 'walking']
-Observation: rows=0
+Action Input: df = df[df['activity_label'] == 'Walking']
+Observation: rows=424397
 Thought: typed operator step 3 (COUNT_DISTINCT)
 Action: typed_operator_exec
 Action Input: result = df['subject_id'].nunique()
-Observation: 0
-Final Answer: 0
+Observation: 36
+Final Answer: 36
 ```
 
 **Final Code Executed**
 
 ```python
 df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
-df = df[df['activity_label'] == 'walking']
+df = df[df['activity_label'] == 'Walking']
 result = df['subject_id'].nunique()
 ```
 
@@ -66,7 +66,7 @@ result = df['subject_id'].nunique()
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.43s | Cost: $0.00002
+- Latency: 0.85s | Cost: $0.00002
 
 **Agent Trace**
 
@@ -86,7 +86,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 0.51s | Cost: $0.00004
+- Latency: 0.65s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -122,7 +122,7 @@ result = df['x'].max()
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,DERIVE_VECTOR_MAGNITUDE,AGGREGATE_COLUMN
-- Latency: 0.76s | Cost: $0.00005
+- Latency: 0.86s | Cost: $0.00005
 
 **Agent Trace**
 
@@ -165,14 +165,15 @@ result = df['acceleration_magnitude'].median()
 **Answer:** The result is {'subject_id': 20, 'count': 56632}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 2.92s | Cost: $0.00418
+- Latency: 0.51s | Cost: $0.00006
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (GROUP_AGGREGATE)
 Action: typed_operator_exec
 Action Input: result = df.groupby('subject_id').size()
@@ -202,7 +203,7 @@ result = result.idxmax()
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.92s | Cost: $0.00002
+- Latency: 0.69s | Cost: $0.00002
 
 **Agent Trace**
 
@@ -216,17 +217,18 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}
+**Answer:** The result is {'subject_id': 20, 'margin': 54004.33781899999}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,DERIVE_DURATION_SECONDS,PARALLEL_AGGREGATE,DERIVE_BINARY,FILTER_COMPARE,RANK_ROWS
-- Latency: 13.99s | Cost: $0.00983
+- Latency: 4.75s | Cost: $0.00013
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_NOT_EMPTY)
 Action: typed_operator_exec
 Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
@@ -243,20 +245,20 @@ branch_0 = df.groupby(['subject_id'])['dt_s'].sum()
 # Branch 1: filter 'activity_label' in ['Downstairs', 'Jogging', 'Upstairs', 'Walking']
 branch_1 = df.groupby(['subject_id'])['dt_s'].sum()
 merged = branch_0.merge(branch_1, on=['subject_id'], how='outer').fillna(0)
-Observation: {'groups': 36, 'columns': ['subject_id', 'resting_duration', 'dynamic_duration']}
+Observation: {'groups': 36, 'columns': ['subject_id', 'resting_seconds', 'dynamic_seconds']}
 Thought: typed operator step 4 (DERIVE_BINARY)
 Action: typed_operator_exec
-Action Input: df['duration_margin'] = df['resting_duration'] - df['dynamic_duration']
-Observation: derived 'duration_margin' (rows=36)
+Action Input: df['margin'] = df['resting_seconds'] - df['dynamic_seconds']
+Observation: derived 'margin' (rows=36)
 Thought: typed operator step 5 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['duration_margin'] > 0]
+Action Input: df = df[df['margin'] > 0]
 Observation: rows=3
 Thought: typed operator step 6 (RANK_ROWS)
 Action: typed_operator_exec
-Action Input: idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resting_duration', 'dynamic_duration', 'duration_margin']].to_dict()
-Observation: {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}
-Final Answer: {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}
+Action Input: idx = df['margin'].idxmax(); result = df.loc[idx, ['subject_id']].to_dict()
+Observation: {'subject_id': 20, 'margin': 54004.33781899999}
+Final Answer: {'subject_id': 20, 'margin': 54004.33781899999}
 ```
 
 **Final Code Executed**
@@ -270,9 +272,9 @@ branch_0 = df.groupby(['subject_id'])['dt_s'].sum()
 # Branch 1: filter 'activity_label' in ['Downstairs', 'Jogging', 'Upstairs', 'Walking']
 branch_1 = df.groupby(['subject_id'])['dt_s'].sum()
 merged = branch_0.merge(branch_1, on=['subject_id'], how='outer').fillna(0)
-df['duration_margin'] = df['resting_duration'] - df['dynamic_duration']
-df = df[df['duration_margin'] > 0]
-idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resting_duration', 'dynamic_duration', 'duration_margin']].to_dict()
+df['margin'] = df['resting_seconds'] - df['dynamic_seconds']
+df = df[df['margin'] > 0]
+idx = df['margin'].idxmax(); result = df.loc[idx, ['subject_id']].to_dict()
 ```
 
 ---
@@ -287,7 +289,7 @@ idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resti
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 23.47s | Cost: $0.00006
+- Latency: 22.63s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -319,7 +321,7 @@ result = "Hist gradient boosting predicts activity_label 'Sitting' for the first
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 0.46s | Cost: $0.00002
+- Latency: 0.82s | Cost: $0.00002
 
 **Agent Trace**
 
@@ -339,7 +341,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 4.72s | Cost: $0.00006
+- Latency: 4.90s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -391,7 +393,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 35.34s | Cost: $0.00006
+- Latency: 35.35s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -421,17 +423,18 @@ result = "Random forest predicts activity_label 'Sitting' for the first holdout 
 **Answer:** The result is {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.8327917626509, 'difference': 2.1297469978028634}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,DERIVE_VECTOR_MAGNITUDE,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 6.77s | Cost: $0.00472
+- Latency: 1.30s | Cost: $0.00006
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_NOT_EMPTY)
 Action: typed_operator_exec
-Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
+Action Input: df = df[df['x'].notna() & df['x'].astype(str).str.strip().ne('')]
 Observation: rows=1098198
 Thought: typed operator step 2 (DERIVE_VECTOR_MAGNITUDE)
 Action: typed_operator_exec
@@ -459,7 +462,7 @@ Final Answer: {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean accelera
 **Final Code Executed**
 
 ```python
-df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
+df = df[df['x'].notna() & df['x'].astype(str).str.strip().ne('')]
 df['acceleration_magnitude'] = (df['x']**2 + df['y']**2 + df['z']**2)**0.5
 dynamic = df[df['activity_label'].isin(['Downstairs', 'Jogging', 'Upstairs', 'Walking'])]
 resting = df[df['activity_label'].isin(['Sitting', 'Standing'])]
@@ -479,7 +482,7 @@ result = compare(dynamic, resting, mode='difference')
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 2.37s | Cost: $0.00005
+- Latency: 0.91s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -530,7 +533,7 @@ result = compare(Upstairs, Downstairs, mode='abs_difference')
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.44s | Cost: $0.00006
+- Latency: 3.14s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -563,7 +566,7 @@ result = "1-nearest-neighbor predicts activity_label 'Sitting' for the first hol
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 0.91s | Cost: $0.00005
+- Latency: 19.88s | Cost: $0.00005
 
 **Agent Trace**
 

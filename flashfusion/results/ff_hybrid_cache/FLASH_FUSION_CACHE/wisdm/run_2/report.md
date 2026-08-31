@@ -1,18 +1,18 @@
 # Flash-Fusion Benchmark Report
 
-Generated: 2026-08-28T01:02:44+00:00
+Generated: 2026-08-31T16:31:03+00:00
 
 ## Summary Table
 
 | Baseline           |   Avg LLM Accuracy |   Avg Latency (s) |   Avg Cost (USD) |
 |:-------------------|-------------------:|------------------:|-----------------:|
-| FLASH_FUSION_CACHE |             0.9375 |            7.7740 |           0.0003 |
+| FLASH_FUSION_CACHE |             1.0000 |            7.2363 |           0.0003 |
 
 ## Typed-Operator Coverage
 
 | Baseline           |   Queries |   Typed | Coverage   |   ReAct fallback |   Guardrail reject |   Typed avg latency (s) | Fallback avg latency (s)   |
 |:-------------------|----------:|--------:|:-----------|-----------------:|-------------------:|------------------------:|:---------------------------|
-| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                   12.48 | -                          |
+| FLASH_FUSION_CACHE |        16 |       2 | 12%        |                0 |                  4 |                    8.62 | -                          |
 
 ## Per-Query Results
 
@@ -26,7 +26,7 @@ Generated: 2026-08-28T01:02:44+00:00
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,DERIVE_VECTOR_MAGNITUDE,AGGREGATE_COLUMN
-- Latency: 2.68s | Cost: $0.00012
+- Latency: 1.05s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -66,13 +66,13 @@ result = df['acceleration_magnitude'].median()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Hist gradient boosting predicts label 'Sitting' for the first holdout row.
+**Answer:** The result is Hist gradient boosting predicts activity_label 'Sitting' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 22.81s | Cost: $0.00012
+- Latency: 25.12s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -81,16 +81,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='hist_gradient_boosting' features=['x', 'y', 'z']
-result = "Hist gradient boosting predicts label 'Sitting' for the first holdout row."
-Observation: Hist gradient boosting predicts label 'Sitting' for the first holdout row.
-Final Answer: Hist gradient boosting predicts label 'Sitting' for the first holdout row.
+result = "Hist gradient boosting predicts activity_label 'Sitting' for the first holdout row."
+Observation: Hist gradient boosting predicts activity_label 'Sitting' for the first holdout row.
+Final Answer: Hist gradient boosting predicts activity_label 'Sitting' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='hist_gradient_boosting' features=['x', 'y', 'z']
-result = "Hist gradient boosting predicts label 'Sitting' for the first holdout row."
+result = "Hist gradient boosting predicts activity_label 'Sitting' for the first holdout row."
 ```
 
 ---
@@ -99,13 +99,13 @@ result = "Hist gradient boosting predicts label 'Sitting' for the first holdout 
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.32354223750962396, 'Downstairs': 0.6840876229507195, 'abs_difference': 0.3605453854410955}
+**Answer:** The result is {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 4.12s | Cost: $0.00006
+- Latency: 1.13s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -126,12 +126,12 @@ Observation: Downstairs: rows=100425
 Thought: typed operator step 4 (AGGREGATE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = {label: agg(partition) for label in partitions}
-Observation: {'Upstairs': 0.32354223750962396, 'Downstairs': 0.6840876229507195}
+Observation: {'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197}
 Thought: typed operator step 5 (COMPARE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = compare(Upstairs, Downstairs, mode='abs_difference')
-Observation: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.32354223750962396, 'Downstairs': 0.6840876229507195, 'abs_difference': 0.3605453854410955}
-Final Answer: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.32354223750962396, 'Downstairs': 0.6840876229507195, 'abs_difference': 0.3605453854410955}
+Observation: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
+Final Answer: {'higher': 'Downstairs', 'lower': 'Upstairs', 'metric': 'mean z', 'Upstairs': 0.323542237509624, 'Downstairs': 0.6840876229507197, 'abs_difference': 0.36054538544109566}
 ```
 
 **Final Code Executed**
@@ -150,17 +150,17 @@ result = compare(Upstairs, Downstairs, mode='abs_difference')
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating the age of the users or their walking speed in miles per hour.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating walking speed or age.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 1.50s | Cost: $0.00004
+- Latency: 0.52s | Cost: $0.00002
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating the age of the users or their walking speed in miles per hour.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating walking speed or age.
 ```
 
 ---
@@ -169,13 +169,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 0
+**Answer:** The result is 36
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,FILTER_COMPARE,COUNT_DISTINCT
-- Latency: 5.62s | Cost: $0.00004
+- Latency: 1.15s | Cost: $0.00004
 
 **Agent Trace**
 
@@ -187,20 +187,20 @@ Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype
 Observation: rows=1098198
 Thought: typed operator step 2 (FILTER_COMPARE)
 Action: typed_operator_exec
-Action Input: df = df[df['activity_label'] == 'walking']
-Observation: rows=0
+Action Input: df = df[df['activity_label'] == 'Walking']
+Observation: rows=424397
 Thought: typed operator step 3 (COUNT_DISTINCT)
 Action: typed_operator_exec
 Action Input: result = df['subject_id'].nunique()
-Observation: 0
-Final Answer: 0
+Observation: 36
+Final Answer: 36
 ```
 
 **Final Code Executed**
 
 ```python
 df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
-df = df[df['activity_label'] == 'walking']
+df = df[df['activity_label'] == 'Walking']
 result = df['subject_id'].nunique()
 ```
 
@@ -213,10 +213,10 @@ result = df['subject_id'].nunique()
 **Answer:** The result is {'subject_id': 20, 'resting_duration': 56906.660065, 'dynamic_duration': 2902.322246, 'duration_margin': 54004.33781899999}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
 - Path: typed_operator
 - Operators: FILTER_NOT_EMPTY,DERIVE_DURATION_SECONDS,PARALLEL_AGGREGATE,DERIVE_BINARY,FILTER_COMPARE,RANK_ROWS
-- Latency: 15.14s | Cost: $0.00264
+- Latency: 12.95s | Cost: $0.00263
 
 **Agent Trace**
 
@@ -228,7 +228,7 @@ Observation: rows=1098198
 Thought: typed operator step 2 (DERIVE_DURATION_SECONDS)
 Action: typed_operator_exec
 Action Input: df = df.sort_values(['subject_id', 'timestamp']); df['dt_s'] = df.groupby(['subject_id'])['timestamp'].diff().dt.total_seconds().clip(lower=0).fillna(0.0)
-Observation: derived 'dt_s' (rows=1098198, total=841190.608454s)
+Observation: derived 'dt_s' (rows=1098198, total=841190.6084540003s)
 Thought: typed operator step 3 (PARALLEL_AGGREGATE)
 Action: typed_operator_exec
 Action Input: # PARALLEL_AGGREGATE branches:
@@ -275,13 +275,13 @@ idx = df['duration_margin'].idxmax(); result = df.loc[idx, ['subject_id', 'resti
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Random forest predicts label 'Sitting' for the first holdout row.
+**Answer:** The result is Random forest predicts activity_label 'Sitting' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 36.39s | Cost: $0.00012
+- Latency: 53.15s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -290,16 +290,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='random_forest' features=['x', 'y', 'z']
-result = "Random forest predicts label 'Sitting' for the first holdout row."
-Observation: Random forest predicts label 'Sitting' for the first holdout row.
-Final Answer: Random forest predicts label 'Sitting' for the first holdout row.
+result = "Random forest predicts activity_label 'Sitting' for the first holdout row."
+Observation: Random forest predicts activity_label 'Sitting' for the first holdout row.
+Final Answer: Random forest predicts activity_label 'Sitting' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='random_forest' features=['x', 'y', 'z']
-result = "Random forest predicts label 'Sitting' for the first holdout row."
+result = "Random forest predicts activity_label 'Sitting' for the first holdout row."
 ```
 
 ---
@@ -308,17 +308,18 @@ result = "Random forest predicts label 'Sitting' for the first holdout row."
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.8327917626509, 'difference': 2.1297469978028634}
+**Answer:** The result is {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.832791762650903, 'difference': 2.12974699780286}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
-- Path: typed_operator
+- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
+- Path: typed_operator_cache
 - Operators: FILTER_NOT_EMPTY,DERIVE_VECTOR_MAGNITUDE,SPLIT_BY_VALUES,SPLIT_BY_VALUES,AGGREGATE_PARTITIONS,COMPARE_PARTITIONS
-- Latency: 9.81s | Cost: $0.00174
+- Latency: 1.67s | Cost: $0.00007
 
 **Agent Trace**
 
 ```
+Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (FILTER_NOT_EMPTY)
 Action: typed_operator_exec
 Action Input: df = df[df['activity_label'].notna() & df['activity_label'].astype(str).str.strip().ne('')]
@@ -338,12 +339,12 @@ Observation: resting: rows=108333
 Thought: typed operator step 5 (AGGREGATE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = {label: agg(partition) for label in partitions}
-Observation: {'dynamic': 11.962538760453763, 'resting': 9.8327917626509}
+Observation: {'dynamic': 11.962538760453763, 'resting': 9.832791762650903}
 Thought: typed operator step 6 (COMPARE_PARTITIONS)
 Action: typed_operator_exec
 Action Input: result = compare(dynamic, resting, mode='difference')
-Observation: {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.8327917626509, 'difference': 2.1297469978028634}
-Final Answer: {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.8327917626509, 'difference': 2.1297469978028634}
+Observation: {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.832791762650903, 'difference': 2.12974699780286}
+Final Answer: {'higher': 'dynamic', 'lower': 'resting', 'metric': 'mean acceleration_magnitude', 'dynamic': 11.962538760453763, 'resting': 9.832791762650903, 'difference': 2.12974699780286}
 ```
 
 **Final Code Executed**
@@ -369,7 +370,7 @@ result = compare(dynamic, resting, mode='difference')
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 2.62s | Cost: $0.00009
+- Latency: 0.75s | Cost: $0.00005
 
 **Agent Trace**
 
@@ -399,17 +400,17 @@ result = df['x'].max()
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating gender or subject sex.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating gender (e.g., 'gender' or 'sex'), and therefore cannot distinguish between female and male subjects.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: exact_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.36s | Cost: $0.00002
+- Latency: 0.78s | Cost: $0.00002
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating gender or subject sex.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating gender (e.g., 'gender' or 'sex'), and therefore cannot distinguish between female and male subjects.
 ```
 
 ---
@@ -418,13 +419,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is 1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
+**Answer:** The result is 1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 3.97s | Cost: $0.00012
+- Latency: 3.14s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -433,16 +434,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='one_nearest_neighbor' features=['x', 'y', 'z']
-result = "1-nearest-neighbor predicts label 'Sitting' for the first holdout row."
-Observation: 1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
-Final Answer: 1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
+result = "1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row."
+Observation: 1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row.
+Final Answer: 1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='one_nearest_neighbor' features=['x', 'y', 'z']
-result = "1-nearest-neighbor predicts label 'Sitting' for the first holdout row."
+result = "1-nearest-neighbor predicts activity_label 'Sitting' for the first holdout row."
 ```
 
 ---
@@ -451,17 +452,17 @@ result = "1-nearest-neighbor predicts label 'Sitting' for the first holdout row.
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any column indicating the user's physical activity duration, intensity, or weekly activity summary required to assess adherence to the WHO guideline.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating the WHO recommended weekly moderate-to-vigorous physical activity guideline or a column that aggregates activity duration per user per week.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: semantic_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 3.24s | Cost: $0.00002
+- Latency: 3.05s | Cost: $0.00002
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating the user's physical activity duration, intensity, or weekly activity summary required to assess adherence to the WHO guideline.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating the WHO recommended weekly moderate-to-vigorous physical activity guideline or a column that aggregates activity duration per user per week.
 ```
 
 ---
@@ -470,13 +471,13 @@ Rejected by the guardrail because the query cannot be answered from available da
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** The result is Logistic regression predicts label 'Jogging' for the first holdout row.
+**Answer:** The result is Logistic regression predicts activity_label 'Jogging' for the first holdout row.
 
 - Executed: True | Rejected: False | Judge: N/A
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: PREDICTIVE_PIPELINE
-- Latency: 7.40s | Cost: $0.00011
+- Latency: 5.39s | Cost: $0.00006
 
 **Agent Trace**
 
@@ -485,16 +486,16 @@ Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (PREDICTIVE_PIPELINE)
 Action: typed_operator_exec
 Action Input: # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='logistic_regression' features=['x', 'y', 'z']
-result = "Logistic regression predicts label 'Jogging' for the first holdout row."
-Observation: Logistic regression predicts label 'Jogging' for the first holdout row.
-Final Answer: Logistic regression predicts label 'Jogging' for the first holdout row.
+result = "Logistic regression predicts activity_label 'Jogging' for the first holdout row."
+Observation: Logistic regression predicts activity_label 'Jogging' for the first holdout row.
+Final Answer: Logistic regression predicts activity_label 'Jogging' for the first holdout row.
 ```
 
 **Final Code Executed**
 
 ```python
 # sort_by=['timestamp', 'subject_id'] split=878558/1098198 model='logistic_regression' features=['x', 'y', 'z']
-result = "Logistic regression predicts label 'Jogging' for the first holdout row."
+result = "Logistic regression predicts activity_label 'Jogging' for the first holdout row."
 ```
 
 ---
@@ -503,17 +504,17 @@ result = "Logistic regression predicts label 'Jogging' for the first holdout row
 
 #### FLASH_FUSION_CACHE
 
-**Answer:** Query rejected. Reason: The dataset does not contain any information about geographic location or GPS coordinates.
+**Answer:** Query rejected. Reason: The dataset does not contain any column indicating geographic location.
 
 - Executed: False | Rejected: True | Judge: N/A
 - Stages: semantic_cache_hit_out_of_scope,cache_light_rejection_reason,cache_rejection_reason_ready
 - Path: guardrail_reject
-- Latency: 2.32s | Cost: $0.00003
+- Latency: 0.54s | Cost: $0.00002
 
 **Agent Trace**
 
 ```
-Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any information about geographic location or GPS coordinates.
+Rejected by the guardrail because the query cannot be answered from available dataset fields. Reason: The dataset does not contain any column indicating geographic location.
 ```
 
 ---
@@ -528,7 +529,7 @@ Rejected by the guardrail because the query cannot be answered from available da
 - Stages: hybrid_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
 - Path: typed_operator_cache
 - Operators: FILTER_COMPARE,FILTER_COMPARE,AGGREGATE_COLUMN
-- Latency: 2.79s | Cost: $0.00010
+- Latency: 1.11s | Cost: $0.00005
 
 **Agent Trace**
 
@@ -566,15 +567,14 @@ result = df['y'].mean()
 **Answer:** The result is {'subject_id': 20, 'count': 56632}
 
 - Executed: True | Rejected: False | Judge: N/A
-- Stages: exact_cache_hit,cache_light_grounding,cache_plan_validated,typed_exec
-- Path: typed_operator_cache
+- Stages: exact_cache_hit,cache_light_grounding,cache_miss_or_validation_failure,guardrail_plan,plan_validated,typed_exec
+- Path: typed_operator
 - Operators: GROUP_AGGREGATE,RANK_GROUPS
-- Latency: 1.61s | Cost: $0.00012
+- Latency: 4.29s | Cost: $0.00104
 
 **Agent Trace**
 
 ```
-Cache hit: light model grounded cached skeleton; validated typed execution.
 Thought: typed operator step 1 (GROUP_AGGREGATE)
 Action: typed_operator_exec
 Action Input: result = df.groupby('subject_id').size()

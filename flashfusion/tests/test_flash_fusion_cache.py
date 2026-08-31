@@ -18,6 +18,7 @@ from flashfusion.config import DEFAULT_LIGHT_MODEL, MODEL_INVOCATION_CONFIG
 from flashfusion.eval import queries as queries_v1
 from flashfusion.eval import queries_v2, queries_v3
 from flashfusion.eval import trace_hybrid_cache as thc
+from flashfusion.pipeline.operators import DeterministicPlan, execute_plan
 from flashfusion.pipeline.runner import LLMClient, RunResult
 
 SKELETON = ["FILTER_COMPARE", "COUNT_ROWS"]
@@ -150,6 +151,12 @@ def test_default_light_model_has_100_token_output_ceiling() -> None:
     assert MODEL_INVOCATION_CONFIG[DEFAULT_LIGHT_MODEL]["max_tokens"] == 100
 
 
+def test_default_light_model_passes_output_ceiling_to_chat_client() -> None:
+    client = LLMClient(model_name="qwen/qwen3-max", api_key="test-key")
+
+    assert client.light.llm.max_tokens == 100
+
+
 def test_exact_hit_matches_dataset_and_literal_query(registry: Path) -> None:
     entries = ffc._load_entries(registry)
     entry, status = ffc._find_exact_entry(entries, QUERY, "bus")
@@ -241,6 +248,83 @@ def test_successful_typed_execution_from_compact_params(df, registry, no_fallbac
     assert result.typed_plan == GOOD_PLAN
     assert trace.parsed_plan == GOOD_PLAN
 
+def test_exact_predictive_cache_hit_bypasses_light_grounding_and_supplies_model(
+    no_fallback, tmp_path: Path
+) -> None:
+    query = (
+        "Filter to record_id 101 and sort its rows by time_s in ascending order. "
+        "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+        "Train a logistic regression model using the features MLII and V1. "
+        "Predict whether an annotation is present for the first row in the holdout set."
+    )
+    predictive_df = pd.DataFrame(
+        {
+            "record_id": [101, 101, 101, 101, 101],
+            "time_s": [0.0, 1.0, 2.0, 3.0, 4.0],
+            "MLII": [0.1, 0.2, 0.3, 0.4, 0.5],
+            "V1": [0.5, 0.4, 0.3, 0.2, 0.1],
+            "annotation": ["", "+", "", "+", ""],
+        }
+    )
+    cache_path = tmp_path / "cache_registry.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "entry": {
+                    "dataset": "ecg",
+                    "query_text": query,
+                    "status": "reusable",
+                    "operator_skeleton": ["PREDICTIVE_PIPELINE"],
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = _FakeClient('{"cache_grounding_failed": true}')
+
+    result = ffc.run_flash_fusion_cache(
+        query, predictive_df, client, dataset="ecg", cache_path=cache_path
+    )
+
+    step = result.typed_plan["steps"][0]
+    assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+    assert client.light.prompts == []
+    assert step["model"] == "logistic_regression"
+    assert step["feature_columns"] == ["MLII", "V1"]
+    assert step["target_column"] == "annotation"
+    assert step["target_from_non_empty"] is True
+
+
+def test_predictive_cache_grounding_expands_named_acceleration_features() -> None:
+    bus_df = pd.DataFrame(
+        {
+            "timestamp": [1, 2],
+            "accel_mean": [0.1, 0.2],
+            "accel_variance": [0.01, 0.02],
+            "extreme_event_magnitude": [1.0, 2.0],
+            "instability_score": [0.3, 0.4],
+            "behavior": ["calm", "rough"],
+        }
+    )
+    query = (
+        "Sort all bus rows by timestamp in ascending order. "
+        "Use the first 80% of rows for training and the final 20% as the chronological holdout. "
+        "Train a random forest model using the acceleration features. "
+        "Predict the label in the behavior column for the first row in the holdout set."
+    )
+
+    plan = ffc._ground_predictive_cache_hit(query, ["PREDICTIVE_PIPELINE"], bus_df)
+
+    assert plan is not None
+    step = plan["steps"][0]
+    assert step["model"] == "random_forest"
+    assert step["feature_columns"] == [
+        "accel_mean",
+        "accel_variance",
+        "extreme_event_magnitude",
+        "instability_score",
+    ]
+
 
 def test_reconstruct_plan_preserves_legacy_full_plan() -> None:
     assert ffc._reconstruct_plan_from_compact_params(GOOD_PLAN, SKELETON) is GOOD_PLAN
@@ -258,10 +342,48 @@ def test_grounding_prompt_requests_compact_params_only() -> None:
     assert "omit `version`, `steps`, and every `op` field" in prompt
 
 
+def test_grounding_prompt_nests_parallel_branches_in_one_params_entry() -> None:
+    prompt = ffc._build_grounding_system_prompt(
+        ("PARALLEL_AGGREGATE", "DERIVE_BINARY", "RANK_ROWS")
+    )
+
+    assert "occupies EXACTLY ONE object in `params`" in prompt
+    assert "Put every branch inside that one object's `branches` array" in prompt
+    assert "branches are NOT separate" in prompt
+    assert "`params` entries" in prompt
+    assert '"params":[{"branches":[' in prompt
+
+
 def test_code_fenced_light_output_is_accepted(df, registry, no_fallback) -> None:
     client = _FakeClient("```json\n" + json.dumps(GOOD_PLAN) + "\n```")
     result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
     assert result.execution_path == ffc.PATH_TYPED_OPERATOR_CACHE
+
+
+def test_split_params_arrays_are_recovered_without_another_model_call() -> None:
+    malformed = (
+        '{"params":[{"group_by":["subject_id"],"aggregate":"count",'
+        '"column":null,"freq":null}],[{"direction":"max"}]}'
+    )
+
+    repaired = ffc._repair_light_json(malformed)
+
+    assert json.loads(repaired) == {
+        "params": [
+            {
+                "group_by": ["subject_id"],
+                "aggregate": "count",
+                "column": None,
+                "freq": None,
+            },
+            {"direction": "max"},
+        ]
+    }
+
+
+def test_split_params_recovery_rejects_unrelated_malformed_json() -> None:
+    with pytest.raises(ValueError, match="light model JSON repair failed"):
+        ffc._repair_light_json('{"params":[{}],["unexpected"]}')
 
 
 def test_grounding_prompt_requires_epoch_unit_for_numeric_temporal_bins(df, registry) -> None:
@@ -444,6 +566,127 @@ def test_apply_grounding_semantic_guards_repairs_derive_bin_temporal_numeric_col
     assert step["epoch_unit"] is None
 
 
+def test_wisdm_categorical_values_are_bound_to_live_domain() -> None:
+    wisdm_df = pd.DataFrame(
+        {
+            "subject_id": [1, 2, 3, 4, 5, 6],
+            "activity_label": [
+                "Walking",
+                "Jogging",
+                "Upstairs",
+                "Downstairs",
+                "Sitting",
+                "Standing",
+            ],
+            "timestamp": [1, 2, 3, 4, 5, 6],
+            "x": [1.0] * 6,
+            "y": [2.0] * 6,
+            "z": [3.0] * 6,
+        }
+    )
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {
+                "op": "FILTER_COMPARE",
+                "column": "activity_label",
+                "comparator": "eq",
+                "value": "walking",
+            },
+            {"op": "COUNT_DISTINCT", "column": "subject_id"},
+        ],
+    }
+
+    guarded = ffc._apply_grounding_semantic_guards(raw_plan, QUERY, df=wisdm_df)
+    execution = execute_plan(wisdm_df, DeterministicPlan.model_validate(guarded))
+
+    assert guarded["steps"][0]["value"] == "Walking"
+    assert execution.ok is True
+    assert execution.value == 1
+
+
+def test_wisdm_partition_values_are_bound_to_live_domain() -> None:
+    wisdm_df = pd.DataFrame(
+        {
+            "subject_id": [1, 1, 2, 2, 3, 3],
+            "activity_label": [
+                "Walking",
+                "Jogging",
+                "Upstairs",
+                "Downstairs",
+                "Sitting",
+                "Standing",
+            ],
+            "timestamp": [1, 2, 3, 4, 5, 6],
+            "x": [1.0] * 6,
+            "y": [2.0] * 6,
+            "z": [3.0] * 6,
+        }
+    )
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {
+                "op": "SPLIT_BY_VALUES",
+                "column": "activity_label",
+                "values": ["walking", "jogging", "upstairs", "downstairs"],
+                "label": "dynamic",
+            },
+            {
+                "op": "PARALLEL_AGGREGATE",
+                "branches": [
+                    {
+                        "filter_column": "activity_label",
+                        "filter_values": ["sitting", "standing"],
+                        "group_by": ["subject_id"],
+                        "aggregate": "count",
+                        "column": None,
+                        "result_column": "resting_count",
+                    },
+                    {
+                        "filter_column": "activity_label",
+                        "filter_values": ["walking", "jogging"],
+                        "group_by": ["subject_id"],
+                        "aggregate": "count",
+                        "column": None,
+                        "result_column": "dynamic_count",
+                    },
+                ],
+            },
+        ],
+    }
+
+    guarded = ffc._apply_grounding_semantic_guards(raw_plan, QUERY, df=wisdm_df)
+
+    assert guarded["steps"][0]["values"] == [
+        "Walking",
+        "Jogging",
+        "Upstairs",
+        "Downstairs",
+    ]
+    branches = guarded["steps"][1]["branches"]
+    assert branches[0]["filter_values"] == ["Sitting", "Standing"]
+    assert branches[1]["filter_values"] == ["Walking", "Jogging"]
+
+
+def test_unknown_categorical_value_abstains_before_execution() -> None:
+    wisdm_df = pd.DataFrame({"activity_label": ["Walking", "Jogging"]})
+    raw_plan = {
+        "version": "1",
+        "steps": [
+            {
+                "op": "FILTER_COMPARE",
+                "column": "activity_label",
+                "comparator": "eq",
+                "value": "running",
+            }
+        ],
+    }
+
+    with pytest.raises(ffc.PlanSchemaError, match="no unique match"):
+        ffc._apply_grounding_semantic_guards(raw_plan, QUERY, df=wisdm_df)
+
+
 def test_out_of_scope_cache_hit_rejects_without_full_planner(df, registry, no_fallback) -> None:
     """An empty skeleton means the query is out-of-scope; infer the reason from the light model."""
     oos_query = "Did rainy weather cause the roughest segments in this route?"
@@ -576,8 +819,15 @@ def test_declined_grounding_falls_back(df, registry, fallback_spy) -> None:
 
 def test_non_json_light_output_falls_back(df, registry, fallback_spy) -> None:
     client = _FakeClient("Sure! Here is the plan you asked for.")
-    ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
+    result = ffc.run_flash_fusion_cache(QUERY, df, client, dataset="bus", cache_path=registry)
+
     assert len(fallback_spy) == 1
+    failure = result.cache_grounding_failure
+    assert failure["lookup_status"] == "exact_cache_hit"
+    assert failure["operator_skeleton"] == SKELETON
+    assert failure["raw_light_output"] == "Sure! Here is the plan you asked for."
+    assert failure["failure_reason"].startswith("ValueError: light model JSON repair failed")
+    assert failure["fell_back"] is True
 
 
 def test_contract_hash_mismatch_falls_back(df, registry, fallback_spy) -> None:
