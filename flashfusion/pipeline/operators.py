@@ -2000,22 +2000,31 @@ def _rewrite_single_branch_parallel(
     while index < len(steps):
         step = steps[index]
         branches = step.get("branches") if isinstance(step, dict) else None
-        if step.get("op") != "PARALLEL_AGGREGATE" or not isinstance(branches, list) or len(branches) != 1:
+        if (
+            not isinstance(step, dict)
+            or step.get("op") != "PARALLEL_AGGREGATE"
+            or not isinstance(branches, list)
+            or len(branches) != 1
+        ):
             out.append(step)
             index += 1
             continue
 
         branch = branches[0]
+        if not isinstance(branch, dict):
+            out.append(step)
+            index += 1
+            continue
         result_column = branch.get("result_column")
         nxt = steps[index + 1] if index + 1 < len(steps) else None
         consumer: dict[str, Any] | None = None
         consumed_op = ""
         if nxt is None:
             pass
-        elif nxt.get("op") == "RANK_ROWS" and nxt.get("column") == result_column:
+        elif isinstance(nxt, dict) and nxt.get("op") == "RANK_ROWS" and nxt.get("column") == result_column:
             consumer = {"op": "RANK_GROUPS", "direction": nxt.get("direction")}
             consumed_op = "RANK_ROWS"
-        elif nxt.get("op") == "AGGREGATE_COLUMN" and nxt.get("column") == result_column:
+        elif isinstance(nxt, dict) and nxt.get("op") == "AGGREGATE_COLUMN" and nxt.get("column") == result_column:
             consumer = {"op": "AGGREGATE_GROUPS", "aggregate": nxt.get("aggregate")}
             consumed_op = "AGGREGATE_COLUMN"
         else:

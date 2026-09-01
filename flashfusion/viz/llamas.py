@@ -27,9 +27,13 @@ cd /Users/kausar/Documents/research/flash-fusion/flashfusion/viz
 python llamas.py --flash-fusion-root flashfusion/results/ff_and_react_qwen/FLASH_FUSION --react-root flashfusion/results/ff_and_react_qwen/REACT_ONLY --output-dir ../../results/primary_visualizations
 python latencystages.py --flash-fusion-root flashfusion/results/ff_and_react_qwen/FLASH_FUSION --react-root flashfusion/results/ff_and_react_qwen/REACT_ONLY --output-dir ../../results/primary_visualizations
 python queryaccuracy.py --results-root flashfusion/results/with_slm_predictive --output ../../results/primary_visualizations/accuracy_by_dataset_query_type_summary.csv
+
+if you just want to run the light-model grounding experiment, run:
+python llamas.py --grounding-only
 """
 
 import os
+import json
 
 import argparse
 from pathlib import Path
@@ -39,6 +43,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
 import pandas as pd
 
 from measure import (
@@ -66,6 +71,12 @@ from measure import (
 from typing import Any
 
 TOP3_BASELINES = ["FLASH_FUSION", CACHE_BASELINE, "REACT_ONLY"]
+COST_DATASET_BASELINES = [
+    "FLASH_FUSION",
+    CACHE_BASELINE,
+    "REACT_ONLY",
+    "AUTOIOT_PAPER",
+]
 COST_QUERY_TYPE_BASELINES = [
     "FLASH_FUSION",
     CACHE_BASELINE,
@@ -81,8 +92,15 @@ FULL_BASELINES = [
     "HARGPT_PAPER",
     "LLMSENSE_PAPER",
 ]
+ERROR_RATE_BASELINES = [
+    "FLASH_FUSION",
+    "REACT_ONLY",
+    "AUTOIOT_PAPER",
+    "HARGPT_PAPER",
+    "LLMSENSE_PAPER",
+]
 
-RC = {
+RC: dict[str, Any] = {
     "font.family": "DejaVu Sans",
     "font.size": 13.5,
     "axes.labelsize": 13.5,
@@ -102,12 +120,78 @@ SEMANTIC_STAGE_COLORS = {
     "Execution": "#8d67b8",
 }
 
+GROUNDING_DATASETS = ("bus", "wisdm", "mit_ecg")
+GROUNDING_MODEL_SPECS = [
+    {
+        "model": "meta-llama/llama-3.2-1b-instruct",
+        "label": "llama-3.2",
+        "params": "1B",
+        "is_granite": False,
+    },
+    {
+        "model": "meta-llama/llama-3.2-3b-instruct",
+        "label": "llama-3.2",
+        "params": "3B",
+        "is_granite": False,
+    },
+    {
+        "model": "qwen/qwen-2.5-7b-instruct",
+        "label": "qwen-2.5",
+        "params": "7B",
+        "is_granite": False,
+    },
+    {
+        "model": "ibm-granite/granite-4.1-8b",
+        "label": "granite-4.1",
+        "params": "8B",
+        "is_granite": True,
+    },
+    {
+        "model": "google/gemma-3-12b-it",
+        "label": "gemma-3",
+        "params": "12B",
+        "is_granite": False,
+    },
+]
+
 
 def _clean_axes(ax) -> None:
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_linewidth(1.0)
     ax.spines["bottom"].set_linewidth(1.0)
+
+
+def _apply_plot_style() -> None:
+    plt.rcParams.update(RC)  # type: ignore[arg-type]
+
+
+def _set_clean_log_ticks(ax, *, min_value: float | None = None, max_value: float | None = None) -> None:
+    ax.set_xscale("log", nonpositive="clip")
+    lo, hi = ax.get_xbound()
+    if min_value is not None and max_value is not None:
+        lo, hi = min_value, max_value
+        ax.set_xlim(lo, hi)
+
+    lo = max(float(lo), 1e-300)
+    hi = max(float(hi), 1e-300)
+
+    def _label(value: float, _pos: int) -> str:
+        if value <= 0 or not np.isfinite(value):
+            return ""
+        exponent = int(np.log10(value))
+        return rf"$10^{{{exponent}}}$"
+
+    min_exp = int(np.floor(np.log10(lo)))
+    max_exp = int(np.ceil(np.log10(hi)))
+    ticks = [10 ** exponent for exponent in range(min_exp, max_exp + 1) if lo <= 10 ** exponent <= hi]
+    if not ticks:
+        ticks = [10 ** min_exp]
+    ax.xaxis.set_major_locator(FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(FuncFormatter(_label))
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.tick_params(axis="x", which="major", labelsize=11)
 
 
 def _parse_csv_list(raw: str | None) -> list[str] | None:
@@ -250,52 +334,67 @@ def plot_cost_across_datasets(
     out_path: Path,
     baselines: list[str] | None = None,
 ) -> None:
-    plt.rcParams.update(RC)
+    _apply_plot_style()
 
-    x_labels = DATASET_ORDER
-    baselines = baselines or DATASET_FIG_BASELINES
-    x = list(range(len(x_labels)))
-    width = 0.8 / max(len(baselines), 1)
+    baselines = baselines or TOP3_BASELINES
 
-    fig, ax = plt.subplots(figsize=(7.1, 3.8))
-    peak = 0.0
-    for i, baseline in enumerate(baselines):
+    labels: list[str] = []
+    values: list[float] = []
+    for baseline in baselines:
         bdf = summary[summary["baseline"] == baseline]
-        means: list[float] = []
-        stds: list[float] = []
-        for dataset in x_labels:
-            row = bdf[bdf["dataset"] == dataset]
-            if row.empty:
-                means.append(0.0)
-                stds.append(0.0)
-            else:
-                means.append(float(row["mean"].iloc[0]))
-                stds.append(float(row["std"].iloc[0]))
+        if bdf.empty:
+            value = 0.0
+        else:
+            value = float(pd.to_numeric(bdf["mean"], errors="coerce").dropna().mean())
+        labels.append(display_baseline(baseline))
+        values.append(value)
 
-        xpos = [p - 0.4 + (i + 0.5) * width for p in x]
-        _cost_bars_with_error_labels(ax, xpos, means, stds, width, baseline, label_shift=0.02 * (i % 2))
-        peak = max(peak, max((m + s for m, s in zip(means, stds)), default=0.0))
+    fig, ax = plt.subplots(figsize=(7.4, 3.6))
+    y = np.arange(len(labels))
+    colors = [BASELINE_COLORS.get(baseline, "#999999") for baseline in baselines]
+    bars = ax.barh(
+        y,
+        values,
+        color=colors,
+        edgecolor="#333333",
+        linewidth=0.8,
+        height=0.62,
+    )
 
-    ax.set_xticks(x)
-    ax.set_xticklabels([DATASET_LABELS[d] for d in x_labels])
-    ax.set_xlabel("Dataset")
-    ax.set_ylabel(r"Cost ($\times 10^{-5}$ USD)")
-    ax.set_ylim(0, peak * 1.2 if peak > 0 else 1.0)
-    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    for bar, value in zip(bars, values):
+        if value <= 0.0:
+            continue
+        ax.text(
+            value * 1.12,
+            bar.get_y() + bar.get_height() / 2.0,
+            f"{value:.2f}",
+            va="center",
+            ha="left",
+            fontsize=9.5,
+            fontweight="bold",
+            color="#222222",
+        )
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(r"Mean cost ($\times 10^{-5}$ USD, log)")
+    ax.set_xscale("log", nonpositive="clip")
+    positive_values = [v for v in values if v > 0.0]
+    if positive_values:
+        min_positive = min(positive_values)
+        max_positive = max(positive_values)
+        lower_bound = max(min_positive * 0.5, 10 ** (int(np.floor(np.log10(min_positive))) - 1))
+        upper_bound = max_positive * 1.15
+        ax.set_xlim(lower_bound, upper_bound)
+        _set_clean_log_ticks(ax, min_value=lower_bound, max_value=upper_bound)
+    ax.xaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
     ax.set_axisbelow(True)
     _clean_axes(ax)
 
-    ax.legend(
-        ncol=min(5, max(1, len(baselines))),
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.20),
-        frameon=False,
-        columnspacing=0.9,
-        handletextpad=0.5,
-    )
     fig.patch.set_facecolor("white")
     ax.set_facecolor("white")
-    fig.subplots_adjust(bottom=0.30)
+    fig.subplots_adjust(left=0.24, bottom=0.14)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -307,7 +406,7 @@ def plot_cost_across_query_types(
     baselines: list[str] | None = None,
     query_types: list[str] | None = None,
 ) -> None:
-    plt.rcParams.update(RC)
+    _apply_plot_style()
 
     if query_types is None:
         present_query_types = [
@@ -366,7 +465,7 @@ def plot_cost_across_query_types(
 
 def plot_latency_and_cost_horizontal(df: pd.DataFrame, out_path: Path) -> None:
     """Compare the three primary systems using stage-visible latency and cost."""
-    plt.rcParams.update(RC)
+    _apply_plot_style()
     present = set(df["baseline"].astype(str).unique())
     baselines = [baseline for baseline in TOP3_BASELINES if baseline in present]
     semantic = aggregate_semantic_stage_latency_overall(df, baselines=baselines)
@@ -497,7 +596,7 @@ def _plot_cache_outcome_percent(
     x_tick_labels: list[str],
     x_axis_label: str,
 ) -> None:
-    plt.rcParams.update(RC)
+    _apply_plot_style()
 
     fig, ax = plt.subplots(figsize=(7.1, 3.8))
     x = list(range(len(x_labels)))
@@ -601,7 +700,7 @@ def plot_accuracy_across_datasets(
     out_path: Path,
     baselines: list[str] | None = None,
 ) -> None:
-    plt.rcParams.update(RC)
+    _apply_plot_style()
 
     x_labels = DATASET_ORDER
     baselines = baselines or DATASET_FIG_BASELINES
@@ -656,7 +755,7 @@ def plot_accuracy_across_query_types(
     baselines: list[str] | None = None,
     query_types: list[str] | None = None,
 ) -> None:
-    plt.rcParams.update(RC)
+    _apply_plot_style()
 
     if query_types is None:
         present_query_types = [
@@ -709,6 +808,242 @@ def plot_accuracy_across_query_types(
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
     plt.close(fig)
+
+
+def plot_query_error_rate_across_baselines(
+    summary: pd.DataFrame,
+    out_path: Path,
+    baselines: list[str] | None = None,
+) -> None:
+    """Plot mean query error rate across datasets for key baselines."""
+    _apply_plot_style()
+
+    selected = baselines or ERROR_RATE_BASELINES
+    label_map = {
+        "FLASH_FUSION": "Flash-Fusion",
+        "REACT_ONLY": "ReAct",
+        "AUTOIOT_PAPER": "AutoIOT",
+        "HARGPT_PAPER": "HARGPT",
+        "LLMSENSE_PAPER": "LLMSense",
+    }
+
+    labels: list[str] = []
+    means: list[float] = []
+    stds: list[float] = []
+    colors: list[str] = []
+
+    for baseline in selected:
+        bdf = summary[summary["baseline"] == baseline].copy()
+        if bdf.empty:
+            print(f"[WARN] Skipping query error-rate bar for {baseline}: no dataset rows found.")
+            continue
+
+        accuracy_by_dataset = pd.to_numeric(
+            bdf["mean"],
+            errors="coerce",
+        ).dropna()
+        if accuracy_by_dataset.empty:
+            print(f"[WARN] Skipping query error-rate bar for {baseline}: no valid mean accuracy values.")
+            continue
+
+        error_by_dataset = 100.0 - accuracy_by_dataset
+        error_mean = float(error_by_dataset.mean())
+        error_std = _sample_std(error_by_dataset.tolist())
+
+        labels.append(label_map.get(baseline, display_baseline(baseline)))
+        means.append(error_mean)
+        stds.append(max(0.0, min(error_std, 100.0)))
+        colors.append(BASELINE_COLORS.get(baseline, "#5b8def"))
+
+    if not labels:
+        raise ValueError("No baseline rows available to plot query error rate.")
+
+    x = list(range(len(labels)))
+    means_arr = np.asarray(means, dtype=float)
+    stds_arr = np.asarray(stds, dtype=float)
+    upper = np.maximum(0.0, np.minimum(stds_arr, 100.0 - means_arr))
+    lower = np.maximum(0.0, np.minimum(stds_arr, means_arr))
+    bounded_yerr = np.vstack([lower, upper])
+
+    fig, ax = plt.subplots(figsize=(8.6, 4.1))
+    bars = ax.bar(
+        x,
+        means,
+        width=0.68,
+        color=colors,
+        edgecolor="#333333",
+        linewidth=0.9,
+        yerr=bounded_yerr,
+        error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+    )
+    for bar, val, err in zip(bars, means, upper):
+        if val <= 0:
+            continue
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + err + 1.0,
+            f"{val:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=9.0,
+            fontweight="bold",
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    # ax.set_xlabel("Baseline")
+    ax.set_ylabel("Query error rate (%)")
+    ax.set_ylim(0, 60)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+
+def _load_grounding_summaries(benchmark_root: Path) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    for dataset in GROUNDING_DATASETS:
+        path = benchmark_root / dataset / "grounding_benchmark_summary.json"
+        if not path.exists():
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"[WARN] Could not parse grounding summary {path}: {exc}")
+            continue
+        if not isinstance(payload, dict):
+            print(f"[WARN] Skipping malformed grounding summary (not object): {path}")
+            continue
+        summaries.append(payload)
+    return summaries
+
+
+def _sample_std(values: list[float]) -> float:
+    if len(values) <= 1:
+        return 0.0
+    arr = np.asarray(values, dtype=float)
+    return float(arr.std(ddof=1))
+
+
+def _plot_grounding_loss_vs_model_size_from_summaries(
+    summaries: list[dict[str, Any]],
+    out_png: Path,
+    out_csv: Path,
+) -> bool:
+    if not summaries:
+        return False
+
+    _apply_plot_style()
+
+    x = list(range(len(GROUNDING_MODEL_SPECS)))
+    labels: list[str] = []
+    means: list[float] = []
+    stds: list[float] = []
+    colors: list[str] = []
+    rows_for_csv: list[dict[str, Any]] = []
+
+    for spec in GROUNDING_MODEL_SPECS:
+        model_id = spec["model"]
+        labels.append(f"{spec['label']}\n$\\mathbf{{{spec['params']}}}$")
+        colors.append("#ef8b2c" if bool(spec["is_granite"]) else "#5b8def")
+
+        total_queries = 0
+        total_failures = 0
+        pooled_run_losses: list[float] = []
+
+        for summary in summaries:
+            per_model = summary.get("per_model") if isinstance(summary, dict) else None
+            if not isinstance(per_model, dict):
+                continue
+            row = per_model.get(model_id)
+            if not isinstance(row, dict):
+                continue
+            total_queries += int(row.get("n_queries_total", 0) or 0)
+            total_failures += int(row.get("n_failures", 0) or 0)
+            losses = row.get("per_run_loss_pct")
+            if isinstance(losses, list):
+                pooled_run_losses.extend([float(v) for v in losses])
+
+        mean_value = (100.0 * total_failures / total_queries) if total_queries > 0 else 0.0
+        std_value = _sample_std(pooled_run_losses)
+        std_value = max(0.0, min(std_value, 100.0))
+
+        means.append(mean_value)
+        stds.append(std_value)
+
+        ci95 = 0.0
+        if pooled_run_losses:
+            ci95 = 1.96 * std_value / float(np.sqrt(len(pooled_run_losses)))
+        rows_for_csv.append(
+            {
+                "model": model_id,
+                "label": spec["label"],
+                "params": spec["params"],
+                "n_datasets": len(summaries),
+                "n_queries_total": total_queries,
+                "n_failures": total_failures,
+                "grounding_error_rate_pct": mean_value,
+                "grounding_error_std_pct": std_value,
+                "grounding_error_ci95_pct": ci95,
+            }
+        )
+
+    means_arr = np.asarray(means, dtype=float)
+    stds_arr = np.asarray(stds, dtype=float)
+    upper = np.maximum(0.0, np.minimum(stds_arr, 100.0 - means_arr))
+    lower = np.maximum(0.0, np.minimum(stds_arr, means_arr))
+    bounded_yerr = np.vstack([lower, upper])
+
+    fig, ax = plt.subplots(figsize=(8.6, 4.1))
+    bars = ax.bar(
+        x,
+        means,
+        width=0.68,
+        color=colors,
+        edgecolor="#333333",
+        linewidth=0.9,
+        yerr=bounded_yerr,
+        error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
+    )
+    for bar, val in zip(bars, means):
+        if val <= 0:
+            continue
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            bar.get_height() + 0.8,
+            f"{val:.1f}%",
+            ha="center",
+            va="bottom",
+            fontsize=9.0,
+            fontweight="bold",
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    # ax.set_xlabel("Model")
+    ax.set_ylabel("Grounding error rate (%)")
+    ax.set_ylim(0, 110)
+    ax.yaxis.grid(linestyle="--", alpha=0.35, linewidth=1.0)
+    ax.set_axisbelow(True)
+    _clean_axes(ax)
+
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor("white")
+    fig.subplots_adjust(bottom=0.30)
+    fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=220, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows_for_csv).to_csv(out_csv, index=False)
+    return True
 
 
 def _prompt_for_root(baseline_label: str, current_default: str | None) -> str | None:
@@ -1020,7 +1355,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "core"),
         help="Output folder for primary figures.",
     )
     parser.add_argument(
@@ -1063,6 +1398,26 @@ def _build_parser() -> argparse.ArgumentParser:
         default=",".join(QUERY_TYPE_ORDER),
         help="Comma-separated query types to include in figures.",
     )
+    parser.add_argument(
+        "--grounding-benchmark-root",
+        default=str(script_dir.parent / "results" / "ff_hybrid_cache" / "grounding_benchmark"),
+        help="Root folder containing bus/wisdm/mit_ecg grounding benchmark outputs.",
+    )
+    parser.add_argument(
+        "--grounding-plot-output",
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "grounding_loss_vs_model_size.png"),
+        help="Output PNG path for grounding error rate vs model size.",
+    )
+    parser.add_argument(
+        "--grounding-plot-csv",
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "grounding_loss_vs_model_size.csv"),
+        help="Output CSV path for grounding error rate plot values.",
+    )
+    parser.add_argument(
+        "--grounding-only",
+        action="store_true",
+        help="Only generate grounding error-rate plot from grounding benchmark summaries.",
+    )
     return parser
 
 
@@ -1071,6 +1426,30 @@ def main() -> None:
 
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent.parent
+
+    grounding_root = _resolve_user_path(args.grounding_benchmark_root, repo_root)
+    grounding_plot_png = _resolve_user_path(args.grounding_plot_output, repo_root)
+    grounding_plot_csv = _resolve_user_path(args.grounding_plot_csv, repo_root)
+    assert grounding_root is not None
+    assert grounding_plot_png is not None
+    assert grounding_plot_csv is not None
+
+    grounding_summaries = _load_grounding_summaries(grounding_root)
+    grounding_written = _plot_grounding_loss_vs_model_size_from_summaries(
+        grounding_summaries,
+        grounding_plot_png,
+        grounding_plot_csv,
+    )
+    if grounding_written:
+        print(f"Wrote {grounding_plot_png}")
+        print(f"Wrote {grounding_plot_csv}")
+    else:
+        print(
+            f"[INFO] Skipping grounding plot; no grounding summary files found under {grounding_root}"
+        )
+
+    if args.grounding_only:
+        return
 
     if args.interactive:
         roots = _prompt_for_baseline_roots(
@@ -1244,6 +1623,7 @@ def main() -> None:
     fig7 = output_dir / "cache_hit_miss_percent_across_query_types.png"
     fig8 = output_dir / "latency_cost_horizontal_three.png"
     fig9 = output_dir / "hybrid_cache_vs_fuzzy_match_quality.png"
+    fig10 = output_dir / "query_error_rate_across_baselines.png"
 
     plot_accuracy_across_datasets(
         by_dataset,
@@ -1259,7 +1639,11 @@ def main() -> None:
     plot_cost_across_datasets(
         cost_by_dataset,
         fig3,
-        baselines=dataset_baselines,
+        baselines=[
+            baseline
+            for baseline in COST_DATASET_BASELINES
+            if baseline in required_baselines
+        ],
     )
     plot_cost_across_query_types(
         cost_by_query_type,
@@ -1268,6 +1652,10 @@ def main() -> None:
         query_types=selected_query_types,
     )
     plot_latency_and_cost_horizontal(df, fig8)
+    plot_query_error_rate_across_baselines(
+        by_dataset,
+        fig10,
+    )
 
     comparison_csv = _resolve_user_path(args.cache_comparison_csv, repo_root)
     if comparison_csv is not None and comparison_csv.exists():
@@ -1325,6 +1713,7 @@ def main() -> None:
     print(f"Wrote {fig4}")
     print(f"Wrote {fig5}")
     print(f"Wrote {fig8}")
+    print(f"Wrote {fig10}")
     if comparison_csv is not None and comparison_csv.exists():
         print(f"Wrote {fig9}")
     if cache_rate_by_dataset.empty or cache_rate_by_query_type.empty:

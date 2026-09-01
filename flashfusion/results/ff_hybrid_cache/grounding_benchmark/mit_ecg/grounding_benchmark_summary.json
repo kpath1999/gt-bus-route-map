@@ -1,0 +1,52 @@
+{
+  "benchmark": {
+    "name": "ff_cache_grounding_loss_vs_model_size",
+    "timestamp_utc": "2026-09-01T18:12:56.328200+00:00",
+    "fallback_stage": "cache_miss_or_validation_failure",
+    "runs": 3
+  },
+  "model_order": [
+    "ibm-granite/granite-4.1-8b"
+  ],
+  "x_axis_size_labels": [
+    "8b"
+  ],
+  "model_label_map": {
+    "8b": "ibm-granite/granite-4.1-8b"
+  },
+  "per_model": {
+    "ibm-granite/granite-4.1-8b": {
+      "size_label": "8b",
+      "params_b": 8.0,
+      "n_queries_total": 24,
+      "n_failures": 0,
+      "grounding_loss_mean_pct": 0.0,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 0
+        }
+      },
+      "failure_reason_breakdown": {},
+      "cache_plan_source_breakdown": {
+        "exact_query_cache_light_grounded": 14,
+        "semantic_cache_light_grounded": 10
+      }
+    }
+  }
+}

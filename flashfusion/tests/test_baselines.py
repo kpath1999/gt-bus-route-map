@@ -68,6 +68,39 @@ def test_runner_does_not_precompute_derived_features() -> None:
     assert list(runner.df.columns) == list(raw_df.columns)
 
 
+def test_runner_can_reuse_caller_dataframe() -> None:
+    raw_df = _df()
+    runner = BaselineRunner(
+        mode="FLASH_FUSION",
+        df=raw_df,
+        client=_client(),
+        copy_dataframe=False,
+    )
+
+    assert runner.df is raw_df
+
+
+def test_runner_reports_usage_delta_when_client_is_reused() -> None:
+    client = _client()
+    client.total_input_tokens.side_effect = [100, 130]
+    client.total_output_tokens.side_effect = [50, 70]
+    client.total_cost_usd.side_effect = [0.10, 0.15]
+    client.total_cached_tokens.side_effect = [10, 14]
+    client.total_cache_write_tokens.side_effect = [2, 5]
+    client.total_cache_discount_usd.side_effect = [0.01, 0.03]
+    runner = BaselineRunner(mode="FLASH_FUSION", df=_df(), client=client)
+
+    with patch("flashfusion.baselines.flash_fusion.run_flash_fusion"):
+        result = runner.run("Count records.")
+
+    assert result.input_tokens == 30
+    assert result.output_tokens == 20
+    assert result.cost_usd == pytest.approx(0.05)
+    assert result.cached_tokens == 4
+    assert result.cache_write_tokens == 3
+    assert result.cache_discount_usd == pytest.approx(0.02)
+
+
 def test_flash_fusion_runner_warms_planner_components_without_llm_call() -> None:
     from flashfusion.baselines import flash_fusion
 

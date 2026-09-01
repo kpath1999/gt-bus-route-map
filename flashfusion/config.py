@@ -46,6 +46,12 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
         "input": 0.027,
         "output": 0.201,
     },
+    # OpenRouter listing used in grounding-size benchmark.
+    # If provider pricing changes, override with MODEL_RATE_INPUT/OUTPUT env vars.
+    "meta-llama/llama-3.2-3b-instruct": {
+        "input": 0.04,
+        "output": 0.08,
+    },
     # Groq native model ID used for the Flash-Fusion cache/S1/S2 light model.
     # llama-3.1-8b-instant was retired by Groq; replaced with allam-2-7b.
     "allam-2-7b": {
@@ -64,6 +70,16 @@ MODEL_RATE_PER_1M_TOKENS: dict[str, dict[str, float]] = {
     "qwen/qwen-2.5-7b-instruct": {
         "input": 0.07,
         "output": 0.07,
+    },
+    # OpenRouter listing used in grounding-size benchmark.
+    "google/gemma-3-12b-it": {
+        "input": 0.10,
+        "output": 0.30,
+    },
+    # OpenRouter listing used in grounding-size benchmark.
+    "qwen/qwen3-14b": {
+        "input": 0.08,
+        "output": 0.24,
     },
     "qwen/qwen-2.5-72b-instruct": {
         "input": 0.12,
@@ -112,6 +128,23 @@ MODEL_INVOCATION_CONFIG: dict[str, dict[str, Any]] = {
         "response_format": {"type": "json_object"},
     },
     "ibm-granite/granite-4.1-8b": {
+        "max_tokens": 150,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    },
+    "meta-llama/llama-3.2-3b-instruct": {
+        "max_tokens": 150,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    },
+    "google/gemma-3-12b-it": {
+        "max_tokens": 150,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+    },
+    "qwen/qwen3-14b": {
+        # Qwen3 dual-mode: keep grounding deterministic/non-thinking.
+        "reasoning": {"enabled": False},
         "max_tokens": 150,
         "temperature": 0,
         "response_format": {"type": "json_object"},

@@ -2154,10 +2154,6 @@ def run_flash_fusion_cache(
     then normal typed validation/execution. On every non-successful cache
     path it falls back to the existing full Flash-Fusion planner.
     """
-    # Isolate this query from any DataFrame state (data or .attrs) left behind
-    # by earlier queries/baselines sharing the caller's df instance. Done before
-    # stage timing starts so it is never counted in reported latency.
-    df = df.copy()
     trace = trace if trace is not None else CacheGroundingTrace()
     result = r if r is not None else _new_result(query, client)
     stage_latency = (

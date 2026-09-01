@@ -205,6 +205,35 @@
       "query_text": "What is the average accel_mean across all recorded samples?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "accel_mean"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -491,7 +520,7 @@
       "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "median",
@@ -775,7 +804,6 @@
       "n_runs_observed": 6,
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "operator_skeleton": [
-        "FILTER_NOT_EMPTY",
         "SPLIT_BY_VALUES",
         "SPLIT_BY_VALUES",
         "AGGREGATE_PARTITIONS",
@@ -788,7 +816,7 @@
       "query_text": "Calculate the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -1023,6 +1051,35 @@
       "query_text": "What is the maximum accel_variance observed in this dataset?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -1136,6 +1193,35 @@
       "query_text": "How many data samples show an accel_variance strictly greater than 0.20?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -1175,7 +1261,7 @@
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "operator_skeleton": [
         "FILTER_COMPARE",
-        "FILTER_COMPARE",
+        "FILTER_EQ_AGGREGATE",
         "COUNT_ROWS"
       ],
       "plan_source_modes": [
@@ -1185,6 +1271,45 @@
       "query_text": "For record_id 106, how many samples have MLII > 0?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "record_id"
+        ],
+        "filter_values": {
+          "mlii__value": 0,
+          "record_id": 106
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ],
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "mlii": "gt",
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -1858,6 +1983,37 @@
       "query_text": "What is the maximum recorded x-acceleration for user 15?",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "x"
+        ],
+        "filter_values": {
+          "subject_id": 15
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -1890,8 +2046,7 @@
       "n_runs_observed": 6,
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "operator_skeleton": [
-        "FILTER_EQ_AGGREGATE",
-        "SELECT_COLUMN"
+        "FILTER_EQ_AGGREGATE"
       ],
       "plan_source_modes": [
         "llm"
@@ -1900,6 +2055,35 @@
       "query_text": "List all timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
       "query_text_source": "raw_results",
       "reasons": [],
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_stats_z_p99"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "list",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
       "status": "reusable"
     },
     {
@@ -2167,7 +2351,6 @@
       "n_runs_observed": 6,
       "operator_contract_hash": "78a4cd22b7dbe6673097919cfed0b476be06682bdfc09df50fed9b6a234f751b",
       "operator_skeleton": [
-        "PARALLEL_AGGREGATE",
         "DERIVE_BINARY",
         "RANK_ROWS"
       ],
@@ -2178,7 +2361,7 @@
       "query_text": "Which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
       "query_text_source": "raw_results",
       "reasons": [],
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2218,7 +2401,7 @@
         "RANK_GROUPS"
       ],
       "query_text": "If we group the data into 1-minute intervals, which time window has the highest mean instability_score?",
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2295,7 +2478,7 @@
         "SELECT_COLUMN"
       ],
       "query_text": "List all timestamps where accel_stats_z_p99 reaches its highest value across the dataset.",
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "max",
@@ -2814,7 +2997,7 @@
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Is the northern half of the route (latitude above median) rougher than the southern half, Using average acceleration variance?",
-      "schema_fingerprint": "1d29adee7efb7ed4",
+      "schema_fingerprint": "1856b7e244a7940d",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "median",
@@ -2848,14 +3031,13 @@
     {
       "dataset": "wisdm",
       "operator_skeleton": [
-        "FILTER_NOT_EMPTY",
         "SPLIT_BY_VALUES",
         "SPLIT_BY_VALUES",
         "AGGREGATE_PARTITIONS",
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Compute the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -2925,14 +3107,13 @@
     {
       "dataset": "wisdm",
       "operator_skeleton": [
-        "FILTER_NOT_EMPTY",
         "SPLIT_BY_VALUES",
         "SPLIT_BY_VALUES",
         "AGGREGATE_PARTITIONS",
         "COMPARE_PARTITIONS"
       ],
       "query_text": "Work out the absolute difference between the mean z-axis acceleration of activity labels Upstairs and Downstairs.",
-      "schema_fingerprint": "7ad69ccf7f729a4d",
+      "schema_fingerprint": "b927f02262d7702e",
       "semantic_signature": {
         "admissibility": "in_scope",
         "aggregate": "mean",
@@ -3002,8 +3183,7 @@
     {
       "dataset": "bus",
       "operator_skeleton": [
-        "FILTER_EQ_AGGREGATE",
-        "SELECT_COLUMN"
+        "FILTER_EQ_AGGREGATE"
       ],
       "query_text": "List every timestamps where accel_stats_z_p99 reaches its maximum value across the dataset.",
       "schema_fingerprint": "1856b7e244a7940d",
@@ -3261,6 +3441,530 @@
           "model": "logistic_regression",
           "target_column": null,
           "train_fraction": 0.8
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Could you report the maximum accel_variance observed in this dataset?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Could you report the average accel_mean across all observed samples?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "accel_mean"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "query_text": "What number of data samples show an accel_variance strictly greater than 0.20?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "query_text": "Which location (latitude, longitude) observed the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "latitude",
+          "longitude"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Please provide the highest accel_variance observed in this dataset?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Please provide the average accel_mean across all recorded samples?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "accel_mean"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "query_text": "How much of a count of data samples show an accel_variance strictly greater than 0.20?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "accel_variance"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "bus",
+      "operator_skeleton": [
+        "DERIVE_BINARY",
+        "RANK_ROWS"
+      ],
+      "query_text": "Tell me which location (latitude, longitude) recorded the largest difference between the 99th and 1st percentile of the z-axis acceleration?",
+      "schema_fingerprint": "1856b7e244a7940d",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "latitude",
+          "longitude"
+        ],
+        "filter_values": {},
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": true,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Could you report the average y-acceleration of user 5 with activity label Sitting?",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "y"
+        ],
+        "filter_values": {
+          "activity": "sitting",
+          "subject_id": 5
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": "activity_label",
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Please provide the highest recorded x-acceleration In user 15?",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "max",
+        "confidence": 0.85,
+        "fields": [
+          "x"
+        ],
+        "filter_values": {
+          "subject_id": 15
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": true,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "wisdm",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "AGGREGATE_COLUMN"
+      ],
+      "query_text": "Please provide the average y-acceleration of user 5 with activity label Sitting?",
+      "schema_fingerprint": "b927f02262d7702e",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "mean",
+        "confidence": 0.85,
+        "fields": [
+          "y"
+        ],
+        "filter_values": {
+          "activity": "sitting",
+          "subject_id": 5
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": null,
+        "output_shape": "scalar",
+        "predicate_ops": {},
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": "activity_label",
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_EQ_AGGREGATE",
+        "COUNT_ROWS"
+      ],
+      "query_text": "For record_id 106, What number of samples have MLII > 0?",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "record_id"
+        ],
+        "filter_values": {
+          "mlii__value": 0,
+          "record_id": 106
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ],
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "mlii": "gt",
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
+        }
+      },
+      "status": "reusable"
+    },
+    {
+      "dataset": "ecg",
+      "operator_skeleton": [
+        "FILTER_COMPARE",
+        "FILTER_COMPARE",
+        "COUNT_ROWS"
+      ],
+      "query_text": "In record_id 106, How much of a count of samples have MLII > 0?",
+      "schema_fingerprint": "8a468207a2c8d18a",
+      "semantic_signature": {
+        "admissibility": "in_scope",
+        "aggregate": "count",
+        "confidence": 0.85,
+        "fields": [
+          "MLII",
+          "record_id"
+        ],
+        "filter_values": {
+          "mlii__value": 0,
+          "record_id": 106
+        },
+        "intent_flags": {
+          "correlation": false,
+          "derived_magnitude": false,
+          "difference": false,
+          "group_by": false,
+          "last_event": false,
+          "predictive": false,
+          "rank": false,
+          "time_bin": false
+        },
+        "operator_skeleton_hint": [
+          "FILTER_COMPARE",
+          "COUNT_ROWS"
+        ],
+        "output_shape": "scalar",
+        "predicate_ops": {
+          "mlii": "gt",
+          "record_id": "eq"
+        },
+        "predictive": {
+          "holdout_row": null,
+          "model": null,
+          "target_column": null,
+          "train_fraction": null
         }
       },
       "status": "reusable"

@@ -682,6 +682,7 @@ class BaselineRunner:
         dataset: str | None = None,
         cache_path: str | None = None,
         semantic_cache_path: str | None = None,
+        copy_dataframe: bool = True,
     ) -> None:
         """
         Args:
@@ -697,6 +698,8 @@ class BaselineRunner:
                         (FLASH_FUSION_CACHE only).
             semantic_cache_path: Optional registry of semantic cache templates
                         (FLASH_FUSION_CACHE only).
+            copy_dataframe: Whether to isolate the supplied DataFrame. Set false
+                only when the caller manages an immutable shared frame.
 
         Raises:
             ValueError: If mode is not in self.MODES.
@@ -710,7 +713,7 @@ class BaselineRunner:
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}, got {mode!r}")
         self.mode = mode
-        self.df = df.copy()
+        self.df = df.copy() if copy_dataframe else df
         self.client = client
         self.data_path = data_path
         self.predictive_timeout_s = predictive_timeout_s
@@ -747,6 +750,12 @@ class BaselineRunner:
             baseline=self.mode, model=self.client.model_name, query=query
         )
         t0 = time.time()
+        input_tokens_before = self.client.total_input_tokens()
+        output_tokens_before = self.client.total_output_tokens()
+        cost_usd_before = self.client.total_cost_usd()
+        cached_tokens_before = self.client.total_cached_tokens()
+        cache_write_tokens_before = self.client.total_cache_write_tokens()
+        cache_discount_usd_before = self.client.total_cache_discount_usd()
 
         from flashfusion.baselines.react_only import run_react_only
         from flashfusion.baselines.autoiot_paper import run_autoiot_paper
@@ -798,12 +807,12 @@ class BaselineRunner:
         # column_metadata is a one-off DataFrame scan, not query-specific work —
         # exclude it so latency_s reflects time from schema-known onward.
         r.latency_s = time.time() - t0 - r.stage_latency_s.get("column_metadata", 0.0)
-        r.input_tokens = self.client.total_input_tokens()
-        r.output_tokens = self.client.total_output_tokens()
-        r.cost_usd = self.client.total_cost_usd()
-        r.cached_tokens = self.client.total_cached_tokens()
-        r.cache_write_tokens = self.client.total_cache_write_tokens()
-        r.cache_discount_usd = self.client.total_cache_discount_usd()
+        r.input_tokens = self.client.total_input_tokens() - input_tokens_before
+        r.output_tokens = self.client.total_output_tokens() - output_tokens_before
+        r.cost_usd = self.client.total_cost_usd() - cost_usd_before
+        r.cached_tokens = self.client.total_cached_tokens() - cached_tokens_before
+        r.cache_write_tokens = self.client.total_cache_write_tokens() - cache_write_tokens_before
+        r.cache_discount_usd = self.client.total_cache_discount_usd() - cache_discount_usd_before
         return r
 
     def _run_llm_only(self, query: str, r: RunResult) -> RunResult:

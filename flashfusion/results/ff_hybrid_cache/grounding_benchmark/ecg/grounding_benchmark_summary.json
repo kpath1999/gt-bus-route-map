@@ -1,0 +1,221 @@
+{
+  "benchmark": {
+    "name": "ff_cache_grounding_loss_vs_model_size",
+    "timestamp_utc": "2026-09-01T20:54:04.568877+00:00",
+    "fallback_stage": "cache_miss_or_validation_failure",
+    "runs": 3
+  },
+  "model_order": [
+    "meta-llama/llama-3.2-1b-instruct",
+    "meta-llama/llama-3.2-3b-instruct",
+    "qwen/qwen-2.5-7b-instruct",
+    "ibm-granite/granite-4.1-8b",
+    "google/gemma-3-12b-it"
+  ],
+  "x_axis_size_labels": [
+    "1b",
+    "3b",
+    "7b",
+    "8b",
+    "12b"
+  ],
+  "model_label_map": {
+    "1b": "meta-llama/llama-3.2-1b-instruct",
+    "3b": "meta-llama/llama-3.2-3b-instruct",
+    "7b": "qwen/qwen-2.5-7b-instruct",
+    "8b": "ibm-granite/granite-4.1-8b",
+    "12b": "google/gemma-3-12b-it"
+  },
+  "per_model": {
+    "meta-llama/llama-3.2-1b-instruct": {
+      "size_label": "1b",
+      "params_b": 1.0,
+      "n_queries_total": 24,
+      "n_failures": 24,
+      "grounding_loss_mean_pct": 100.0,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 8
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 8
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 8
+        }
+      },
+      "failure_reason_breakdown": {
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.value\n  Extra inputs are not permitted [type=extra_forbidden, input_value=101, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 3,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.result_column\n  Extra inputs are not permitted [type=extra_forbidden, input_value='max_time_s', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "cache: light model JSON repair failed: Expecting value": 4,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0\n  Input tag 'FILTER_EQ' found using 'op' does not match any of the expected tags: 'FILTER_COMPARE', 'FILTER_IN', 'FILTER_NOT_EMPTY', 'FILTER_EQ_AGGREGATE', 'AGGREGATE_COLUMN', 'COUNT_ROWS', 'COUNT_DISTINCT', 'SELECT_COLUMN', 'DERIVE_BINARY', 'DERIVE_VECTOR_MAGNITUDE', 'DERIVE_BIN', 'DERIVE_DURATION_SECONDS', 'GROUP_AGGREGATE', 'AGGREGATE_GROUPS', 'RANK_GROUPS', 'RANK_ROWS', 'SPLIT_BY_THRESHOLD', 'SPLIT_BY_VALUES', 'AGGREGATE_PARTITIONS', 'COMPARE_PARTITIONS', 'COMPARE_VALUES', 'CORRELATE_COLUMNS', 'PARALLEL_AGGREGATE', 'PREDICTIVE_PIPELINE' [type=union_tag_invalid, input_value={'op': 'FILTER_EQ', 'colu...or': 'eq', 'value': 221}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/union_tag_invalid": 3,
+        "structural: No balanced JSON object found in guardrail+plan response": 8,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.1\n  Input should be a valid dictionary or object to extract fields from [type=model_attributes_type, input_value='MLII', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_attributes_type": 3,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.value\n  Extra inputs are not permitted [type=extra_forbidden, input_value=234, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 2
+      },
+      "cache_plan_source_breakdown": {
+        "llm": 24
+      }
+    },
+    "meta-llama/llama-3.2-3b-instruct": {
+      "size_label": "3b",
+      "params_b": 3.0,
+      "n_queries_total": 24,
+      "n_failures": 21,
+      "grounding_loss_mean_pct": 87.5,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        87.5,
+        87.5,
+        87.5
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 7
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 7
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 7
+        }
+      },
+      "failure_reason_breakdown": {
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.result_column\n  Extra inputs are not permitted [type=extra_forbidden, input_value='max_time_s', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "cache: light model JSON repair failed: Expecting value": 2,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0\n  Input tag 'FILTER_EQ' found using 'op' does not match any of the expected tags: 'FILTER_COMPARE', 'FILTER_IN', 'FILTER_NOT_EMPTY', 'FILTER_EQ_AGGREGATE', 'AGGREGATE_COLUMN', 'COUNT_ROWS', 'COUNT_DISTINCT', 'SELECT_COLUMN', 'DERIVE_BINARY', 'DERIVE_VECTOR_MAGNITUDE', 'DERIVE_BIN', 'DERIVE_DURATION_SECONDS', 'GROUP_AGGREGATE', 'AGGREGATE_GROUPS', 'RANK_GROUPS', 'RANK_ROWS', 'SPLIT_BY_THRESHOLD', 'SPLIT_BY_VALUES', 'AGGREGATE_PARTITIONS', 'COMPARE_PARTITIONS', 'COMPARE_VALUES', 'CORRELATE_COLUMNS', 'PARALLEL_AGGREGATE', 'PREDICTIVE_PIPELINE' [type=union_tag_invalid, input_value={'op': 'FILTER_EQ', 'colu...or': 'eq', 'value': 221}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/union_tag_invalid": 3,
+        "structural: No balanced JSON object found in guardrail+plan response": 8,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.1\n  Input should be a valid dictionary or object to extract fields from [type=model_attributes_type, input_value='MLII', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_attributes_type": 3,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.result\n  Extra inputs are not permitted [type=extra_forbidden, input_value='max_time_s', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.value\n  Extra inputs are not permitted [type=extra_forbidden, input_value=234, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "cache: 3 validation errors for DeterministicPlan\nsteps.2.COUNT_ROWS.column\n  Extra inputs are not permitted [type=extra_forbidden, input_value='MLII', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nsteps.2.COUNT_ROWS.comparator\n  Extra inputs are not permitted [type=extra_forbidden, input_value='lt', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nsteps.2.COUNT_ROWS.value\n  Extra inputs are not permitted [type=extra_forbidden, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "cache: Grounding step count mismatch: expected 3 for skeleton ['PARALLEL_AGGREGATE', 'DERIVE_BINARY', 'RANK_ROWS'], got 1": 1
+      },
+      "cache_plan_source_breakdown": {
+        "exact_query_cache_light_grounded": 1,
+        "llm": 21,
+        "semantic_cache_light_grounded": 2
+      }
+    },
+    "qwen/qwen-2.5-7b-instruct": {
+      "size_label": "7b",
+      "params_b": 7.0,
+      "n_queries_total": 24,
+      "n_failures": 15,
+      "grounding_loss_mean_pct": 62.5,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        62.5,
+        62.5,
+        62.5
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 5
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 5
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 5
+        }
+      },
+      "failure_reason_breakdown": {
+        "cache: 2 validation errors for DeterministicPlan\nsteps.2.COUNT_ROWS.cache_grounding_failed\n  Extra inputs are not permitted [type=extra_forbidden, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\nsteps.2.COUNT_ROWS.reason\n  Extra inputs are not permitted [type=extra_forbidden, input_value='FILTER_EQ_AGGREGATE does...t accept a value field.', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 2,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0\n  Input tag 'FILTER_EQ' found using 'op' does not match any of the expected tags: 'FILTER_COMPARE', 'FILTER_IN', 'FILTER_NOT_EMPTY', 'FILTER_EQ_AGGREGATE', 'AGGREGATE_COLUMN', 'COUNT_ROWS', 'COUNT_DISTINCT', 'SELECT_COLUMN', 'DERIVE_BINARY', 'DERIVE_VECTOR_MAGNITUDE', 'DERIVE_BIN', 'DERIVE_DURATION_SECONDS', 'GROUP_AGGREGATE', 'AGGREGATE_GROUPS', 'RANK_GROUPS', 'RANK_ROWS', 'SPLIT_BY_THRESHOLD', 'SPLIT_BY_VALUES', 'AGGREGATE_PARTITIONS', 'COMPARE_PARTITIONS', 'COMPARE_VALUES', 'CORRELATE_COLUMNS', 'PARALLEL_AGGREGATE', 'PREDICTIVE_PIPELINE' [type=union_tag_invalid, input_value={'op': 'FILTER_EQ', 'colu...or': 'eq', 'value': 221}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/union_tag_invalid": 3,
+        "structural: No balanced JSON object found in guardrail+plan response": 8,
+        "structural: 1 validation error for GuardrailAndPlan\nplan.steps.0.FILTER_EQ_AGGREGATE.value\n  Extra inputs are not permitted [type=extra_forbidden, input_value=101, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden": 1,
+        "cache: light model JSON repair failed: Extra data": 1
+      },
+      "cache_plan_source_breakdown": {
+        "exact_query_cache_light_grounded": 4,
+        "llm": 15,
+        "semantic_cache_light_grounded": 5
+      }
+    },
+    "ibm-granite/granite-4.1-8b": {
+      "size_label": "8b",
+      "params_b": 8.0,
+      "n_queries_total": 24,
+      "n_failures": 0,
+      "grounding_loss_mean_pct": 0.0,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 0
+        }
+      },
+      "failure_reason_breakdown": {},
+      "cache_plan_source_breakdown": {
+        "exact_query_cache_light_grounded": 14,
+        "semantic_cache_light_grounded": 10
+      }
+    },
+    "google/gemma-3-12b-it": {
+      "size_label": "12b",
+      "params_b": 12.0,
+      "n_queries_total": 24,
+      "n_failures": 0,
+      "grounding_loss_mean_pct": 0.0,
+      "grounding_loss_std_pct": 0.0,
+      "grounding_loss_ci95_pct": 0.0,
+      "per_run_loss_pct": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "per_run_counts": {
+        "1": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "2": {
+          "n_queries": 8,
+          "n_failures": 0
+        },
+        "3": {
+          "n_queries": 8,
+          "n_failures": 0
+        }
+      },
+      "failure_reason_breakdown": {},
+      "cache_plan_source_breakdown": {
+        "exact_query_cache_light_grounded": 16,
+        "semantic_cache_light_grounded": 8
+      }
+    }
+  }
+}

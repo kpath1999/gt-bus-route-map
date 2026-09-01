@@ -1,0 +1,2 @@
+model,size_label,params_b,n_queries_total,n_failures,grounding_loss_mean_pct,grounding_loss_std_pct,grounding_loss_ci95_pct
+ibm-granite/granite-4.1-8b,8b,8.0,24,0,0.0,0.0,0.0

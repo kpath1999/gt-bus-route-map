@@ -21,6 +21,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, NullLocator
 import pandas as pd
 
 from measure import (
@@ -681,6 +682,34 @@ def _clean_axes(ax) -> None:
     ax.spines["right"].set_visible(False)
 
 
+def _set_clean_log_ticks(ax, *, min_value: float | None = None, max_value: float | None = None) -> None:
+    ax.set_xscale("log", nonpositive="clip")
+    lo, hi = ax.get_xbound()
+    if min_value is not None and max_value is not None:
+        lo, hi = min_value, max_value
+        ax.set_xlim(lo, hi)
+
+    lo = max(float(lo), 1e-300)
+    hi = max(float(hi), 1e-300)
+
+    def _label(value: float, _pos: int) -> str:
+        if value <= 0 or not np.isfinite(value):
+            return ""
+        exponent = int(np.log10(value))
+        return rf"$10^{{{exponent}}}$"
+
+    min_exp = int(np.floor(np.log10(lo)))
+    max_exp = int(np.ceil(np.log10(hi)))
+    ticks = [10 ** exponent for exponent in range(min_exp, max_exp + 1) if lo <= 10 ** exponent <= hi]
+    if not ticks:
+        ticks = [10 ** min_exp]
+    ax.xaxis.set_major_locator(FixedLocator(ticks))
+    ax.xaxis.set_major_formatter(FuncFormatter(_label))
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.tick_params(axis="x", which="major", labelsize=11)
+
+
 def _metric_mean(summary, query_type: str, metric: str) -> float:
     row = summary[(summary["query_type"] == query_type) & (summary["metric"] == metric)]
     if row.empty:
@@ -721,7 +750,7 @@ def plot_flash_fusion_native_latency(summary, out_path: Path, query_types: list[
     ax.set_yticks(y)
     ax.set_yticklabels(qtypes)
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s)")
+    ax.set_xlabel("Mean Latency (s)")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -781,7 +810,7 @@ def plot_semantic_stage_comparison_overall(summary, out_path: Path) -> None:
     ax.set_yticks(y)
     ax.set_yticklabels([display_baseline(b) for b in baselines])
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s)")
+    ax.set_xlabel("Mean Latency (s)")
     # ax.set_xscale("log", nonpositive="clip")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
@@ -809,7 +838,7 @@ def plot_semantic_stage_comparison_overall(summary, out_path: Path) -> None:
 
 
 def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
-    """Stacked horizontal bar per baseline, stages averaged across all query types (log scale).
+    """Stacked horizontal bar per baseline, stages averaged across all query types (log).
 
     Uses log x-scale with nonpositive='clip' to gracefully handle zero values
     in stacking — the first segment (Grounding) will now render even though
@@ -817,7 +846,7 @@ def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
     """
     _apply_rc()
 
-    baselines = ["FLASH_FUSION", "REACT_ONLY", "AUTOIOT_PAPER"]
+    baselines = ["FLASH_FUSION", CACHE_BASELINE, "REACT_ONLY", "AUTOIOT_PAPER"]
     y = list(range(len(baselines)))
     left = [0.0 for _ in baselines]
 
@@ -841,11 +870,29 @@ def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
         )
         left = [b + v for b, v in zip(left, vals)]
 
+    # Annotate total semantic latency at the right side of each stacked bar.
+    for y_pos, total in zip(y, left):
+        if total <= 0.0:
+            continue
+        ax.text(
+            total * 1.04,
+            y_pos,
+            f"{total:.2f}s",
+            va="center",
+            ha="left",
+            fontsize=10,
+            fontweight="bold",
+            color="#222222",
+        )
+
     ax.set_yticks(y)
     ax.set_yticklabels([display_baseline(b) for b in baselines])
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s, log scale)")
+    ax.set_xlabel("Mean latency (s, log)")
     ax.set_xscale("log", nonpositive="clip")
+    positive_totals = [v for v in left if v > 0.0]
+    if positive_totals:
+        ax.set_xlim(min(positive_totals) * 0.75, max(positive_totals) * 1.5)
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -907,7 +954,7 @@ def plot_semantic_stage_comparison_overall_two(summary, out_path: Path, baseline
     ax.set_yticks(y)
     ax.set_yticklabels([display_baseline(b) for b in baselines])
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s)")
+    ax.set_xlabel("Mean Latency (s)")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -1009,10 +1056,10 @@ def plot_semantic_stage_comparison(
     ax.set_yticklabels(y_labels)
     ax.invert_yaxis()
     if log_scale:
-        ax.set_xlabel("Avg Latency (s, log scale)")
+        ax.set_xlabel("Mean Latency (s, log)")
         ax.set_xscale("log")
     else:
-        ax.set_xlabel("Avg Latency (s)")
+        ax.set_xlabel("Mean Latency (s)")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -1043,6 +1090,8 @@ def plot_cumulative_latency_comparison(
     out_path: Path,
     baselines: list[str] | None = None,
     query_types: list[str] | None = None,
+    show_error_bars: bool = True,
+    log_scale: bool = True,
 ) -> None:
     _apply_rc()
 
@@ -1060,6 +1109,8 @@ def plot_cumulative_latency_comparison(
     width = 0.22
 
     fig, ax = plt.subplots(figsize=(8.8, 4.6))
+    baseline_bar_values: dict[str, list[float]] = {}
+    baseline_bars: dict[str, list] = {}
     for i, baseline in enumerate(baselines):
         vals = []
         stds = []
@@ -1068,32 +1119,59 @@ def plot_cumulative_latency_comparison(
             vals.append(float(row["mean"].iloc[0]) if not row.empty else 0.0)
             stds.append(float(row["std"].iloc[0]) if not row.empty else 0.0)
 
-        vals_arr = np.asarray(vals, dtype=float)
-        stds_arr = np.asarray(stds, dtype=float)
-        lower = np.minimum(stds_arr, np.maximum(vals_arr, 0.0))
-        bounded_xerr = np.vstack([lower, stds_arr])
-
         ypos = [p - width + i * width for p in y]
-        ax.barh(
-            ypos,
-            vals,
-            height=width,
-            color=BASELINE_COLORS.get(baseline, "#999999"),
-            edgecolor="#333333",
-            linewidth=0.8,
-            label=display_baseline(baseline),
-            xerr=bounded_xerr,
-            error_kw={"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"},
-        )
+        bar_kwargs: dict[str, Any] = {
+            "height": width,
+            "color": BASELINE_COLORS.get(baseline, "#999999"),
+            "edgecolor": "#333333",
+            "linewidth": 0.8,
+            "label": display_baseline(baseline),
+        }
+        if show_error_bars:
+            vals_arr = np.asarray(vals, dtype=float)
+            stds_arr = np.asarray(stds, dtype=float)
+            lower = np.minimum(stds_arr, np.maximum(vals_arr, 0.0))
+            bar_kwargs["xerr"] = np.vstack([lower, stds_arr])
+            bar_kwargs["error_kw"] = {"elinewidth": 1.2, "capsize": 4, "ecolor": "#222222"}
+
+        bar_container = ax.barh(ypos, vals, **bar_kwargs)
+        baseline_bar_values[baseline] = vals
+        baseline_bars[baseline] = list(bar_container)
 
     ax.set_yticks(y)
     ax.set_yticklabels(qtypes)
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s, log scale)")
-    ax.set_xscale("log")
+    ax.set_xlabel("Mean latency (s, log)" if log_scale else "Mean latency (s)")
+    if log_scale:
+        ax.set_xscale("log", nonpositive="clip")
+        positive_vals = [v for v in baseline_bar_values.values() for v in v if v > 0.0]
+        if positive_vals:
+            min_positive = min(positive_vals)
+            max_positive = max(positive_vals)
+            lower_bound = max(min_positive * 0.5, 10 ** (int(np.floor(np.log10(min_positive))) - 1))
+            upper_bound = max_positive * 1.15
+            ax.set_xlim(lower_bound, upper_bound)
+            _set_clean_log_ticks(ax, min_value=lower_bound, max_value=upper_bound)
+        else:
+            _set_clean_log_ticks(ax)
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
+
+    for baseline, vals in baseline_bar_values.items():
+        for bar, value in zip(baseline_bars[baseline], vals):
+            if value <= 0.0:
+                continue
+            ax.text(
+                value * 1.08,
+                bar.get_y() + bar.get_height() / 2.0,
+                f"{value:.2f}",
+                va="center",
+                ha="left",
+                fontsize=9.0,
+                fontweight="bold",
+                color="#222222",
+            )
 
     ax.legend(ncol=3, loc="upper left", bbox_to_anchor=(0.2, -0.18), frameon=False, columnspacing=0.8)
     fig.patch.set_facecolor("white")
@@ -1156,7 +1234,7 @@ def plot_cumulative_latency_comparison_linear(
     ax.set_yticks(y)
     ax.set_yticklabels(qtypes)
     ax.invert_yaxis()
-    ax.set_xlabel("Avg Latency (s)")
+    ax.set_xlabel("Mean Latency (s)")
     ax.xaxis.grid(linestyle="--", alpha=0.30, linewidth=0.9)
     ax.set_axisbelow(True)
     _clean_axes(ax)
@@ -1210,7 +1288,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "core"),
         help="Output folder for primary figures.",
     )
     return parser
@@ -1401,14 +1479,16 @@ def main() -> None:
 
     latency_compare = _aggregate_cookie_cut_semantic_total_by_query_type(
         df,
-        baselines=CUMULATIVE_LATENCY_BASELINES,
+        baselines=CUMULATIVE_LATENCY_THREE_BASELINES,
     )
     latency_compare_out = output_dir / "cumulative_latency_comparison_log_by_baseline_n3.png"
     plot_cumulative_latency_comparison(
         latency_compare,
         latency_compare_out,
-        baselines=CUMULATIVE_LATENCY_BASELINES,
+        baselines=CUMULATIVE_LATENCY_THREE_BASELINES,
         query_types=selected_query_types,
+        show_error_bars=False,
+        log_scale=True,
     )
     latency_compare.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_n3_summary.csv", index=False)
 

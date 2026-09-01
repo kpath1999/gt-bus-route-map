@@ -16,6 +16,7 @@ import pytest
 
 from flashfusion.pipeline.operators import (
     PlanSchemaError,
+    StructuralValidationError,
     normalize_guardrail_payload,
     normalize_raw_plan,
     parse_guardrail_response,
@@ -215,6 +216,25 @@ def test_guardrail_payload_normalizes_the_nested_plan() -> None:
     normalized, actions = normalize_guardrail_payload(payload)
     assert normalized["plan"]["steps"][0]["aggregate"] == "mean"
     assert actions
+
+
+@pytest.mark.parametrize(
+    "steps",
+    [
+        ["not an operator step"],
+        [
+            {
+                "op": "PARALLEL_AGGREGATE",
+                "branches": [{"result_column": "n"}],
+            },
+            "not a parallel consumer",
+        ],
+    ],
+)
+def test_malformed_plan_steps_fail_structural_validation(steps: list[object]) -> None:
+    payload = {"in_scope": True, "plan": {"version": "1", "steps": steps}}
+    with pytest.raises(StructuralValidationError):
+        parse_guardrail_response(payload)
 
 
 # ---------------------------------------------------------------------------

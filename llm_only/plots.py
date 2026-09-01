@@ -93,15 +93,15 @@ def fig_headline(summary: pd.DataFrame) -> None:
 
     _grouped_bar(axes[0, 1], summary, "latency_mean", "latency_std",
                  "Latency (s)", log_y=True)
-    axes[0, 1].set_title("Latency (log scale)")
+    axes[0, 1].set_title("Latency (log)")
 
     _grouped_bar(axes[1, 0], summary, "input_tokens_mean", "input_tokens_std",
                  "Input tokens (billed)", log_y=True)
-    axes[1, 0].set_title("Input tokens consumed (log scale)")
+    axes[1, 0].set_title("Input tokens consumed (log)")
 
     _grouped_bar(axes[1, 1], summary, "cost_mean", "cost_std",
                  "Cost per query (USD)", log_y=True)
-    axes[1, 1].set_title("Cost per query (log scale)")
+    axes[1, 1].set_title("Cost per query (log)")
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 0.99))
