@@ -682,6 +682,29 @@ def _clean_axes(ax) -> None:
     ax.spines["right"].set_visible(False)
 
 
+def _save_paper_pdf(
+    fig,
+    out_path: Path,
+    paper_dir: Path | None,
+    ax=None,
+    extra_pad: float = 1.02,
+) -> None:
+    """Save a PDF copy of a figure into the paper figures directory."""
+    if paper_dir is None:
+        return
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / out_path.with_suffix(".pdf").name
+    if ax is not None:
+        bbox = ax.get_tightbbox(fig.canvas.get_renderer()).transformed(
+            fig.dpi_scale_trans.inverted()
+        )
+        bbox = bbox.expanded(extra_pad, extra_pad)
+        fig.savefig(pdf_path, bbox_inches=bbox, facecolor="white", dpi=300)
+    else:
+        fig.savefig(pdf_path, bbox_inches="tight", facecolor="white", dpi=300)
+    print(f"Wrote {pdf_path}")
+
+
 def _set_clean_log_ticks(ax, *, min_value: float | None = None, max_value: float | None = None) -> None:
     ax.set_xscale("log", nonpositive="clip")
     lo, hi = ax.get_xbound()
@@ -837,7 +860,11 @@ def plot_semantic_stage_comparison_overall(summary, out_path: Path) -> None:
     plt.close(fig)
 
 
-def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
+def plot_semantic_stage_comparison_overall_log(
+    summary,
+    out_path: Path,
+    paper_dir: Path | None = None,
+) -> None:
     """Stacked horizontal bar per baseline, stages averaged across all query types (log).
 
     Uses log x-scale with nonpositive='clip' to gracefully handle zero values
@@ -915,6 +942,7 @@ def plot_semantic_stage_comparison_overall_log(summary, out_path: Path) -> None:
     fig.subplots_adjust(bottom=0.28)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_path, paper_dir)
     plt.close(fig)
 
 
@@ -1092,6 +1120,7 @@ def plot_cumulative_latency_comparison(
     query_types: list[str] | None = None,
     show_error_bars: bool = True,
     log_scale: bool = True,
+    paper_dir: Path | None = None,
 ) -> None:
     _apply_rc()
 
@@ -1179,6 +1208,7 @@ def plot_cumulative_latency_comparison(
     fig.subplots_adjust(bottom=0.27)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_path, paper_dir)
     plt.close(fig)
 
 
@@ -1288,8 +1318,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "core"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
         help="Output folder for primary figures.",
+    )
+    parser.add_argument(
+        "--paper-dir",
+        default=None,
+        help="Output folder for PDF paper figures (defaults to <output-dir>/paper).",
     )
     return parser
 
@@ -1317,6 +1352,13 @@ def main() -> None:
     output_dir = _resolve_user_path(args.output_dir, repo_root)
     assert output_dir is not None
     output_dir.mkdir(parents=True, exist_ok=True)
+    paper_dir = (
+        _resolve_user_path(args.paper_dir, repo_root)
+        if args.paper_dir
+        else output_dir / "paper"
+    )
+    assert paper_dir is not None
+    paper_dir.mkdir(parents=True, exist_ok=True)
 
     selected_baselines = expand_baselines([
         baseline.strip().upper()
@@ -1437,7 +1479,11 @@ def main() -> None:
     semantic_overall.to_csv(output_dir / "semantic_stage_comparison_overall_n3_summary.csv", index=False)
 
     semantic_overall_log_out = output_dir / "semantic_stage_comparison_overall_log_n3.png"
-    plot_semantic_stage_comparison_overall_log(semantic_overall, semantic_overall_log_out)
+    plot_semantic_stage_comparison_overall_log(
+        semantic_overall,
+        semantic_overall_log_out,
+        paper_dir=paper_dir,
+    )
 
     semantic_overall_two_raw = aggregate_semantic_stage_latency_overall(df, baselines=TWO_WAY_BASELINES)
     semantic_overall_two = _cookie_cut_execution_stage_means(semantic_overall_two_raw)
@@ -1489,6 +1535,7 @@ def main() -> None:
         query_types=selected_query_types,
         show_error_bars=False,
         log_scale=True,
+        paper_dir=paper_dir,
     )
     latency_compare.to_csv(output_dir / "cumulative_latency_comparison_log_by_baseline_n3_summary.csv", index=False)
 

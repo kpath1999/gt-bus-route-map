@@ -125,6 +125,7 @@ from typing import Any
 
 import pandas as pd
 from langchain_openrouter import ChatOpenRouter
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.callbacks import BaseCallbackHandler
@@ -164,9 +165,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Default model pool for round-robin load spreading during long eval runs.
 DEFAULT_MODEL_POOL = [
-    "meta-llama/llama-3.3-70b-instruct",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "meta-llama/llama-3.1-8b-instruct",
+    "groq:groq/compound-mini",
+    "groq:groq/compound",
+    "openrouter:meta-llama/llama-4-scout-17b-16e-instruct",
 ]
 
 # Approximate per-1M-token rates in USD. Can be overridden with env vars:
@@ -520,39 +521,89 @@ def _compute_cost_usd(model_name: str, input_tokens: int, output_tokens: int) ->
     )
 
 
-class LLMClient:
-    """Thin wrapper around ChatOpenRouter that logs every invocation."""
+# Known Groq model IDs. Keep this in sync with Groq's /models endpoint.
+# Override at runtime with a comma-separated GROQ_MODEL_IDS env var.
+_GROQ_MODEL_IDS: frozenset[str] = frozenset({
+    "groq/compound",
+    "groq/compound-mini",
+    "allam-2-7b",
+    "llama-3.3-70b-versatile",
+    "llama-3.3-70b-specdec",
+    "llama-3.1-8b-instant",
+    "llama-3.1-70b-versatile",
+    "llama3-8b-8192",
+    "llama3-70b-8192",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it",
+    "whisper-large-v3",
+    "whisper-large-v3-turbo",
+    "meta-llama/llama-prompt-guard-2-22m",
+    "meta-llama/llama-prompt-guard-2-86m",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-safeguard-20b",
+    "qwen/qwen3.6-27b",
+    "qwen/qwen3.8-27b",
+})
 
-    # you can alternate between models to avoid quota limits
-    """    
-    allam-2-7b
-    canopylabs/orpheus-arabic-saudi
-    canopylabs/orpheus-v1-english
-    groq/compound
-    groq/compound-mini
-    llama-3.1-8b-instant
-    llama-3.3-70b-versatile
-    meta-llama/llama-4-scout-17b-16e-instruct
-    meta-llama/llama-guard-4-12b
-    meta-llama/llama-prompt-guard-2-22m
-    meta-llama/llama-prompt-guard-2-86m
-    moonshotai/kimi-k2-instruct
-    moonshotai/kimi-k2-instruct-0905
-    openai/gpt-oss-120b
-    openai/gpt-oss-20b
-    openai/gpt-oss-safeguard-20b
-    """
+
+def _configured_groq_model_ids() -> set[str]:
+    """Return the hardcoded Groq IDs plus any IDs supplied via env."""
+    extra = os.getenv("GROQ_MODEL_IDS", "")
+    ids = set(_GROQ_MODEL_IDS)
+    for item in extra.split(","):
+        item = item.strip().lower()
+        if item:
+            ids.add(item)
+    return ids
+
+
+def _strip_provider_prefix(model: str) -> str:
+    """Remove an optional 'groq:' or 'openrouter:' provider hint from a model string."""
+    if ":" in model:
+        prefix, rest = model.split(":", 1)
+        if prefix.lower() in {"groq", "openrouter"}:
+            return rest.strip()
+    return model.strip()
+
+
+def _is_groq_model(model: str) -> bool:
+    """Return True if *model* should be sent to the Groq API directly."""
+    if os.getenv("FORCE_GROQ_DIRECT"):
+        return True
+    clean = _strip_provider_prefix(model).lower()
+    if clean.startswith("groq/"):
+        return True
+    return clean in _configured_groq_model_ids()
+
+
+class LLMClient:
+    """Thin wrapper around ChatOpenRouter or ChatGroq that logs every invocation."""
+
     def __init__(self, model: str = "meta-llama/llama-4-scout-17b-16e-instruct"):
-        api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise ValueError("Missing OPENROUTER_API_KEY (or GROQ_API_KEY for transition)")
-        self.model_name = model
-        self.llm = ChatOpenRouter(
-            api_key=api_key,
-            model=model,
-            temperature=0.0,
-            max_retries=2,
-        )
+        groq_key = os.getenv("GROQ_API_KEY")
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        self.model_name = _strip_provider_prefix(model)
+
+        if _is_groq_model(model):
+            if not groq_key:
+                raise ValueError("GROQ_API_KEY is required for Groq model")
+            self.llm = ChatGroq(
+                api_key=groq_key,
+                model=self.model_name,
+                temperature=0.0,
+                max_retries=2,
+            )
+        else:
+            api_key = openrouter_key or groq_key
+            if not api_key:
+                raise ValueError("Missing OPENROUTER_API_KEY (or GROQ_API_KEY for transition)")
+            self.llm = ChatOpenRouter(
+                api_key=api_key,
+                model=self.model_name,
+                temperature=0.0,
+                max_retries=2,
+            )
         self.call_log: list[LLMCallLog] = []
 
     @staticmethod

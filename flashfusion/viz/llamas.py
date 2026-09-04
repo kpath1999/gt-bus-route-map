@@ -162,6 +162,29 @@ def _clean_axes(ax) -> None:
     ax.spines["bottom"].set_linewidth(1.0)
 
 
+def _save_paper_pdf(
+    fig,
+    out_path: Path,
+    paper_dir: Path | None,
+    ax=None,
+    extra_pad: float = 1.02,
+) -> None:
+    """Save a PDF copy of a figure into the paper figures directory."""
+    if paper_dir is None:
+        return
+    paper_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = paper_dir / out_path.with_suffix(".pdf").name
+    if ax is not None:
+        bbox = ax.get_tightbbox(fig.canvas.get_renderer()).transformed(
+            fig.dpi_scale_trans.inverted()
+        )
+        bbox = bbox.expanded(extra_pad, extra_pad)
+        fig.savefig(pdf_path, bbox_inches=bbox, facecolor="white", dpi=300)
+    else:
+        fig.savefig(pdf_path, bbox_inches="tight", facecolor="white", dpi=300)
+    print(f"Wrote {pdf_path}")
+
+
 def _apply_plot_style() -> None:
     plt.rcParams.update(RC)  # type: ignore[arg-type]
 
@@ -333,6 +356,7 @@ def plot_cost_across_datasets(
     summary: pd.DataFrame,
     out_path: Path,
     baselines: list[str] | None = None,
+    paper_dir: Path | None = None,
 ) -> None:
     _apply_plot_style()
 
@@ -397,6 +421,7 @@ def plot_cost_across_datasets(
     fig.subplots_adjust(left=0.24, bottom=0.14)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_path, paper_dir)
     plt.close(fig)
 
 
@@ -463,7 +488,11 @@ def plot_cost_across_query_types(
     plt.close(fig)
 
 
-def plot_latency_and_cost_horizontal(df: pd.DataFrame, out_path: Path) -> None:
+def plot_latency_and_cost_horizontal(
+    df: pd.DataFrame,
+    out_path: Path,
+    paper_dir: Path | None = None,
+) -> None:
     """Compare the three primary systems using stage-visible latency and cost."""
     _apply_plot_style()
     present = set(df["baseline"].astype(str).unique())
@@ -547,6 +576,7 @@ def plot_latency_and_cost_horizontal(df: pd.DataFrame, out_path: Path) -> None:
     latency_ax.legend(ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.22), frameon=False)
     fig.tight_layout()
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_path, paper_dir, ax=latency_ax)
     plt.close(fig)
 
 
@@ -814,6 +844,7 @@ def plot_query_error_rate_across_baselines(
     summary: pd.DataFrame,
     out_path: Path,
     baselines: list[str] | None = None,
+    paper_dir: Path | None = None,
 ) -> None:
     """Plot mean query error rate across datasets for key baselines."""
     _apply_plot_style()
@@ -903,6 +934,7 @@ def plot_query_error_rate_across_baselines(
     fig.subplots_adjust(bottom=0.30)
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     fig.savefig(out_path, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_path, paper_dir)
     plt.close(fig)
 
 
@@ -935,6 +967,7 @@ def _plot_grounding_loss_vs_model_size_from_summaries(
     summaries: list[dict[str, Any]],
     out_png: Path,
     out_csv: Path,
+    paper_dir: Path | None = None,
 ) -> bool:
     if not summaries:
         return False
@@ -1039,6 +1072,7 @@ def _plot_grounding_loss_vs_model_size_from_summaries(
     fig.tight_layout(rect=(0.0, 0.04, 1.0, 1.0))
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=220, bbox_inches="tight", facecolor="white")
+    _save_paper_pdf(fig, out_png, paper_dir)
     plt.close(fig)
 
     out_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -1355,8 +1389,13 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-dir",
-        default=str(script_dir.parent.parent / "results" / "primary_visualizations" / "core"),
+        default=str(script_dir.parent.parent / "results" / "primary_visualizations"),
         help="Output folder for primary figures.",
+    )
+    parser.add_argument(
+        "--paper-dir",
+        default=None,
+        help="Output folder for PDF paper figures (defaults to <output-dir>/paper).",
     )
     parser.add_argument(
         "--cache-comparison-csv",
@@ -1427,6 +1466,17 @@ def main() -> None:
     script_dir = Path(__file__).resolve().parent
     repo_root = script_dir.parent.parent
 
+    output_dir = _resolve_user_path(args.output_dir, repo_root)
+    assert output_dir is not None
+    output_dir.mkdir(parents=True, exist_ok=True)
+    paper_dir = (
+        _resolve_user_path(args.paper_dir, repo_root)
+        if args.paper_dir
+        else output_dir / "paper"
+    )
+    assert paper_dir is not None
+    paper_dir.mkdir(parents=True, exist_ok=True)
+
     grounding_root = _resolve_user_path(args.grounding_benchmark_root, repo_root)
     grounding_plot_png = _resolve_user_path(args.grounding_plot_output, repo_root)
     grounding_plot_csv = _resolve_user_path(args.grounding_plot_csv, repo_root)
@@ -1439,6 +1489,7 @@ def main() -> None:
         grounding_summaries,
         grounding_plot_png,
         grounding_plot_csv,
+        paper_dir=paper_dir,
     )
     if grounding_written:
         print(f"Wrote {grounding_plot_png}")
@@ -1468,10 +1519,6 @@ def main() -> None:
         args.autoiot_root = roots["autoiot"]
         args.hargpt_root = roots["hargpt"]
         args.llmsense_root = roots["llmsense"]
-
-    output_dir = _resolve_user_path(args.output_dir, repo_root)
-    assert output_dir is not None
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     selected_baselines = expand_baselines([
         baseline.strip().upper()
@@ -1644,6 +1691,7 @@ def main() -> None:
             for baseline in COST_DATASET_BASELINES
             if baseline in required_baselines
         ],
+        paper_dir=paper_dir,
     )
     plot_cost_across_query_types(
         cost_by_query_type,
@@ -1651,10 +1699,11 @@ def main() -> None:
         baselines=cost_query_type_baselines,
         query_types=selected_query_types,
     )
-    plot_latency_and_cost_horizontal(df, fig8)
+    plot_latency_and_cost_horizontal(df, fig8, paper_dir=paper_dir)
     plot_query_error_rate_across_baselines(
         by_dataset,
         fig10,
+        paper_dir=paper_dir,
     )
 
     comparison_csv = _resolve_user_path(args.cache_comparison_csv, repo_root)

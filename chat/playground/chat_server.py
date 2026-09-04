@@ -643,7 +643,7 @@ def _chat_completion(
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str | None = None
-    model: str = "llama-3.3-70b-versatile"
+    model: str = "groq:groq/compound-mini"
     domain: str | None = None      # explicit domain override: 'ecg', 'imu', 'bus'
     data_path: str | None = None   # explicit data file path override
     confirmed: bool = False        # set True to proceed after a PROXY clarification

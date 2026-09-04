@@ -48,6 +48,7 @@ sys.path.insert(0, str(_CHAT_ROOT / "playground"))
 
 import pandas as pd  # noqa: E402
 from langchain_openrouter import ChatOpenRouter  # noqa: E402
+from langchain_groq import ChatGroq  # noqa: E402
 from playground import (  # noqa: E402
     load_data,
     export_ecg_record_to_csv,
@@ -59,6 +60,8 @@ from playground import (  # noqa: E402
     LLMClient,
     Stage1_ConceptExtraction,
     Stage2_SchemaGrounding,
+    _is_groq_model,
+    _strip_provider_prefix,
 )
 
 # ── Dataset registry ────────────────────────────────────────
@@ -196,18 +199,32 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
 
 
 def _domain_probabilities_llm(query: str, model: str) -> dict[str, float]:
-    api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    groq_key = os.environ.get("GROQ_API_KEY")
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if not (openrouter_key or groq_key):
         raise RuntimeError("OPENROUTER_API_KEY (or GROQ_API_KEY for transition) not configured")
 
+    model = _strip_provider_prefix(model)
     domains_json = json.dumps(_DOMAIN_PROFILES, ensure_ascii=True)
-    llm = ChatOpenRouter(
-        model=model,
-        api_key=api_key,
-        temperature=0,
-        max_tokens=180,
-        max_retries=2,
-    )
+    if _is_groq_model(model):
+        if not groq_key:
+            raise RuntimeError("GROQ_API_KEY required for Groq-routed domain classifier")
+        llm = ChatGroq(
+            model=model,
+            api_key=groq_key,
+            temperature=0,
+            max_tokens=180,
+            max_retries=2,
+        )
+    else:
+        api_key = openrouter_key or groq_key
+        llm = ChatOpenRouter(
+            model=model,
+            api_key=api_key,
+            temperature=0,
+            max_tokens=180,
+            max_retries=2,
+        )
     completion = llm.invoke(
         [
             (
@@ -370,7 +387,10 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        content_length = int(self.headers.get("Content-Length", 0))
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except (TypeError, ValueError):
+            content_length = 0
         body = self.rfile.read(content_length)
 
         try:
@@ -384,7 +404,7 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "Empty message"})
             return
 
-        model = req.get("model", "meta-llama/llama-3.3-70b-instruct")
+        model = req.get("model", "groq:groq/compound-mini")
         explicit_domain: str | None = req.get("domain")
         ecg_record: str | None = req.get("ecg_record")
         confirmed: bool = req.get("confirmed", False)
