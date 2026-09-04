@@ -45,6 +45,7 @@ _PROJECT_ROOT = _CHAT_ROOT.parent
 
 # Make the playground package importable from the API handler.
 sys.path.insert(0, str(_CHAT_ROOT / "playground"))
+sys.path.insert(0, str(_PROJECT_ROOT))
 
 import pandas as pd  # noqa: E402
 from langchain_openrouter import ChatOpenRouter  # noqa: E402
@@ -63,6 +64,12 @@ from playground import (  # noqa: E402
     _is_groq_model,
     _strip_provider_prefix,
 )
+from flashfusion.baselines.flash_fusion import run_flash_fusion  # noqa: E402
+from flashfusion.baselines.flash_fusion_cache import run_flash_fusion_cache  # noqa: E402
+from flashfusion.pipeline.runner import (  # noqa: E402
+    LLMClient as TypedLLMClient,
+    RunResult as TypedRunResult,
+)
 
 # ── Dataset registry ────────────────────────────────────────
 # Maps domain key → path relative to _CHAT_ROOT.
@@ -73,6 +80,12 @@ DATASET_REGISTRY: dict[str, str] = {
     "bus": "data/bus/bus_data.csv",              # 192 KB  — committed directly
     "imu": "data/imu/WISDM_ar_v1.1_raw.txt",   #  48 MB  — Git LFS
     "ecg": "data/ecg/100.csv",                  #  27 MB  — Git LFS (record 100)
+}
+
+LOCAL_DATASET_REGISTRY: dict[str, Path] = {
+    "bus": _PROJECT_ROOT / "data" / "bus" / "bus_data.csv",
+    "imu": _PROJECT_ROOT / "data" / "AutoIOT_dataset" / "IMU" / "WISDM_ar_v1.1_raw.txt",
+    "ecg": _PROJECT_ROOT / "data" / "AutoIOT_dataset" / "ECG.0" / "tmp_csv",
 }
 
 DEFAULT_ECG_RECORD = "100"
@@ -94,9 +107,18 @@ def _resolve_data_path(domain: str, ecg_record: str | None = None) -> str:
     If the registry entry is already a readable file, it is used as-is;
     otherwise (legacy: raw ECG directory) export is attempted.
     """
-    rel = DATASET_REGISTRY.get(domain)
-    if not rel:
+    local_path = LOCAL_DATASET_REGISTRY.get(domain)
+    if local_path is None:
         raise ValueError(f"Unknown domain: {domain}")
+    if domain == "ecg":
+        record = ecg_record or DEFAULT_ECG_RECORD
+        local_record = local_path / f"{record}.csv"
+        if local_record.is_file():
+            return str(local_record)
+    elif local_path.is_file():
+        return str(local_path)
+
+    rel = DATASET_REGISTRY[domain]
     abs_path = str(_CHAT_ROOT / rel)
     if os.path.isfile(abs_path):
         return abs_path
@@ -123,6 +145,59 @@ def _get_cached_path(domain: str, ecg_record: str | None = None) -> str:
     if cache_key in _path_cache:
         return _path_cache[cache_key]
     return _resolve_data_path(domain, ecg_record)
+
+
+def _dataset_provenance(df: pd.DataFrame, source_path: str) -> dict[str, Any]:
+    try:
+        source = str(Path(source_path).relative_to(_PROJECT_ROOT))
+    except ValueError:
+        source = source_path
+    return {
+        "rows": len(df),
+        "columns": list(df.columns),
+        "source": source,
+        "is_full_source": str(source_path).startswith(str(_PROJECT_ROOT / "data")),
+    }
+
+
+def _typed_response(
+    result: TypedRunResult, domain: str, dataset: dict[str, Any]
+) -> dict[str, Any]:
+    """Serialize the typed pipeline's user-facing result and audit trail."""
+    return {
+        "reply": result.answer,
+        "domain": domain,
+        "grounded": result.executed,
+        "dataset": dataset,
+        "typed": {
+            "execution_path": result.execution_path,
+            "plan_source": result.plan_source,
+            "validation_failure": result.plan_validation_stage_failed,
+            "rejected": result.rejected,
+            "rejection_reason": result.rejection_reason,
+            "typed_plan": result.typed_plan,
+            "operators_used": result.operators_used,
+            "route": {
+                "candidate_ops": result.operator_route_candidate_ops,
+                "excluded_buckets": result.operator_route_excluded_buckets,
+                "matched_rules": result.operator_route_matched_rules,
+                "used_full_fallback": result.operator_route_full_fallback,
+            },
+            "trace": result.trace,
+            "execution_certificate": result.typed_execution_certificate,
+            "stage_latency_s": result.stage_latency_s,
+            "cache_grounding_failure": result.cache_grounding_failure,
+            "raw_plan": result.raw_plan,
+        },
+        "stages": result.stages_run,
+        "usage": {
+            "input_tokens": result.input_tokens,
+            "output_tokens": result.output_tokens,
+            "total_tokens": result.input_tokens + result.output_tokens,
+            "cost_usd": result.cost_usd,
+            "latency_s": result.latency_s,
+        },
+    }
 
 # ── Probabilistic domain routing ────────────────────────────
 # Uses a small model to score domain likelihoods and falls back to
@@ -408,6 +483,10 @@ class handler(BaseHTTPRequestHandler):
         explicit_domain: str | None = req.get("domain")
         ecg_record: str | None = req.get("ecg_record")
         confirmed: bool = req.get("confirmed", False)
+        execution_mode = req.get("execution_mode", "agent")
+        if execution_mode not in {"agent", "typed_operator", "typed_operator_cache"}:
+            self._json_response(400, {"error": "Invalid execution_mode"})
+            return
 
         api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
         if not api_key:
@@ -447,6 +526,8 @@ class handler(BaseHTTPRequestHandler):
             })
             return
 
+        dataset = _dataset_provenance(df, source_path)
+
         # ── Mappability gate ("idk" feature) ──────────────
         map_details: dict[str, Any] = {
             "status": "SKIPPED",
@@ -455,7 +536,7 @@ class handler(BaseHTTPRequestHandler):
             "mappings": [],
             "unmappable": [],
         }
-        if not confirmed:
+        if execution_mode == "agent" and not confirmed:
             map_status, map_message, map_details = _check_mappability(message, df, model)
 
             if map_status == "UNMAPPABLE":
@@ -481,6 +562,38 @@ class handler(BaseHTTPRequestHandler):
                     "usage": None,
                 })
                 return
+
+        # ── Typed planner / cache demo ─────────────────────
+        if execution_mode != "agent":
+            try:
+                typed_model = _strip_provider_prefix(model)
+                client = TypedLLMClient(model_name=typed_model, api_key=api_key)
+                result = TypedRunResult(
+                    baseline=(
+                        "FLASH_FUSION_CACHE"
+                        if execution_mode == "typed_operator_cache"
+                        else "FLASH_FUSION"
+                    ),
+                    model=typed_model,
+                    query=message,
+                )
+                if execution_mode == "typed_operator_cache":
+                    cache_dataset = "wisdm" if domain == "imu" else domain
+                    result = run_flash_fusion_cache(
+                        message,
+                        df,
+                        client,
+                        result,
+                        dataset=cache_dataset,
+                        enable_semantic_matching=False,
+                    )
+                else:
+                    result = run_flash_fusion(message, df, client, result)
+                self._json_response(200, _typed_response(result, domain, dataset))
+            except Exception as exc:
+                LOGGER.exception("Typed pipeline error domain=%s mode=%s", domain, execution_mode)
+                self._json_response(502, {"error": f"Typed pipeline error: {exc}"})
+            return
 
         # ── Run Flash-Fusion B4 pipeline ────────────────────
         try:
@@ -514,6 +627,7 @@ class handler(BaseHTTPRequestHandler):
                 "reply": result.answer,
                 "domain": domain,
                 "grounded": result.executed,
+                "dataset": dataset,
                 "domain_routing": routing,
                 "stages": result.stages_run,
                 "execution": execution,

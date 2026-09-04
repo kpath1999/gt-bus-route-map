@@ -3,6 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash-Fusion | Sensor Analysis</title>
+    <style>
+        :root { --ink:#17221f; --canvas:#e8e7df; --paper:#f7f6ef; --panel:#202b28; --panel-muted:#2c3833; --line:#c9ccc0; --line-dark:#43514a; --text:#17221f; --muted:#657169; --light:#e9eee7; --lime:#c7f36b; --lime-strong:#9dcf39; --orange:#f2ae51; --red:#d75a47; --teal:#5fc6b4; --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace; --sans:"Avenir Next","Trebuchet MS",sans-serif; }
+        * { box-sizing:border-box; } body { margin:0; background:var(--canvas); color:var(--text); font-family:var(--sans); } button,select,textarea,input { font:inherit; } button { cursor:pointer; }
+        .topbar { min-height:66px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:10px 22px; background:var(--panel); color:var(--light); border-bottom:3px solid var(--lime); }
+        .brand { display:flex; align-items:center; gap:12px; min-width:max-content; }.brand-mark { width:32px; height:32px; display:grid; place-items:center; color:var(--ink); background:var(--lime); font:800 20px/1 var(--mono); }.brand-name { font:800 18px/1 var(--mono); }.brand-name span { color:var(--lime); }.brand-note { font:11px/1.35 var(--mono); color:#aebbb1; max-width:260px; }
+        .controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }.control-label { font:10px var(--mono); color:#aebbb1; text-transform:uppercase; }.select,.record-input { height:34px; border:1px solid var(--line-dark); background:var(--panel-muted); color:var(--light); padding:0 9px; border-radius:3px; font-size:12px; }.record-input { width:64px; }.status { display:flex; align-items:center; gap:6px; color:#bbcabf; font:10px var(--mono); }.status-dot { width:8px; height:8px; border-radius:50%; background:var(--lime); box-shadow:0 0 0 3px rgba(199,243,107,.13); }
+        .shell { min-height:calc(100vh - 66px); display:grid; grid-template-columns:276px minmax(0,1fr); }.rail { background:var(--paper); padding:18px 14px; border-right:1px solid var(--line); }.eyebrow { margin:0 0 9px; color:var(--muted); font:700 10px var(--mono); text-transform:uppercase; }.rail-title { margin:0 0 15px; font-size:17px; line-height:1.12; }.stage-list { display:grid; gap:2px; }.stage { display:grid; grid-template-columns:24px 1fr; gap:10px; padding:10px 8px; border-left:2px solid var(--line); }.stage-num { color:var(--muted); font:11px var(--mono); }.stage strong { display:block; font-size:12px; }.stage span { display:block; margin-top:3px; color:var(--muted); font-size:11px; line-height:1.35; }.stage.active { border-color:var(--lime-strong); background:#edf0dc; }.stage.done { border-color:var(--teal); }.stage.cache { border-color:var(--orange); }.rail-divider { height:1px; margin:19px 2px; background:var(--line); }.dataset-facts { display:grid; gap:8px; }.fact { display:flex; justify-content:space-between; gap:12px; color:var(--muted); font:11px var(--mono); }.fact b { color:var(--text); font-weight:700; text-align:right; }
+        .workspace { min-width:0; padding:22px; }.intro { display:flex; justify-content:space-between; align-items:end; gap:20px; margin-bottom:17px; }h1 { margin:0; max-width:720px; font-size:clamp(26px,4vw,42px); line-height:.98; }h1 em { font-style:normal; color:#5f766d; }.intro-copy { max-width:320px; margin:0; color:var(--muted); font:12px/1.45 var(--mono); }
+        .method-bar { display:flex; flex-wrap:wrap; border:1px solid var(--line); background:var(--paper); }.method { flex:1 1 180px; min-height:68px; padding:11px 13px; border:0; border-right:1px solid var(--line); background:transparent; text-align:left; color:var(--muted); }.method:last-child { border-right:0; }.method b { display:block; margin-bottom:4px; color:var(--text); font-size:12px; }.method span { display:block; font:10px/1.35 var(--mono); }.method.selected { background:var(--ink); color:#cbd7cd; }.method.selected b { color:var(--lime); }.method.selected.cache-selected b { color:var(--orange); }
+        .examples { margin:18px 0; }.examples-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:8px; }.examples-head h2 { margin:0; font-size:14px; }.examples-head span { color:var(--muted); font:10px var(--mono); }.example-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }.example { min-height:92px; padding:11px; border:1px solid var(--line); background:var(--paper); text-align:left; color:var(--text); }.example:hover { border-color:var(--ink); background:#fbfaf5; }.example-top { display:flex; justify-content:space-between; gap:8px; margin-bottom:8px; color:var(--muted); font:10px var(--mono); text-transform:uppercase; }.tag { padding:2px 4px; border:1px solid currentColor; font-size:9px; }.tag.direct { color:#34786d; }.tag.intermediate { color:#a06010; }.tag.out { color:#a53e34; }.tag.predictive { color:#566ab1; }.example p { margin:0; font-size:12px; line-height:1.35; }
+        .query-card { border:1px solid var(--ink); background:var(--paper); }.query-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; color:var(--light); background:var(--ink); font:10px var(--mono); }.query-meta b { color:var(--lime); font-weight:700; }.query-row { display:flex; gap:10px; padding:12px; }textarea { flex:1; min-width:0; min-height:76px; border:1px solid var(--line); border-radius:2px; resize:vertical; padding:11px; background:#fffef9; color:var(--text); font-size:14px; line-height:1.42; outline-color:var(--lime-strong); }.run-button { min-width:110px; border:0; background:var(--lime); color:var(--ink); padding:12px; font:800 12px var(--mono); }.run-button:hover { background:var(--lime-strong); }.run-button:disabled { opacity:.5; cursor:wait; }
+        .output { margin-top:18px; display:grid; grid-template-columns:minmax(0,1fr) 310px; gap:12px; }.answer-panel,.audit-panel { border:1px solid var(--line); background:var(--paper); }.panel-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 11px; border-bottom:1px solid var(--line); }.panel-head h2 { margin:0; font-size:12px; }.panel-head span { color:var(--muted); font:10px var(--mono); }.answer { min-height:180px; padding:15px; font-size:14px; line-height:1.55; white-space:pre-wrap; }.empty-answer { color:var(--muted); font-family:var(--mono); font-size:12px; }.provenance { display:none; margin:0 15px 14px; padding:9px; border-left:3px solid var(--teal); background:#e4eee6; color:#31564c; font:10px/1.45 var(--mono); }.provenance.visible { display:block; }.audit-panel { background:var(--panel); color:var(--light); border-color:var(--panel); }.audit-panel .panel-head { border-color:var(--line-dark); }.audit-panel .panel-head h2 { color:var(--lime); }.audit-panel .panel-head span { color:#aebbb1; }.audit-body { padding:11px; }.audit-empty { color:#aebbb1; font:11px/1.45 var(--mono); }.audit-stage { padding:9px 0; border-bottom:1px solid var(--line-dark); }.audit-stage:last-child { border:0; }.audit-stage small { display:block; margin-bottom:4px; color:#9baaa0; font:9px var(--mono); text-transform:uppercase; }.audit-stage b { display:block; color:var(--light); font-size:11px; }.audit-stage p { margin:4px 0 0; color:#b8c5ba; font:10px/1.4 var(--mono); word-break:break-word; }.audit-stage.ok b { color:var(--lime); }.audit-stage.cache b { color:var(--orange); }.audit-stage.fail b { color:#ff9381; }details { margin-top:11px; border-top:1px solid var(--line-dark); }summary { padding-top:9px; color:#b8c5ba; cursor:pointer; font:10px var(--mono); }pre { max-height:300px; overflow:auto; margin:8px 0 0; padding:9px; background:#131b18; color:#d7e2d8; font:10px/1.45 var(--mono); white-space:pre-wrap; }
+        @media (max-width:880px) { .shell { grid-template-columns:1fr; }.rail { border-right:0; border-bottom:1px solid var(--line); }.stage-list { grid-template-columns:repeat(5,1fr); overflow-x:auto; }.stage { min-width:150px; }.rail-divider,.dataset-facts { display:none; }.output { grid-template-columns:1fr; } }.@media (max-width:610px) { .topbar { align-items:flex-start; padding:12px; }.brand-note,.status { display:none; }.controls { gap:5px; }.select { max-width:130px; }.workspace { padding:15px; }.intro { display:block; }.intro-copy { margin-top:10px; }.example-grid { grid-template-columns:1fr; }.query-row { flex-direction:column; }.run-button { min-height:42px; }.method { border-bottom:1px solid var(--line); }.method:last-child { border-bottom:0; } }
+    </style>
+</head>
+<body>
+    <header class="topbar"><div class="brand"><div class="brand-mark">F</div><div class="brand-name">FLASH<span>-FUSION</span></div><div class="brand-note">Typed plans for domain-specific sensor streams</div></div><div class="controls"><span class="control-label">dataset</span><select class="select" id="datasetSelect"><option value="bus">Bus telemetry</option><option value="imu">WISDM IMU</option><option value="ecg">MIT-BIH ECG</option></select><input class="record-input" id="ecgRecordInput" type="text" value="100" title="ECG record ID" hidden><span class="control-label">model</span><select class="select" id="modelSelect"><option value="groq:groq/compound-mini" selected>Groq Compound Mini</option><option value="groq:groq/compound">Groq Compound</option><option value="openrouter:meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option></select><div class="status"><i class="status-dot" id="statusDot"></i><span id="statusText">checking</span></div></div></header>
+    <main class="shell"><aside class="rail"><p class="eyebrow">Execution map</p><h2 class="rail-title">Inspectable reasoning</h2><div class="stage-list"><div class="stage active" data-stage="route"><span class="stage-num">01</span><div><strong>Operator routing</strong><span>Eliminate incompatible DSL buckets.</span></div></div><div class="stage" data-stage="plan"><span class="stage-num">02</span><div><strong>Guardrail + plan</strong><span>One constrained planning call.</span></div></div><div class="stage" data-stage="validate"><span class="stage-num">03</span><div><strong>Validation gates</strong><span>Structural and live-schema checks.</span></div></div><div class="stage" data-stage="execute"><span class="stage-num">04</span><div><strong>Typed execution</strong><span>Deterministic pandas operators.</span></div></div><div class="stage cache" data-stage="cache"><span class="stage-num">05</span><div><strong>Cache grounding</strong><span>Reuse a skeleton, rebind live values.</span></div></div></div><div class="rail-divider"></div><p class="eyebrow">Loaded data</p><div class="dataset-facts"><div class="fact"><span>rows</span><b id="rowCount">not loaded</b></div><div class="fact"><span>source</span><b id="sourceName">awaiting query</b></div><div class="fact"><span>scope</span><b id="sourceScope">full source preferred</b></div></div></aside>
+    <section class="workspace"><div class="intro"><div><p class="eyebrow">IoT analysis workbench</p><h1>Ask the data.<br><em>Inspect the decision.</em></h1></div><p class="intro-copy">Compare a full typed plan with a cache-grounded skeleton over the same sensor stream. Every validation decision is visible.</p></div><div class="method-bar"><button class="method selected" data-mode="typed_operator"><b>01 / Typed planner</b><span>Route query -> one structured plan -> validate -> execute.</span></button><button class="method" data-mode="typed_operator_cache"><b>02 / Skeleton cache</b><span>Exact query match -> parameter re-grounding -> validate -> execute.</span></button><button class="method" data-mode="agent"><b>03 / Agent baseline</b><span>Original B4 grounded agent pipeline for comparison.</span></button></div><section class="examples"><div class="examples-head"><h2 id="examplesTitle">Bus benchmark examples</h2><span>from the benchmark query suite</span></div><div class="example-grid" id="exampleGrid"></div></section><section class="query-card"><div class="query-meta"><span>INPUT QUERY</span><span>method: <b id="methodLabel">typed planner</b></span></div><div class="query-row"><textarea id="messageInput" aria-label="Sensor analysis query"></textarea><button class="run-button" id="sendBtn">RUN ANALYSIS</button></div></section><section class="output"><article class="answer-panel"><div class="panel-head"><h2>Result</h2><span id="resultStatus">ready</span></div><div class="answer empty-answer" id="answer">Choose a benchmark example or write a sensor-stream query. The execution map will populate with the plan's observable decisions.</div><div class="provenance" id="provenance"></div></article><aside class="audit-panel"><div class="panel-head"><h2>Planner audit</h2><span id="auditState">waiting</span></div><div class="audit-body" id="audit"><div class="audit-empty">Typed runs reveal the candidate operator vocabulary, validated plan, and deterministic execution certificate here.</div></div></aside></section></section></main>
+    <script>
+    const examples={bus:[['direct','Q01','What is the maximum accel_variance observed in this dataset?'],['intermediate','Q05','Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?'],['out','Q09','How does passenger occupancy correlate with road roughness during this trip?'],['predictive','Q13','Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.']],imu:[['direct','Q02','How many users have the activity label walking?'],['intermediate','Q07','What is the median acceleration magnitude for user 20 with activity label Upstairs?'],['out','Q10','Based on the acceleration data, predict the exact geographic location where user 10 was jogging.'],['predictive','Q14','Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.']],ecg:[['direct','Q03','For record_id 106, how many samples have MLII > 0?'],['intermediate','Q07','For record_id 101, which 10-second interval contains the highest number of annotated beats?'],['out','Q10','Is there a statistical correlation between patient BMI and their maximum MLII amplitude?'],['predictive','Q13','Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.']]};
+    const labels={bus:'Bus telemetry',imu:'WISDM IMU',ecg:'MIT-BIH ECG'},datasetSelect=document.getElementById('datasetSelect'),recordInput=document.getElementById('ecgRecordInput'),modelSelect=document.getElementById('modelSelect'),input=document.getElementById('messageInput'),sendButton=document.getElementById('sendBtn'); let executionMode='typed_operator';
+    const escapeHtml=text=>text.replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char])); const escapeAttribute=text=>escapeHtml(text).replace(/"/g,'&quot;');
+    function renderExamples(){const dataset=datasetSelect.value;document.getElementById('examplesTitle').textContent=`${labels[dataset]} benchmark examples`;document.getElementById('exampleGrid').innerHTML=examples[dataset].map(([kind,id,text])=>`<button class="example" data-query="${escapeAttribute(text)}"><div class="example-top"><span>${id}</span><span class="tag ${kind}">${kind==='out'?'out of scope':kind}</span></div><p>${escapeHtml(text)}</p></button>`).join('');document.querySelectorAll('.example').forEach(button=>button.addEventListener('click',()=>{input.value=button.dataset.query;input.focus();}));input.value=examples[dataset][0][2];}
+    function setStages(typed){document.querySelectorAll('.stage').forEach(stage=>stage.classList.remove('active','done'));if(!typed){document.querySelector('[data-stage="route"]').classList.add('active');return;}['route','plan','validate'].forEach(name=>document.querySelector(`[data-stage="${name}"]`).classList.add('done'));const completed=['typed_operator','typed_operator_cache'].includes(typed.execution_path);document.querySelector(`[data-stage="${completed?'execute':'validate'}"]`).classList.add(completed?'done':'active');if(typed.execution_path==='typed_operator_cache'||String(typed.plan_source||'').includes('cache'))document.querySelector('[data-stage="cache"]').classList.add('done');}
+    function updateProvenance(dataset){if(!dataset)return;document.getElementById('rowCount').textContent=Number(dataset.rows).toLocaleString();document.getElementById('sourceName').textContent=dataset.source;document.getElementById('sourceScope').textContent=dataset.is_full_source?'attached full source':'deployment copy';const panel=document.getElementById('provenance');panel.classList.add('visible');panel.textContent=`${Number(dataset.rows).toLocaleString()} rows | ${dataset.columns.length} columns | ${dataset.is_full_source?'attached full dataset':'bundled deployment dataset'} | ${dataset.source}`;}
+    function auditRow(kind,label,detail){return `<div class="audit-stage ${kind}"><small>${label}</small><b>${detail.title}</b>${detail.text?`<p>${escapeHtml(detail.text)}</p>`:''}</div>`;}
+    function renderAudit(typed){const target=document.getElementById('audit');if(!typed){target.innerHTML='<div class="audit-empty">Agent baseline selected. Switch to a typed mode to inspect routing, planning, validation, and execution.</div>';return;}const route=typed.route||{},plan=typed.typed_plan||{},isCache=typed.execution_path==='typed_operator_cache'||String(typed.plan_source||'').includes('cache');const stages=[auditRow('ok','01 / operator routing',{title:`${(route.candidate_ops||[]).length} candidate operators`,text:(route.candidate_ops||[]).join(', ')||'Full vocabulary retained.'}),auditRow(typed.validation_failure?'fail':'ok','02 / typed guardrail and plan',{title:plan.steps?`${plan.steps.length} validated plan step${plan.steps.length===1?'':'s'}`:(typed.rejected?'Query rejected by guardrail':'Plan unavailable'),text:typed.rejection_reason||typed.validation_failure||typed.plan_source||''}),auditRow(typed.validation_failure?'fail':'ok','03 / validation gates',{title:typed.validation_failure?`Stopped at ${typed.validation_failure}`:'Structural and schema validation passed',text:typed.execution_path||''}),auditRow(['typed_operator','typed_operator_cache'].includes(typed.execution_path)?'ok':'fail','04 / deterministic execution',{title:(typed.operators_used||[]).length?typed.operators_used.join(' -> '):'No typed operators executed',text:typed.trace||''}),auditRow(isCache?'cache':'','05 / cache grounding',{title:isCache?'Operator skeleton reused; values re-grounded':'Full planner selected',text:typed.cache_grounding_failure?.deterministic_fallback_reason||''})].join('');const evidence={route,typed_plan:plan,execution_certificate:typed.execution_certificate||{},stage_latency_s:typed.stage_latency_s||{},cache_grounding_failure:typed.cache_grounding_failure||{}};target.innerHTML=`${stages}<details><summary>View machine-readable evidence</summary><pre>${escapeHtml(JSON.stringify(evidence,null,2))}</pre></details>`;document.getElementById('auditState').textContent=typed.execution_path||'completed';}
+    async function runAnalysis(){const message=input.value.trim();if(!message)return;sendButton.disabled=true;sendButton.textContent='RUNNING...';document.getElementById('resultStatus').textContent='running';document.getElementById('answer').className='answer empty-answer';document.getElementById('answer').textContent=executionMode==='typed_operator_cache'?'Checking the exact operator-skeleton cache, then grounding plan values against the live schema...':'Routing operator vocabulary and requesting a constrained typed plan...';try{const payload={message,model:modelSelect.value,domain:datasetSelect.value,execution_mode:executionMode};if(datasetSelect.value==='ecg'&&recordInput.value.trim())payload.ecg_record=recordInput.value.trim();const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok)throw new Error(data.error||response.statusText);const answer=document.getElementById('answer');answer.className='answer';answer.textContent=data.reply||'No answer returned.';document.getElementById('resultStatus').textContent=data.typed?.execution_path||(data.grounded?'grounded':'completed');updateProvenance(data.dataset);renderAudit(data.typed);setStages(data.typed);}catch(error){const answer=document.getElementById('answer');answer.className='answer';answer.textContent=`Analysis error: ${error.message}`;document.getElementById('resultStatus').textContent='error';renderAudit(null);setStages(null);}finally{sendButton.disabled=false;sendButton.textContent='RUN ANALYSIS';}}
+    document.querySelectorAll('.method').forEach(button=>button.addEventListener('click',()=>{executionMode=button.dataset.mode;document.querySelectorAll('.method').forEach(item=>item.classList.remove('selected','cache-selected'));button.classList.add('selected');if(executionMode==='typed_operator_cache')button.classList.add('cache-selected');document.getElementById('methodLabel').textContent=button.querySelector('b').textContent.replace(/^\d+\s*\/\s*/,'').toLowerCase();renderAudit(null);setStages(null);}));datasetSelect.addEventListener('change',()=>{recordInput.hidden=datasetSelect.value!=='ecg';renderExamples();});sendButton.addEventListener('click',runAnalysis);input.addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.metaKey||event.ctrlKey))runAnalysis();});async function checkHealth(){try{const response=await fetch('/api/health');document.getElementById('statusDot').style.background=response.ok?'var(--lime)':'var(--red)';document.getElementById('statusText').textContent=response.ok?'online':'offline';}catch{document.getElementById('statusDot').style.background='var(--red)';document.getElementById('statusText').textContent='offline';}}renderExamples();checkHealth();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flash-Fusion Chat</title>
     <style>
         :root {
@@ -75,7 +113,7 @@
             align-items: center;
             gap: 12px;
         }
-        .model-select, .dataset-select, .ecg-record-input {
+        .model-select, .dataset-select, .execution-select, .ecg-record-input {
             background: var(--surface2);
             color: var(--text);
             border: 1px solid var(--border);
@@ -457,6 +495,11 @@
                 <option value="bus">Bus Telemetry</option>
             </select>
             <input class="ecg-record-input" id="ecgRecordInput" type="text" placeholder="Rec #" title="ECG record ID (e.g. 100)" style="display:none">
+            <select class="execution-select" id="executionSelect" title="Analysis method">
+                <option value="agent" selected>Agent B4</option>
+                <option value="typed_operator">Typed planner</option>
+                <option value="typed_operator_cache">Skeleton cache</option>
+            </select>
             <select class="model-select" id="modelSelect" title="LLM model">
                 <option value="groq:groq/compound-mini" selected>Groq Compound Mini</option>
                 <option value="groq:groq/compound">Groq Compound</option>
@@ -517,6 +560,7 @@
     const newChatBtn = document.getElementById('newChatBtn');
     const modelSelect = document.getElementById('modelSelect');
     const datasetSelect = document.getElementById('datasetSelect');
+    const executionSelect = document.getElementById('executionSelect');
     const ecgRecordInput = document.getElementById('ecgRecordInput');
     const statusDot = document.getElementById('statusDot');
 
@@ -622,6 +666,10 @@
             body.appendChild(details);
         }
 
+        if (role === 'assistant' && meta && meta.typed) {
+            body.appendChild(buildTypedAudit(meta.typed));
+        }
+
         div.appendChild(avatar);
         div.appendChild(body);
         messagesEl.appendChild(div);
@@ -669,6 +717,39 @@
         return s;
     }
 
+    function buildTypedAudit(typed) {
+        const details = document.createElement('details');
+        details.className = 'exec-details';
+
+        const summary = document.createElement('summary');
+        const source = typed.plan_source ? ` · ${typed.plan_source}` : '';
+        summary.textContent = `Typed execution: ${typed.execution_path || 'not completed'}${source}`;
+        details.appendChild(summary);
+
+        const pre = document.createElement('pre');
+        const audit = {
+            route: {
+                candidate_operators: typed.route?.candidate_ops || [],
+                excluded_buckets: typed.route?.excluded_buckets || [],
+                matched_rules: typed.route?.matched_rules || [],
+                used_full_vocabulary: Boolean(typed.route?.used_full_fallback),
+            },
+            validation_failure: typed.validation_failure || null,
+            rejection_reason: typed.rejection_reason || null,
+            operators_executed: typed.operators_used || [],
+            typed_plan: typed.typed_plan || null,
+            execution_certificate: typed.execution_certificate || null,
+            stage_latency_s: typed.stage_latency_s || {},
+            cache_grounding_failure: typed.cache_grounding_failure || null,
+            trace: typed.trace || null,
+        };
+        const code = document.createElement('code');
+        code.textContent = JSON.stringify(audit, null, 2);
+        pre.appendChild(code);
+        details.appendChild(pre);
+        return details;
+    }
+
     function appendConfirmBar(originalQuery) {
         const bar = document.createElement('div');
         bar.className = 'confirm-bar';
@@ -698,6 +779,7 @@
                 message: originalQuery,
                 model: modelSelect.value,
                 confirmed: true,
+                execution_mode: executionSelect.value,
             };
             const domain = datasetSelect.value;
             if (domain) payload.domain = domain;
@@ -743,6 +825,7 @@
             const payload = {
                 message: text,
                 model: modelSelect.value,
+                execution_mode: executionSelect.value,
             };
             const domain = datasetSelect.value;
             if (domain) payload.domain = domain;

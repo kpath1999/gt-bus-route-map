@@ -2144,6 +2144,7 @@ def run_flash_fusion_cache(
     dataset: str | None = None,
     cache_path: str | Path = DEFAULT_CACHE_PATH,
     semantic_cache_path: str | Path | None = None,
+    enable_semantic_matching: bool = True,
     expected_operator_contract_hash: str | None = None,
     trace: CacheGroundingTrace | None = None,
     **flash_fusion_kwargs: Any,
@@ -2177,13 +2178,15 @@ def run_flash_fusion_cache(
 
     # Prewarm the hybrid matcher runtime before the timed cache lookup so
     # that one-time embedding model load and dense index build are excluded
-    # from per-query cache_lookup latency.
-    prewarm_hybrid_cache_runtime(
-        df=df,
-        dataset=dataset,
-        cache_path=cache_path,
-        semantic_cache_path=semantic_cache_path,
-    )
+    # from per-query cache_lookup latency. Serverless callers can retain the
+    # exact-match cache without carrying the optional embedding dependency.
+    if enable_semantic_matching:
+        prewarm_hybrid_cache_runtime(
+            df=df,
+            dataset=dataset,
+            cache_path=cache_path,
+            semantic_cache_path=semantic_cache_path,
+        )
 
     try:
         lookup_started = time.perf_counter()
@@ -2193,6 +2196,8 @@ def run_flash_fusion_cache(
             _record(trace, lookup_status=lookup_status, entry=entry)
 
             if entry is None:
+                if not enable_semantic_matching:
+                    raise LookupError(lookup_status)
                 semantic_signature = _extract_semantic_signature(query, df)
                 admissibility_hint = (
                     "out_of_scope"
