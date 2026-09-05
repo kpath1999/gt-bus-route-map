@@ -35,7 +35,8 @@ pip install -r requirements.txt
 vercel dev
 ```
 
-Set either `OPENROUTER_API_KEY` or `GROQ_API_KEY` in `chat/.env.local`.
+Set `GROQ_API_KEY` in `chat/.env.local`. The chat application calls Groq
+directly, using GPT-OSS 120B for full planning and GPT-OSS 20B for grounding.
 
 ## Vercel deployment
 

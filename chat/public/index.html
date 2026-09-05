@@ -1,9 +1,1044 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Flash-Fusion | Sensor Analysis</title><style>
-:root{--ink:#17221f;--canvas:#e8e7df;--paper:#f7f6ef;--panel:#202b28;--panel2:#2c3833;--line:#c9ccc0;--line2:#43514a;--text:#17221f;--muted:#657169;--light:#e9eee7;--lime:#c7f36b;--orange:#f2ae51;--red:#d75a47;--teal:#5fc6b4;--mono:"SFMono-Regular",Consolas,monospace;--sans:"Avenir Next","Trebuchet MS",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font-family:var(--sans)}button,select,textarea,input{font:inherit}button{cursor:pointer}.top{min-height:66px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:10px 22px;background:var(--panel);color:var(--light);border-bottom:3px solid var(--lime)}.brand,.controls{display:flex;align-items:center;gap:10px}.mark{width:32px;height:32px;display:grid;place-items:center;background:var(--lime);color:var(--ink);font:800 20px var(--mono)}.name{font:800 18px var(--mono)}.name b{color:var(--lime)}.note{color:#aebbb1;font:11px var(--mono)}.control{font:10px var(--mono);color:#aebbb1;text-transform:uppercase}.select,.rec{height:34px;border:1px solid var(--line2);border-radius:3px;padding:0 8px;background:var(--panel2);color:var(--light);font-size:12px}.rec{width:64px}.online{display:flex;gap:6px;align-items:center;color:#bbcabf;font:10px var(--mono)}.dot{width:8px;height:8px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 3px #c7f36b22}.shell{min-height:calc(100vh - 66px);display:grid;grid-template-columns:276px minmax(0,1fr)}.rail{background:var(--paper);padding:18px 14px;border-right:1px solid var(--line)}.eyebrow{margin:0 0 9px;color:var(--muted);font:700 10px var(--mono);text-transform:uppercase}.rail h2{margin:0 0 15px;font-size:17px}.stages{display:grid;gap:2px}.stage{display:grid;grid-template-columns:24px 1fr;gap:10px;padding:10px 8px;border-left:2px solid var(--line)}.stage em{color:var(--muted);font:11px var(--mono);font-style:normal}.stage b{display:block;font-size:12px}.stage span{display:block;margin-top:3px;color:var(--muted);font-size:11px;line-height:1.35}.stage.active{border-color:var(--lime);background:#edf0dc}.stage.done{border-color:var(--teal)}.stage.cache{border-color:var(--orange)}.divide{height:1px;background:var(--line);margin:19px 2px}.facts{display:grid;gap:8px}.fact{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font:11px var(--mono)}.fact b{color:var(--text);text-align:right}.work{min-width:0;padding:22px}.intro{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:17px}h1{margin:0;font-size:clamp(26px,4vw,42px);line-height:.98}h1 em{color:#5f766d;font-style:normal}.intro p{max-width:320px;margin:0;color:var(--muted);font:12px/1.45 var(--mono)}.methods{display:flex;flex-wrap:wrap;border:1px solid var(--line);background:var(--paper)}.method{flex:1 1 180px;min-height:68px;padding:11px 13px;border:0;border-right:1px solid var(--line);background:transparent;text-align:left;color:var(--muted)}.method b{display:block;margin-bottom:4px;color:var(--text);font-size:12px}.method span{display:block;font:10px/1.35 var(--mono)}.method.on{background:var(--ink);color:#cbd7cd}.method.on b{color:var(--lime)}.method.cache-on b{color:var(--orange)}.examples{margin:18px 0}.exhead{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}.exhead h2{margin:0;font-size:14px}.exhead span{color:var(--muted);font:10px var(--mono)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.example{min-height:92px;padding:11px;border:1px solid var(--line);background:var(--paper);text-align:left;color:var(--text)}.example:hover{border-color:var(--ink);background:#fffef9}.extop{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px;color:var(--muted);font:10px var(--mono)}.tag{padding:2px 4px;border:1px solid currentColor;font-size:9px;text-transform:uppercase}.direct{color:#34786d}.intermediate{color:#a06010}.out{color:#a53e34}.predictive{color:#566ab1}.example p{margin:0;font-size:12px;line-height:1.35}.query{border:1px solid var(--ink);background:var(--paper)}.qmeta{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--ink);color:var(--light);font:10px var(--mono)}.qmeta b{color:var(--lime)}.qrow{display:flex;gap:10px;padding:12px}textarea{flex:1;min-width:0;min-height:76px;border:1px solid var(--line);border-radius:2px;resize:vertical;padding:11px;background:#fffef9;color:var(--text);font-size:14px;line-height:1.42;outline-color:var(--lime)}.run{min-width:110px;border:0;background:var(--lime);color:var(--ink);padding:12px;font:800 12px var(--mono)}.run:disabled{opacity:.5;cursor:wait}.outcome{margin-top:18px;display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:12px}.answerbox,.audit{border:1px solid var(--line);background:var(--paper)}.head{display:flex;justify-content:space-between;gap:10px;padding:9px 11px;border-bottom:1px solid var(--line)}.head h2{margin:0;font-size:12px}.head span{color:var(--muted);font:10px var(--mono)}.answer{min-height:180px;padding:15px;white-space:pre-wrap;font-size:14px;line-height:1.55}.empty{color:var(--muted);font:12px var(--mono)}.prov{display:none;margin:0 15px 14px;padding:9px;border-left:3px solid var(--teal);background:#e4eee6;color:#31564c;font:10px/1.45 var(--mono)}.prov.show{display:block}.audit{background:var(--panel);color:var(--light);border-color:var(--panel)}.audit .head{border-color:var(--line2)}.audit .head h2{color:var(--lime)}.audit .head span{color:#aebbb1}.auditbody{padding:11px}.waiting{color:#aebbb1;font:11px/1.45 var(--mono)}.step{padding:9px 0;border-bottom:1px solid var(--line2)}.step:last-child{border:0}.step small{display:block;margin-bottom:4px;color:#9baaa0;font:9px var(--mono);text-transform:uppercase}.step b{display:block;font-size:11px}.step p{margin:4px 0 0;color:#b8c5ba;font:10px/1.4 var(--mono);word-break:break-word}.step.ok b{color:var(--lime)}.step.cache b{color:var(--orange)}.step.fail b{color:#ff9381}details{margin-top:11px;border-top:1px solid var(--line2)}summary{padding-top:9px;color:#b8c5ba;cursor:pointer;font:10px var(--mono)}pre{max-height:300px;overflow:auto;margin:8px 0 0;padding:9px;background:#131b18;color:#d7e2d8;font:10px/1.45 var(--mono);white-space:pre-wrap}@media(max-width:880px){.shell{grid-template-columns:1fr}.rail{border-right:0;border-bottom:1px solid var(--line)}.stages{grid-template-columns:repeat(5,1fr);overflow-x:auto}.stage{min-width:150px}.divide,.facts{display:none}.outcome{grid-template-columns:1fr}}@media(max-width:610px){.top{align-items:flex-start;padding:12px}.note,.online{display:none}.controls{gap:5px}.select{max-width:130px}.work{padding:15px}.intro{display:block}.intro p{margin-top:10px}.grid{grid-template-columns:1fr}.qrow{flex-direction:column}.run{min-height:42px}.method{border-bottom:1px solid var(--line)}}
-@media(max-width:880px){.shell{grid-template-columns:minmax(0,1fr)}.rail,.stages{min-width:0}}@media(max-width:610px){.top{align-items:flex-start;flex-wrap:wrap;padding:12px}.brand{width:100%}.note,.online,.control{display:none}.controls{width:100%;justify-content:space-between;gap:5px}.select{flex:1;max-width:calc(50% - 3px)}.rec{width:55px}}</style></head><body>
-<header class="top"><div class="brand"><div class="mark">F</div><div class="name">FLASH<b>-FUSION</b></div><div class="note">Typed plans for domain-specific sensor streams</div></div><div class="controls"><span class="control">dataset</span><select class="select" id="dataset"><option value="bus">Bus telemetry</option><option value="imu">WISDM IMU</option><option value="ecg">MIT-BIH ECG</option></select><input class="rec" id="record" value="100" title="ECG record" hidden><span class="control">model</span><select class="select" id="model"><option value="groq:groq/compound-mini">Groq Compound Mini</option><option value="groq:groq/compound">Groq Compound</option><option value="openrouter:meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option></select><div class="online"><i class="dot" id="dot"></i><span id="health">checking</span></div></div></header>
-<main class="shell"><aside class="rail"><p class="eyebrow">Execution map</p><h2>Inspectable reasoning</h2><div class="stages"><div class="stage active" data-s="route"><em>01</em><div><b>Operator routing</b><span>Eliminate incompatible DSL buckets.</span></div></div><div class="stage" data-s="plan"><em>02</em><div><b>Guardrail + plan</b><span>One constrained planning call.</span></div></div><div class="stage" data-s="validate"><em>03</em><div><b>Validation gates</b><span>Structural and live-schema checks.</span></div></div><div class="stage" data-s="execute"><em>04</em><div><b>Typed execution</b><span>Deterministic pandas operators.</span></div></div><div class="stage cache" data-s="cache"><em>05</em><div><b>Cache grounding</b><span>Reuse a skeleton, rebind live values.</span></div></div></div><div class="divide"></div><p class="eyebrow">Loaded data</p><div class="facts"><div class="fact"><span>rows</span><b id="rows">not loaded</b></div><div class="fact"><span>source</span><b id="source">awaiting query</b></div><div class="fact"><span>scope</span><b id="scope">full source preferred</b></div></div></aside><section class="work"><div class="intro"><div><p class="eyebrow">IoT analysis workbench</p><h1>Ask the data.<br><em>Inspect the decision.</em></h1></div><p>Compare a full typed plan with a cache-grounded skeleton over the same sensor stream. Every validation decision is visible.</p></div><div class="methods"><button class="method on" data-m="typed_operator"><b>01 / Typed planner</b><span>Route query -> one structured plan -> validate -> execute.</span></button><button class="method" data-m="typed_operator_cache"><b>02 / Skeleton cache</b><span>Exact query match -> parameter re-grounding -> validate -> execute.</span></button><button class="method" data-m="agent"><b>03 / Agent baseline</b><span>Original B4 grounded agent pipeline for comparison.</span></button></div><section class="examples"><div class="exhead"><h2 id="extitle">Bus benchmark examples</h2><span>from the benchmark query suite</span></div><div class="grid" id="examples"></div></section><section class="query"><div class="qmeta"><span>INPUT QUERY</span><span>method: <b id="methodname">typed planner</b></span></div><div class="qrow"><textarea id="query" aria-label="Sensor analysis query"></textarea><button class="run" id="run">RUN ANALYSIS</button></div></section><section class="outcome"><article class="answerbox"><div class="head"><h2>Result</h2><span id="result">ready</span></div><div class="answer empty" id="answer">Choose a benchmark example or write a sensor-stream query. The execution map will populate with the plan's observable decisions.</div><div class="prov" id="prov"></div></article><aside class="audit"><div class="head"><h2>Planner audit</h2><span id="state">waiting</span></div><div class="auditbody" id="audit"><div class="waiting">Typed runs reveal the candidate operator vocabulary, validated plan, and deterministic execution certificate here.</div></div></aside></section></section></main>
-<script>
-const E={bus:[['direct','Q01','What is the maximum accel_variance observed in this dataset?'],['intermediate','Q05','Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?'],['out','Q09','How does passenger occupancy correlate with road roughness during this trip?'],['predictive','Q13','Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.']],imu:[['direct','Q02','How many users have the activity label walking?'],['intermediate','Q07','What is the median acceleration magnitude for user 20 with activity label Upstairs?'],['out','Q10','Based on the acceleration data, predict the exact geographic location where user 10 was jogging.'],['predictive','Q14','Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.']],ecg:[['direct','Q03','For record_id 106, how many samples have MLII > 0?'],['intermediate','Q07','For record_id 101, which 10-second interval contains the highest number of annotated beats?'],['out','Q10','Is there a statistical correlation between patient BMI and their maximum MLII amplitude?'],['predictive','Q13','Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.']]},L={bus:'Bus telemetry',imu:'WISDM IMU',ecg:'MIT-BIH ECG'},D=document.getElementById('dataset'),R=document.getElementById('record'),Q=document.getElementById('query'),Run=document.getElementById('run'),M=document.getElementById('model');let mode='typed_operator';const esc=t=>t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));function examples(){let d=D.value;document.getElementById('extitle').textContent=L[d]+' benchmark examples';document.getElementById('examples').innerHTML=E[d].map(([k,id,t])=>`<button class="example" data-q="${esc(t).replace(/"/g,'&quot;')}"><div class="extop"><span>${id}</span><span class="tag ${k}">${k==='out'?'out of scope':k}</span></div><p>${esc(t)}</p></button>`).join('');document.querySelectorAll('.example').forEach(b=>b.onclick=()=>{Q.value=b.dataset.q;Q.focus()});Q.value=E[d][0][2]}function stages(t){document.querySelectorAll('.stage').forEach(x=>x.classList.remove('active','done'));if(!t)return document.querySelector('[data-s=route]').classList.add('active');['route','plan','validate'].forEach(x=>document.querySelector(`[data-s=${x}]`).classList.add('done'));let ok=['typed_operator','typed_operator_cache'].includes(t.execution_path);document.querySelector(`[data-s=${ok?'execute':'validate'}]`).classList.add(ok?'done':'active');if(t.execution_path==='typed_operator_cache'||String(t.plan_source||'').includes('cache'))document.querySelector('[data-s=cache]').classList.add('done')}function fact(d){if(!d)return;document.getElementById('rows').textContent=Number(d.rows).toLocaleString();document.getElementById('source').textContent=d.source;document.getElementById('scope').textContent=d.is_full_source?'attached full source':'deployment copy';let p=document.getElementById('prov');p.classList.add('show');p.textContent=`${Number(d.rows).toLocaleString()} rows | ${d.columns.length} columns | ${d.is_full_source?'attached full dataset':'bundled deployment dataset'} | ${d.source}`}function row(k,l,a,b=''){return `<div class="step ${k}"><small>${l}</small><b>${esc(a)}</b>${b?`<p>${esc(b)}</p>`:''}</div>`}function audit(t){let a=document.getElementById('audit');if(!t){a.innerHTML='<div class="waiting">Agent baseline selected. Switch to a typed mode to inspect routing, planning, validation, and execution.</div>';return}let r=t.route||{},p=t.typed_plan||{},cache=t.execution_path==='typed_operator_cache'||String(t.plan_source||'').includes('cache'),html=row('ok','01 / operator routing',`${(r.candidate_ops||[]).length} candidate operators`,(r.candidate_ops||[]).join(', ')||'Full vocabulary retained.')+row(t.validation_failure?'fail':'ok','02 / typed guardrail and plan',p.steps?`${p.steps.length} validated plan step${p.steps.length===1?'':'s'}`:t.rejected?'Query rejected by guardrail':'Plan unavailable',t.rejection_reason||t.validation_failure||t.plan_source||'')+row(t.validation_failure?'fail':'ok','03 / validation gates',t.validation_failure?`Stopped at ${t.validation_failure}`:'Structural and schema validation passed',t.execution_path||'')+row(['typed_operator','typed_operator_cache'].includes(t.execution_path)?'ok':'fail','04 / deterministic execution',(t.operators_used||[]).length?t.operators_used.join(' -> '):'No typed operators executed',t.trace||'')+row(cache?'cache':'','05 / cache grounding',cache?'Operator skeleton reused; values re-grounded':'Full planner selected',t.cache_grounding_failure?.deterministic_fallback_reason||'');let data={route:r,typed_plan:p,execution_certificate:t.execution_certificate||{},stage_latency_s:t.stage_latency_s||{},cache_grounding_failure:t.cache_grounding_failure||{}};a.innerHTML=html+`<details><summary>View machine-readable evidence</summary><pre>${esc(JSON.stringify(data,null,2))}</pre></details>`;document.getElementById('state').textContent=t.execution_path||'completed'}async function go(){let message=Q.value.trim();if(!message)return;Run.disabled=true;Run.textContent='RUNNING...';document.getElementById('result').textContent='running';let ans=document.getElementById('answer');ans.className='answer empty';ans.textContent=mode==='typed_operator_cache'?'Checking exact operator skeleton cache, then grounding values against the live schema...':'Routing operator vocabulary and requesting a constrained typed plan...';try{let body={message,model:M.value,domain:D.value,execution_mode:mode};if(D.value==='ecg'&&R.value.trim())body.ecg_record=R.value.trim();let res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),data=await res.json();if(!res.ok)throw Error(data.error||res.statusText);ans.className='answer';ans.textContent=data.reply||'No answer returned.';document.getElementById('result').textContent=data.typed?.execution_path||(data.grounded?'grounded':'completed');fact(data.dataset);audit(data.typed);stages(data.typed)}catch(e){ans.className='answer';ans.textContent='Analysis error: '+e.message;document.getElementById('result').textContent='error';audit();stages()}finally{Run.disabled=false;Run.textContent='RUN ANALYSIS'}}document.querySelectorAll('.method').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('.method').forEach(x=>x.classList.remove('on','cache-on'));b.classList.add('on');if(mode==='typed_operator_cache')b.classList.add('cache-on');document.getElementById('methodname').textContent=b.querySelector('b').textContent.replace(/^\d+\s*\/\s*/,'').toLowerCase();audit();stages()});D.onchange=()=>{R.hidden=D.value!=='ecg';examples()};Run.onclick=go;Q.onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))go()};async function health(){try{let r=await fetch('/api/health');document.getElementById('dot').style.background=r.ok?'var(--lime)':'var(--red)';document.getElementById('health').textContent=r.ok?'online':'offline'}catch{document.getElementById('dot').style.background='var(--red)';document.getElementById('health').textContent='offline'}}examples();health();
-</script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Flash-Fusion | Sensor Analysis</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --ink: #17221f;
+        --canvas: #e8e7df;
+        --paper: #f7f6ef;
+        --panel: #202b28;
+        --panel2: #2c3833;
+        --line: #c9ccc0;
+        --line2: #43514a;
+        --text: #17221f;
+        --muted: #657169;
+        --light: #e9eee7;
+        --lime: #c7f36b;
+        --orange: #f2ae51;
+        --red: #d75a47;
+        --teal: #5fc6b4;
+        --mono: "SFMono-Regular", Consolas, monospace;
+        --sans: "Avenir Next", "Trebuchet MS", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--text);
+        font-family: var(--sans);
+      }
+      button,
+      select,
+      textarea,
+      input {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      .top {
+        min-height: 66px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 10px 22px;
+        background: var(--panel);
+        color: var(--light);
+        border-bottom: 3px solid var(--lime);
+      }
+      .brand,
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mark {
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        background: var(--lime);
+        color: var(--ink);
+        font: 800 20px var(--mono);
+      }
+      .name {
+        font: 800 18px var(--mono);
+      }
+      .name b {
+        color: var(--lime);
+      }
+      .note {
+        color: #aebbb1;
+        font: 11px var(--mono);
+      }
+      .control {
+        font: 10px var(--mono);
+        color: #aebbb1;
+        text-transform: uppercase;
+      }
+      .select,
+      .rec {
+        height: 34px;
+        border: 1px solid var(--line2);
+        border-radius: 3px;
+        padding: 0 8px;
+        background: var(--panel2);
+        color: var(--light);
+        font-size: 12px;
+      }
+      .rec {
+        width: 64px;
+      }
+      .online {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        color: #bbcabf;
+        font: 10px var(--mono);
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--lime);
+        box-shadow: 0 0 0 3px #c7f36b22;
+      }
+      .shell {
+        min-height: calc(100vh - 66px);
+        display: grid;
+        grid-template-columns: 276px minmax(0, 1fr);
+      }
+      .rail {
+        background: var(--paper);
+        padding: 18px 14px;
+        border-right: 1px solid var(--line);
+      }
+      .eyebrow {
+        margin: 0 0 9px;
+        color: var(--muted);
+        font: 700 10px var(--mono);
+        text-transform: uppercase;
+      }
+      .rail h2 {
+        margin: 0 0 15px;
+        font-size: 17px;
+      }
+      .stages {
+        display: grid;
+        gap: 2px;
+      }
+      .stage {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 10px;
+        padding: 10px 8px;
+        border-left: 2px solid var(--line);
+      }
+      .stage em {
+        color: var(--muted);
+        font: 11px var(--mono);
+        font-style: normal;
+      }
+      .stage b {
+        display: block;
+        font-size: 12px;
+      }
+      .stage span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.35;
+      }
+      .stage.active {
+        border-color: var(--lime);
+        background: #edf0dc;
+      }
+      .stage.done {
+        border-color: var(--teal);
+      }
+      .stage.cache {
+        border-color: var(--orange);
+      }
+      .divide {
+        height: 1px;
+        background: var(--line);
+        margin: 19px 2px;
+      }
+      .facts {
+        display: grid;
+        gap: 8px;
+      }
+      .fact {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--muted);
+        font: 11px var(--mono);
+      }
+      .fact b {
+        color: var(--text);
+        text-align: right;
+      }
+      .work {
+        min-width: 0;
+        padding: 22px;
+      }
+      .intro {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 20px;
+        margin-bottom: 17px;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 4vw, 42px);
+        line-height: 0.98;
+      }
+      h1 em {
+        color: #5f766d;
+        font-style: normal;
+      }
+      .intro p {
+        max-width: 320px;
+        margin: 0;
+        color: var(--muted);
+        font: 12px/1.45 var(--mono);
+      }
+      .methods {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .method {
+        flex: 1 1 180px;
+        min-height: 68px;
+        padding: 11px 13px;
+        border: 0;
+        border-right: 1px solid var(--line);
+        background: transparent;
+        text-align: left;
+        color: var(--muted);
+      }
+      .method b {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text);
+        font-size: 12px;
+      }
+      .method span {
+        display: block;
+        font: 10px/1.35 var(--mono);
+      }
+      .method.on {
+        background: var(--ink);
+        color: #cbd7cd;
+      }
+      .method.on b {
+        color: var(--lime);
+      }
+      .method.cache-on b {
+        color: var(--orange);
+      }
+      .examples {
+        margin: 18px 0;
+      }
+      .exhead {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+      .exhead h2 {
+        margin: 0;
+        font-size: 14px;
+      }
+      .exhead span {
+        color: var(--muted);
+        font: 10px var(--mono);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .example {
+        min-height: 92px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        background: var(--paper);
+        text-align: left;
+        color: var(--text);
+      }
+      .example:hover {
+        border-color: var(--ink);
+        background: #fffef9;
+      }
+      .extop {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font: 10px var(--mono);
+      }
+      .tag {
+        padding: 2px 4px;
+        border: 1px solid currentColor;
+        font-size: 9px;
+        text-transform: uppercase;
+      }
+      .direct {
+        color: #34786d;
+      }
+      .intermediate {
+        color: #a06010;
+      }
+      .out {
+        color: #a53e34;
+      }
+      .predictive {
+        color: #566ab1;
+      }
+      .example p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .query {
+        border: 1px solid var(--ink);
+        background: var(--paper);
+      }
+      .qmeta {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 12px;
+        background: var(--ink);
+        color: var(--light);
+        font: 10px var(--mono);
+      }
+      .qmeta b {
+        color: var(--lime);
+      }
+      .qrow {
+        display: flex;
+        gap: 10px;
+        padding: 12px;
+      }
+      textarea {
+        flex: 1;
+        min-width: 0;
+        min-height: 76px;
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        resize: vertical;
+        padding: 11px;
+        background: #fffef9;
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.42;
+        outline-color: var(--lime);
+      }
+      .run {
+        min-width: 110px;
+        border: 0;
+        background: var(--lime);
+        color: var(--ink);
+        padding: 12px;
+        font: 800 12px var(--mono);
+      }
+      .run:disabled {
+        opacity: 0.5;
+        cursor: wait;
+      }
+      .outcome {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 310px;
+        gap: 12px;
+      }
+      .answerbox,
+      .audit {
+        border: 1px solid var(--line);
+        background: var(--paper);
+      }
+      .head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 11px;
+        border-bottom: 1px solid var(--line);
+      }
+      .head h2 {
+        margin: 0;
+        font-size: 12px;
+      }
+      .head span {
+        color: var(--muted);
+        font: 10px var(--mono);
+      }
+      .answer {
+        min-height: 180px;
+        padding: 15px;
+        white-space: pre-wrap;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      .empty {
+        color: var(--muted);
+        font: 12px var(--mono);
+      }
+      .prov {
+        display: none;
+        margin: 0 15px 14px;
+        padding: 9px;
+        border-left: 3px solid var(--teal);
+        background: #e4eee6;
+        color: #31564c;
+        font: 10px/1.45 var(--mono);
+      }
+      .prov.show {
+        display: block;
+      }
+      .audit {
+        background: var(--panel);
+        color: var(--light);
+        border-color: var(--panel);
+      }
+      .audit .head {
+        border-color: var(--line2);
+      }
+      .audit .head h2 {
+        color: var(--lime);
+      }
+      .audit .head span {
+        color: #aebbb1;
+      }
+      .auditbody {
+        padding: 11px;
+      }
+      .waiting {
+        color: #aebbb1;
+        font: 11px/1.45 var(--mono);
+      }
+      .step {
+        padding: 9px 0;
+        border-bottom: 1px solid var(--line2);
+      }
+      .step:last-child {
+        border: 0;
+      }
+      .step small {
+        display: block;
+        margin-bottom: 4px;
+        color: #9baaa0;
+        font: 9px var(--mono);
+        text-transform: uppercase;
+      }
+      .step b {
+        display: block;
+        font-size: 11px;
+      }
+      .step p {
+        margin: 4px 0 0;
+        color: #b8c5ba;
+        font: 10px/1.4 var(--mono);
+        word-break: break-word;
+      }
+      .step.ok b {
+        color: var(--lime);
+      }
+      .step.cache b {
+        color: var(--orange);
+      }
+      .step.fail b {
+        color: #ff9381;
+      }
+      details {
+        margin-top: 11px;
+        border-top: 1px solid var(--line2);
+      }
+      summary {
+        padding-top: 9px;
+        color: #b8c5ba;
+        cursor: pointer;
+        font: 10px var(--mono);
+      }
+      pre {
+        max-height: 300px;
+        overflow: auto;
+        margin: 8px 0 0;
+        padding: 9px;
+        background: #131b18;
+        color: #d7e2d8;
+        font: 10px/1.45 var(--mono);
+        white-space: pre-wrap;
+      }
+      @media (max-width: 880px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+        .rail {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .stages {
+          grid-template-columns: repeat(5, 1fr);
+          overflow-x: auto;
+        }
+        .stage {
+          min-width: 150px;
+        }
+        .divide,
+        .facts {
+          display: none;
+        }
+        .outcome {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 610px) {
+        .top {
+          align-items: flex-start;
+          padding: 12px;
+        }
+        .note,
+        .online {
+          display: none;
+        }
+        .controls {
+          gap: 5px;
+        }
+        .select {
+          max-width: 130px;
+        }
+        .work {
+          padding: 15px;
+        }
+        .intro {
+          display: block;
+        }
+        .intro p {
+          margin-top: 10px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .qrow {
+          flex-direction: column;
+        }
+        .run {
+          min-height: 42px;
+        }
+        .method {
+          border-bottom: 1px solid var(--line);
+        }
+      }
+      @media (max-width: 880px) {
+        .shell {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .rail,
+        .stages {
+          min-width: 0;
+        }
+      }
+      @media (max-width: 610px) {
+        .top {
+          align-items: flex-start;
+          flex-wrap: wrap;
+          padding: 12px;
+        }
+        .brand {
+          width: 100%;
+        }
+        .note,
+        .online,
+        .control {
+          display: none;
+        }
+        .controls {
+          width: 100%;
+          justify-content: space-between;
+          gap: 5px;
+        }
+        .select {
+          flex: 1;
+          max-width: calc(50% - 3px);
+        }
+        .rec {
+          width: 55px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand">
+        <div class="mark">F</div>
+        <div class="name">FLASH<b>-FUSION</b></div>
+        <div class="note">Typed plans for domain-specific sensor streams</div>
+      </div>
+      <div class="controls">
+        <span class="control">dataset</span
+        ><select class="select" id="dataset">
+          <option value="bus">Bus telemetry</option>
+          <option value="imu">WISDM IMU</option>
+          <option value="ecg">MIT-BIH ECG</option></select
+        ><input
+          class="rec"
+          id="record"
+          value="100"
+          title="ECG record"
+          hidden
+        /><span class="control">model</span
+        ><select class="select" id="model">
+          <option value="groq:openai/gpt-oss-120b">GPT-OSS 120B</option>
+          <option value="groq:openai/gpt-oss-20b">GPT-OSS 20B</option>
+        </select>
+        <div class="online">
+          <i class="dot" id="dot"></i><span id="health">checking</span>
+        </div>
+      </div>
+    </header>
+    <main class="shell">
+      <aside class="rail">
+        <p class="eyebrow">Execution map</p>
+        <h2>Inspectable reasoning</h2>
+        <div class="stages">
+          <div class="stage active" data-s="route">
+            <em>01</em>
+            <div>
+              <b>Operator routing</b
+              ><span>Eliminate incompatible DSL buckets.</span>
+            </div>
+          </div>
+          <div class="stage" data-s="plan">
+            <em>02</em>
+            <div>
+              <b>Guardrail + plan</b><span>One constrained planning call.</span>
+            </div>
+          </div>
+          <div class="stage" data-s="validate">
+            <em>03</em>
+            <div>
+              <b>Validation gates</b
+              ><span>Structural and live-schema checks.</span>
+            </div>
+          </div>
+          <div class="stage" data-s="execute">
+            <em>04</em>
+            <div>
+              <b>Typed execution</b><span>Deterministic pandas operators.</span>
+            </div>
+          </div>
+          <div class="stage cache" data-s="cache">
+            <em>05</em>
+            <div>
+              <b>Cache grounding</b
+              ><span>Reuse a skeleton, rebind live values.</span>
+            </div>
+          </div>
+        </div>
+        <div class="divide"></div>
+        <p class="eyebrow">Loaded data</p>
+        <div class="facts">
+          <div class="fact"><span>rows</span><b id="rows">not loaded</b></div>
+          <div class="fact">
+            <span>source</span><b id="source">awaiting query</b>
+          </div>
+          <div class="fact">
+            <span>scope</span><b id="scope">full source preferred</b>
+          </div>
+        </div>
+      </aside>
+      <section class="work">
+        <div class="intro">
+          <div>
+            <p class="eyebrow">IoT analysis workbench</p>
+            <h1>Ask the data.<br /><em>Inspect the decision.</em></h1>
+          </div>
+          <p>
+            Compare a full typed plan with a cache-grounded skeleton over the
+            same sensor stream. Every validation decision is visible.
+          </p>
+        </div>
+        <div class="methods">
+          <button class="method on" data-m="typed_operator">
+            <b>01 / Typed planner</b
+            ><span
+              >Route query -> one structured plan -> validate -> execute.</span
+            ></button
+          ><button class="method" data-m="typed_operator_cache">
+            <b>02 / Skeleton cache</b
+            ><span
+              >Exact query match -> parameter re-grounding -> validate ->
+              execute.</span
+            ></button
+          ><button class="method" data-m="agent">
+            <b>03 / Agent baseline</b
+            ><span>Original B4 grounded agent pipeline for comparison.</span>
+          </button>
+        </div>
+        <section class="examples">
+          <div class="exhead">
+            <h2 id="extitle">Bus benchmark examples</h2>
+            <span>from the benchmark query suite</span>
+          </div>
+          <div class="grid" id="examples"></div>
+        </section>
+        <section class="query">
+          <div class="qmeta">
+            <span>INPUT QUERY</span
+            ><span>method: <b id="methodname">typed planner</b></span>
+          </div>
+          <div class="qrow">
+            <textarea id="query" aria-label="Sensor analysis query"></textarea
+            ><button class="run" id="run">RUN ANALYSIS</button>
+          </div>
+        </section>
+        <section class="outcome">
+          <article class="answerbox">
+            <div class="head">
+              <h2>Result</h2>
+              <span id="result">ready</span>
+            </div>
+            <div class="answer empty" id="answer">
+              Choose a benchmark example or write a sensor-stream query. The
+              execution map will populate with the plan's observable decisions.
+            </div>
+            <div class="prov" id="prov"></div>
+          </article>
+          <aside class="audit">
+            <div class="head">
+              <h2>Planner audit</h2>
+              <span id="state">waiting</span>
+            </div>
+            <div class="auditbody" id="audit">
+              <div class="waiting">
+                Typed runs reveal the candidate operator vocabulary, validated
+                plan, and deterministic execution certificate here.
+              </div>
+            </div>
+          </aside>
+        </section>
+      </section>
+    </main>
+    <script>
+      const E = {
+          bus: [
+            [
+              "direct",
+              "Q01",
+              "What is the maximum accel_variance observed in this dataset?",
+            ],
+            [
+              "intermediate",
+              "Q05",
+              "Is the northern half of the route (latitude above median) rougher than the southern half, based on average acceleration variance?",
+            ],
+            [
+              "out",
+              "Q09",
+              "How does passenger occupancy correlate with road roughness during this trip?",
+            ],
+            [
+              "predictive",
+              "Q13",
+              "Sort all bus rows by timestamp in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the acceleration features. Predict the label in the behavior column for the first row in the holdout set.",
+            ],
+          ],
+          imu: [
+            [
+              "direct",
+              "Q02",
+              "How many users have the activity label walking?",
+            ],
+            [
+              "intermediate",
+              "Q07",
+              "What is the median acceleration magnitude for user 20 with activity label Upstairs?",
+            ],
+            [
+              "out",
+              "Q10",
+              "Based on the acceleration data, predict the exact geographic location where user 10 was jogging.",
+            ],
+            [
+              "predictive",
+              "Q14",
+              "Sort all WISDM rows by timestamp in ascending order, using subject_id as the tie-breaker. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a random forest model using the features x, y and z. Predict the activity label for the first row in the holdout set.",
+            ],
+          ],
+          ecg: [
+            [
+              "direct",
+              "Q03",
+              "For record_id 106, how many samples have MLII > 0?",
+            ],
+            [
+              "intermediate",
+              "Q07",
+              "For record_id 101, which 10-second interval contains the highest number of annotated beats?",
+            ],
+            [
+              "out",
+              "Q10",
+              "Is there a statistical correlation between patient BMI and their maximum MLII amplitude?",
+            ],
+            [
+              "predictive",
+              "Q13",
+              "Filter to record_id 101 and sort its rows by time_s in ascending order. Use the first 80% of rows for training and the final 20% as the chronological holdout. Train a logistic regression model using the features MLII and V1. Predict whether an annotation is present for the first row in the holdout set.",
+            ],
+          ],
+        },
+        L = { bus: "Bus telemetry", imu: "WISDM IMU", ecg: "MIT-BIH ECG" },
+        D = document.getElementById("dataset"),
+        R = document.getElementById("record"),
+        Q = document.getElementById("query"),
+        Run = document.getElementById("run"),
+        M = document.getElementById("model");
+      let mode = "typed_operator";
+      const esc = (t) =>
+        t.replace(
+          /[&<>]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c],
+        );
+      function examples() {
+        let d = D.value;
+        document.getElementById("extitle").textContent =
+          L[d] + " benchmark examples";
+        document.getElementById("examples").innerHTML = E[d]
+          .map(
+            ([k, id, t]) =>
+              `<button class="example" data-q="${esc(t).replace(/"/g, "&quot;")}"><div class="extop"><span>${id}</span><span class="tag ${k}">${k === "out" ? "out of scope" : k}</span></div><p>${esc(t)}</p></button>`,
+          )
+          .join("");
+        document.querySelectorAll(".example").forEach(
+          (b) =>
+            (b.onclick = () => {
+              Q.value = b.dataset.q;
+              Q.focus();
+            }),
+        );
+        Q.value = E[d][0][2];
+      }
+      function stages(t) {
+        document
+          .querySelectorAll(".stage")
+          .forEach((x) => x.classList.remove("active", "done"));
+        if (!t)
+          return document
+            .querySelector("[data-s=route]")
+            .classList.add("active");
+        ["route", "plan", "validate"].forEach((x) =>
+          document.querySelector(`[data-s=${x}]`).classList.add("done"),
+        );
+        let ok = ["typed_operator", "typed_operator_cache"].includes(
+          t.execution_path,
+        );
+        document
+          .querySelector(`[data-s=${ok ? "execute" : "validate"}]`)
+          .classList.add(ok ? "done" : "active");
+        if (
+          t.execution_path === "typed_operator_cache" ||
+          String(t.plan_source || "").includes("cache")
+        )
+          document.querySelector("[data-s=cache]").classList.add("done");
+      }
+      function fact(d) {
+        if (!d) return;
+        document.getElementById("rows").textContent = Number(
+          d.rows,
+        ).toLocaleString();
+        document.getElementById("source").textContent = d.source;
+        document.getElementById("scope").textContent = d.is_full_source
+          ? "attached full source"
+          : "deployment copy";
+        let p = document.getElementById("prov");
+        p.classList.add("show");
+        p.textContent = `${Number(d.rows).toLocaleString()} rows | ${d.columns.length} columns | ${d.is_full_source ? "attached full dataset" : "bundled deployment dataset"} | ${d.source}`;
+      }
+      function row(k, l, a, b = "") {
+        return `<div class="step ${k}"><small>${l}</small><b>${esc(a)}</b>${b ? `<p>${esc(b)}</p>` : ""}</div>`;
+      }
+      function audit(t) {
+        let a = document.getElementById("audit");
+        if (!t) {
+          a.innerHTML =
+            '<div class="waiting">Agent baseline selected. Switch to a typed mode to inspect routing, planning, validation, and execution.</div>';
+          return;
+        }
+        let r = t.route || {},
+          p = t.typed_plan || {},
+          cache =
+            t.execution_path === "typed_operator_cache" ||
+            String(t.plan_source || "").includes("cache"),
+          html =
+            row(
+              "ok",
+              "01 / operator routing",
+              `${(r.candidate_ops || []).length} candidate operators`,
+              (r.candidate_ops || []).join(", ") || "Full vocabulary retained.",
+            ) +
+            row(
+              t.validation_failure ? "fail" : "ok",
+              "02 / typed guardrail and plan",
+              p.steps
+                ? `${p.steps.length} validated plan step${p.steps.length === 1 ? "" : "s"}`
+                : t.rejected
+                  ? "Query rejected by guardrail"
+                  : "Plan unavailable",
+              t.rejection_reason || t.validation_failure || t.plan_source || "",
+            ) +
+            row(
+              t.validation_failure ? "fail" : "ok",
+              "03 / validation gates",
+              t.validation_failure
+                ? `Stopped at ${t.validation_failure}`
+                : "Structural and schema validation passed",
+              t.execution_path || "",
+            ) +
+            row(
+              ["typed_operator", "typed_operator_cache"].includes(
+                t.execution_path,
+              )
+                ? "ok"
+                : "fail",
+              "04 / deterministic execution",
+              (t.operators_used || []).length
+                ? t.operators_used.join(" -> ")
+                : "No typed operators executed",
+              t.trace || "",
+            ) +
+            row(
+              cache ? "cache" : "",
+              "05 / cache grounding",
+              cache
+                ? "Operator skeleton reused; values re-grounded"
+                : "Full planner selected",
+              t.cache_grounding_failure?.deterministic_fallback_reason || "",
+            );
+        let data = {
+          route: r,
+          typed_plan: p,
+          execution_certificate: t.execution_certificate || {},
+          stage_latency_s: t.stage_latency_s || {},
+          cache_grounding_failure: t.cache_grounding_failure || {},
+        };
+        a.innerHTML =
+          html +
+          `<details><summary>View machine-readable evidence</summary><pre>${esc(JSON.stringify(data, null, 2))}</pre></details>`;
+        document.getElementById("state").textContent =
+          t.execution_path || "completed";
+      }
+      async function go() {
+        let message = Q.value.trim();
+        if (!message) return;
+        Run.disabled = true;
+        Run.textContent = "RUNNING...";
+        document.getElementById("result").textContent = "running";
+        let ans = document.getElementById("answer");
+        ans.className = "answer empty";
+        ans.textContent =
+          mode === "typed_operator_cache"
+            ? "Checking exact operator skeleton cache, then grounding values against the live schema..."
+            : "Routing operator vocabulary and requesting a constrained typed plan...";
+        try {
+          let body = {
+            message,
+            model: M.value,
+            domain: D.value,
+            execution_mode: mode,
+          };
+          if (D.value === "ecg" && R.value.trim())
+            body.ecg_record = R.value.trim();
+          let res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          let text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch {
+            throw Error(
+              `Server returned ${res.status}: ${text.trim() || res.statusText}`,
+            );
+          }
+          if (!res.ok) throw Error(data.error || res.statusText);
+          ans.className = "answer";
+          ans.textContent = data.reply || "No answer returned.";
+          document.getElementById("result").textContent =
+            data.typed?.execution_path ||
+            (data.grounded ? "grounded" : "completed");
+          fact(data.dataset);
+          audit(data.typed);
+          stages(data.typed);
+        } catch (e) {
+          ans.className = "answer";
+          ans.textContent = "Analysis error: " + e.message;
+          document.getElementById("result").textContent = "error";
+          audit();
+          stages();
+        } finally {
+          Run.disabled = false;
+          Run.textContent = "RUN ANALYSIS";
+        }
+      }
+      document.querySelectorAll(".method").forEach(
+        (b) =>
+          (b.onclick = () => {
+            mode = b.dataset.m;
+            document
+              .querySelectorAll(".method")
+              .forEach((x) => x.classList.remove("on", "cache-on"));
+            b.classList.add("on");
+            if (mode === "typed_operator_cache") b.classList.add("cache-on");
+            document.getElementById("methodname").textContent = b
+              .querySelector("b")
+              .textContent.replace(/^\d+\s*\/\s*/, "")
+              .toLowerCase();
+            audit();
+            stages();
+          }),
+      );
+      D.onchange = () => {
+        R.hidden = D.value !== "ecg";
+        examples();
+      };
+      Run.onclick = go;
+      Q.onkeydown = (e) => {
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) go();
+      };
+      async function health() {
+        try {
+          let r = await fetch("/api/health");
+          document.getElementById("dot").style.background = r.ok
+            ? "var(--lime)"
+            : "var(--red)";
+          document.getElementById("health").textContent = r.ok
+            ? "online"
+            : "offline";
+        } catch {
+          document.getElementById("dot").style.background = "var(--red)";
+          document.getElementById("health").textContent = "offline";
+        }
+      }
+      examples();
+      health();
+    </script>
+  </body>
+</html>

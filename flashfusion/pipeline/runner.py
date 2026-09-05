@@ -249,12 +249,16 @@ def _build_chat_model(model_name: str, api_key: str, session_key: str):
 def _is_groq_model(model_name: str) -> bool:
     """Return True if *model_name* should be routed through Groq.
 
-    Supports bare Groq IDs such as ``allam-2-7b`` and the explicit
-    ``groq/...`` prefix. OpenRouter-style IDs always contain a slash.
+    Supports bare Groq IDs such as ``allam-2-7b``, the explicit ``groq/``
+    prefix, and Groq's OpenAI-namespaced GPT-OSS models.
     """
     if not model_name:
         return False
-    return model_name.startswith("groq/") or "/" not in model_name
+    return (
+        model_name.startswith("groq/")
+        or model_name.startswith("openai/gpt-oss-")
+        or "/" not in model_name
+    )
 
 
 def _canonical_groq_model_name(model_name: str) -> str:

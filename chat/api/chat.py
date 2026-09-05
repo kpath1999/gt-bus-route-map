@@ -89,8 +89,10 @@ LOCAL_DATASET_REGISTRY: dict[str, Path] = {
 }
 
 DEFAULT_ECG_RECORD = "100"
+FULL_PLANNING_MODEL = os.environ.get("FULL_PLANNING_MODEL", "groq:openai/gpt-oss-120b")
+GROUNDING_MODEL = os.environ.get("GROUNDING_MODEL", "openai/gpt-oss-20b")
 
-DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
+DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "openai/gpt-oss-20b")
 DOMAIN_ROUTER_MIN_CONF = float(os.environ.get("DOMAIN_ROUTER_MIN_CONF", "0.42"))
 DOMAIN_ROUTER_MIN_MARGIN = float(os.environ.get("DOMAIN_ROUTER_MIN_MARGIN", "0.06"))
 
@@ -479,7 +481,7 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "Empty message"})
             return
 
-        model = req.get("model", "groq:groq/compound-mini")
+        model = req.get("model", FULL_PLANNING_MODEL)
         explicit_domain: str | None = req.get("domain")
         ecg_record: str | None = req.get("ecg_record")
         confirmed: bool = req.get("confirmed", False)
@@ -488,9 +490,9 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "Invalid execution_mode"})
             return
 
-        api_key = os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")
+        api_key = os.environ.get("GROQ_API_KEY")
         if not api_key:
-            self._json_response(500, {"error": "OPENROUTER_API_KEY (or GROQ_API_KEY for transition) not configured"})
+            self._json_response(500, {"error": "GROQ_API_KEY is not configured"})
             return
 
         # ── Domain detection: explicit > probabilistic routing ──────
@@ -567,7 +569,11 @@ class handler(BaseHTTPRequestHandler):
         if execution_mode != "agent":
             try:
                 typed_model = _strip_provider_prefix(model)
-                client = TypedLLMClient(model_name=typed_model, api_key=api_key)
+                client = TypedLLMClient(
+                    model_name=typed_model,
+                    api_key=api_key,
+                    light_model_name=GROUNDING_MODEL,
+                )
                 result = TypedRunResult(
                     baseline=(
                         "FLASH_FUSION_CACHE"

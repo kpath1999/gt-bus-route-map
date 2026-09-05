@@ -524,6 +524,8 @@ def _compute_cost_usd(model_name: str, input_tokens: int, output_tokens: int) ->
 # Known Groq model IDs. Keep this in sync with Groq's /models endpoint.
 # Override at runtime with a comma-separated GROQ_MODEL_IDS env var.
 _GROQ_MODEL_IDS: frozenset[str] = frozenset({
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
     "groq/compound",
     "groq/compound-mini",
     "allam-2-7b",
