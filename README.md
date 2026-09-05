@@ -100,6 +100,14 @@ over WISDM, MIT ECG, and bus datasets. Results are written below
 Run `./run_benchmark.sh --help` for dataset, query, latency, model, and output
 configuration.
 
+## Deployment Footprint
+
+The Vercel deployment installs `requirements-vercel.txt`, a production-only
+dependency set for the chat function. The broader `requirements.txt` remains
+for local research, embeddings, visualization, and benchmark workflows. The
+root `.vercelignore` excludes canonical datasets and generated artifacts, while
+retaining the bundled chat data and typed-plan cache needed at runtime.
+
 ## Contributing
 
 Contributions to typed operators, validation contracts, datasets, benchmarks,
