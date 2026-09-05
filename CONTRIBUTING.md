@@ -13,7 +13,7 @@ inspection are especially useful.
 Clone the repository and create an isolated Python environment:
 
 ```sh
-git clone https://github.com/kpath1999/sting-sense-map.git
+git clone https://github.com/kpath1999/flash-fusion.git
 cd flash-fusion
 python3 -m venv .venv
 source .venv/bin/activate

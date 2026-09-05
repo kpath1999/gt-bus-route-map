@@ -41,10 +41,9 @@ Set `OPENROUTER_PRODUCTION` in `chat/.env.local`. The chat application uses
 ## Vercel deployment
 
 Deploy from the repository root, with the Vercel project **Root Directory** set
-to the repository root rather than `chat/`. This keeps both the serverless
-entrypoint and the `flashfusion/` package in the deployment bundle. Configure
-the project to use `chat/vercel.json`, or duplicate its rewrite rules in the
-project configuration.
+to the repository root rather than `chat/`. The root [vercel.json](../vercel.json)
+and `api/index.py` route requests to the chat interface while keeping the
+`flashfusion/` package in the deployment bundle.
 
 The chat datasets and cache registry must remain in the bundle. ECG and IMU
 inputs use Git LFS, so ensure the Vercel build has access to LFS objects before

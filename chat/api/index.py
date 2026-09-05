@@ -17,7 +17,7 @@ from typing import Any, TYPE_CHECKING
 from asgiref.wsgi import WsgiToAsgi
 
 if TYPE_CHECKING:
-    from api.chat import handler as _ChatHandler
+    from .chat import handler as _ChatHandler
 
 try:
     from dotenv import load_dotenv
@@ -92,7 +92,7 @@ def app(environ: dict, start_response: callable):
 
     # Load analysis dependencies only for a chat request. Health remains a fast
     # deployment and OpenRouter-secret probe if an analysis dependency fails.
-    from api.chat import handler as chat_handler
+    from .chat import handler as chat_handler
 
     # Delegate everything else to the chat handler
     body = _read_body(environ)
