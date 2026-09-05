@@ -12,12 +12,12 @@ import os
 import socket
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from asgiref.wsgi import WsgiToAsgi
 
-# Import chat handler at module level so Vercel bundles chat.py.
-from api.chat import handler as _ChatHandler  # noqa: E402
+if TYPE_CHECKING:
+    from api.chat import handler as _ChatHandler
 
 try:
     from dotenv import load_dotenv
@@ -73,7 +73,7 @@ def app(environ: dict, start_response: callable):
     if method == "GET" and path.rstrip("/").endswith("/health"):
         body = json.dumps({
             "status": "ok",
-            "has_api_key": bool(os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GROQ_API_KEY")),
+            "has_api_key": bool(os.environ.get("OPENROUTER_PRODUCTION")),
         }).encode()
         start_response("200 OK", [
             ("Content-Type", "application/json"),
@@ -90,10 +90,14 @@ def app(environ: dict, start_response: callable):
         ])
         return [b""]
 
+    # Load analysis dependencies only for a chat request. Health remains a fast
+    # deployment and OpenRouter-secret probe if an analysis dependency fails.
+    from api.chat import handler as chat_handler
+
     # Delegate everything else to the chat handler
     body = _read_body(environ)
     mock_conn = _MockConnection()
-    handler_instance = _ChatHandler(
+    handler_instance = chat_handler(
         request=mock_conn,
         client_address=(environ.get("REMOTE_ADDR", "0.0.0.0"), 0),
         server=None,

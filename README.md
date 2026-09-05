@@ -1,33 +1,111 @@
-# Flash-Fusion: - Enabling Expressive, Low-Latency Queries on IoT Sensor Streams with LLMs
+# Flash-Fusion
 
-**[Dashboard](https://sting-sense-map.vercel.app/)** | **[GitHub Repository](https://github.com/kpath1999/sting-sense-map)**
+<p align="center">
+	<img src="chat/public/favicon.svg" width="72" height="72" alt="Flash-Fusion logo">
+</p>
 
----
+<p align="center">
+	Expressive, inspectable natural-language analysis for IoT sensor streams.
+</p>
 
-## General flow with prompts
+<p align="center">
+	<a href="https://flash-fusion.vercel.app/">Live chat</a> ·
+	<a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-The system answers conversational natural language queries over tabular IoT data using a 4-stage pipeline designed to prevent hallucinations and ensure schema-grounded pandas code generation. The pipeline is implemented via LangChain and OpenRouter. Check [the evaluation script](src/scripts/eval.py) for how we got this done.
+Flash-Fusion translates a data question into a constrained typed plan, validates
+that plan against the live schema, and executes deterministic pandas operators.
+Each result carries inspectable routing, plan, validation, cache, and execution
+evidence rather than an opaque code-generation attempt.
 
-### 1. Schema-Aware Query Rewriter
-Before touching the dataframe, an LLM rewrites the user's conversational query into a strict, column-grounded version. It is fed pre-computed metadata (data types, min/max bounds, sample values) for every column.
-* **Goal:** Map vague concepts (e.g., "jerkiest") to exact columns (e.g., `accel_variance`).
-* **Rule:** If a data concept cannot be mapped, it is sent to an `UNMAPPABLE` list. Mathematical operations (standard deviation, mean, etc.) are protected and passed through.
+## Project Components
 
-### 2. Guardrail Gatekeeper
-If the rewriter detects `UNMAPPABLE` concepts, the query is rejected immediately. Otherwise, the rewritten query is passed to a strict gatekeeper prompt.
-* **Goal:** Approve (`PROCEED`) or reject (`REJECT: <reason>`) queries based *only* on the available schema.
-* **Rule:** Rejects queries requiring external internet data, missing base columns (e.g. asking for temperature when only acceleration exists), or predictive forecasting.
+- `flashfusion/`: typed planning pipeline, operator vocabulary, baselines, evaluation, tests, and visualizations.
+- `chat/`: Vercel-hosted interface for bus telemetry, WISDM IMU, and MIT-BIH ECG exploration.
+- `data/`: canonical local dataset roots used by evaluation workflows.
+- `docs/`: experiment plans, contract notes, cache analysis, and reproducibility material.
 
-### 3. Pandas DataFrame Agent
-Once approved, the rewritten query is handed to a LangChain zero-shot ReAct Pandas DataFrame Agent.
-* **Prompt Engineering:** The agent is given a strict system prompt containing the exact dataframe columns and total row counts.
-* **Tool Usage:** It is instructed to use a single tool (`python_repl_ast`) to execute valid pandas code against the dataframe.
+## How It Works
 
-### 4. Natural Language Contextualization
-The Pandas agent returns a raw statistical or geographical answer (e.g., `59` or `latitude: 33.7, longitude: -84.3`).
-* **Goal:** Transform the raw data into a human-readable response.
-* **Outcome:** The final LLM synthesizes the user's original query and the agent's raw output into a concise natural language sentence, hiding the underlying code and statistics.
+1. **Route**: eliminate incompatible operator groups from the closed vocabulary.
+2. **Plan**: request one schema-aware structured operator plan.
+3. **Validate**: apply structural and live-DataFrame validation gates.
+4. **Execute**: run approved operators deterministically in pandas.
+5. **Inspect**: return the answer with route, plan, validation, cache, and execution evidence.
 
-## Sample prompts
+The skeleton-cache mode can reuse an exact operator skeleton, re-ground its
+parameters to the current schema, and run the same validation gates. The
+grounded agent implementation remains available as a comparison baseline.
 
-See [`src/scripts/queries.py`](src/scripts/queries.py) list.
+## Quick Start
+
+Requires Python 3.11 or newer.
+
+```sh
+git clone https://github.com/kpath1999/flash-fusion.git
+cd flash-fusion
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ./flashfusion
+pip install -r requirements.txt
+```
+
+Set an OpenRouter key for local experiments:
+
+```sh
+export OPENROUTER_API_KEY="..."
+```
+
+Run the tests:
+
+```sh
+pytest flashfusion/tests
+```
+
+## Run the Chat App
+
+The hosted interface is served from `chat/` and uses `openrouter/auto` for
+planning, grounding, and domain routing.
+
+```sh
+cd chat
+pip install -r requirements.txt
+export OPENROUTER_PRODUCTION="..."
+vercel dev
+```
+
+Use the lightweight health probe to check a deployment without starting a model
+request:
+
+```sh
+curl -fsS https://flash-fusion.vercel.app/api/health
+```
+
+It returns JSON with `status` and `has_api_key`. A `200` response proves that
+the Vercel runtime started. `has_api_key: true` confirms that
+`OPENROUTER_PRODUCTION` is present in that deployment. Configure the value as a
+Vercel Production environment variable and redeploy after changing it.
+
+## Benchmarking
+
+The benchmark runner evaluates Flash-Fusion alongside paper and agent baselines
+over WISDM, MIT ECG, and bus datasets. Results are written below
+`flashfusion/results/`.
+
+```sh
+./run_benchmark.sh --quick
+./run_benchmark.sh --bus --baselines FLASH_FUSION --runs 3
+```
+
+Run `./run_benchmark.sh --help` for dataset, query, latency, model, and output
+configuration.
+
+## Contributing
+
+Contributions to typed operators, validation contracts, datasets, benchmarks,
+documentation, and the chat experience are welcome. Keep changes focused and
+include tests for behavior changes, especially when execution semantics change.
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution flow and project
+conventions. Issue reports should include the query, dataset, execution mode,
+expected result, actual result, and a redacted audit trace.
