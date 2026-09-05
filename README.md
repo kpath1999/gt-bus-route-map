@@ -102,14 +102,14 @@ configuration.
 
 ## Deployment Footprint
 
-Vercel installs the production-only `requirements.txt` and can automatically
-trace and optimize the function bundle. The broader
-`requirements-research.txt` is for local research, embeddings, visualization,
-and benchmark workflows. The root `.vercelignore` excludes canonical datasets
-and generated artifacts while retaining the bundled chat data and typed-plan
-cache needed at runtime. Predictive typed operators require scikit-learn and
-remain available in the local research environment rather than the 225 MB
-serverless chat bundle.
+Vercel uses the root `pyproject.toml` to install the production-only dependency
+set and launch `api.chat:app`; it can then trace and optimize the function
+bundle. The broader `requirements-research.txt` is for local research,
+embeddings, visualization, and benchmark workflows. The root `.vercelignore`
+excludes canonical datasets and generated artifacts while retaining the bundled
+chat data and typed-plan cache needed at runtime. Predictive typed operators
+require scikit-learn and remain available in the local research environment
+rather than the 225 MB serverless chat bundle.
 
 ## Contributing
 
