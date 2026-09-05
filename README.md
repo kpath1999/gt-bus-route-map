@@ -47,7 +47,7 @@ cd flash-fusion
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ./flashfusion
-pip install -r requirements.txt
+pip install -r requirements-research.txt
 ```
 
 Set an OpenRouter key for local experiments:
@@ -102,11 +102,14 @@ configuration.
 
 ## Deployment Footprint
 
-The Vercel deployment installs `requirements-vercel.txt`, a production-only
-dependency set for the chat function. The broader `requirements.txt` remains
-for local research, embeddings, visualization, and benchmark workflows. The
-root `.vercelignore` excludes canonical datasets and generated artifacts, while
-retaining the bundled chat data and typed-plan cache needed at runtime.
+Vercel installs the production-only `requirements.txt` and can automatically
+trace and optimize the function bundle. The broader
+`requirements-research.txt` is for local research, embeddings, visualization,
+and benchmark workflows. The root `.vercelignore` excludes canonical datasets
+and generated artifacts while retaining the bundled chat data and typed-plan
+cache needed at runtime. Predictive typed operators require scikit-learn and
+remain available in the local research environment rather than the 225 MB
+serverless chat bundle.
 
 ## Contributing
 

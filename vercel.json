@@ -1,5 +1,4 @@
 {
-  "installCommand": "pip install -r requirements-vercel.txt",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" },
     { "source": "/favicon.svg", "destination": "/chat/public/favicon.svg" },
