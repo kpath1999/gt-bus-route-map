@@ -49,7 +49,6 @@ sys.path.insert(0, str(_PROJECT_ROOT))
 
 import pandas as pd  # noqa: E402
 from langchain_openrouter import ChatOpenRouter  # noqa: E402
-from langchain_groq import ChatGroq  # noqa: E402
 from playground import (  # noqa: E402
     load_data,
     export_ecg_record_to_csv,
@@ -61,7 +60,6 @@ from playground import (  # noqa: E402
     LLMClient,
     Stage1_ConceptExtraction,
     Stage2_SchemaGrounding,
-    _is_groq_model,
     _strip_provider_prefix,
 )
 from flashfusion.baselines.flash_fusion import run_flash_fusion  # noqa: E402
@@ -89,10 +87,11 @@ LOCAL_DATASET_REGISTRY: dict[str, Path] = {
 }
 
 DEFAULT_ECG_RECORD = "100"
-FULL_PLANNING_MODEL = os.environ.get("FULL_PLANNING_MODEL", "groq:openai/gpt-oss-120b")
-GROUNDING_MODEL = os.environ.get("GROUNDING_MODEL", "openai/gpt-oss-20b")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_PRODUCTION")
+FULL_PLANNING_MODEL = os.environ.get("FULL_PLANNING_MODEL", "openrouter/auto")
+GROUNDING_MODEL = os.environ.get("GROUNDING_MODEL", "openrouter/auto")
 
-DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "openai/gpt-oss-20b")
+DOMAIN_ROUTER_MODEL = os.environ.get("DOMAIN_ROUTER_MODEL", "openrouter/auto")
 DOMAIN_ROUTER_MIN_CONF = float(os.environ.get("DOMAIN_ROUTER_MIN_CONF", "0.42"))
 DOMAIN_ROUTER_MIN_MARGIN = float(os.environ.get("DOMAIN_ROUTER_MIN_MARGIN", "0.06"))
 
@@ -276,32 +275,18 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
 
 
 def _domain_probabilities_llm(query: str, model: str) -> dict[str, float]:
-    groq_key = os.environ.get("GROQ_API_KEY")
-    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
-    if not (openrouter_key or groq_key):
-        raise RuntimeError("OPENROUTER_API_KEY (or GROQ_API_KEY for transition) not configured")
+    if not OPENROUTER_API_KEY:
+        raise RuntimeError("OPENROUTER_PRODUCTION is not configured")
 
     model = _strip_provider_prefix(model)
     domains_json = json.dumps(_DOMAIN_PROFILES, ensure_ascii=True)
-    if _is_groq_model(model):
-        if not groq_key:
-            raise RuntimeError("GROQ_API_KEY required for Groq-routed domain classifier")
-        llm = ChatGroq(
-            model=model,
-            api_key=groq_key,
-            temperature=0,
-            max_tokens=180,
-            max_retries=2,
-        )
-    else:
-        api_key = openrouter_key or groq_key
-        llm = ChatOpenRouter(
-            model=model,
-            api_key=api_key,
-            temperature=0,
-            max_tokens=180,
-            max_retries=2,
-        )
+    llm = ChatOpenRouter(
+        model=model,
+        api_key=OPENROUTER_API_KEY,
+        temperature=0,
+        max_tokens=180,
+        max_retries=2,
+    )
     completion = llm.invoke(
         [
             (
@@ -490,9 +475,9 @@ class handler(BaseHTTPRequestHandler):
             self._json_response(400, {"error": "Invalid execution_mode"})
             return
 
-        api_key = os.environ.get("GROQ_API_KEY")
+        api_key = OPENROUTER_API_KEY
         if not api_key:
-            self._json_response(500, {"error": "GROQ_API_KEY is not configured"})
+            self._json_response(500, {"error": "OPENROUTER_PRODUCTION is not configured"})
             return
 
         # ── Domain detection: explicit > probabilistic routing ──────

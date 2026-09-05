@@ -35,8 +35,8 @@ pip install -r requirements.txt
 vercel dev
 ```
 
-Set `GROQ_API_KEY` in `chat/.env.local`. The chat application calls Groq
-directly, using GPT-OSS 120B for full planning and GPT-OSS 20B for grounding.
+Set `OPENROUTER_PRODUCTION` in `chat/.env.local`. The chat application uses
+`openrouter/auto` for planning, grounding, and domain routing.
 
 ## Vercel deployment
 
@@ -49,6 +49,9 @@ project configuration.
 The chat datasets and cache registry must remain in the bundle. ECG and IMU
 inputs use Git LFS, so ensure the Vercel build has access to LFS objects before
 deploying those two demo domains.
+
+Configure `OPENROUTER_PRODUCTION` as an encrypted Vercel Production environment
+variable; do not use a local `.env.local` file in a deployment.
 Tool-calling.
 Erroring out in CoT.
 Syntax issues.

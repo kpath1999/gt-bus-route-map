@@ -29,8 +29,8 @@ pip install -r requirements.txt
 vercel dev
 ```
 
-Set `GROQ_API_KEY` in `chat/.env.local`. The hosted chat calls Groq directly,
-using `openai/gpt-oss-120b` for planning and `openai/gpt-oss-20b` for grounding.
+Set `OPENROUTER_PRODUCTION` in `chat/.env.local`. The hosted chat uses
+`openrouter/auto` for planning, grounding, and domain routing.
 
 ## Contribution Flow
 
