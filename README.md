@@ -111,6 +111,18 @@ chat data and typed-plan cache needed at runtime. Predictive typed operators
 require scikit-learn and remain available in the local research environment
 rather than the 225 MB serverless chat bundle.
 
+The chat function explicitly includes its small, tracked demo datasets from
+`chat/data/` because Vercel cannot infer dynamically constructed filesystem
+paths. Do not add the multi-gigabyte canonical `data/` tree to this bundle.
+
+For full datasets, store immutable source files in object storage such as
+Cloudflare R2, Amazon S3, or Google Cloud Storage, and run data-intensive work
+in a separately deployed service with persistent disk and sufficient memory.
+Vercel should remain the web/API edge layer: it can submit a query to that
+service and return its result. Downloading multi-gigabyte inputs into a Vercel
+function is unsuitable because function bundles, ephemeral disk, memory, and
+execution time are all bounded.
+
 ## Contributing
 
 Contributions to typed operators, validation contracts, datasets, benchmarks,
